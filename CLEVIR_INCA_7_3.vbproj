@@ -1,0 +1,843 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{5793D1D6-599E-4970-96D3-0D4F7EB69B36}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <StartupObject>CLEVIR_INCA_7_3.My.MyApplication</StartupObject>
+    <RootNamespace>CLEVIR_INCA_7_3</RootNamespace>
+    <AssemblyName>CLEVIR_INCA_7_3</AssemblyName>
+    <FileAlignment>512</FileAlignment>
+    <MyType>WindowsForms</MyType>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionCompare>Binary</OptionCompare>
+    <OptionStrict>On</OptionStrict>
+    <OptionInfer>On</OptionInfer>
+    <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
+    <ApplicationIcon>GM_ResidentClient_256px.ico</ApplicationIcon>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <TargetFrameworkProfile />
+    <PublishUrl>c:\dat\CLEVIR\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <PublishWizardCompleted>true</PublishWizardCompleted>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>CLEVIR_INCA_7_3.xml</DocumentationFile>
+    <NoWarn>42353,42354,42355</NoWarn>
+    <PlatformTarget>x64</PlatformTarget>
+    <RemoveIntegerChecks>true</RemoveIntegerChecks>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>CLEVIR_INCA_7_3.xml</DocumentationFile>
+    <NoWarn>42353,42354,42355</NoWarn>
+    <PlatformTarget>x86</PlatformTarget>
+    <RemoveIntegerChecks>true</RemoveIntegerChecks>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestCertificateThumbprint>79D6931D24BB4D021F3BDF8312CB7DB9489D08DB</ManifestCertificateThumbprint>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestKeyFile>CLEVIR_INCA_7_3_TemporaryKey.pfx</ManifestKeyFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateManifests>true</GenerateManifests>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignManifests>true</SignManifests>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ICSharpCode.SharpZipLib, Version=0.84.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\ICSharpCode.SharpZipLib.dll</HintPath>
+    </Reference>
+    <Reference Include="incacom, Version=18.0.0.0, Culture=neutral, PublicKeyToken=c9b6e760b808c9f9, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\incacom.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.Scripting, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.VisualBasic.Compatibility" />
+    <Reference Include="Microsoft.Win32.Registry, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Win32.Registry.4.7.0\lib\net461\Microsoft.Win32.Registry.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.2.2.1\lib\net472\NAudio.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Asio, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.Asio.2.2.1\lib\netstandard2.0\NAudio.Asio.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Core, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.Core.2.2.1\lib\netstandard2.0\NAudio.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Midi, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.Midi.2.2.1\lib\netstandard2.0\NAudio.Midi.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Wasapi, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.Wasapi.2.2.1\lib\netstandard2.0\NAudio.Wasapi.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.WinForms, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.WinForms.2.2.1\lib\net472\NAudio.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.WinMM, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.WinMM.2.2.1\lib\netstandard2.0\NAudio.WinMM.dll</HintPath>
+    </Reference>
+    <Reference Include="RCI2dotNet, Version=7.3.0.21245, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\RCI2dotNet.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Security.AccessControl, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Security.AccessControl.4.7.0\lib\net461\System.Security.AccessControl.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Security.Principal.Windows, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Security.Principal.Windows.4.7.0\lib\net461\System.Security.Principal.Windows.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Speech">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml.Linq">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Import Include="Microsoft.VisualBasic" />
+    <Import Include="System" />
+    <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
+    <Import Include="System.ComponentModel" />
+    <Import Include="System.Drawing" />
+    <Import Include="System.Diagnostics" />
+    <Import Include="System.Windows.Forms" />
+    <Import Include="System.Linq" />
+    <Import Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.designer.vb">
+      <Link>AnnotationInterfaceConfigure.designer.vb</Link>
+      <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.vb">
+      <Link>AnnotationInterfaceConfigure.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\..\GlobalCommonFiles\CommonINCAFunctions.vb">
+      <Link>CommonINCAFunctions.vb</Link>
+    </Compile>
+    <Compile Include="..\..\GlobalCommonFiles\CommonWirelessFunctions.vb">
+      <Link>CommonWirelessFunctions.vb</Link>
+    </Compile>
+    <Compile Include="..\..\GlobalCommonFiles\EncryptDecrypt.vb">
+      <Link>EncryptDecrypt.vb</Link>
+    </Compile>
+    <Compile Include="..\..\GlobalCommonFiles\GenericAnyCLEVIRToolSuiteApp.vb">
+      <Link>GenericAnyCLEVIRToolSuiteApp.vb</Link>
+    </Compile>
+    <Compile Include="..\..\GlobalCommonFiles\ImportSoftwareAndCalsFunctions.vb">
+      <Link>ImportSoftwareAndCalsFunctions.vb</Link>
+    </Compile>
+    <Compile Include="..\..\GlobalCommonFiles\ZipStuff.vb">
+      <Link>ZipStuff.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\ArrayDataView.vb">
+      <Link>ArrayDataView.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\ArrayPropertyDescriptor.vb">
+      <Link>ArrayPropertyDescriptor.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\ArrayRowView.vb">
+      <Link>ArrayRowView.vb</Link>
+    </Compile>
+    <Compile Include="..\NoFlexGridFiles\GM_ResidentClient.designer.vb">
+      <Link>GM_ResidentClient.designer.vb</Link>
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\NoFlexGridFiles\GM_ResidentClient.vb">
+      <Link>GM_ResidentClient.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\NoFlexGridFiles\GridCellPropConfig.designer.vb">
+      <Link>GridCellPropConfig.designer.vb</Link>
+      <DependentUpon>GridCellPropConfig.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\NoFlexGridFiles\GridCellPropConfig.vb">
+      <Link>GridCellPropConfig.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\NoFlexGridFiles\GridDataClass.vb">
+      <Link>GridDataClass.vb</Link>
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="..\..\OscilloscopeDisplay\oscilloscope.designer.vb">
+      <Link>oscilloscope.designer.vb</Link>
+      <DependentUpon>oscilloscope.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\..\OscilloscopeDisplay\oscilloscope.vb">
+      <Link>oscilloscope.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\AddRecordOnlySignals.designer.vb">
+      <Link>AddRecordOnlySignals.designer.vb</Link>
+      <DependentUpon>AddRecordOnlySignals.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\AddRecordOnlySignals.vb">
+      <Link>AddRecordOnlySignals.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\CANalyzerStuff.vb">
+      <Link>CANalyzerStuff.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\CLEVIRCalibrationInterface.designer.vb">
+      <Link>CLEVIRCalibrationInterface.designer.vb</Link>
+      <DependentUpon>CLEVIRCalibrationInterface.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\CLEVIRCalibrationInterface.vb">
+      <Link>CLEVIRCalibrationInterface.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\CopilotStatusDisplay.designer.vb">
+      <Link>CopilotStatusDisplay.designer.vb</Link>
+      <DependentUpon>CopilotStatusDisplay.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\CopilotStatusDisplay.vb">
+      <Link>CopilotStatusDisplay.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\Cusmsgbox.designer.vb">
+      <Link>Cusmsgbox.designer.vb</Link>
+      <DependentUpon>Cusmsgbox.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\Cusmsgbox.vb">
+      <Link>Cusmsgbox.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\CustomAnnotation.designer.vb">
+      <Link>CustomAnnotation.designer.vb</Link>
+      <DependentUpon>CustomAnnotation.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\CustomAnnotation.vb">
+      <Link>CustomAnnotation.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\DefaultConfiguration.designer.vb">
+      <Link>DefaultConfiguration.designer.vb</Link>
+      <DependentUpon>DefaultConfiguration.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\DefaultConfiguration.vb">
+      <Link>DefaultConfiguration.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\DeviceStatus.designer.vb">
+      <Link>DeviceStatus.designer.vb</Link>
+      <DependentUpon>DeviceStatus.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\DeviceStatus.vb">
+      <Link>DeviceStatus.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\DisplayLogFile.designer.vb">
+      <Link>DisplayLogFile.designer.vb</Link>
+      <DependentUpon>DisplayLogFile.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\DisplayLogFile.vb">
+      <Link>DisplayLogFile.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\ExitAppForm.designer.vb">
+      <Link>ExitAppForm.designer.vb</Link>
+      <DependentUpon>ExitAppForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\ExitAppForm.vb">
+      <Link>ExitAppForm.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\FlashingStatus.designer.vb">
+      <Link>FlashingStatus.designer.vb</Link>
+      <DependentUpon>FlashingStatus.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\FlashingStatus.vb">
+      <Link>FlashingStatus.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\FormDataClass.vb">
+      <Link>FormDataClass.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\FusionStatusDisplay.designer.vb">
+      <Link>FusionStatusDisplay.designer.vb</Link>
+      <DependentUpon>FusionStatusDisplay.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\FusionStatusDisplay.vb">
+      <Link>FusionStatusDisplay.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\GM_INCA_Comm.vb">
+      <Link>GM_INCA_Comm.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\INCA_InterfaceClass.vb">
+      <Link>INCA_InterfaceClass.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\InitForm.designer.vb">
+      <Link>InitForm.designer.vb</Link>
+      <DependentUpon>InitForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\InitForm.vb">
+      <Link>InitForm.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\LKAForm.designer.vb">
+      <Link>LKAForm.designer.vb</Link>
+      <DependentUpon>LKAForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\LKAForm.vb">
+      <Link>LKAForm.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\LMFR_Status_Display_Global_A.designer.vb">
+      <Link>LMFR_Status_Display_Global_A.designer.vb</Link>
+      <DependentUpon>LMFR_Status_Display_Global_A.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\LMFR_Status_Display_Global_A.vb">
+      <Link>LMFR_Status_Display_Global_A.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\LMFR_Status_Screen_HC.designer.vb">
+      <Link>LMFR_Status_Screen_HC.designer.vb</Link>
+      <DependentUpon>LMFR_Status_Screen_HC.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\LMFR_Status_Screen_HC.vb">
+      <Link>LMFR_Status_Screen_HC.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\LoginForm.designer.vb">
+      <Link>LoginForm.designer.vb</Link>
+      <DependentUpon>LoginForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\LoginForm.vb">
+      <Link>LoginForm.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\Module1.vb">
+      <Link>Module1.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\OnVehicleScreen.designer.vb">
+      <Link>OnVehicleScreen.designer.vb</Link>
+      <DependentUpon>OnVehicleScreen.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\OnVehicleScreen.vb">
+      <Link>OnVehicleScreen.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\OperationHistory.designer.vb">
+      <Link>OperationHistory.designer.vb</Link>
+      <DependentUpon>OperationHistory.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\OperationHistory.vb">
+      <Link>OperationHistory.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\PedestrianStatusDisplay.designer.vb">
+      <Link>PedestrianStatusDisplay.designer.vb</Link>
+      <DependentUpon>PedestrianStatusDisplay.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\PedestrianStatusDisplay.vb">
+      <Link>PedestrianStatusDisplay.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\RecordPlayback.designer.vb">
+      <Link>RecordPlayback.designer.vb</Link>
+      <DependentUpon>RecordPlayback.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\RecordPlayback.vb">
+      <Link>RecordPlayback.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\SelectDisplays.designer.vb">
+      <Link>SelectDisplays.designer.vb</Link>
+      <DependentUpon>SelectDisplays.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\SelectDisplays.vb">
+      <Link>SelectDisplays.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\SelectExperiment.designer.vb">
+      <Link>SelectExperiment.designer.vb</Link>
+      <DependentUpon>SelectExperiment.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\SelectExperiment.vb">
+      <Link>SelectExperiment.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\SoftwareVersionSelect.designer.vb">
+      <Link>SoftwareVersionSelect.designer.vb</Link>
+      <DependentUpon>SoftwareVersionSelect.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\SoftwareVersionSelect.vb">
+      <Link>SoftwareVersionSelect.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\TargetStatusDisplay.designer.vb">
+      <Link>TargetStatusDisplay.designer.vb</Link>
+      <DependentUpon>TargetStatusDisplay.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\TargetStatusDisplay.vb">
+      <Link>TargetStatusDisplay.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\TDGraphicsContainerClass.vb">
+      <Link>TDGraphicsContainerClass.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\TD_TargetObjectsClass.vb">
+      <Link>TD_TargetObjectsClass.vb</Link>
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\TestDescriptionForm.designer.vb">
+      <Link>TestDescriptionForm.designer.vb</Link>
+      <DependentUpon>TestDescriptionForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\TestDescriptionForm.vb">
+      <Link>TestDescriptionForm.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\TopDownViewConfiguration.designer.vb">
+      <Link>TopDownViewConfiguration.designer.vb</Link>
+      <DependentUpon>TopDownViewConfiguration.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\TopDownViewConfiguration.vb">
+      <Link>TopDownViewConfiguration.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\UploadDataScreen.designer.vb">
+      <Link>UploadDataScreen.designer.vb</Link>
+      <DependentUpon>UploadDataScreen.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\UploadDataScreen.vb">
+      <Link>UploadDataScreen.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\UserStatusInfo.designer.vb">
+      <Link>UserStatusInfo.designer.vb</Link>
+      <DependentUpon>UserStatusInfo.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\UserStatusInfo.vb">
+      <Link>UserStatusInfo.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\VehicleConfigurationsEditor.designer.vb">
+      <Link>VehicleConfigurationsEditor.designer.vb</Link>
+      <DependentUpon>VehicleConfigurationsEditor.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\VehicleConfigurationsEditor.vb">
+      <Link>VehicleConfigurationsEditor.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\VehicleSpyStuff.vb">
+      <Link>VehicleSpyStuff.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\VehicleStatDashboard.designer.vb">
+      <Link>VehicleStatDashboard.designer.vb</Link>
+      <DependentUpon>VehicleStatDashboard.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\CommonFiles\VehicleStatDashboard.vb">
+      <Link>VehicleStatDashboard.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="..\CommonFiles\VoiceRecognitionClass.vb">
+      <Link>VoiceRecognitionClass.vb</Link>
+    </Compile>
+    <Compile Include="..\CommonFiles\ApplicationEvents.vb">
+      <Link>ApplicationEvents.vb</Link>
+    </Compile>
+    <Compile Include="..\NoFlexGridFiles\NewGridCreation.designer.vb">
+      <Link>NewGridCreation.designer.vb</Link>
+      <DependentUpon>NewGridCreation.vb</DependentUpon>
+    </Compile>
+    <Compile Include="..\NoFlexGridFiles\NewGridCreation.vb">
+      <Link>NewGridCreation.vb</Link>
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DataDictionarySingleton.vb" />
+    <Compile Include="IncaVersionSpecific.vb" />
+    <Compile Include="My Project\AssemblyInfo.vb" />
+    <Compile Include="My Project\Application.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Application.myapp</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="My Project\Resources.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\Settings.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.resx">
+      <Link>AnnotationInterfaceConfigure.resx</Link>
+      <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\NoFlexGridFiles\GM_ResidentClient.resx">
+      <Link>GM_ResidentClient.resx</Link>
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\NoFlexGridFiles\GridCellPropConfig.resx">
+      <Link>GridCellPropConfig.resx</Link>
+      <DependentUpon>GridCellPropConfig.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\NoFlexGridFiles\GridDataClass.resx">
+      <Link>GridDataClass.resx</Link>
+      <DependentUpon>GridDataClass.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\OscilloscopeDisplay\oscilloscope.resx">
+      <Link>oscilloscope.resx</Link>
+      <DependentUpon>oscilloscope.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\AddRecordOnlySignals.resx">
+      <Link>AddRecordOnlySignals.resx</Link>
+      <DependentUpon>AddRecordOnlySignals.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\CLEVIRCalibrationInterface.resx">
+      <Link>CLEVIRCalibrationInterface.resx</Link>
+      <DependentUpon>CLEVIRCalibrationInterface.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\CopilotStatusDisplay.resx">
+      <Link>CopilotStatusDisplay.resx</Link>
+      <DependentUpon>CopilotStatusDisplay.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\Cusmsgbox.resx">
+      <Link>Cusmsgbox.resx</Link>
+      <DependentUpon>Cusmsgbox.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\CustomAnnotation.resx">
+      <Link>CustomAnnotation.resx</Link>
+      <DependentUpon>CustomAnnotation.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\DefaultConfiguration.resx">
+      <Link>DefaultConfiguration.resx</Link>
+      <DependentUpon>DefaultConfiguration.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\DeviceStatus.resx">
+      <Link>DeviceStatus.resx</Link>
+      <DependentUpon>DeviceStatus.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\DisplayLogFile.resx">
+      <Link>DisplayLogFile.resx</Link>
+      <DependentUpon>DisplayLogFile.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\ExitAppForm.resx">
+      <Link>ExitAppForm.resx</Link>
+      <DependentUpon>ExitAppForm.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\FlashingStatus.resx">
+      <Link>FlashingStatus.resx</Link>
+      <DependentUpon>FlashingStatus.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\FormDataClass.resx">
+      <Link>FormDataClass.resx</Link>
+      <DependentUpon>FormDataClass.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\FusionStatusDisplay.resx">
+      <Link>FusionStatusDisplay.resx</Link>
+      <DependentUpon>FusionStatusDisplay.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\InitForm.resx">
+      <Link>InitForm.resx</Link>
+      <DependentUpon>InitForm.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\LKAForm.resx">
+      <Link>LKAForm.resx</Link>
+      <DependentUpon>LKAForm.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\LMFR_Status_Display_Global_A.resx">
+      <Link>LMFR_Status_Display_Global_A.resx</Link>
+      <DependentUpon>LMFR_Status_Display_Global_A.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\LMFR_Status_Screen_HC.resx">
+      <Link>LMFR_Status_Screen_HC.resx</Link>
+      <DependentUpon>LMFR_Status_Screen_HC.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\LoginForm.resx">
+      <Link>LoginForm.resx</Link>
+      <DependentUpon>LoginForm.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\OnVehicleScreen.resx">
+      <Link>OnVehicleScreen.resx</Link>
+      <DependentUpon>OnVehicleScreen.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\OperationHistory.resx">
+      <Link>OperationHistory.resx</Link>
+      <DependentUpon>OperationHistory.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\PedestrianStatusDisplay.resx">
+      <Link>PedestrianStatusDisplay.resx</Link>
+      <DependentUpon>PedestrianStatusDisplay.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\RecordPlayback.resx">
+      <Link>RecordPlayback.resx</Link>
+      <DependentUpon>RecordPlayback.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\SelectDisplays.resx">
+      <Link>SelectDisplays.resx</Link>
+      <DependentUpon>SelectDisplays.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\SelectExperiment.resx">
+      <Link>SelectExperiment.resx</Link>
+      <DependentUpon>SelectExperiment.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\SoftwareVersionSelect.resx">
+      <Link>SoftwareVersionSelect.resx</Link>
+      <DependentUpon>SoftwareVersionSelect.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\TargetStatusDisplay.resx">
+      <Link>TargetStatusDisplay.resx</Link>
+      <DependentUpon>TargetStatusDisplay.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\TDGraphicsContainerClass.resx">
+      <Link>TDGraphicsContainerClass.resx</Link>
+      <DependentUpon>TDGraphicsContainerClass.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\TD_TargetObjectsClass.resx">
+      <Link>TD_TargetObjectsClass.resx</Link>
+      <DependentUpon>TD_TargetObjectsClass.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\TestDescriptionForm.resx">
+      <Link>TestDescriptionForm.resx</Link>
+      <DependentUpon>TestDescriptionForm.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\TopDownViewConfiguration.resx">
+      <Link>TopDownViewConfiguration.resx</Link>
+      <DependentUpon>TopDownViewConfiguration.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\UploadDataScreen.resx">
+      <Link>UploadDataScreen.resx</Link>
+      <DependentUpon>UploadDataScreen.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\UserStatusInfo.resx">
+      <Link>UserStatusInfo.resx</Link>
+      <DependentUpon>UserStatusInfo.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\VehicleConfigurationsEditor.resx">
+      <Link>VehicleConfigurationsEditor.resx</Link>
+      <DependentUpon>VehicleConfigurationsEditor.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\CommonFiles\VehicleStatDashboard.resx">
+      <Link>VehicleStatDashboard.resx</Link>
+      <DependentUpon>VehicleStatDashboard.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\NoFlexGridFiles\NewGridCreation.resx">
+      <Link>NewGridCreation.resx</Link>
+      <DependentUpon>NewGridCreation.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="My Project\Resources.resx">
+      <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.vb</LastGenOutput>
+      <CustomToolNamespace>My.Resources</CustomToolNamespace>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="ClassDiagram1.cd" />
+    <None Include="CLEVIR_INCA_7_3_TemporaryKey.pfx" />
+    <None Include="My Project\app.manifest" />
+    <None Include="My Project\Application.myapp">
+      <Generator>MyApplicationCodeGenerator</Generator>
+      <LastGenOutput>Application.Designer.vb</LastGenOutput>
+    </None>
+    <None Include="My Project\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <CustomToolNamespace>My</CustomToolNamespace>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="VBIDE">
+      <Guid>{0002E157-0000-0000-C000-000000000046}</Guid>
+      <VersionMajor>5</VersionMajor>
+      <VersionMinor>3</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\mic.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\mic 50.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\Saki-NuoveXT-Actions-folder-file-import[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-eject[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-backward[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-start[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-forward[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\Debug\green vehicle ahead.png" />
+    <None Include="bin\Debug\orange vehicle ahead.png" />
+    <None Include="bin\Debug\red vehicle ahead.png" />
+    <None Include="bin\Debug\mic 50 Red.jpg" />
+    <None Include="bin\Debug\mic 50 Green.jpg" />
+    <None Include="bin\Debug\Red Ped.jpg" />
+    <None Include="bin\Debug\orange ped.jpg" />
+    <None Include="bin\Debug\cropped image.jpg" />
+    <None Include="bin\Debug\cropped image 60.jpg" />
+    <None Include="bin\Debug\Mommo.Data.dll" />
+    <None Include="packages.config" />
+    <None Include="Resources\mic 50 Red.jpg" />
+    <None Include="Resources\mic 50 Green.jpg" />
+    <None Include="Resources\cropped image 60.jpg" />
+    <None Include="Resources\orange ped.jpg" />
+    <None Include="Resources\orange vehicle ahead.png" />
+    <None Include="Resources\Red Ped.jpg" />
+    <None Include="Resources\red vehicle ahead.png" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-eject[1].ico" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1].ico" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-playback-start[1].ico" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-seek-backward[1].ico" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-seek-forward[1].ico" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-skip-backward[1].ico" />
+    <None Include="Resources\Oxygen-Icons.org-Oxygen-Actions-media-skip-forward[1].ico" />
+    <None Include="Resources\green vehicle ahead.png" />
+    <None Include="Resources\BlueLeftArrow.jpg" />
+    <None Include="Resources\BlueRightArrow.jpg" />
+    <None Include="Resources\GrayLeftArrow.jpg" />
+    <None Include="Resources\GrayRightArrow.jpg" />
+    <None Include="Resources\GreenLeftArrow.jpg" />
+    <None Include="Resources\GreenRightArrow.jpg" />
+    <None Include="Resources\RedLeftArrow.jpg" />
+    <None Include="Resources\RedRightArrow.jpg" />
+    <None Include="Resources\YellowLeftArrow.jpg" />
+    <None Include="Resources\YellowRightArrow.jpg" />
+    <Content Include="GM_ResidentClient_256px.ico" />
+    <Content Include="testicon_256px.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
