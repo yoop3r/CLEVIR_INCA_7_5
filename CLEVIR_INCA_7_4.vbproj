@@ -7,9 +7,9 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{5793D1D6-599E-4970-96D3-0D4F7EB69B36}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <StartupObject>CLEVIR_INCA_7_3.My.MyApplication</StartupObject>
-    <RootNamespace>CLEVIR_INCA_7_3</RootNamespace>
-    <AssemblyName>CLEVIR_INCA_7_3</AssemblyName>
+    <StartupObject>CLEVIR_INCA_7_4.My.MyApplication</StartupObject>
+    <RootNamespace>CLEVIR_INCA_7_4</RootNamespace>
+    <AssemblyName>CLEVIR_INCA_7_4</AssemblyName>
     <FileAlignment>512</FileAlignment>
     <MyType>WindowsForms</MyType>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
@@ -26,7 +26,9 @@
     </UpgradeBackupLocation>
     <OldToolsVersion>3.5</OldToolsVersion>
     <TargetFrameworkProfile />
-    <PublishUrl>c:\dat\CLEVIR\</PublishUrl>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+    <PublishUrl>C:\Data\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
     <UpdateEnabled>false</UpdateEnabled>
@@ -36,7 +38,7 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationRevision>2</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -48,7 +50,7 @@
     <DefineDebug>true</DefineDebug>
     <DefineTrace>true</DefineTrace>
     <OutputPath>bin\Debug\</OutputPath>
-    <DocumentationFile>CLEVIR_INCA_7_3.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
     <NoWarn>42353,42354,42355</NoWarn>
     <PlatformTarget>x64</PlatformTarget>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
@@ -61,7 +63,7 @@
     <DefineTrace>true</DefineTrace>
     <Optimize>true</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DocumentationFile>CLEVIR_INCA_7_3.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
     <NoWarn>42353,42354,42355</NoWarn>
     <PlatformTarget>x86</PlatformTarget>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
@@ -72,7 +74,7 @@
     <ManifestCertificateThumbprint>79D6931D24BB4D021F3BDF8312CB7DB9489D08DB</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>CLEVIR_INCA_7_3_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>CLEVIR_INCA_7_4_TemporaryKey.pfx</ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <GenerateManifests>true</GenerateManifests>
@@ -80,16 +82,42 @@
   <PropertyGroup>
     <SignManifests>true</SignManifests>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <RemoveIntegerChecks>true</RemoveIntegerChecks>
+    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <NoWarn>42353,42354,42355</NoWarn>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <DefineTrace>true</DefineTrace>
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <RemoveIntegerChecks>true</RemoveIntegerChecks>
+    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <Optimize>true</Optimize>
+    <NoWarn>42353,42354,42355</NoWarn>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.SharpZipLib, Version=0.84.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>bin\Debug\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
-    <Reference Include="incacom, Version=18.0.0.0, Culture=neutral, PublicKeyToken=c9b6e760b808c9f9, processorArchitecture=AMD64">
+    <Reference Include="incacom, Version=19.0.0.0, Culture=neutral, PublicKeyToken=c9b6e760b808c9f9, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\incacom.dll</HintPath>
+      <HintPath>bin\x64\Debug\incacom.dll</HintPath>
     </Reference>
     <Reference Include="Interop.Scripting, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.CognitiveServices.Speech.csharp, Version=1.42.0.28, Culture=neutral, PublicKeyToken=d2e6dcccb609e663, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.CognitiveServices.Speech.1.42.0\lib\net462\Microsoft.CognitiveServices.Speech.csharp.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic.Compatibility" />
     <Reference Include="Microsoft.Win32.Registry, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -116,6 +144,9 @@
     <Reference Include="NAudio.WinMM, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
       <HintPath>packages\NAudio.WinMM.2.2.1\lib\netstandard2.0\NAudio.WinMM.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="RCI2dotNet, Version=7.3.0.21245, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>bin\Debug\RCI2dotNet.dll</HintPath>
@@ -123,6 +154,7 @@
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Security.AccessControl, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>packages\System.Security.AccessControl.4.7.0\lib\net461\System.Security.AccessControl.dll</HintPath>
     </Reference>
@@ -140,6 +172,9 @@
     </Reference>
     <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="Vosk, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Vosk.0.3.38\lib\netstandard2.0\Vosk.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -500,6 +535,12 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="DataDictionarySingleton.vb" />
+    <Compile Include="AudioToTextProgressForm.Designer.vb">
+      <DependentUpon>AudioToTextProgressForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="AudioToTextProgressForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="IncaVersionSpecific.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />
     <Compile Include="My Project\Application.Designer.vb">
@@ -527,6 +568,7 @@
     <EmbeddedResource Include="..\NoFlexGridFiles\GM_ResidentClient.resx">
       <Link>GM_ResidentClient.resx</Link>
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="..\NoFlexGridFiles\GridCellPropConfig.resx">
       <Link>GridCellPropConfig.resx</Link>
@@ -702,6 +744,9 @@
       <Link>NewGridCreation.resx</Link>
       <DependentUpon>NewGridCreation.vb</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="AudioToTextProgressForm.resx">
+      <DependentUpon>AudioToTextProgressForm.vb</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="My Project\Resources.resx">
       <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.vb</LastGenOutput>
@@ -712,7 +757,7 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="ClassDiagram1.cd" />
-    <None Include="CLEVIR_INCA_7_3_TemporaryKey.pfx" />
+    <None Include="CLEVIR_INCA_7_4_TemporaryKey.pfx" />
     <None Include="My Project\app.manifest" />
     <None Include="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
@@ -833,6 +878,15 @@
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
+  <Import Project="packages\Microsoft.CognitiveServices.Speech.1.42.0\build\net462\Microsoft.CognitiveServices.Speech.targets" Condition="Exists('packages\Microsoft.CognitiveServices.Speech.1.42.0\build\net462\Microsoft.CognitiveServices.Speech.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.CognitiveServices.Speech.1.42.0\build\net462\Microsoft.CognitiveServices.Speech.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.CognitiveServices.Speech.1.42.0\build\net462\Microsoft.CognitiveServices.Speech.targets'))" />
+    <Error Condition="!Exists('packages\Vosk.0.3.38\build\Vosk.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Vosk.0.3.38\build\Vosk.targets'))" />
+  </Target>
+  <Import Project="packages\Vosk.0.3.38\build\Vosk.targets" Condition="Exists('packages\Vosk.0.3.38\build\Vosk.targets')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
