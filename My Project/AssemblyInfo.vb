@@ -1,4 +1,5 @@
-﻿Imports System.Reflection
+﻿Imports System.Resources
+Imports System.Reflection
 Imports System.Runtime.InteropServices
 
 ' General Information about an assembly is controlled through the following 
@@ -7,17 +8,17 @@ Imports System.Runtime.InteropServices
 
 ' Review the values of the assembly attributes
 
-<Assembly: AssemblyTitle("CLEVIR_INCA_7_3")>
-<Assembly: AssemblyDescription("")> 
+<Assembly: AssemblyTitle("CLEVIR_INCA_7_4")>
+<Assembly: AssemblyDescription("")>
 <Assembly: AssemblyCompany("GM")>
-<Assembly: AssemblyProduct("CLEVIR_INCA_7_3")>
-<Assembly: AssemblyCopyright("Copyright © GM 2017")> 
-<Assembly: AssemblyTrademark("")> 
+<Assembly: AssemblyProduct("CLEVIR_INCA_7_4")>
+<Assembly: AssemblyCopyright("Copyright © GM 2025")>
+<Assembly: AssemblyTrademark("")>
 
 <Assembly: ComVisible(False)>
 
 'The following GUID is for the ID of the typelib if this project is exposed to COM
-<Assembly: Guid("90dbc298-bfae-42df-a951-93396b9090f4")> 
+<Assembly: Guid("90dbc298-bfae-42df-a951-93396b9090f4")>
 
 ' Version information for an assembly consists of the following four values:
 '
@@ -30,5 +31,6 @@ Imports System.Runtime.InteropServices
 ' by using the '*' as shown below:
 ' <Assembly: AssemblyVersion("1.0.*")> 
 
-<Assembly: AssemblyVersion("1.0.0.0")> 
-<Assembly: AssemblyFileVersion("1.0.0.0")> 
+<Assembly: AssemblyVersion("7.4.1.0")>
+<Assembly: AssemblyFileVersion("7.4.1.0")>
+<Assembly: NeutralResourcesLanguage("en-US")>

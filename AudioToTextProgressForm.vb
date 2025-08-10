@@ -6,14 +6,15 @@ Imports System.Text.RegularExpressions
 
 Public Class AudioToTextProgressForm
 
+    ' Added a Button named btnOK in the designer and set its Visible property to False.
+
     '---------------------------------------------------------------------------
     ' Create and show the progress dialog background task.
     '---------------------------------------------------------------------------
     Private Sub AudioToTextProgressForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
-
-        If HaveRecorded = False Then
-            'InitForm.Hide()
-        End If
+        'If HaveRecorded = False Then
+        'InitForm.Hide()
+        'End If
         ' Ensure the handle is created before starting the background task
         'Dim handle = lblStatus.Handle
         Task.Run(Sub() AudioToText())
@@ -29,7 +30,7 @@ Public Class AudioToTextProgressForm
     Private currentFileSecondsElapsed As Integer = 0
 
     ' A timer to update the progress bar gradually.
-    ' (Alternatively, you could drop a Timer control on your form and set its Interval to 1000.)
+    ' (Alternatively, drop a Timer control on the form and set its Interval to 1000.)
     Private WithEvents progressTimer As New Timer With {.Interval = 1000} ' 1-second interval
 
     '---------------------------------------------------------------------------
@@ -85,14 +86,21 @@ Public Class AudioToTextProgressForm
             ' Wait for the process to complete.
             process.WaitForExit()
 
-            ' Update the UI after process completion.
-            Me.Invoke(Sub()
-                          If process.ExitCode = 0 Then
+            ' Update the UI on the UI thread based on the process outcome.
+            If process.ExitCode = 0 Then
+                Me.Invoke(Sub()
                               UpdateUI("Conversion completed successfully.", 100)
-                          Else
+                          End Sub)
+                ' Pause briefly so the user can see the success message, then close the form automatically.
+                Threading.Thread.Sleep(1500) ' 1.5-second delay
+                Me.Invoke(Sub() Me.Close())
+            Else
+                Me.Invoke(Sub()
                               UpdateUI("Conversion completed with errors.", 100)
-                          End If
-                      End Sub)
+                              ' Only in the error case, display the OK button.
+                              btnOK.Visible = True
+                          End Sub)
+            End If
 
             process.Dispose()
 
@@ -100,13 +108,10 @@ Public Class AudioToTextProgressForm
             If Me.IsHandleCreated AndAlso Not Me.IsDisposed Then
                 Me.Invoke(Sub()
                               UpdateUI("Error: " & ex.Message, progressBar.Value)
+                              ' Show the OK button if an exception occurs.
+                              btnOK.Visible = True
                           End Sub)
-            End If
-        Finally
-            If Me.IsHandleCreated AndAlso Not Me.IsDisposed Then
-                Me.Invoke(Sub()
-                              Me.Close()
-                          End Sub)
+                HandleUserMessageLogging("GMRC", $"Audio to Text Conversion ERROR: {ex.Message}")
             End If
         End Try
     End Sub
@@ -181,7 +186,14 @@ Public Class AudioToTextProgressForm
     '---------------------------------------------------------------------------
     Private Sub Process_ErrorDataReceived(sender As Object, e As DataReceivedEventArgs)
         If Not String.IsNullOrEmpty(e.Data) Then
-            UpdateUI("Error: " & e.Data, progressBar.Value)
+            ' Optionally, check if this error message is for a missing file.
+            If e.Data.Contains("No such file or directory") Then
+                ' Log the missing file as a warning, then continue.
+                UpdateUI("Warning: " & e.Data, progressBar.Value)
+            Else
+                ' For any other error, update the UI (or decide if it should be fatal).
+                UpdateUI("Error: " & e.Data, progressBar.Value)
+            End If
         End If
     End Sub
 
@@ -193,7 +205,7 @@ Public Class AudioToTextProgressForm
     ' - "Converting X of Y Ended"
     '---------------------------------------------------------------------------
     Private Function CleanOutput(ByVal rawLine As String) As String
-        ' Assume output lines are of the form:
+        ' Output lines are of the form:
         ' [2025-02-01 08:21:12] [INFO] >>>> Your message here...
         Dim pattern As String = "^\[.*\]\s+\[.*\]\s+>>>>\s*(.*)$"
         Dim m As Match = Regex.Match(rawLine, pattern)
@@ -224,7 +236,6 @@ Public Class AudioToTextProgressForm
     ' Helper method to update the UI.
     ' This method ensures thread-safe calls.
     '---------------------------------------------------------------------------
-
     Private Sub UpdateUI(ByVal newStatus As String, ByVal newProgress As Integer)
         If Me.InvokeRequired Then
             Me.Invoke(New Action(Of String, Integer)(AddressOf UpdateUI), newStatus, newProgress)
@@ -234,158 +245,12 @@ Public Class AudioToTextProgressForm
         End If
     End Sub
 
+    '---------------------------------------------------------------------------
+    ' OK Button click event: Closes the form when clicked.
+    '---------------------------------------------------------------------------
+    Private Sub btnOK_Click(sender As Object, e As EventArgs) Handles btnOK.Click
+        Me.Close()
+    End Sub
 
-    'Private Sub AudioToText()
-    '    Try
-    '        ' Define paths and parameters.
-    '        Dim configFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, "AudioTotextConfig.xml")
-    '        ' Ensure the file exists
-    '        If Not File.Exists(configFilePath) Then
-    '            Throw New FileNotFoundException($"Configuration file '{configFilePath}' not found.")
-    '        End If
-
-    '        ' Load the XML document
-    '        Dim xmlDoc As New XmlDocument()
-    '        xmlDoc.Load(configFilePath)
-
-    '        ' Read values from the XML file
-    '        Dim pythonPath As String = xmlDoc.SelectSingleNode("//PythonPath")?.InnerText
-    '        Dim scriptName As String = xmlDoc.SelectSingleNode("//ScriptName")?.InnerText
-    '        Dim workingDirectory As String = xmlDoc.SelectSingleNode("//WorkingDirectory")?.InnerText
-    '        Dim intakeDir As String = xmlDoc.SelectSingleNode("//IntakeDir")?.InnerText
-    '        Dim configPath As String = xmlDoc.SelectSingleNode("//ConfigPath")?.InnerText
-    '        Dim configSheetName As String = xmlDoc.SelectSingleNode("//ConfigSheetName")?.InnerText
-    '        Dim runValue As String = xmlDoc.SelectSingleNode("//RunValue")?.InnerText
-
-    '        ' Construct the arguments.
-    '        Dim arguments As String = $"{scriptName} --intake_dir={intakeDir} --config_path={configPath} --Configsheet_name={configSheetName} --RUN={runValue}"
-
-    '        ' Start the process.
-    '        Dim process As New Process()
-    '        process.StartInfo.FileName = pythonPath
-    '        process.StartInfo.Arguments = arguments
-    '        process.StartInfo.WorkingDirectory = workingDirectory
-    '        process.StartInfo.UseShellExecute = False
-    '        process.StartInfo.RedirectStandardOutput = True
-    '        process.StartInfo.RedirectStandardError = True
-    '        process.StartInfo.CreateNoWindow = True
-
-    '        ' Update the UI before starting.
-    '        UpdateUI("Audio-to-text conversion, please wait...", 0)
-
-    '        ' Set up asynchronous event handlers to update UI during processing.
-    '        AddHandler process.OutputDataReceived, Sub(sender, e)
-    '                                                   If Not String.IsNullOrEmpty(e.Data) Then
-    '                                                       ' For example, update the status and increment the progress.
-    '                                                       UpdateUI("Processing: " & e.Data, Math.Min(progressBar.Value + 5, 100))
-    '                                                   End If
-    '                                               End Sub
-
-    '        AddHandler process.ErrorDataReceived, Sub(sender, e)
-    '                                                  If Not String.IsNullOrEmpty(e.Data) Then
-    '                                                      UpdateUI("Error: " & e.Data, progressBar.Value)
-    '                                                  End If
-    '                                              End Sub
-
-    '        ' Start the process and begin asynchronous reading.
-    '        process.Start()
-    '        process.BeginOutputReadLine()
-    '        process.BeginErrorReadLine()
-
-    '        ' Wait for the process to complete.
-    '        process.WaitForExit()
-
-    '        ' Update the UI after process completion.
-    '        Me.Invoke(Sub()
-    '                      If process.ExitCode = 0 Then
-    '                          UpdateUI("Conversion completed successfully.", 100)
-    '                      Else
-    '                          UpdateUI("Conversion completed with errors.", 100)
-    '                      End If
-    '                  End Sub)
-
-    '        process.Dispose()
-
-    '    Catch ex As Exception
-    '        If Me.IsHandleCreated AndAlso Not Me.IsDisposed Then
-    '            Me.Invoke(Sub()
-    '                          UpdateUI("Error: " & ex.Message, progressBar.Value)
-    '                      End Sub)
-    '        End If
-
-    '    Finally
-    '        If Me.IsHandleCreated AndAlso Not Me.IsDisposed Then
-    '            Me.Invoke(Sub()
-    '                          Me.Close()
-    '                      End Sub)
-    '        End If
-    '    End Try
-    'End Sub
-
-    'Private Sub UpdateUI(ByVal newStatus As String, ByVal newProgress As Integer)
-    '    If Me.InvokeRequired Then
-    '        Me.Invoke(New Action(Of String, Integer)(AddressOf UpdateUI), newStatus, newProgress)
-    '    Else
-    '        lblStatus.Text = newStatus
-    '        progressBar.Value = newProgress
-    '    End If
-    'End Sub
-
-    'AddHandler process.OutputDataReceived, Sub(sender, e)
-    'If Not String.IsNullOrEmpty(e.Data) Then
-    '' Clean and filter the output
-    'Dim message As String = CleanOutput(e.Data)
-    'If Not String.IsNullOrEmpty(message) Then
-    '        ' Update the UI (you might decide what to do with the progress bar)
-    '        UpdateUI(message, progressBar.Value)
-    '    End If
-    'End If
-    'End Sub
-
-    '''' <summary>
-    '''' Filters and cleans up the raw output line.
-    '''' </summary>
-    'Private Function CleanOutput(ByVal rawLine As String) As String
-    '    ' Assume the raw line is like:
-    '    ' [2025-02-01 08:21:12] [INFO] >>>> Some Message Here
-    '    ' First, remove the timestamp and "[INFO]" (everything before ">>>>")
-    '    Dim pattern As String = "^\[.*\]\s+\[.*\]\s+>>>>\s*(.*)$"
-    '    Dim m As Match = Regex.Match(rawLine, pattern)
-    '    If m.Success Then
-    '        Dim message As String = m.Groups(1).Value.Trim()
-
-    '        ' Look for the "Total Number of files" message.
-    '        If message.Contains("Total Number of files for conversion") Then
-    '            ' This is what you want to show.
-    '            Return message
-
-    '            ' Look for the conversion start message.
-    '        ElseIf message.StartsWith("Converting") AndAlso message.Contains("Started") Then
-    '            ' We want to ignore extra details such as the "Conversion of audio" line.
-    '            If message.Contains("Conversion of audio") Then
-    '                ' Skip this line.
-    '                Return String.Empty
-    '            Else
-    '                ' Remove any extra trailing characters (like the dashes) and return.
-    '                Return message.Replace("---------", "").Trim()
-    '            End If
-
-    '            ' Look for the "Time Consumed" message (which indicates the end).
-    '        ElseIf message.StartsWith("Time Consumed for") Then
-    '            ' We want to display this as "Converting X of Y Ended"
-    '            ' Extract the file numbers from the message.
-    '            Dim pattern2 As String = "Time Consumed for (\d+)\s+of\s+(\d+)"
-    '            Dim m2 As Match = Regex.Match(message, pattern2)
-    '            If m2.Success Then
-    '                Dim currentFile As String = m2.Groups(1).Value
-    '                Dim totalFiles As String = m2.Groups(2).Value
-    '                Return $"Converting {currentFile} of {totalFiles} Ended"
-    '            End If
-    '        End If
-    '    End If
-
-    '    ' For all other lines, return an empty string (i.e. do not update the UI).
-    '    Return String.Empty
-    'End Function
 End Class
 

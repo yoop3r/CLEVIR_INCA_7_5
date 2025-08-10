@@ -5,14 +5,33 @@ VisualStudioVersion = 17.12.35424.110
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "CLEVIR_INCA_7_4", "CLEVIR_INCA_7_4.vbproj", "{5793D1D6-599E-4970-96D3-0D4F7EB69B36}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		..\CommonFiles\AudioToTextProgressForm.Designer.vb = ..\CommonFiles\AudioToTextProgressForm.Designer.vb
+		..\CommonFiles\AudioToTextProgressForm.resx = ..\CommonFiles\AudioToTextProgressForm.resx
+		..\CommonFiles\AudioToTextProgressForm.vb = ..\CommonFiles\AudioToTextProgressForm.vb
+		..\CommonFiles\CustomDialogForm.Designer.vb = ..\CommonFiles\CustomDialogForm.Designer.vb
+		..\CommonFiles\CustomDialogForm.resx = ..\CommonFiles\CustomDialogForm.resx
+		..\CommonFiles\CustomDialogForm.vb = ..\CommonFiles\CustomDialogForm.vb
+		..\CommonFiles\DataDictionarySingleton.vb = ..\CommonFiles\DataDictionarySingleton.vb
+	EndProjectSection
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "CLEVIR_7.4 Installation", "..\CLEVIR_7.4 Installation\CLEVIR_7.4 Installation.vdproj", "{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		All|Any CPU = All|Any CPU
+		All|x64 = All|x64
 		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.All|Any CPU.ActiveCfg = Debug|Any CPU
+		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.All|Any CPU.Build.0 = Debug|Any CPU
+		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.All|x64.ActiveCfg = Debug|x64
+		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.All|x64.Build.0 = Debug|x64
 		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.Debug|x64.ActiveCfg = Debug|x64
@@ -21,6 +40,12 @@ Global
 		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.Release|x64.ActiveCfg = Release|x64
 		{5793D1D6-599E-4970-96D3-0D4F7EB69B36}.Release|x64.Build.0 = Release|x64
+		{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}.All|Any CPU.ActiveCfg = Debug
+		{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}.All|x64.ActiveCfg = Debug
+		{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}.Debug|Any CPU.ActiveCfg = Debug
+		{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}.Debug|x64.ActiveCfg = Debug
+		{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}.Release|Any CPU.ActiveCfg = Release
+		{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}.Release|x64.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

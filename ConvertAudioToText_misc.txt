@@ -1,0 +1,106 @@
+    'Private Function ConvertAudioToText(ByVal audioFilePath As String) As String
+    '    Try
+    '        ' Ensure the file exists
+    '        If Not File.Exists(audioFilePath) Then
+    '            Throw New FileNotFoundException("Audio file not found: " & audioFilePath)
+    '        End If
+    '        ' Initialize Vosk model (download the model from Vosk's website)
+    '        Dim modelPath As String = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Models", "vosk-model-en-us-daanzu-20200905-lgraph")
+    '        Dim model As New Model(modelPath)
+    '        ' Open the audio file
+    '        Using waveStream As New NAudio.Wave.WaveFileReader(audioFilePath)
+    '            Dim recognizer As New VoskRecognizer(model, waveStream.WaveFormat.SampleRate)
+    '            ' Calculate buffer size as a multiple of block align
+    '            Dim blockAlign As Integer = waveStream.WaveFormat.BlockAlign
+    '            Dim bufferSize As Integer = 4096 ' Base buffer size
+    '            If bufferSize Mod blockAlign <> 0 Then
+    '                bufferSize = (bufferSize \ blockAlign) * blockAlign ' Ensure buffer size is a multiple of block align
+    '            End If
+    '            Dim buffer(bufferSize - 1) As Byte
+    '            Dim text As String = ""
+    '            ' Read audio data and recognize speech
+    '            While waveStream.Read(buffer, 0, buffer.Length) > 0
+    '                If recognizer.AcceptWaveform(buffer, buffer.Length) Then
+    '                    text &= recognizer.Result
+    '                End If
+    '            End While
+    '            ' Get the final result
+    '            text &= recognizer.FinalResult
+    '            If text IsNot Nothing Then
+    '                ' Log and return the recognized text
+    '                Dim recognizedText As String = text
+    '                Dim simplifiedOutput As String = SimplifyVoskOutput(recognizedText)
+    '                'HandleUserMessageLogging("GMRC", "Recognized Text: " & simplifiedOutput)
+    '                Return simplifiedOutput
+    '            Else
+    '                HandleUserMessageLogging("GMRC", "No text recognized from the audio file.")
+    '                Return String.Empty
+    '            End If
+    '        End Using
+    '    Catch ex As Exception
+    '        ' Handle errors
+    '        HandleUserMessageLogging("GMRC", "Error in TranslateWAVToText: " & ex.Message)
+    '        Return String.Empty
+    '    End Try
+    'End Function
+	
+	    'Private Function TranslateWAVToText(ByVal audioFilePath As String) As String
+    '    Try
+    '        ' Ensure the file exists
+    '        If Not File.Exists(audioFilePath) Then
+    '            HandleUserMessageLogging("GMRC", "Audio file not found: " & audioFilePath)
+    '            Return String.Empty
+    '        End If
+    '        ' Initialize the SpeechRecognitionEngine
+    '        Using recognizer As New SpeechRecognitionEngine()
+    '            ' Load the DictationGrammar for free-form speech recognition
+    '            recognizer.LoadGrammar(New DictationGrammar())
+    '            ' Set the input to the WAV file
+    '            recognizer.SetInputToWaveFile(audioFilePath)
+    '            ' Perform synchronous recognition
+    '            Dim result As RecognitionResult = recognizer.Recognize()
+    '            If result IsNot Nothing Then
+    '                ' Log and return the recognized text
+    '                Dim recognizedText As String = result.Text
+    '                HandleUserMessageLogging("GMRC", "Recognized Text: " & recognizedText)
+    '                Return recognizedText
+    '            Else
+    '                HandleUserMessageLogging("GMRC", "No text recognized from the audio file.")
+    '                Return String.Empty
+    '            End If
+    '        End Using
+    '    Catch ex As Exception
+    '        HandleUserMessageLogging("GMRC", "Error in TranslateWAVToText: " & ex.Message)
+    '        Return String.Empty
+    '    End Try
+    'End Function
+
+    'Private Function ProcessWAVFileForSpeechRecognition(ByVal audioFilePath As String) As String
+    '    Try
+    '        ' Ensure the file exists
+    '        If Not IO.File.Exists(audioFilePath) Then
+    '            HandleUserMessageLogging("GMRC", "Audio file not found: " & audioFilePath)
+    '            Return String.Empty
+    '        End If
+    '        ' Initialize the SpeechRecognitionEngine
+    '        Using recognizer As New SpeechRecognitionEngine()
+    '            ' Load a grammar (you can customize this as needed)
+    '            recognizer.LoadGrammar(New DictationGrammar())
+    '            ' Set the input to the WAV file
+    '            recognizer.SetInputToWaveFile(audioFilePath)
+    '            ' Perform synchronous recognition
+    '            Dim result As RecognitionResult = recognizer.Recognize()
+    '            If result IsNot Nothing Then
+    '                ' Log the recognized text
+    '                HandleUserMessageLogging("GMRC", "Recognized Text: " & result.Text)
+    '                Return result.Text
+    '            Else
+    '                HandleUserMessageLogging("GMRC", "No text recognized from the audio file.")
+    '                Return String.Empty
+    '            End If
+    '        End Using
+    '    Catch ex As Exception
+    '        HandleUserMessageLogging("GMRC", "Error in ProcessWAVFileForSpeechRecognition: " & ex.Message)
+    '        Return String.Empty
+    '    End Try
+    'End Function
