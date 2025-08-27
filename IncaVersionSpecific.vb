@@ -28,22 +28,18 @@ Module IncaVersionSpecific
         Dim directoryInfo As New DirectoryInfo(FinalPathToSaveData)
 
         For Each fileInfo As FileInfo In directoryInfo.GetFiles()
-            'MsgBox(fileInfo.Name)
             If _
                 (fileInfo.Name.Contains("-") And fileInfo.Name.EndsWith(".mf4")) And
                 (fileInfo.Name.IndexOf("-", StringComparison.Ordinal) < fileInfo.Name.IndexOf(".mf4", StringComparison.Ordinal)) Then
                 CheckRecordingFileNameFormat = False
 
                 If displayMsg = True Then
-
                     MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.SetRecordingFileAutoincrementFlag(True)
                     MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.DisableRecordingFileDateTimeSuffix()
                     MyIncaInterface.SaveExperiment()
 
                     InSession = False
-                    MsgBox("Incorrect file naming detected.  Experiment configuration has been fixed.  Please Start Recording when ready...")
-                    'MsgBox("If you are using your own custom experiment, please make sure that the Auto Increment Flag is set to True and the Increment digits value is set to 2.  Also that the Use date/time in file name box is UNCHECKED in the Measurement Recorder Configuration.  Then Save the Experiment and Click OK')
-
+                    StatusNotifier.Info("Incorrect file naming detected. Experiment configuration has been fixed. Please Start Recording when ready...", "INCA")
                 End If
 
                 Exit Function

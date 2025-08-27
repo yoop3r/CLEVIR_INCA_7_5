@@ -119,60 +119,60 @@
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
   <data name="mic" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\mic.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\mic.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Red Ped" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Red Ped.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\mic.jpg\Red Ped.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Oxygen-Icons1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="orange vehicle ahead" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\orange vehicle ahead.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\orange vehicle ahead.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="orange ped" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\orange ped.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\orange ped.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1]" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Oxygen-Icons.org-Oxygen-Actions-media-eject[1]" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-eject[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Oxygen-Icons.org-Oxygen-Actions-media-eject[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="red vehicle ahead" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\red vehicle ahead.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\red vehicle ahead.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="green vehicle ahead" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\green vehicle ahead.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\green vehicle ahead.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1]" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Oxygen-Icons.org-Oxygen-Actions-media-skip-backward[1]" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-backward[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Oxygen-Icons.org-Oxygen-Actions-media-skip-backward[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="mic 50 Green" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\mic 50 Green.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\mic 50 Green.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="mic 50" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\mic 50.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\mic 50.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Oxygen-Icons.org-Oxygen-Actions-media-playback-start[1]" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-start[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Oxygen-Icons.org-Oxygen-Actions-media-playback-start[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Saki-NuoveXT-Actions-folder-file-import[1]" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Saki-NuoveXT-Actions-folder-file-import[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Saki-NuoveXT-Actions-folder-file-import[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="cropped image" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\cropped image.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>\Resources\cropped image.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Oxygen-Icons.org-Oxygen-Actions-media-skip-forward[1]" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-forward[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\Oxygen-Icons.org-Oxygen-Actions-media-skip-forward[1].ico;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="mic 50 Red" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\mic 50 Red.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\mic 50 Red.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="cropped image 60" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\bin\Debug\cropped image 60.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>Resources\cropped image 60.jpg;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>
