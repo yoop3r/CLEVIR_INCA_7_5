@@ -7,9 +7,9 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{5793D1D6-599E-4970-96D3-0D4F7EB69B36}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <StartupObject>CLEVIR_INCA_7_4.My.MyApplication</StartupObject>
-    <RootNamespace>CLEVIR_INCA_7_4</RootNamespace>
-    <AssemblyName>CLEVIR_INCA_7_4</AssemblyName>
+    <StartupObject>CLEVIR_INCA_7_5.My.MyApplication</StartupObject>
+    <RootNamespace>CLEVIR_INCA_7_5</RootNamespace>
+    <AssemblyName>CLEVIR_INCA_7_5</AssemblyName>
     <FileAlignment>512</FileAlignment>
     <MyType>WindowsForms</MyType>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
@@ -50,7 +50,7 @@
     <DefineDebug>true</DefineDebug>
     <DefineTrace>true</DefineTrace>
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <NoWarn>42353,42354,42355</NoWarn>
     <PlatformTarget>x64</PlatformTarget>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
@@ -64,7 +64,7 @@
     <DefineTrace>true</DefineTrace>
     <Optimize>true</Optimize>
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <NoWarn>42353,42354,42355</NoWarn>
     <PlatformTarget>x86</PlatformTarget>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
@@ -73,10 +73,10 @@
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>102BCA7DA39803C47706962C29257E5708D30CAA</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>40676BB0FF1E599B264E65A5C15C01355F752451</ManifestCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>CLEVIR_INCA_7_4_2_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>CLEVIR_INCA_7_5_4_TemporaryKey.pfx</ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <GenerateManifests>false</GenerateManifests>
@@ -90,7 +90,7 @@
     <DefineTrace>true</DefineTrace>
     <OutputPath>bin\x64\Debug\</OutputPath>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <NoWarn>42353,42354,42355</NoWarn>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -103,7 +103,7 @@
     <DefineTrace>true</DefineTrace>
     <OutputPath>bin\x64\Release\</OutputPath>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <Optimize>true</Optimize>
     <NoWarn>42353,42354,42355</NoWarn>
     <DebugType>pdbonly</DebugType>
@@ -116,35 +116,35 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|ARM64'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|ARM64'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|ARM'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|ARM'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
-    <DocumentationFile>CLEVIR_INCA_7_4.xml</DocumentationFile>
+    <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <TargetZone>LocalIntranet</TargetZone>
@@ -216,6 +216,7 @@
     <Reference Include="System.ClientModel, Version=1.5.1.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
       <HintPath>packages\System.ClientModel.1.5.1\lib\netstandard2.0\System.ClientModel.dll</HintPath>
     </Reference>
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\System.Diagnostics.DiagnosticSource.10.0.0-preview.6.25358.103\lib\net462\System.Diagnostics.DiagnosticSource.dll</HintPath>
     </Reference>
@@ -257,6 +258,7 @@
     <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\System.Threading.Tasks.Extensions.4.6.3\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Windows.Forms.DataVisualization" />
     <Reference Include="System.Xml" />
@@ -669,8 +671,17 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="PercentageProgressBar.vb">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Resources.Designer.vb" />
     <Compile Include="StatusNotifier.vb" />
+    <Compile Include="UserControl1.Designer.vb">
+      <DependentUpon>UserControl1.vb</DependentUpon>
+    </Compile>
+    <Compile Include="UserControl1.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.resx">
@@ -862,6 +873,7 @@
     </EmbeddedResource>
     <EmbeddedResource Include="AboutBox1.resx">
       <DependentUpon>AboutBox1.vb</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="CustomDialogForm.resx">
       <DependentUpon>CustomDialogForm.vb</DependentUpon>
@@ -875,13 +887,18 @@
       <CustomToolNamespace>My.Resources</CustomToolNamespace>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <EmbeddedResource Include="UserControl1.resx">
+      <DependentUpon>UserControl1.vb</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="ClassDiagram1.cd" />
-    <None Include="CLEVIR_INCA_7_4_1_TemporaryKey.pfx" />
-    <None Include="CLEVIR_INCA_7_4_2_TemporaryKey.pfx" />
-    <None Include="CLEVIR_INCA_7_4_TemporaryKey.pfx" />
+    <None Include="CLEVIR_INCA_7_5_1_TemporaryKey.pfx" />
+    <None Include="CLEVIR_INCA_7_5_2_TemporaryKey.pfx" />
+    <None Include="CLEVIR_INCA_7_5_3_TemporaryKey.pfx" />
+    <None Include="CLEVIR_INCA_7_5_4_TemporaryKey.pfx" />
+    <None Include="CLEVIR_INCA_7_5_TemporaryKey.pfx" />
     <None Include="My Project\app.manifest" />
     <None Include="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
@@ -968,7 +985,7 @@
     <None Include="Resources\RedRightArrow.jpg" />
     <None Include="Resources\YellowLeftArrow.jpg" />
     <None Include="Resources\YellowRightArrow.jpg" />
-    <Content Include="CLEVIR_INCA_7_4.sln.DotSettings.user" />
+    <Content Include="CLEVIR_INCA_7_5.sln.DotSettings.user" />
     <Content Include="GM_ResidentClient_256px.ico" />
     <Content Include="testicon_256px.ico" />
   </ItemGroup>

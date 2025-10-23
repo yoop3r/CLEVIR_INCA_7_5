@@ -1,4 +1,5 @@
 ﻿Imports System.IO
+Imports System.Threading.Tasks
 
 Module IncaVersionSpecific
 
@@ -9,15 +10,17 @@ Module IncaVersionSpecific
     Public ReadOnly InitMonitorSleepTime As Integer = 1500
     Public ReadOnly DelayForFirstInvalidTime As Integer = 1500
 
-    Public Function CheckAutoIncrementFlag() As Boolean
+    Public Async Function CheckAutoIncrementFlagAsync() As Task(Of Boolean)
 
         If MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.GetRecordingFileAutoincrementFlag = False Then
-            MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.SetRecordingFileAutoincrementFlag(True)
-            MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.DisableRecordingFileDateTimeSuffix()
-            MyIncaInterface.SaveExperiment()
+            Await Task.Run(Sub()
+                               MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.SetRecordingFileAutoincrementFlag(True)
+                               MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.DisableRecordingFileDateTimeSuffix()
+                               MyIncaInterface.SaveExperiment()
+                           End Sub).ConfigureAwait(False)
         End If
 
-        CheckAutoIncrementFlag = True
+        Return True
 
     End Function
 

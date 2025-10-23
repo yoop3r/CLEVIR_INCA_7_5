@@ -8,10 +8,10 @@ Imports System.Runtime.InteropServices
 
 ' Review the values of the assembly attributes
 
-<Assembly: AssemblyTitle("CLEVIR_INCA_7_4")>
+<Assembly: AssemblyTitle("CLEVIR_INCA_7_5")>
 <Assembly: AssemblyDescription("")>
 <Assembly: AssemblyCompany("GM")>
-<Assembly: AssemblyProduct("CLEVIR_INCA_7_4")>
+<Assembly: AssemblyProduct("CLEVIR_INCA_7_5")>
 <Assembly: AssemblyCopyright("Copyright © GM 2025")>
 <Assembly: AssemblyTrademark("")>
 
@@ -31,6 +31,6 @@ Imports System.Runtime.InteropServices
 ' by using the '*' as shown below:
 ' <Assembly: AssemblyVersion("1.0.*")> 
 
-<Assembly: AssemblyVersion("7.4.1.0")>
-<Assembly: AssemblyFileVersion("7.4.1.0")>
+<Assembly: AssemblyVersion("7.5.1.0")>
+<Assembly: AssemblyFileVersion("7.5.1.0")>
 <Assembly: NeutralResourcesLanguage("en-US")>
