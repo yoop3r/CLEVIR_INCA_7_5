@@ -1,11 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.12.35424.110
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11121.172 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "CLEVIR_INCA_7_5", "CLEVIR_INCA_7_5.vbproj", "{5793D1D6-599E-4970-96D3-0D4F7EB69B36}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		Class1.vb = Class1.vb
+		..\CommonFiles\LidarPcapCapture.vb = ..\CommonFiles\LidarPcapCapture.vb
+	EndProjectSection
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "CLEVIR_7.5 Installation", "..\CLEVIR_7.5 Installation\CLEVIR_7.5 Installation.vdproj", "{9ABB140D-5E83-8CAC-FAE9-6CE441C12FE3}"
 EndProject
