@@ -28,7 +28,7 @@
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
-    <PublishUrl>C:\Data\</PublishUrl>
+    <PublishUrl>C:\Data\CLEVIR_INCA_7_5\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
     <UpdateEnabled>false</UpdateEnabled>
@@ -38,6 +38,9 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
+    <TargetCulture>en-US</TargetCulture>
+    <PublisherName>CLEVIR_INCA_7_5</PublisherName>
+    <AutorunEnabled>true</AutorunEnabled>
     <ApplicationRevision>4</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
@@ -684,6 +687,13 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="IncaVersionSpecific.vb" />
+    <Compile Include="LidarDevice.vb" />
+    <Compile Include="LidarHealthDetailForm.Designer.vb">
+      <DependentUpon>LidarHealthDetailForm.vb</DependentUpon>
+    </Compile>
+    <Compile Include="LidarHealthDetailForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="My Project\AssemblyInfo.vb" />
     <Compile Include="My Project\Application.Designer.vb">
       <AutoGen>True</AutoGen>
@@ -910,6 +920,9 @@
     <EmbeddedResource Include="AudioToTextProgressForm.resx">
       <DependentUpon>AudioToTextProgressForm.vb</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="LidarHealthDetailForm.resx">
+      <DependentUpon>LidarHealthDetailForm.vb</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="My Project\Resources.resx">
       <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.vb</LastGenOutput>
@@ -1024,6 +1037,11 @@
       <ProductName>Microsoft .NET Framework 4.8 %28x86 and x64%29</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+    <BootstrapperPackage Include=".NETFramework,Version=v4.8.1">
+      <Visible>False</Visible>
+      <ProductName>Microsoft .NET Framework 4.8.1 %28x86 and x64%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
     <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
       <Visible>False</Visible>
       <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
@@ -1058,6 +1076,7 @@
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
   <Import Project="packages\Microsoft.CognitiveServices.Speech.1.42.0\build\net462\Microsoft.CognitiveServices.Speech.targets" Condition="Exists('packages\Microsoft.CognitiveServices.Speech.1.42.0\build\net462\Microsoft.CognitiveServices.Speech.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

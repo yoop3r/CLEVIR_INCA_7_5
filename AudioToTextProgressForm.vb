@@ -1,4 +1,5 @@
-﻿Imports System.IO
+﻿Imports System.Diagnostics
+Imports System.IO
 Imports System.Threading.Tasks
 Imports System.Xml
 Imports System.Text.RegularExpressions
