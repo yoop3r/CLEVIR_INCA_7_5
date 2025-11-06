@@ -434,6 +434,29 @@ Public Class LidarDevice
                             _dumpFile.Dump(packet)
 
                             Interlocked.Increment(_frameCounter)
+
+                            Try
+                                If IsMarkerPacket(packet) Then
+                                    Dim markerData As String = ExtractMarkerData(packet)
+                                    Dim parts = markerData.Split("|"c)
+
+                                    If parts.Length >= 3 Then
+                                        Dim eventType As String = parts(0)
+                                        Dim message As String = parts(1)
+                                        Dim seqNum As Integer = Integer.Parse(parts(2))
+
+                                        ' Log to sidecar file
+                                        _eventLogger?.LogEvent(_frameCounter, packet.Timestamp, eventType, message, seqNum)
+
+                                        HandleUserMessageLogging("GMRC",
+                                                                 $"{DeviceId}: Marker @ Frame {_frameCounter} - {eventType}: {message}")
+                                    End If
+                                End If
+                            Catch markerEx As Exception
+                                ' Don't crash capture thread if marker parsing fails
+                                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker parsing error: {markerEx.Message}")
+                            End Try
+
                             ' Update timestamp for health monitoring
                             LastPacketTimestamp = DateTime.Now ' ← ADD THIS LINE
 
@@ -483,6 +506,41 @@ Public Class LidarDevice
             End If
         End Try
     End Sub
+
+
+    ''' <summary>
+    ''' Checks if a packet is an event marker
+    ''' </summary>
+    Private Function IsMarkerPacket(packet As Packet) As Boolean
+        Try
+            Dim eth = packet.Ethernet
+            If eth IsNot Nothing AndAlso eth.IpV4 IsNot Nothing Then
+                Dim udp = eth.IpV4.Udp
+                If udp IsNot Nothing Then
+                    Return udp.DestinationPort = MarkerDestPort AndAlso
+                           udp.SourcePort = MarkerSourcePort
+                End If
+            End If
+        Catch
+            ' Ignore parsing errors
+        End Try
+        Return False
+    End Function
+
+    ''' <summary>
+    ''' Extracts marker data from a marker packet
+    ''' </summary>
+    Private Function ExtractMarkerData(packet As Packet) As String
+        Try
+            Dim udp = packet.Ethernet.IpV4.Udp
+            If udp IsNot Nothing AndAlso udp.Payload.Length > 0 Then
+                Return System.Text.Encoding.UTF8.GetString(udp.Payload.ToArray())
+            End If
+        Catch
+            ' Ignore parsing errors
+        End Try
+        Return "(unable to parse)"
+    End Function
 
     ''' <summary>
     ''' Injects a synthetic marker packet into the PCAP stream
