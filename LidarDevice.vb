@@ -14,7 +14,7 @@ Imports System.Speech.Synthesis
 Public Class LidarEventLogger
     Private eventLogPath As String
     Private eventLogWriter As StreamWriter
-    Private SyncLock As New Object()
+    Private syncLockObj As New Object()
 
     Public Sub New(pcapFilePath As String)
         ' Create sidecar log file (e.g., "Recording_01_LiDAR1.pcap" -> "Recording_01_LiDAR1.lidar_events.txt")
@@ -32,8 +32,8 @@ Public Class LidarEventLogger
     End Sub
 
     Public Sub LogEvent(frameNumber As Long, timestamp As DateTime, eventType As String, message As String, sequenceNumber As Integer)
-        SyncLock syncLock
-        Try
+        SyncLock syncLockObj
+            Try
                 Dim line As String = $"{frameNumber}|{timestamp:yyyy-MM-dd HH:mm:ss.fff}|{eventType}|{message}|{sequenceNumber}"
                 eventLogWriter.WriteLine(line)
                 eventLogWriter.Flush()
@@ -44,8 +44,8 @@ Public Class LidarEventLogger
     End Sub
 
     Public Sub Close()
-        SyncLock syncLock
-        If eventLogWriter IsNot Nothing Then
+        SyncLock syncLockObj
+            If eventLogWriter IsNot Nothing Then
                 eventLogWriter.Close()
                 eventLogWriter = Nothing
             End If
@@ -304,7 +304,7 @@ Public Class LidarDevice
             Interlocked.Exchange(_frameCounter, 0)
 
             ' Initialize event logger
-            _eventLogger = New LidarEventLogger(pcapFilePath)
+            _eventLogger = New LidarEventLogger(pcapFilename)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
@@ -377,7 +377,7 @@ Public Class LidarDevice
     ''' <summary>
     ''' Injects an event marker into the capture stream
     ''' </summary>
-    Public Function InjectEventMarker(eventType As String, message As String)
+    Public Function InjectEventMarker(eventType As String, message As String) As Long
         Try
             If Not _isCapturing Then
                 Return -1 ' Silently ignore if not capturing
