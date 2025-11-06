@@ -9,6 +9,51 @@ Imports PcapDotNet.Packets.Transport
 Imports System.Speech.Synthesis
 
 ''' <summary>
+''' Maintains a log file of event markers with frame numbers for offline analysis
+''' </summary>
+Public Class LidarEventLogger
+    Private eventLogPath As String
+    Private eventLogWriter As StreamWriter
+    Private SyncLock As New Object()
+
+    Public Sub New(pcapFilePath As String)
+        ' Create sidecar log file (e.g., "Recording_01_LiDAR1.pcap" -> "Recording_01_LiDAR1.lidar_events.txt")
+        eventLogPath = Path.ChangeExtension(pcapFilePath, ".lidar_events.txt")
+        eventLogWriter = New StreamWriter(eventLogPath, append:=False)
+
+        ' Write header
+        eventLogWriter.WriteLine("# LiDAR Event Marker Log")
+        eventLogWriter.WriteLine($"# PCAP File: {Path.GetFileName(pcapFilePath)}")
+        eventLogWriter.WriteLine($"# Created: {DateTime.Now:yyyy-MM-dd HH:mm:ss}")
+        eventLogWriter.WriteLine("#")
+        eventLogWriter.WriteLine("# Format: FrameNumber | Timestamp | EventType | Message | SequenceNumber")
+        eventLogWriter.WriteLine("# -------------------------------------------------------------------------")
+        eventLogWriter.Flush()
+    End Sub
+
+    Public Sub LogEvent(frameNumber As Long, timestamp As DateTime, eventType As String, message As String, sequenceNumber As Integer)
+        SyncLock syncLock
+        Try
+                Dim line As String = $"{frameNumber}|{timestamp:yyyy-MM-dd HH:mm:ss.fff}|{eventType}|{message}|{sequenceNumber}"
+                eventLogWriter.WriteLine(line)
+                eventLogWriter.Flush()
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", $"LidarEventLogger.LogEvent: {ex.Message}")
+            End Try
+        End SyncLock
+    End Sub
+
+    Public Sub Close()
+        SyncLock syncLock
+        If eventLogWriter IsNot Nothing Then
+                eventLogWriter.Close()
+                eventLogWriter = Nothing
+            End If
+        End SyncLock
+    End Sub
+End Class
+
+''' <summary>
 ''' Represents a single LiDAR sensor device with independent capture state
 ''' </summary>
 Public Class LidarDevice
@@ -44,6 +89,15 @@ Public Class LidarDevice
     ' Track when we last spoke to avoid spam
     Private _lastAudioAlert As DateTime = DateTime.MinValue
     Private Const AudioAlertCooldownSeconds As Integer = 30
+
+    Private _frameCounter As Long = 0  ' Tracks PCAP frame number
+    Private _eventLogger As LidarEventLogger
+
+    Public ReadOnly Property CurrentFrameNumber As Long
+        Get
+            Return Interlocked.Read(_frameCounter)
+        End Get
+    End Property
 
     ' Read-only properties
     Public ReadOnly Property IsCapturing As Boolean
@@ -246,6 +300,12 @@ Public Class LidarDevice
                 MyIncaInterface.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} capture started (seq {sequence:D2})", True)
             End If
 
+            ' Reset frame counter
+            Interlocked.Exchange(_frameCounter, 0)
+
+            ' Initialize event logger
+            _eventLogger = New LidarEventLogger(pcapFilePath)
+
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
             CleanupResources()
@@ -304,19 +364,27 @@ Public Class LidarDevice
                 MyIncaInterface.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts, {_markerCounter} markers", True)
             End If
 
+            ' Close event logger
+            _eventLogger?.Close()
+            _eventLogger = Nothing
+
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"LidarDevice.StopCapture ({DeviceId}): {ex.Message}")
         End Try
     End Sub
 
     ''' <summary>
     ''' Injects an event marker into the capture stream
     ''' </summary>
-    Public Sub InjectEventMarker(eventType As String, message As String)
+    Public Function InjectEventMarker(eventType As String, message As String)
         Try
             If Not _isCapturing Then
-                Return ' Silently ignore if not capturing
+                Return -1 ' Silently ignore if not capturing
             End If
+
+            ' Get current frame BEFORE injecting (next frame will be the marker)
+            Dim markerFrame As Long = Interlocked.Read(_frameCounter) + 1
 
             Dim marker As New EventMarker With {
                 .EventType = eventType,
@@ -326,13 +394,14 @@ Public Class LidarDevice
             }
 
             _markerQueue.Enqueue(marker)
-
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] Queued marker #{marker.EventId} - {eventType}: {message}")
+            Return markerFrame
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectEventMarker: {ex.Message}")
+            Return -1
         End Try
-    End Sub
+    End Function
 
     ' ====================================================================
     ' Private Methods - Internal Implementation
@@ -364,6 +433,7 @@ Public Class LidarDevice
                         If _dumpFile IsNot Nothing Then
                             _dumpFile.Dump(packet)
 
+                            Interlocked.Increment(_frameCounter)
                             ' Update timestamp for health monitoring
                             LastPacketTimestamp = DateTime.Now ' ← ADD THIS LINE
 
