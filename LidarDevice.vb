@@ -1,12 +1,13 @@
 ﻿Option Strict On
 Imports System.IO
+Imports System.Speech.Synthesis
 Imports System.Threading
 Imports PcapDotNet.Core
 Imports PcapDotNet.Packets
 Imports PcapDotNet.Packets.Ethernet
 Imports PcapDotNet.Packets.IpV4
 Imports PcapDotNet.Packets.Transport
-Imports System.Speech.Synthesis
+Imports SharpPcap
 
 ''' <summary>
 ''' Maintains a log file of event markers with frame numbers for offline analysis
@@ -144,6 +145,7 @@ Public Class LidarDevice
         Public EventId As Long
         Public Timestamp As DateTime
         Public Message As String
+        Public SequenceNumber As Integer  ' ✅ ADD THIS
     End Structure
 
     ' ====================================================================
@@ -261,10 +263,19 @@ Public Class LidarDevice
 
             ' Open device for packet capture (promiscuous mode)
             _communicator = _captureDevice.Open(
-                CaptureBufferSize,
-                PacketDeviceOpenAttributes.Promiscuous,
-                CaptureTimeoutMs
-            )
+            CaptureBufferSize,
+            PacketDeviceOpenAttributes.Promiscuous,
+            CaptureTimeoutMs
+        )
+
+            ' ✅ Create event logger FIRST (before filter/dump setup)
+            Try
+                _eventLogger = New LidarEventLogger(pcapFilename)
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Event logger created for {Path.GetFileName(pcapFilename)}")
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Event logger creation failed: {ex.Message}")
+                ' Continue capture even if logger fails
+            End Try
 
             ' Set BPF filter to capture ONLY packets from this LiDAR's IP
             Dim filter As String = $"udp and src host {LidarIpAddress}"
@@ -281,6 +292,7 @@ Public Class LidarDevice
             _packetCount = 0
             _totalBytes = 0
             _markerCounter = 0
+            _frameCounter = 0  ' ← Reset frame counter here
             While _markerQueue.TryDequeue(Nothing) ' Clear queue
             End While
 
@@ -299,12 +311,6 @@ Public Class LidarDevice
             If MyIncaInterface IsNot Nothing Then
                 MyIncaInterface.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} capture started (seq {sequence:D2})", True)
             End If
-
-            ' Reset frame counter
-            Interlocked.Exchange(_frameCounter, 0)
-
-            ' Initialize event logger
-            _eventLogger = New LidarEventLogger(pcapFilename)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
@@ -343,6 +349,18 @@ Public Class LidarDevice
             ' Signal capture thread to stop
             _isCapturing = False
 
+            ' Close event logger
+            If _eventLogger IsNot Nothing Then
+                _eventLogger.Close()
+                _eventLogger = Nothing
+            End If
+
+            ' Close PCAP communicator
+            If _communicator IsNot Nothing Then
+                _communicator.Dispose()
+                _communicator = Nothing
+            End If
+
             ' Wait for capture thread to finish (with timeout)
             If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
                 If Not _captureThread.Join(5000) Then
@@ -377,21 +395,20 @@ Public Class LidarDevice
     ''' <summary>
     ''' Injects an event marker into the capture stream
     ''' </summary>
-    Public Function InjectEventMarker(eventType As String, message As String) As Long
+    Public Function InjectEventMarker(eventType As String, message As String, sequenceNumber As Integer) As Long
         Try
             If Not _isCapturing Then
-                Return -1 ' Silently ignore if not capturing
+                Return -1
             End If
 
-            ' Get current frame BEFORE injecting (next frame will be the marker)
             Dim markerFrame As Long = Interlocked.Read(_frameCounter) + 1
 
             Dim marker As New EventMarker With {
-                .EventType = eventType,
-                .EventId = Interlocked.Increment(_markerCounter),
-                .Timestamp = DateTime.Now,
-                .Message = message
-            }
+                    .EventType = eventType,
+                    .EventId = Interlocked.Increment(_markerCounter),
+                    .Timestamp = DateTime.Now,
+                    .Message = message
+                    }
 
             _markerQueue.Enqueue(marker)
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] Queued marker #{marker.EventId} - {eventType}: {message}")
@@ -549,9 +566,11 @@ Public Class LidarDevice
         Try
             If _dumpFile Is Nothing Then Return
 
-            ' Build marker payload (JSON format)
-            Dim payload As String = $"{{""type"":""{marker.EventType}"",""id"":{marker.EventId},""timestamp"":""{marker.Timestamp:yyyy-MM-ddTHH:mm:ss.fff}"",""message"":""{marker.Message}""}}"
+            ' Build marker payload (pipe-delimited format)
+            Dim payload As String = $"{marker.EventType}|{marker.Message}|{marker.SequenceNumber:D2}"
             Dim payloadBytes() As Byte = System.Text.Encoding.UTF8.GetBytes(payload)
+
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Injecting marker payload: {payload}")
 
             ' Create synthetic packet layers
             Dim srcMac As MacAddress = New MacAddress("02:00:00:00:00:01")
