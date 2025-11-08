@@ -48,3 +48,12 @@ LiDAR Processing: The processing software ingests the raw LiDAR data (PCAP) and 
 Georeferencing: For every single LiDAR point in the PCAP file, the software uses its internal time stamp to look up the sensor's exact position and orientation from the trajectory file. It then uses the distance and angle measured by the laser to project the point into a world coordinate system (like UTM or State Plane) with centimeter-level accuracy.
 
 Output: The final result is a geo-referenced point cloud file, typically in .LAS or .LAZ format, which can be used for mapping, surveying, and 3D modeling.
+
+
+' Instead, create a new layer:
+ipV4Layer = New IpV4Layer With {
+    .Source = ipV4Layer.Source,      ' Copy old values
+    .Destination = New IpV4Address("192.168.40.99"),  ' New value
+    .Ttl = ipV4Layer.Ttl,
+    .Protocol = ipV4Layer.Protocol
+}
