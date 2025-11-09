@@ -36,8 +36,11 @@ Public Class LidarEventLogger
         SyncLock syncLockObj
             Try
                 Dim line As String = $"{frameNumber}|{timestamp:yyyy-MM-dd HH:mm:ss.fff}|{eventType}|{message}|{sequenceNumber}"
+                HandleUserMessageLogging("GMRC", $"LidarEventLogger: Writing line = '{line}'")
                 eventLogWriter.WriteLine(line)
                 eventLogWriter.Flush()
+                HandleUserMessageLogging("GMRC", $"LidarEventLogger: Line written to {eventLogPath}")
+
             Catch ex As Exception
                 HandleUserMessageLogging("GMRC", $"LidarEventLogger.LogEvent: {ex.Message}")
             End Try
@@ -305,7 +308,7 @@ Public Class LidarDevice
 
             ' Log success and inject initial marker
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Capture started successfully (seq {sequence:D2})")
-            InjectEventMarker("START", $"Recording started - {DeviceId}")
+            InjectEventMarker("START", $"Recording started - {DeviceId}", sequence)
 
             ' Write event to INCA
             If MyIncaInterface IsNot Nothing Then
@@ -333,6 +336,8 @@ Public Class LidarDevice
     ''' </summary>
     Public Sub StopCapture()
         Dim logPrefix As String = $"[{DeviceId}] StopCapture"
+        Dim currentActiveSequence As String = GetCurrentActiveSequence()
+        Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
 
         Try
             If Not _isCapturing Then
@@ -343,7 +348,7 @@ Public Class LidarDevice
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping capture...")
 
             ' Inject stop marker before stopping
-            InjectEventMarker("STOP", "Recording stopped")
+            InjectEventMarker("STOP", "Recording stopped", currentSeq)
             Thread.Sleep(200) ' Give time for marker to be processed
 
             ' Signal capture thread to stop
@@ -407,7 +412,8 @@ Public Class LidarDevice
                     .EventType = eventType,
                     .EventId = Interlocked.Increment(_markerCounter),
                     .Timestamp = DateTime.Now,
-                    .Message = message
+                    .Message = message,
+                    .SequenceNumber = sequenceNumber
                     }
 
             _markerQueue.Enqueue(marker)
@@ -452,30 +458,8 @@ Public Class LidarDevice
 
                             Interlocked.Increment(_frameCounter)
 
-                            Try
-                                If IsMarkerPacket(packet) Then
-                                    Dim markerData As String = ExtractMarkerData(packet)
-                                    Dim parts = markerData.Split("|"c)
-
-                                    If parts.Length >= 3 Then
-                                        Dim eventType As String = parts(0)
-                                        Dim message As String = parts(1)
-                                        Dim seqNum As Integer = Integer.Parse(parts(2))
-
-                                        ' Log to sidecar file
-                                        _eventLogger?.LogEvent(_frameCounter, packet.Timestamp, eventType, message, seqNum)
-
-                                        HandleUserMessageLogging("GMRC",
-                                                                 $"{DeviceId}: Marker @ Frame {_frameCounter} - {eventType}: {message}")
-                                    End If
-                                End If
-                            Catch markerEx As Exception
-                                ' Don't crash capture thread if marker parsing fails
-                                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker parsing error: {markerEx.Message}")
-                            End Try
-
                             ' Update timestamp for health monitoring
-                            LastPacketTimestamp = DateTime.Now ' ← ADD THIS LINE
+                            LastPacketTimestamp = DateTime.Now
 
                             ' Update statistics
                             Interlocked.Increment(_packetCount)
@@ -529,6 +513,10 @@ Public Class LidarDevice
     ''' Checks if a packet is an event marker
     ''' </summary>
     Private Function IsMarkerPacket(packet As Packet) As Boolean
+        If packet Is Nothing Then
+            Return False
+        End If
+
         Try
             Dim eth = packet.Ethernet
             If eth IsNot Nothing AndAlso eth.IpV4 IsNot Nothing Then
@@ -599,11 +587,19 @@ Public Class LidarDevice
                 .Data = New Datagram(payloadBytes)
             }
 
-            ' Build and write marker packet
+            ' Build and write marker packet to PCAP
             Dim builder As New PacketBuilder(ethernetLayer, ipV4Layer, udpLayer, payloadLayer)
-            Dim markerPacket As Packet = builder.Build(DateTime.UtcNow)
+            Dim markerPacket As Packet = builder.Build(marker.Timestamp)
 
             _dumpFile.Dump(markerPacket)
+
+            ' Increment frame counter for the injected marker packet
+            Interlocked.Increment(_frameCounter)
+
+            ' Directly log to sidecar .txt file (don't wait to read it back from network)
+            _eventLogger?.LogEvent(_frameCounter, marker.Timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
+
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker logged: Frame {_frameCounter} - {marker.EventType}: {marker.Message}")
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectMarkerPacket failed: {ex.Message}")
