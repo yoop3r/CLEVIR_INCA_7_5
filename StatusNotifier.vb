@@ -1,4 +1,4 @@
-Imports System.Drawing
+﻿Imports System.Drawing
 Imports System.Windows.Forms
 Imports System.Collections.Generic
 
@@ -38,7 +38,21 @@ Public Module StatusNotifier
         ShowMessage(message, title, MessageBoxIcon.[Error], MessageBoxButtons.OK)
     End Sub
 
-    ' Non-blocking status (toast) � keep existing API; ensure OnVehicleScreen restored after by default
+    ' ════════════════════════════════════════════════════════════════════════
+    ' ✅ NEW: Non-blocking error toast (shorthand for Toast with Error kind)
+    ' ════════════════════════════════════════════════════════════════════════
+    ''' <summary>
+    ''' Shows a non-blocking error toast notification with red styling.
+    ''' </summary>
+    ''' <param name="message">Error message to display</param>
+    ''' <param name="title">Optional title (default: empty string)</param>
+    ''' <param name="durationMs">Auto-dismiss duration in milliseconds (default: 5000)</param>
+    ''' <param name="ensureMainOnTop">Restore main form focus after toast closes (default: True)</param>
+    Public Sub ToastError(message As String, Optional title As String = "", Optional durationMs As Integer = 5000, Optional ensureMainOnTop As Boolean = True)
+        RunOnUi(Sub() ShowToastInternal(message, title, durationMs, ToastKind.Error, ensureMainOnTop))
+    End Sub
+
+    ' Non-blocking status (toast) – keep existing API; ensure OnVehicleScreen restored after by default
     Public Sub Toast(message As String, Optional title As String = "", Optional durationMs As Integer = 5000, Optional ensureMainOnTop As Boolean = True)
         RunOnUi(Sub() ShowToastInternal(message, title, durationMs, ToastKind.Info, ensureMainOnTop))
     End Sub
@@ -48,7 +62,7 @@ Public Module StatusNotifier
         RunOnUi(Sub() ShowToastInternal(message, title, durationMs, kind, ensureMainOnTop))
     End Sub
 
-    ' NEW: sticky toast API (no auto-fade) � returns a Guid to dismiss later
+    ' NEW: sticky toast API (no auto-fade) — returns a Guid to dismiss later
     Public Function ToastSticky(message As String,
                                 Optional title As String = "",
                                 Optional kind As ToastKind = ToastKind.Info,
