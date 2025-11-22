@@ -7,7 +7,6 @@ Imports PcapDotNet.Packets
 Imports PcapDotNet.Packets.Ethernet
 Imports PcapDotNet.Packets.IpV4
 Imports PcapDotNet.Packets.Transport
-Imports SharpPcap
 
 ''' <summary>
 ''' Maintains a log file of event markers with frame numbers for offline analysis
@@ -70,6 +69,7 @@ Public Class LidarDevice
     Public Property LidarDataPort As UShort = 2368
     Public Property LidarImuPort As UShort = 8308
     Public Property DeviceId As String = "LiDAR1" ' Friendly name for logging
+    Public Property Enabled As Boolean = True  ' Default to True for backward compatibility
 
     ' Instance-level capture state
     Private _captureDevice As LivePacketDevice = Nothing
@@ -301,9 +301,10 @@ Public Class LidarDevice
 
             ' Start background capture thread
             _isCapturing = True
-            _captureThread = New Thread(AddressOf CapturePacketsLoop)
-            _captureThread.IsBackground = True
-            _captureThread.Name = $"LidarCapture_{DeviceId}"
+            _captureThread = New Thread(AddressOf CapturePacketsLoop) With {
+                .IsBackground = True,
+                .Name = $"LidarCapture_{DeviceId}"
+            }
             _captureThread.Start()
 
             ' Log success and inject initial marker
@@ -311,9 +312,7 @@ Public Class LidarDevice
             InjectEventMarker("START", $"Recording started - {DeviceId}", sequence)
 
             ' Write event to INCA
-            If MyIncaInterface IsNot Nothing Then
-                MyIncaInterface.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} capture started (seq {sequence:D2})", True)
-            End If
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} capture started (seq {sequence:D2})", True)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
@@ -324,7 +323,7 @@ Public Class LidarDevice
     ''' <summary>
     ''' Updates statistics (simplified version without PacketTotalStatistics)
     ''' </summary>
-    Public Sub UpdateStatistics()
+    Private Sub UpdateStatistics()
         ' For now, just keep the counter at 0 or increment on errors
         ' The UI will still show "0 dropped" which is acceptable
         ' True packet loss can be analyzed post-capture using:
@@ -383,9 +382,7 @@ Public Class LidarDevice
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Captured {_packetCount:N0} packets, {_totalBytes:N0} bytes, {_markerCounter} markers")
 
             ' Write event to INCA
-            If MyIncaInterface IsNot Nothing Then
-                MyIncaInterface.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts, {_markerCounter} markers", True)
-            End If
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts, {_markerCounter} markers", True)
 
             ' Close event logger
             _eventLogger?.Close()
