@@ -24,32 +24,6 @@ Module IncaVersionSpecific
 
     End Function
 
-    'Public Function CheckRecordingFileNameFormat(Optional ByVal displayMsg As Boolean = False) As Boolean
-
-    '    CheckRecordingFileNameFormat = True
-
-    '    Dim directoryInfo As New DirectoryInfo(FinalPathToSaveData)
-
-    '    For Each fileInfo As FileInfo In directoryInfo.GetFiles()
-    '        If _
-    '            (fileInfo.Name.Contains("-") And fileInfo.Name.EndsWith(".mf4")) And
-    '            (fileInfo.Name.IndexOf("-", StringComparison.Ordinal) < fileInfo.Name.IndexOf(".mf4", StringComparison.Ordinal)) Then
-    '            CheckRecordingFileNameFormat = False
-
-    '            If displayMsg = True Then
-    '                MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.SetRecordingFileAutoincrementFlag(True)
-    '                MyIncaInterface.MyGmIncaComm.myIncaOnlineExperiment.DisableRecordingFileDateTimeSuffix()
-    '                MyIncaInterface.SaveExperiment()
-
-    '                InSession = False
-    '                StatusNotifier.Info("Incorrect file naming detected. Experiment configuration has been fixed. Please Start Recording when ready...", "INCA")
-    '            End If
-
-    '            Exit Function
-    '        End If
-    '    Next
-
-    'End Function
     Public Function CheckRecordingFileNameFormat(Optional ByVal displayMsg As Boolean = False) As Boolean
         ' Improved function with better performance, error handling, and proper return logic
 

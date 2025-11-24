@@ -151,6 +151,13 @@ Public Class LidarDevice
         Public SequenceNumber As Integer  ' ✅ ADD THIS
     End Structure
 
+    ' Add to LidarDevice class (around line 50)
+    Private _oxtsInterface As OxtsNcomInterface ' Reference to shared OXTS listener
+
+    Public Sub SetOxtsInterface(oxts As OxtsNcomInterface)
+        _oxtsInterface = oxts
+    End Sub
+
     ' ====================================================================
     ' Constructor
     ' ====================================================================
@@ -551,8 +558,14 @@ Public Class LidarDevice
         Try
             If _dumpFile Is Nothing Then Return
 
+            ' Use GPS time if available, otherwise system time
+            Dim timestamp As DateTime = marker.Timestamp
+            If _oxtsInterface IsNot Nothing AndAlso _oxtsInterface.LastGpsTime.HasValue Then
+                timestamp = _oxtsInterface.GetSynchronizedTimestamp()
+            End If
+
             ' Build marker payload (pipe-delimited format)
-            Dim payload As String = $"{marker.EventType}|{marker.Message}|{marker.SequenceNumber:D2}"
+            Dim payload As String = $"{marker.EventType}|{marker.Message}|{marker.SequenceNumber:D2}|GPS:{timestamp:yyyy-MM-dd HH:mm:ss.fff}"
             Dim payloadBytes() As Byte = System.Text.Encoding.UTF8.GetBytes(payload)
 
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] Injecting marker payload: {payload}")
@@ -586,15 +599,16 @@ Public Class LidarDevice
 
             ' Build and write marker packet to PCAP
             Dim builder As New PacketBuilder(ethernetLayer, ipV4Layer, udpLayer, payloadLayer)
-            Dim markerPacket As Packet = builder.Build(marker.Timestamp)
+            Dim markerPacket As Packet = builder.Build(timestamp) ' Use GPS timestamp here
 
             _dumpFile.Dump(markerPacket)
 
             ' Increment frame counter for the injected marker packet
+            _dumpFile.Dump(markerPacket)
             Interlocked.Increment(_frameCounter)
 
             ' Directly log to sidecar .txt file (don't wait to read it back from network)
-            _eventLogger?.LogEvent(_frameCounter, marker.Timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
+            _eventLogger?.LogEvent(_frameCounter, timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
 
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker logged: Frame {_frameCounter} - {marker.EventType}: {marker.Message}")
 

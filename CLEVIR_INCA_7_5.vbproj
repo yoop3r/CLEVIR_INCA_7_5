@@ -600,6 +600,7 @@
     <Compile Include="AudioToTextProgressForm.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="OxtsNcomInterface.vb" />
     <Compile Include="ConfigurationEditorForm.Designer.vb">
       <DependentUpon>ConfigurationEditorForm.vb</DependentUpon>
     </Compile>
@@ -839,6 +840,9 @@
     <EmbeddedResource Include="AboutBox1.resx">
       <DependentUpon>AboutBox1.vb</DependentUpon>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConfigurationEditorForm.resx">
+      <DependentUpon>ConfigurationEditorForm.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CustomDialogForm.resx">
       <DependentUpon>CustomDialogForm.vb</DependentUpon>
