@@ -11,7 +11,7 @@ Public Class OxtsNcomInterface
     Private _isRunning As Boolean = False
 
     ' NCOM configuration
-    Public Property NcomIpAddress As String = "192.168.25.10" ' OXTS IP
+    Public Property NcomIpAddress As String = "192.168.1.130" ' OXTS IP
     Public Property NcomPort As Integer = 3000 ' Default NCOM port
 
     ' Time synchronization data
