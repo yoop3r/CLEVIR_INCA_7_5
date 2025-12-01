@@ -32,8 +32,42 @@ Public Class ConfigurationEditorForm
             ComboBoxDRV.Items.Add($"DRV{i:D2}.xml")
         Next
         ComboBoxDRV.SelectedIndex = 0 ' Select config.xml by default
+        ' Add OXTS Quick Toggle Button
+        Dim btnToggleOxts As New Button With {
+                .Text = "Toggle OXTS",
+                .Location = New Point(650, 10),
+                .Size = New Size(120, 30),
+                .BackColor = Color.LightGreen
+                }
+        AddHandler btnToggleOxts.Click, AddressOf ButtonToggleOxts_Click
+        Me.Controls.Add(btnToggleOxts)
     End Sub
 
+    Private Sub ButtonToggleOxts_Click(sender As Object, e As EventArgs)
+        Try
+            ' Find OxtsEnabled row
+            For i As Integer = 0 To DataGridViewParams.Rows.Count - 1
+                Dim paramName As String = DataGridViewParams.Rows(i).Cells(0).Value?.ToString()
+                If paramName = "OxtsEnabled" Then
+                    Dim currentValue As String = DataGridViewParams.Rows(i).Cells(1).Value?.ToString()
+                    Dim newValue As String = If(currentValue = "True", "False", "True")
+
+                    DataGridViewParams.Rows(i).Cells(1).Value = newValue
+                    _isDirty = True
+
+                    MessageBox.Show($"OXTS set to: {newValue}", "Toggle OXTS",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    Return
+                End If
+            Next
+
+            MessageBox.Show("OxtsEnabled parameter not found in configuration.",
+                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"ToggleOxts failed: {ex.Message}")
+        End Try
+    End Sub
     Private Sub LoadConfiguration(drvNumber As Integer)
         Try
             _currentDrvNumber = drvNumber
@@ -136,6 +170,34 @@ Public Class ConfigurationEditorForm
                         Return New ValidationResult(False, "Invalid IP address")
                     End If
                 End If
+                ' ════════════════════════════════════════════════════════════
+                ' OXTS Validation
+                ' ════════════════════════════════════════════════════════════
+            Case "OxtsEnabled", "OxtsWaitForLockOnStart"
+                If Not (value.Equals("True", StringComparison.OrdinalIgnoreCase) OrElse
+                        value.Equals("False", StringComparison.OrdinalIgnoreCase)) Then
+                    Return New ValidationResult(False, "Must be 'True' or 'False'")
+                End If
+
+            Case "OxtsNcomIpAddress"
+                If Not String.IsNullOrWhiteSpace(value) Then
+                    Dim ip As System.Net.IPAddress = Nothing
+                    If Not System.Net.IPAddress.TryParse(value, ip) Then
+                        Return New ValidationResult(False, "Invalid IP address format")
+                    End If
+                End If
+
+            Case "OxtsNcomPort"
+                Dim port As Integer
+                If Not Integer.TryParse(value, port) OrElse port < 1 OrElse port > 65535 Then
+                    Return New ValidationResult(False, "Must be between 1 and 65535")
+                End If
+
+            Case "OxtsGpsLockTimeout"
+                Dim timeout As Integer
+                If Not Integer.TryParse(value, timeout) OrElse timeout < 1000 OrElse timeout > 120000 Then
+                    Return New ValidationResult(False, "Must be between 1000 and 120000 ms")
+                End If
         End Select
 
         Return New ValidationResult(True, "Valid")
@@ -152,7 +214,22 @@ Public Class ConfigurationEditorForm
             Case "LidarCaptureEnabled" : Return "Enable/disable LiDAR capture (True/False)"
             Case "LidarIpAddress" : Return "IP address of LiDAR device"
             Case "NetworkDriveMapping" : Return "Network drive mapping path"
-            Case Else : Return ""
+                ' ════════════════════════════════════════════════════════════
+                ' OXTS GPS/INS Parameters
+                ' ════════════════════════════════════════════════════════════
+            Case "OxtsEnabled"
+                Return "Enable OXTS GPS/INS synchronization (True/False)"
+            Case "OxtsNcomIpAddress"
+                Return "OXTS NCOM listener IP address (e.g., 192.168.1.130)"
+            Case "OxtsNcomPort"
+                Return "OXTS NCOM UDP port (default: 3000)"
+            Case "OxtsGpsLockTimeout"
+                Return "GPS lock wait timeout in milliseconds (default: 30000)"
+            Case "OxtsWaitForLockOnStart"
+                Return "Wait for GPS lock before starting capture (True/False)"
+
+            Case Else
+                Return ""
         End Select
     End Function
 
