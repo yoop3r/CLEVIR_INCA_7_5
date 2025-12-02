@@ -36,7 +36,7 @@ Partial Class CustomDialogForm
         '
         'btnContinue
         '
-        Me.btnContinue.Location = New System.Drawing.Point(63, 166)
+        Me.btnContinue.Location = New System.Drawing.Point(63, 175)
         Me.btnContinue.Name = "btnContinue"
         Me.btnContinue.Size = New System.Drawing.Size(90, 40)
         Me.btnContinue.TabIndex = 0
@@ -45,7 +45,7 @@ Partial Class CustomDialogForm
         '
         'btnExit
         '
-        Me.btnExit.Location = New System.Drawing.Point(557, 166)
+        Me.btnExit.Location = New System.Drawing.Point(557, 175)
         Me.btnExit.Name = "btnExit"
         Me.btnExit.Size = New System.Drawing.Size(90, 40)
         Me.btnExit.TabIndex = 1
@@ -56,14 +56,14 @@ Partial Class CustomDialogForm
         '
         Me.lblErrorMessage.Location = New System.Drawing.Point(12, 9)
         Me.lblErrorMessage.Name = "lblErrorMessage"
-        Me.lblErrorMessage.Size = New System.Drawing.Size(692, 70)
+        Me.lblErrorMessage.Size = New System.Drawing.Size(692, 61)
         Me.lblErrorMessage.TabIndex = 2
         Me.lblErrorMessage.Text = "Message"
         '
         'lblInformToolMessage
         '
         Me.lblInformToolMessage.AutoSize = True
-        Me.lblInformToolMessage.Location = New System.Drawing.Point(59, 18)
+        Me.lblInformToolMessage.Location = New System.Drawing.Point(63, 77)
         Me.lblInformToolMessage.Name = "lblInformToolMessage"
         Me.lblInformToolMessage.Size = New System.Drawing.Size(178, 20)
         Me.lblInformToolMessage.TabIndex = 3
@@ -72,7 +72,7 @@ Partial Class CustomDialogForm
         'continueWithout
         '
         Me.continueWithout.AutoSize = True
-        Me.continueWithout.Location = New System.Drawing.Point(62, 76)
+        Me.continueWithout.Location = New System.Drawing.Point(62, 107)
         Me.continueWithout.Name = "continueWithout"
         Me.continueWithout.Size = New System.Drawing.Size(222, 20)
         Me.continueWithout.TabIndex = 7
@@ -81,7 +81,7 @@ Partial Class CustomDialogForm
         'exitCLEVIR
         '
         Me.exitCLEVIR.AutoSize = True
-        Me.exitCLEVIR.Location = New System.Drawing.Point(62, 111)
+        Me.exitCLEVIR.Location = New System.Drawing.Point(62, 139)
         Me.exitCLEVIR.Name = "exitCLEVIR"
         Me.exitCLEVIR.Size = New System.Drawing.Size(228, 20)
         Me.exitCLEVIR.TabIndex = 8
@@ -90,7 +90,7 @@ Partial Class CustomDialogForm
         'Button1
         '
         Me.Button1.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left), System.Windows.Forms.AnchorStyles)
-        Me.Button1.Location = New System.Drawing.Point(15, 180)
+        Me.Button1.Location = New System.Drawing.Point(15, 224)
         Me.Button1.Name = "Button1"
         Me.Button1.Size = New System.Drawing.Size(150, 38)
         Me.Button1.TabIndex = 9
@@ -100,7 +100,7 @@ Partial Class CustomDialogForm
         'Button2
         '
         Me.Button2.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left), System.Windows.Forms.AnchorStyles)
-        Me.Button2.Location = New System.Drawing.Point(185, 180)
+        Me.Button2.Location = New System.Drawing.Point(185, 224)
         Me.Button2.Name = "Button2"
         Me.Button2.Size = New System.Drawing.Size(150, 38)
         Me.Button2.TabIndex = 10
@@ -110,7 +110,7 @@ Partial Class CustomDialogForm
         'Button3
         '
         Me.Button3.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Button3.Location = New System.Drawing.Point(355, 180)
+        Me.Button3.Location = New System.Drawing.Point(355, 224)
         Me.Button3.Name = "Button3"
         Me.Button3.Size = New System.Drawing.Size(150, 38)
         Me.Button3.TabIndex = 11
@@ -120,7 +120,7 @@ Partial Class CustomDialogForm
         'Button4
         '
         Me.Button4.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Button4.Location = New System.Drawing.Point(525, 180)
+        Me.Button4.Location = New System.Drawing.Point(525, 224)
         Me.Button4.Name = "Button4"
         Me.Button4.Size = New System.Drawing.Size(150, 38)
         Me.Button4.TabIndex = 12
@@ -131,7 +131,7 @@ Partial Class CustomDialogForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(9.0!, 20.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(716, 230)
+        Me.ClientSize = New System.Drawing.Size(716, 274)
         Me.Controls.Add(Me.Button4)
         Me.Controls.Add(Me.Button3)
         Me.Controls.Add(Me.Button2)
