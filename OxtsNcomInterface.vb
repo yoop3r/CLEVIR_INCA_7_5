@@ -33,7 +33,7 @@ Public Class OxtsNcomInterface
     Public Property IsGpsLocked As Boolean = False
     Public Property LastPacketTime As DateTime?
 
-    Public Sub StartListening()
+    Public Sub OxtsStartListening()
         If _isRunning Then Return
 
         Try
@@ -54,7 +54,7 @@ Public Class OxtsNcomInterface
         End Try
     End Sub
 
-    Public Sub StopListening()
+    Public Sub OxtsStopListening()
         _isRunning = False
 
         If _udpClient IsNot Nothing Then
