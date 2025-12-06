@@ -8,6 +8,7 @@ Public Module StatusNotifier
         Info
         Warning
         [Error]
+        Success
     End Enum
 
     ' Track open toasts to stack them

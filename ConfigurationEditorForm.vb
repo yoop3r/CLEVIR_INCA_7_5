@@ -220,7 +220,7 @@ Public Class ConfigurationEditorForm
             Case "OxtsEnabled"
                 Return "Enable OXTS GPS/INS synchronization (True/False)"
             Case "OxtsNcomIpAddress"
-                Return "OXTS NCOM listener IP address (e.g., 192.168.1.130)"
+                Return "OXTS NCOM listener IP address (e.g., 192.168.10.30)"
             Case "OxtsNcomPort"
                 Return "OXTS NCOM UDP port (default: 3000)"
             Case "OxtsGpsLockTimeout"

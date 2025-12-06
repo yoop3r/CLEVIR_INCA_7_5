@@ -178,6 +178,55 @@ Public Class LidarDevice
     ' ====================================================================
 
     ''' <summary>
+    ''' ✅ NEW: Test LiDAR + OXTS integration (static development)
+    ''' </summary>
+    Public Sub TestLidarOxtsIntegration()
+        HandleUserMessageLogging("GMRC", "=== LiDAR + OXTS Integration Test ===")
+        HandleUserMessageLogging("GMRC", $"Device: {DeviceId}")
+        HandleUserMessageLogging("GMRC", $"LiDAR IP: {LidarIpAddress}")
+        HandleUserMessageLogging("GMRC", $"Capturing: {_isCapturing}")
+        HandleUserMessageLogging("GMRC", $"Packets: {_packetCount:N0}")
+        HandleUserMessageLogging("GMRC", $"Markers: {_markerCounter}")
+        HandleUserMessageLogging("GMRC", $"Frames: {_frameCounter}")
+
+        If _oxtsInterface IsNot Nothing Then
+            HandleUserMessageLogging("GMRC", "")
+            HandleUserMessageLogging("GMRC", "=== OXTS Status ===")
+            HandleUserMessageLogging("GMRC", $"GPS Lock: {_oxtsInterface.IsGpsLocked}")
+            HandleUserMessageLogging("GMRC", $"GPS Time Available: {_oxtsInterface.LastGpsTime.HasValue}")
+
+            If _oxtsInterface.LastGpsTime.HasValue Then
+                Dim syncTime = _oxtsInterface.GetSynchronizedTimestamp()
+                HandleUserMessageLogging("GMRC", $"Synchronized Time: {syncTime:yyyy-MM-dd HH:mm:ss.fff}")
+            End If
+        Else
+            HandleUserMessageLogging("GMRC", "⚠️ OXTS interface not connected!")
+        End If
+
+        HandleUserMessageLogging("GMRC", "=== Test Complete ===")
+    End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Inject test marker with OXTS data
+    ''' </summary>
+    Public Sub InjectTestMarkerWithOxtsData()
+        If Not _isCapturing Then
+            HandleUserMessageLogging("GMRC", "Cannot inject marker - not capturing")
+            Return
+        End If
+
+        Dim message As String = "TEST MARKER"
+
+        If _oxtsInterface IsNot Nothing Then
+            Dim pos = _oxtsInterface.GetCurrentPosition()
+            message &= $" | Lat:{pos.Latitude:F6} Lon:{pos.Longitude:F6} Alt:{pos.Altitude:F2}m"
+        End If
+
+        InjectEventMarker("TEST", message, 999)
+        HandleUserMessageLogging("GMRC", $"Injected test marker: {message}")
+    End Sub
+
+    ''' <summary>
     ''' Checks if audio alert should be triggered based on health status
     ''' </summary>
     Public Function ShouldTriggerAudioAlert() As Boolean
