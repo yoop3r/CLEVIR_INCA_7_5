@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+	<!-- ================================================================ -->
+	<!-- INCA Configuration -->
+	<!-- ================================================================ -->
+	<INCADatabase>C:\Users\Public\Documents\ETAS\INCA7.5\Database\clevirdb</INCADatabase>
+	<INCAWorkspace>180_MY26_ACP3_1P</INCAWorkspace>
+	<INCAExperiment>180_22677_MY26_ACP3</INCAExperiment>
+	<INCAVariableFile>C:\CLEVIR_INCA_7_5\SignalLists\180_22677_MY26_ACP3.csv</INCAVariableFile>
+	<ETAS_USER_PATH>C:\Users\Public\Documents\ETAS\INCA7.5\User</ETAS_USER_PATH>
+	<SignalRegistrationMode>DISPLAYS</SignalRegistrationMode>
+	<!-- ================================================================ -->
+	<!-- Recording Configuration -->
+	<!-- ================================================================ -->
+	<RecordWAVTime>30</RecordWAVTime>
+	<RecordFileDurationMinutes>5</RecordFileDurationMinutes>
+	<MuteVoiceRecordingMessages>False</MuteVoiceRecordingMessages>
+	<AudioToTextConversion>False</AudioToTextConversion>
+	<!-- ================================================================ -->
+	<!-- Alternate Recording (CANalyzer/VehicleSpy) -->
+	<!-- ================================================================ -->
+	<AlternateRecordEnabled>True</AlternateRecordEnabled>
+	<AlternateRecordConfig>LC_CANFD</AlternateRecordConfig>
+	<EnableAltRecReStartAfterRecordStop>False</EnableAltRecReStartAfterRecordStop>
+	<!-- ================================================================ -->
+	<!-- Data Storage & Network -->
+	<!-- ================================================================ -->
+	<BaseDataCollectionPath>C:\HB</BaseDataCollectionPath>
+	<NetworkDriveLetter>Q:</NetworkDriveLetter>
+	<NetworkDriveMapping />
+	<!-- ================================================================ -->
+	<!-- Compression Configuration -->
+	<!-- ================================================================ -->
+	<Compression>
+		<!-- File type compression switches -->
+		<CompressMF4>False</CompressMF4>
+		<CompressPCAP>False</CompressPCAP>
+		<CompressASC>False</CompressASC>
+		<CompressVSB>False</CompressVSB>
+		<!-- Deletion policy (SAFE DEFAULT = False) -->
+		<DeleteAfterCompression>False</DeleteAfterCompression>
+		<!-- Compression parameters -->
+		<CompressionLevel>1</CompressionLevel>
+		<!-- 1=Fastest, 9=Best -->
+		<MaxRetries>5</MaxRetries>
+		<RetryDelaySeconds>10</RetryDelaySeconds>
+		<!-- Lock detection -->
+		<FileLockTimeoutSeconds>30</FileLockTimeoutSeconds>
+	</Compression>
+	<!-- ================================================================ -->
+	<!-- Hardware Configuration -->
+	<!-- ================================================================ -->
+	<NetworkAdapterDescription />
+	<MaxCameras>9</MaxCameras>
+	<!-- ================================================================ -->
+	<!-- OXTS GPS/INS Configuration -->
+	<!-- ================================================================ -->
+	<OxtsConfiguration>
+		<!-- Enable/disable OXTS INS integration -->
+		<OxtsEnabled>True</OxtsEnabled>
+		<!-- NCOM UDP listener settings -->
+		<NcomIpAddress>10.5.55.200</NcomIpAddress>
+		<NcomPort>3000</NcomPort>
+		<!-- GPS lock behavior -->
+		<GpsLockTimeout>30000</GpsLockTimeout>
+		<WaitForLockOnStart>False</WaitForLockOnStart>
+	</OxtsConfiguration>
+	<!-- ================================================================ -->
+	<!-- LiDAR Configuration (Legacy + Multi-Device) -->
+	<!-- ================================================================ -->
+	<LidarCaptureEnabled>True</LidarCaptureEnabled>
+	<!-- Legacy single-device (backward compatibility) -->
+	<LidarAdapterGuid>{9044BA7F-0623-4C92-9156-BA91B22FAB51}</LidarAdapterGuid>
+	<LidarIpAddress>10.5.55.14</LidarIpAddress>
+	<LidarDataPort>2311</LidarDataPort>
+	<LidarImuPort>8308</LidarImuPort>
+	<!-- Multi-device configuration -->
+	<LidarDevices>
+		<Lidar id="1" enabled="True">
+			<AdapterGuid>{9044BA7F-0623-4C92-9156-BA91B22FAB51}</AdapterGuid>
+			<IpAddress>10.5.55.14</IpAddress>
+			<DataPort>2311</DataPort>
+			<ImuPort>8308</ImuPort>
+		</Lidar>
+		<Lidar id="2" enabled="True">
+			<AdapterGuid>{9044BA7F-0623-4C92-9156-BA91B22FAB51}</AdapterGuid>
+			<IpAddress>192.168.40.102</IpAddress>
+			<DataPort>2369</DataPort>
+			<ImuPort>8309</ImuPort>
+		</Lidar>
+	</LidarDevices>
+	<!-- ================================================================ -->
+	<!-- Application Configuration -->
+	<!-- ================================================================ -->
+	<CurrentVehicleUsage>VALIDATION</CurrentVehicleUsage>
+	<SaveCalSnapshotEnabled>False</SaveCalSnapshotEnabled>
+	<APICommErrorMsgDelayTime>90</APICommErrorMsgDelayTime>
+</Configuration>

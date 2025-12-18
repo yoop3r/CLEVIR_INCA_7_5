@@ -1,0 +1,47 @@
+C:\DEV\HesaiLidar_SDK_2.0-2.0.10\tool\out\build\x64-Deb
+
+Referencing this error...
+Severity	Code	Description	Project	File	Line	Suppression State	Details
+Error	LNK1104	cannot open file 'Hesai_lidar_sdk\libhesai\Debug\log_lib.lib'	las_tool	C:\DEV\HesaiLidar_SDK_2.0-2.0.10\tool\out\build\x64-Debug\LINK	1		
+Error	LNK1104	cannot open file 'Hesai_lidar_sdk\libhesai\Debug\log_lib.lib'	packet_loss_tool	C:\DEV\HesaiLidar_SDK_2.0-2.0.10\tool\out\build\x64-Debug\LINK	1		
+Error	LNK1104	cannot open file 'Hesai_lidar_sdk\libhesai\Debug\log_lib.lib'	pcl_tool	C:\DEV\HesaiLidar_SDK_2.0-2.0.10\tool\out\build\x64-Debug\LINK	1		
+		
+
+Please see the linker defined relative paths...
+
+Debug\hesai_sdk_lib.lib
+libhesai\Debug\lidar_lib.lib
+libhesai\Debug\udpParser_lib.lib
+libhesai\Debug\ptcClient_lib.lib
+C:\Users\jzf0z9\Downloads\vcpkg-master\installed\x64-windows\debug\lib\libssl.lib
+C:\Users\jzf0z9\Downloads\vcpkg-master\installed\x64-windows\debug\lib\libcrypto.lib
+libhesai\Debug\serialClient_lib.lib
+libhesai\Debug\source_lib.lib
+libhesai\Debug\platutils_lib.lib
+libhesai\Debug\log_lib.lib
+kernel32.lib
+user32.lib
+gdi32.lib
+winspool.lib
+shell32.lib
+ole32.lib
+oleaut32.lib
+uuid.lib
+comdlg32.lib
+advapi32.lib
+
+log_lib.lib is in relative path libhesai\Debug\log_lib.lib, but the error persists.  Please can you provide me assistance with this?
+
+Summary of the Fix
+The issue was that log_lib was configured as a SHARED library (DLL) in the CMakeLists.txt file, but it didn't have proper DLL export declarations in the header file. This meant:
+1.	When built as a SHARED library, it created log_lib.dll but no import library log_lib.lib
+2.	The linker needed log_lib.lib to link against the DLL
+3.	Without the .lib file, the linker failed with the error: cannot open file 'Hesai_lidar_sdk\libhesai\Debug\log_lib.lib'
+The fix: Changed log_lib from a SHARED library to a STATIC library by modifying:
+add_library(log_lib SHARED    # Old
+add_library(log_lib STATIC    # New
+This creates a static library .lib file that can be directly linked without needing DLL export/import declarations.
+Additional Notes:
+•	Your pcl_tool.cc is now correctly formatted and compiles without errors
+•	All three projects (pcl_tool, packet_loss_tool, las_tool) now build successfully
+•	The solution works because static libraries are simpler to use on Windows and don't require complex export declarations

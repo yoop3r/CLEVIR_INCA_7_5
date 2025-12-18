@@ -35,22 +35,14 @@ Partial Class ConfigurationEditorForm
         CType(Me.DataGridViewParams, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
-        'LabelDRV
-        '
-        Me.LabelDRV.AutoSize = True
-        Me.LabelDRV.Location = New System.Drawing.Point(12, 15)
-        Me.LabelDRV.Name = "LabelDRV"
-        Me.LabelDRV.Size = New System.Drawing.Size(81, 13)
-        Me.LabelDRV.TabIndex = 0
-        Me.LabelDRV.Text = "Select DRV File:"
-        '
         'ComboBoxDRV
         '
         Me.ComboBoxDRV.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
         Me.ComboBoxDRV.FormattingEnabled = True
-        Me.ComboBoxDRV.Location = New System.Drawing.Point(99, 12)
+        Me.ComboBoxDRV.Location = New System.Drawing.Point(1269, 22)
+        Me.ComboBoxDRV.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.ComboBoxDRV.Name = "ComboBoxDRV"
-        Me.ComboBoxDRV.Size = New System.Drawing.Size(100, 21)
+        Me.ComboBoxDRV.Size = New System.Drawing.Size(148, 28)
         Me.ComboBoxDRV.TabIndex = 1
         '
         'DataGridViewParams
@@ -62,9 +54,10 @@ Partial Class ConfigurationEditorForm
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.DataGridViewParams.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
         Me.DataGridViewParams.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {Me.ColumnParameter, Me.ColumnValue, Me.ColumnDescription})
-        Me.DataGridViewParams.Location = New System.Drawing.Point(12, 45)
+        Me.DataGridViewParams.Location = New System.Drawing.Point(18, 69)
+        Me.DataGridViewParams.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.DataGridViewParams.Name = "DataGridViewParams"
-        Me.DataGridViewParams.Size = New System.Drawing.Size(760, 450)
+        Me.DataGridViewParams.Size = New System.Drawing.Size(1422, 692)
         Me.DataGridViewParams.TabIndex = 2
         '
         'ColumnParameter
@@ -87,23 +80,13 @@ Partial Class ConfigurationEditorForm
         Me.ColumnDescription.ReadOnly = True
         Me.ColumnDescription.Width = 240
         '
-        'ButtonCancel
-        '
-        Me.ButtonCancel.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.ButtonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel
-        Me.ButtonCancel.Location = New System.Drawing.Point(370, 510)
-        Me.ButtonCancel.Name = "ButtonCancel"
-        Me.ButtonCancel.Size = New System.Drawing.Size(120, 35)
-        Me.ButtonCancel.TabIndex = 3
-        Me.ButtonCancel.Text = "❌ Cancel"
-        Me.ButtonCancel.UseVisualStyleBackColor = True
-        '
         'ButtonSave
         '
         Me.ButtonSave.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.ButtonSave.Location = New System.Drawing.Point(500, 510)
+        Me.ButtonSave.Location = New System.Drawing.Point(1032, 785)
+        Me.ButtonSave.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.ButtonSave.Name = "ButtonSave"
-        Me.ButtonSave.Size = New System.Drawing.Size(120, 35)
+        Me.ButtonSave.Size = New System.Drawing.Size(180, 54)
         Me.ButtonSave.TabIndex = 4
         Me.ButtonSave.Text = "💾 Save"
         Me.ButtonSave.UseVisualStyleBackColor = True
@@ -111,29 +94,53 @@ Partial Class ConfigurationEditorForm
         'ButtonApplyToAll
         '
         Me.ButtonApplyToAll.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.ButtonApplyToAll.Location = New System.Drawing.Point(630, 510)
+        Me.ButtonApplyToAll.Location = New System.Drawing.Point(1227, 785)
+        Me.ButtonApplyToAll.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.ButtonApplyToAll.Name = "ButtonApplyToAll"
-        Me.ButtonApplyToAll.Size = New System.Drawing.Size(140, 35)
+        Me.ButtonApplyToAll.Size = New System.Drawing.Size(210, 54)
         Me.ButtonApplyToAll.TabIndex = 5
         Me.ButtonApplyToAll.Text = "📋 Apply to All DRVs"
         Me.ButtonApplyToAll.UseVisualStyleBackColor = True
+        '
+        'ButtonCancel
+        '
+        Me.ButtonCancel.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.ButtonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel
+        Me.ButtonCancel.Location = New System.Drawing.Point(837, 785)
+        Me.ButtonCancel.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.ButtonCancel.Name = "ButtonCancel"
+        Me.ButtonCancel.Size = New System.Drawing.Size(180, 54)
+        Me.ButtonCancel.TabIndex = 3
+        Me.ButtonCancel.Text = "❌ Cancel"
+        Me.ButtonCancel.UseVisualStyleBackColor = True
         '
         'LabelStatus
         '
         Me.LabelStatus.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left), System.Windows.Forms.AnchorStyles)
         Me.LabelStatus.AutoSize = True
-        Me.LabelStatus.Location = New System.Drawing.Point(12, 520)
+        Me.LabelStatus.Location = New System.Drawing.Point(18, 800)
+        Me.LabelStatus.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
         Me.LabelStatus.Name = "LabelStatus"
-        Me.LabelStatus.Size = New System.Drawing.Size(38, 13)
+        Me.LabelStatus.Size = New System.Drawing.Size(55, 20)
         Me.LabelStatus.TabIndex = 6
         Me.LabelStatus.Text = "Ready"
         '
+        'LabelDRV
+        '
+        Me.LabelDRV.AutoSize = True
+        Me.LabelDRV.Location = New System.Drawing.Point(1124, 25)
+        Me.LabelDRV.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
+        Me.LabelDRV.Name = "LabelDRV"
+        Me.LabelDRV.Size = New System.Drawing.Size(126, 20)
+        Me.LabelDRV.TabIndex = 0
+        Me.LabelDRV.Text = "Select DRV File:"
+        '
         'ConfigurationEditorForm
         '
-        Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
+        Me.AutoScaleDimensions = New System.Drawing.SizeF(9.0!, 20.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.CancelButton = Me.ButtonCancel
-        Me.ClientSize = New System.Drawing.Size(784, 561)
+        Me.ClientSize = New System.Drawing.Size(1458, 863)
         Me.Controls.Add(Me.LabelStatus)
         Me.Controls.Add(Me.ButtonApplyToAll)
         Me.Controls.Add(Me.ButtonSave)
@@ -142,6 +149,7 @@ Partial Class ConfigurationEditorForm
         Me.Controls.Add(Me.ComboBoxDRV)
         Me.Controls.Add(Me.LabelDRV)
         Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
+        Me.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.MaximizeBox = False
         Me.MinimizeBox = False
         Me.Name = "ConfigurationEditorForm"

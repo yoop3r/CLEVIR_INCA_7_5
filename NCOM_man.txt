@@ -1,0 +1,3508 @@
+﻿
+
+Legal notices 
+Information furnished is believed to be accurate and reliable. However, OXTS assumes no responsibility for the consequences of use of such information nor for any infringement of patents or other rights of third parties which may result from its use. No licence is granted by implication or otherwise under any patent or patent rights of OXTS. Specifications mentioned in this publication are subject to change without notice and do not represent a commitment on the part of OXTS. This publication supersedes and replaces all information previously supplied. OXTS products are not authorised for use as critical components in life support devices or systems without express written approval of OXTS. 
+All brand names are trademarks of their respective holders. 
+The software is provided by the contributors “as is” and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage. 
+Copyright notice 
+© Copyright 2025, OXTS. 
+Revision 
+Document Revision: 250811 (See Revision History for detailed information). 
+Contact details 
+OXTS 
+Park Farm Business Centre 
+Middleton Stoney  
+Oxfordshire  
+OX25 4AL 
+United Kingdom 
+Tel: +44 (0) 1869 814 253 
+Fax: +44 (0) 1869 251 764 
+Web: https://www.oxts.com  Email: support@oxts.com 
+ 
+ 	 
+Warranty 
+OXTS warrants its products to be free of defects in materials and workmanship, subject to the conditions set forth below, for a period of one year from the Date of Sale. 
+“Date of Sale” shall mean the date of the OXTS invoice issued on delivery of the product. The responsibility of OXTS in respect of this warranty is limited solely to product replacement or product repair at an authorised location only. Determination of replacement or repair will be made by OXTS personnel or by personnel expressly authorised by OXTS for this purpose. 
+In no event will OXTS be liable for any indirect, incidental, special or consequential damages whether through tort, contract or otherwise. This warranty is expressly in lieu of all other warranties, expressed or implied, including without limitation the implied warranties of merchantability or fitness for a particular purpose. The foregoing states the entire liability of OXTS with respect to the products herein. 
+Any use of misuse of the RT in a manner not intended may impar the protection provided. Please contact OXTS if you believe any service of repair is required on your RT. 
+Contents 
+NCOM .................................................................................................................................... 1 
+Legal notices .....................................................................................................................................................1 
+Copyright notice ................................................................................................................................................1 
+Revision ............................................................................................................................................................1 
+Contact details ..................................................................................................................................................1 
+Warranty ...........................................................................................................................................................2 
+Introduction .......................................................................................................................... 5 
+NCOM packet formats ......................................................................................................... 6 
+NCOM structure-A ............................................................................................................................................6 
+NCOM structure-B ............................................................................................................................................7 
+Sync byte .............................................................................................................................. 9 
+Batch A: inertial output ..................................................................................................... 10 
+Navigation status byte ...................................................................................................... 11 
+Batch B: position, velocity and orientation output ......................................................... 13 
+Status channel byte ........................................................................................................... 14 
+Batch S: status channel definitions ................................................................................. 21 
+Checksum definition ......................................................................................................... 57 
+Asynchronous NCOM packets: triggered outputs.......................................................... 58 
+Revision history ................................................................................................................. 59 
+Blank for user notes .......................................................................................................... 59 
+ 
+Table 1: Word length definitions .................................................................................................................... 6 
+Table 2: Definition of NCOM structure-A packet ....................................................................................... 7 
+Table 3: Definition of NCOM structure-B packet ....................................................................................... 8 
+Table 4: Batch A (inertial output) definition .............................................................................................. 10 
+Table 5: Navigation status (byte 21) definitions ........................................................................................12 
+Table 6: Batch B (position, velocity and orientation output) definition ............................................. 13 
+Table 7: Status channel (byte 62) definitions ........................................................................................... 20 
+Table 8: Status information, Channel 0 .......................................................................................................21 
+Table 9: Definitions of position mode, velocity mode and orientation mode ................................... 22 
+Table 10: Status information, Channel 1 .................................................................................................... 23 
+Table 11: Status information, Channel 2 ..................................................................................................... 23 
+Table 12: Status information, Channel 3 .................................................................................................... 23 
+Table 13: Status information, Channel 4 .................................................................................................... 24 
+Table 14: Definitions of Blended processing methods .......................................................................... 24 
+Table 15: Status information, Channel 5 .................................................................................................... 24 
+Table 16: Status information, Channel 6 .................................................................................................... 25 
+Table 17: Status information, Channel 7 .................................................................................................... 25 
+Table 18: Status information, Channel 8 .................................................................................................... 25 
+Table 19: Status information, Channel 9 .................................................................................................... 26 
+Table 20: Status information, Channel 10 ................................................................................................. 26 
+Table 21: Status information, Channel 11Status information, Channel 11 ......................................... 26 
+Table 22: Status information, Channel 12 .................................................................................................. 27 
+Table 23: Status information, Channel 13 .................................................................................................. 27 
+Table 24: Status information, Channel 14 ................................................................................................. 27 
+Table 25: Status information, Channel 15 .................................................................................................. 28 
+Table 26: Status information, Channel 16 .................................................................................................. 28 
+Table 27: Status information, Channel 17 .................................................................................................. 28 
+Table 28: Status information, Channel 18 .................................................................................................. 29 
+Table 29: Status information, Channel 19 .................................................................................................. 29 
+Table 30: Status information, Channel 20 ................................................................................................. 29 
+Table 31: Status information, Channel 21 .................................................................................................. 29 
+Table 32: Status information, Channel 22 .................................................................................................. 30 
+Table 33: Status information, Channel 23 ................................................................................................. 31 
+Table 34: Status information, Channels 24, 43, 65, 79, 80 and 81 ....................................................... 32 
+Table 35: Status information, Channel 26 ................................................................................................. 32 
+Table 36: Status information, Channel 27 ................................................................................................. 33 
+Table 37: Status information, Channel 28 ................................................................................................. 34 
+Table 38: Status information, Channel 29 ................................................................................................. 35 
+Table 39: Status information, Channel 30 ................................................................................................. 36 
+Table 40: Status information, Channel 32 ................................................................................................. 36 
+Table 41: Status information, Channel 33 ................................................................................................. 36 
+Table 42: Status information, Channel 34 ................................................................................................. 37 
+Table 43: Status information, Channel 35 ................................................................................................. 37 
+Table 44: Status information, Channel 36 ................................................................................................. 37 
+Table 45: Status information, Channel 37 ................................................................................................. 38 
+Table 46: Status information, Channel 40................................................................................................. 38 
+Table 47: Status information, Channel 41 ................................................................................................. 39 
+Table 48: Status information, Channel 42 ................................................................................................. 39 
+Table 49: Definitions of serial baud rates .................................................................................................. 40 
+Table 50: Definitions of CAN baud rates ................................................................................................... 41 
+Table 51: Status information, Channel 44 ................................................................................................. 41 
+Table 52: Status information, Channel 45 ................................................................................................. 41 
+Table 53: Status information, Channel 46 ................................................................................................. 42 
+Table 54: Status information, Channel 47 ................................................................................................. 42 
+Table 55: Status information, Channel 48 ................................................................................................. 43 
+Table 56: Status information, Channel 49 ................................................................................................. 43 
+Table 57: Status information, Channel 50 .................................................................................................44 
+Table 58: Status information, Channels 51, 52, 53, 54, 68, 69, 70 and 71 ..........................................44 
+Table 59: Status information, Channels 55, 56 and 62 ........................................................................... 45 
+Table 60: Status information, Channel 57 ................................................................................................. 45 
+Table 61: Status information, Channel 58 ................................................................................................. 46 
+Table 62: Status information, Channel 59 ................................................................................................. 46 
+Table 63: Status information, Channel 60 ................................................................................................. 46 
+Table 64: Status information, Channel 61 ................................................................................................. 47 
+Table 65: Status information, Channel 64 ................................................................................................. 48 
+Table 66: Status information, Channel 66 ................................................................................................. 49 
+Table 67: Status information, Channel 67 ................................................................................................. 49 
+Table 68: Status information, Channel 72 ................................................................................................. 49 
+Table 69: Status information, Channel 73 ................................................................................................. 49 
+Table 70: Status information, Channel 75 ................................................................................................. 50 
+Table 71: Status information, Channel 76 .................................................................................................. 50 
+Table 72: Status information, Channel 77 ................................................................................................. 51 
+Table 73: Status information, Channel 78 ................................................................................................. 51 
+Table 74: ADK software version information, Channel 85 .................................................................... 51 
+Table 75: Linear jerk filter settings, Channel 87 ....................................................................................... 52 
+Table 76: Linear jerk filter types. ................................................................................................................. 52 
+Table 77: Status information, Channel 88 ................................................................................................. 52 
+Table 78: Status information, Channel 89 ................................................................................................. 53 
+Table 79: Status information, Channel 90 ................................................................................................. 53 
+Table 80: Status information, Channel 91 ................................................................................................. 54 
+Table 81: Status information, Channel 93 ................................................................................................. 54 
+Table 82: Status information, Channel 94 ................................................................................................. 55 
+Table 83: Status information, Channel 95 ................................................................................................. 56 Table 84: Revision history ............................................................................................................................. 59 
+ 
+Introduction 
+NCOM is a data format designed by OXTS for the efficient communication of navigation measurements and other data. It is a very compact format and only includes core measurements, which makes it particularly suitable for inertial navigation systems. NCOM is utilised in many of our products. 
+This manual gives a description of the NCOM format so users can freely develop custom-written software for specific needs and applications. OXTS also provides code written in C that can decode NCOM, and includes routines to rotate many of the outputs into different co-ordinate frames. 
+As well as NCOM, we have an almost identical format called MCOM, which was developed specifically for marine navigation. MCOM is not covered in this manual as it has its own dedicated manual. 
+ 	 
+
+NCOM packet formats 
+The NCOM packet comprises 72 bytes that can be transmitted over Ethernet (port number 3000) or RS232 serial links. To increase efficiency, many of the data packets are sent as 24-bit signed integer words because 16-bits do not provide the range/precision required for many of the quantities, whereas 32-bit precision makes the packet much longer than required. 
+Important note: All words are sent in little-endian format (meaning “little-end first” or “least significant byte first” [LSB]), which is compatible with Intel microprocessors. A definition of word lengths is shown in Table 1. 
+Terminology 
+Data length  
+Byte (UByte) 
+8-bit integer (unsigned) 
+Short (UShort) 
+16-bit integer (unsigned) 
+Word (UWord) 
+24-bit integer (unsigned) 
+Long (ULong) 
+32-bit integer (unsigned) 
+Int64 (UInt64) 
+64-bit integer (unsigned) 
+Float 
+32-bit IEEE 754 floating-point 
+Double 
+64-bit IEEE 754 floating-point 
+Table 1: 
+Word length definitions 
+Note, the U prefix indicates a value is unsigned; otherwise it is signed using 2’s complement. 
+Two versions of the NCOM packet exist, referred to as NCOM structure-A and NCOM structure-B. Byte 21 of an NCOM packet—the navigation status byte, identifies which structure a packet employs. Structure-A packets have navigation status byte values of 0, 1, 2, 3, 4, 5, 6, 7, 10, 20, 21 or 22, and structure-B packets have navigation status byte value of 11. Packets with other navigation status bytes are reserved for future use; should they be encountered, they can be discarded.  
+NCOM structure-A 
+NCOM structure-A packets are intended to be used by customers and are fully defined within this document. In NCOM structure-A packets, the navigation status (byte 21) will have a value of 0, 1, 2, 3, 4, 5, 6, 7, 10, 20, 21 or 22. The structure-A packet is defined in Table 2. 
+Byte 
+Description 
+Notes 
+
+Sync 
+Always 0xE7 
+
+Batch A 
+Inertial output. See page 10 for a detailed description 
+21 
+Navigation status 
+The navigation status byte value should be 0–7, 10 or 20–22 to be valid for customer use. See page 11. A value of 11 indicates the packet follows NCOM structure-B and should be ignored 
+22 
+Checksum 1 
+Checksum 1 allows the software to verify the integrity of bytes 1–21. The sync byte is ignored. In low-latency applications the inertial measurements in Batch A can be used to update a previous solution without waiting for the rest of the packet to be received. Contact OXTS for source code to perform this function. 
+23 
+Batch B 
+Position, orientation and velocity output. See Table 6, for a detailed description 
+61 
+Checksum 2 
+Checksum 2 allows the software to verify the integrity of bytes 1–60. The sync byte is ignored. For a medium-latency output, the full navigation solution is now available without waiting for the status updates in the rest of the packet 
+62 
+Status channel 
+The status channel byte identifies the status channel transmitted within Batch S 
+63 
+
+Batch S 
+Low-rate cycling status messages. The status channel number (byte 
+62) defines which status messages are included in Batch S. See Table 
+7 for the full list 
+71 
+Checksum 3 
+This is the final checksum that verifies the entire packet (bytes 1–70) 
+Table 2: 
+Definition of NCOM structure-A packet 
+The NCOM structure-A packet is intended to be used by customers. If byte 21 (Nav. status) has a value of 11, this indicates the message uses NCOM structure-B and is intended for OXTS use only. Any packet with a Nav. status value of 11 should be ignored. 
+NCOM structure-B 
+NCOM structure-B packets are used exclusively by OXTS and are not intended for use by customers. Structure-B packets can be identified by testing the value of the navigation status (byte 21). A navigation status value of 11 indicates the packet follows structure-B, as shown in Table 3. 
+NCOM structure-B packets are not defined within this document beyond providing the information required to identify and discard them. It is possible to prevent OXTS devices from transmitting structure-B messages over Ethernet by entering the following advance command: -udp_ncomx_0. Structure-B packets carry additional device configuration information, such as the feature table, thus disabling structure-B packets will prevent this information from being received by OXTS applications. 
+Byte 
+Description 
+Notes 
+
+Sync 
+Always 0xE7 
+
+Block A 
+Contents defined by Block Id 
+
+Nav. status 
+Navigation status value will be 11 
+
+Block Id 
+The Block Id number determines what information is sent in Block A and Block B. Often the 68 concatenated bytes of Block A and B will be considered as one entity 
+
+Block B 
+Contents defined by Block Id 
+
+Checksum 3 
+This is the checksum that verifies the packet 
+Table 3: 
+Definition of NCOM structure-B packet  
+NCOM structure-B packets are not intended to be used by customers; they are used internally by OXTS. They can be disabled over Ethernet by entering the following advanced command: -udp_ncomx_0. 
+ 	 
+
+Sync byte 
+The first byte of an NCOM packet is the sync byte, which always has a value of 0xE7. 
+Note that in order to reduce the latency with RS232 serial transmissions, the sync character is transmitted at the end of the previous cycle. On the communication link there will be a pause between the transmission of the sync and next character. It is not advised to use this pause to synchronise the packet, even though the operating system should guarantee the transmission timing of the packet. 
+Over Ethernet the sync character is transmitted as the first character of the UDP packet. 
+ 	 
+
+Batch A: inertial output 
+Bytes 1 to 20 of an NCOM structure-A packet are collectively called Batch A. Batch A contains linear acceleration and angular rate measurements in the x-, y- and z-axes, as well as the time stamp for those measurements. Table 4 gives a detailed description of the measurements in Batch A. 
+Byte 
+Description 
+Notes 
+1–2 
+Time 
+Time is transmitted as milliseconds into the current GPS minute.  The range is 0–59,999 ms 
+
+Acceleration x 
+Acceleration x is the host object’s acceleration in the x-direction  (i.e. after the IMU to host attitude matrix has been applied).  
+It is a signed word in units of 1 × 10−4 m/s2 
+
+Acceleration y 
+Acceleration y is the host object’s acceleration in the y-direction  (i.e. after the IMU to host attitude matrix has been applied).  
+It is a signed word in units of 1 × 10−4 m/s2 
+
+Acceleration z 
+Acceleration z is the host object’s acceleration in the z-direction  (i.e. after the IMU to host attitude matrix has been applied).  
+It is a signed word in units of 1 × 10−4 m/s2 
+
+Angular rate x 
+Angular rate x is the host object’s angular rate about its x-axis  (i.e. after the IMU to host attitude matrix has been applied).  
+It is a signed word in units of 1 × 10−5 radians/s 
+
+Angular rate y 
+Angular rate y is the host object’s angular rate about its y-axis  (i.e. after the IMU to host attitude matrix has been applied).  
+It is a signed word in units of 1 × 10−5 radians/s 
+
+Angular rate z 
+Angular rate z is the host object’s angular rate about its z-axis  (i.e. after the IMU to host attitude matrix has been applied).  
+It is a signed word in units of 1 × 10−5 radians/s 
+Table 4: 
+Batch A (inertial output) definition 
+ 	 
+Navigation status byte 
+Byte 21 of the NCOM packet is called the navigation status. The value of the navigation status byte is initially used to test the structure of the NCOM packet. If the value of the navigation status byte is 0, 1, 2, 3, 4, 5, 6, 7, 10, 20, 21 or 22 the packet format is NCOM structure-A, and can be decoded. Any other value indicates the packet should be ignored. 
+As well as revealing the packet structure, the navigation status byte also describes the state of inertial navigation system (INS) and when the packet was created. In the case of asynchronous NCOM packets, the value of the navigation status byte can be used to identify what triggered the packet. Table 5 defines the navigation status values. 
+For structure-A packets checksum 1 (byte 22), which immediately follows the navigation status byte, allows the measurements in Batch A, and the value of the navigation status byte, to be verified and used without waiting to receive the entire NCOM packet. This is useful in time-critical applications receiving data over RS232 as the inertial measurements can be used to update other solutions with minimal latency. 
+Value 
+Struct. 
+Description 
+0 
+A 
+All quantities in the packet are invalid 
+1 
+A 
+Raw IMU measurements. These are output at roughly 10 Hz before the system is initialised. They are useful for checking the communication link and verifying the operation of the accelerometers and angular rate sensors in the laboratory. In this mode only the accelerations and angular rates are valid, they are not calibrated or to any specification. The information in the other fields is invalid 
+2 
+A 
+Initialising. When GPS time becomes available the system starts the initialisation process. The strapdown navigator and Kalman filter are allocated, but do not yet run. Angular rates and accelerations during this time are output 1 s in arrears. There will be a 1 s pause at the start of initialisation where no output will be made (while the system fills the buffers). The system has to run 1 s in arrears at this time in order to synchronise the GNSS data with the inertial data and perform the initialisation checks 
+During the initialising mode the time, acceleration and angular rate fields will be valid. Approximate (very inaccurate) position, velocity and angles may be output 
+3 
+A 
+Locking. The system will move to locking mode when the conditions for initialising are correct. To initialise, GPS time, position and velocity must be available; roll and pitch must be estimated (assumed approximately zero with the “vehicle level” option); heading must be estimated from forward velocity, dual antenna static initialisation or user command 
+In locking mode the system runs in arrears but catches up by 0.1 s every 1 s; locking mode lasts 10 s. During locking mode the outputs are not real-time, but all fields are valid 
+4 
+A 
+Locked. In Locked mode the system is outputting real-time data with the specified latency guaranteed. All fields are valid 
+5 
+A 
+Reserved for “unlocked” navigation output. Do not use any values from this message 
+6 
+A 
+Expired firmware: this is output if the firmware is time limited and the expiry time has passed 
+7 
+A 
+Blocked firmware: this is output if the firmware has been blocked (by password protection) 
+10 
+A 
+Status only. Only the Batch S part of the message (Bytes 63–70) should be decoded. This is used at the start of some logged NCOM files in order to save a complete set of status messages before the real data begins 
+11 
+B 
+Internal Use. Do not use any values from this message 
+20 
+A 
+Trigger packet while “initialising” (see Navigation status 2 for more details). The 
+Status channel (byte 62) will have a value of 24 (falling trigger), 43 (rising trigger), 
+65 (output trigger), 79 (falling trigger 2), 80 (rising trigger 2) or 81 (output trigger 2), depending on what triggers the packet 
+This packet is generated following a short variable delay (less than 0.02 s) after the corresponding navigation data output. The Time output is that of the trigger event 
+21 
+A 
+Trigger packet while “locking” (see Navigation status 3 for more details). The 
+Status channel (byte 62) will have a value of 24 (falling trigger), 43 (rising trigger), 
+65 (output trigger), 79 (falling trigger 2), 80 (rising trigger 2) or 81 (output trigger 2), depending on what triggers the packet 
+This packet is generated following a short variable delay (less than 0.02 s) after the corresponding navigation data output. The Time output is that of the trigger event 
+22 
+A 
+Trigger packet while “locked” (see Navigation status 4 for more details). The 
+Status channel (byte 62) will have a value of 24 (falling trigger), 43 (rising trigger), 
+65 (output trigger), 79 (falling trigger 2), 80 (rising trigger 2) or 81 (output trigger 2), depending on what triggers the packet 
+This packet is generated following a short variable delay (less than 0.02 s) after the corresponding navigation data output. The Time output is that of the trigger event. The latency of the trigger output is variable (by up to 0.02 s) due to the short variable delay 
+Others 
+A 
+Reserved: ignore any outputs which have reserved Navigation status values 
+Table 5: 
+Navigation status (byte 21) definitions 
+ 	 
+Batch B: position, velocity and orientation output 
+Bytes 23 to 60 of an NCOM structure-A packet are collectively called Batch B. Batch B contains measurements describing the INS position, velocity and orientation. Table 4 gives a detailed description of the measurements in Batch B. 
+Byte 
+Quantity 
+Notes 
+
+Latitude 
+The Latitude of the INS. It is a double in units of radians 
+
+Longitude 
+Longitude of the INS. It is a double in units of radians 
+
+Altitude 
+Altitude of the INS. It is a float in units of metres 
+
+North Velocity 
+North velocity in units of 1 × 10−4 m/s 
+
+East Velocity 
+East velocity in units of 1 × 10−4 m/s 
+
+Down Velocity 
+Down velocity in units of 1 × 10−4 m/s 
+
+Heading 
+Heading in units of 1 × 10−6 radians. Range ± 
+
+Pitch  
+Pitch in units of 1 × 10−6 radians. Range ± 
+
+Roll 
+Roll in units of 1 × 10−6 radians. Range ± 
+Table 6: 
+Batch B (position, velocity and orientation output) definition 
+For structure-A packets, checksum 2 (byte 61) that immediately follows the Batch B data, allows the measurements in Batch B to be verified and used without waiting to receive the entire NCOM packet. For a medium-latency output the full navigation solution is available. Only low-rate information is transmitted next. Note that checksum 2 is a continuation of checksum 1, that is, checksum 2 checks the entirety of the packet up to byte 60. 
+ 	 
+Status channel byte 
+Byte 62 of an NCOM structure-A packet is referred to as the status channel byte. The value of this byte is used to identify the status messages contained within Batch S. There are so many status messages it is impossible to transmit them all in a single NCOM packet. So instead, the status messages are split into a number of groups called channels, made up of 8 bytes each—and one channel is inserted into each NCOM packet. 
+The value of the status channel byte defines which status message channel is contained within Batch S of a particular NCOM packet. Table 7 lists the status channel values. 
+It is important to note that the value of the status channel byte does not increase incrementally. This is because some status channels are more important than others, and need to be transmitted more often. It is also important to note that the channel transmission order may change between software versions. However, the channel transmission list will repeat approximately once every 200 NCOM structure-A 
+packets. 
+Value 
+Status channel information within Batch S 
+See 
+0 
+Full time, number of satellites, position mode, velocity mode, dual antenna mode 
+Table 8 
+1 
+Kalman filter innovations set 1 (position, velocity, attitude) 
+Table 9: Definition s of position mode, 
+velocity mode and orientatio n mode 
+2 
+Internal information about primary GNSS receiver 
+Error! R eference source not found. 
+3 
+Position accuracy 
+Error! R eference source not found. 
+4 
+Velocity accuracy 
+Table 13 
+5 
+Orientation accuracy 
+Table 14: Definition s of 
+Blended processin g methods 
+  
+6 
+Gyro bias 
+Table 16 
+7 
+Accelerometer bias 
+Table 17 
+8 
+Gyro scale factor 
+Table 18 
+
+9 
+Gyro bias accuracy 
+Table 19 
+10 
+Accelerometer bias accuracy 
+Table 20 
+11 
+Gyro scale factor accuracy 
+Table 21 
+12 
+Position estimate of the primary GNSS antenna 
+Table 22 
+13 
+Orientation estimate of dual antenna systems 
+Table 23 
+14 
+Position accuracy of the primary GNSS antenna 
+Table 24 
+15 
+Orientation accuracy of the dual antenna systems 
+Table 25 
+16 
+INS to host object rotation 
+Table 26 
+17 
+Internal information about secondary GNSS receiver 
+Table 27 
+18 
+Internal information about inertial measurement unit (IMU) 
+Table 28 
+19 
+INS software version 
+Table 29 
+20 
+Differential correction information 
+Table 29: Status informatio n, Channel 19 
+  
+21 
+Disk space, size of current internal log file 
+Table 31 
+22 
+Internal information on timing of real-time processing 
+Table 31: Status informatio n, Channel 21 
+  
+23 
+System up-time, number of consecutive GNSS rejections.  PTP Status 
+Table 32: Status informatio n, Channel 22 
+  
+24 
+Asynchronous packet triggered by falling edge of event input 
+Table 33: Status informatio n, Channel 23 
+  
+25 
+Reserved 
+– 
+26 
+Output displacement lever arm 
+Table 35 
+27 
+Internal information about dual antenna ambiguity searches 
+Table 36 
+28 
+Internal information about dual antenna ambiguity searches 
+Table 36: Status informatio
+
+
+
+n, Channel 27 
+  
+29 
+Initial settings defined with NAVconfig 
+Table 37: Status informatio n, Channel 28 
+  
+30 
+Operating system and script version information 
+Table 38: Status informatio n, Channel 29 
+  
+31 
+Hardware configuration information 
+– 
+32 
+Kalman filter innovations set 2 
+Table 39: Status informatio n, Channel 30 
+Note: If the device’s serial number is above 65535, then the serial 
+number 
+will be transmitte d as a 24bit 
+unsigned integer in bytes 4-6 of status channel 40 instead. 
+ 
+ 
+33 
+Zero velocity lever arm 
+Table 41 
+34 
+Zero velocity lever arm accuracy 
+  
+35 
+Lateral advanced slip lever arm 
+Table 43 
+36 
+Lateral advanced slip lever arm accuracy 
+Table 44 
+37 
+Heading misalignment angle 
+Table 45 
+38 
+Zero velocity option settings, third serial output mode 
+– 
+
+39 
+Lateral advanced slip option settings 
+– 
+40 
+NCOM version Id 
+Table 46 
+41 
+Output baud rates.  WiFI IP address 
+Table 46: Status informatio n, Channel 40 
+  
+42 
+Heading lock options 
+Table 47: Status informatio n, Channel 41 
+  
+43 
+Asynchronous packet triggered by rising edge of event input 
+Table 33: Status informatio n, Channel 23 
+  
+44 
+Wheel speed configuration 
+Table 50: Definition s of CAN baud rates 
+  
+45 
+Wheel speed counts 
+Table 51: Status informatio n, Channel 44 
+  
+46 
+Wheel speed lever arm 
+Table 52: Status informatio n, Channel 45 
+  
+47 
+Wheel speed lever arm accuracy 
+Table 54 
+48 
+Undulation, dilution of precision (DOP) of GPS. Datum Information 
+Table 55 
+49 
+OmniSTAR tracking information 
+Table 56 
+50 
+Information sent to the command decoder 
+Table 57 
+51 
+Additional slip point 1 lever arm 
+Table 58 
+52 
+Additional slip point 2 lever arm 
+Table 58 
+53 
+Additional slip point 3 lever arm 
+Table 58 
+54 
+Additional slip point 4 lever arm 
+Table 58 
+
+55 
+Information about the primary GNSS receiver 
+Table 59 
+56 
+Information about the secondary GNSS receiver 
+Table 59 
+57 
+Position estimate of the primary GNSS antenna (extended range) 
+Table 59: Status informatio
+n, 
+Channels 
+55, 56 and 62 
+ 
+ 
+58 
+Vehicle to output frame rotation 
+Table 61 
+59 
+IMU decoding status 
+Table 62 
+60 
+Definition of the surface angles 
+Table 63 
+61 
+Internal information about external GNSS receiver 
+Table 64 
+62 
+Information about the external GNSS receiver 
+Table 59 
+63 
+Angular acceleration filter settings 
+– 
+64 
+Hardware information and external GNSS receiver configuration 
+Table 65 
+65 
+Asynchronous packet triggered by camera/distance output 
+Table 33: Status informatio n, Channel 23 
+  
+66 
+Extended local co-ordinate definition, latitude and longitude 
+Table 65: Status informatio n, Channel 64 
+  
+67 
+Extended local co-ordinate definition, altitude and heading 
+ 
+  
+68 
+Additional slip point 5 lever arm 
+Table 58 
+69 
+Additional slip point 6 lever arm 
+Table 58 
+70 
+Additional slip point 7 lever arm 
+Table 58 
+71 
+Additional slip point 8 lever arm 
+Table 58 
+72 
+Status information 
+Table 68 
+73 
+Status information 
+Table 68: Status informatio n, Channel 72 
+  
+74 
+Linear acceleration filter settings 
+– 
+
+75 
+Miscellaneous 
+Table 69: Status informatio n, Channel 73 
+  
+76 
+Internal information about differential corrections 
+Table 70: Status informatio n, Channel 75 
+  
+77 
+Differential correction configuration 
+Table 72 
+78 
+CAN bus status information 
+Table 72: Status informatio n, Channel 77 
+  
+79 
+Asynchronous packet triggered by falling edge of event input 2 (for xNAV only) 
+Table 33: Status informatio n, Channel 23 
+  
+80 
+Asynchronous packet triggered by rising edge of event input 2 (for xNAV only) 
+Table 33: Status informatio n, Channel 23 
+  
+81 
+Asynchronous packet triggered by camera/distance output 2 (for xNAV only) 
+Table 33: Status informatio n, Channel 23 
+  
+82 
+Hardware configuration information (for xNAV only) 
+– 
+83 
+Status information (for xNAV only) 
+– 
+84 
+Status information (for xNAV only) 
+– 
+85 
+Software version information (for ADK only) 
+Table 74 
+86 
+Reserved for future use (for xNAV only) 
+– 
+87 
+Linear jerk filter settings 
+Table 75 
+88 
+Kalman filter innovations set 3 
+Table 76: Linear jerk filter types. 
+
+
+  
+
+Vertical advanced slip lever arm 
+Table 78 
+
+Vertical advanced slip lever arm accuracy 
+Table 79 
+
+Pitch misalignment angle 
+Table 80 
+
+Vertical advanced slip option settings 
+– 
+
+Galileo and Beidou Satellite Used counts 
+Table 81 
+
+Galileo and Beidou Satellite L1/L2 counts 
+Table 82 
+
+Generic aiding packet information 
+Table 83 
+
+Reserved for future use 
+– 
+Table 7: Status channel (byte 62) definitions 
+ 	 
+
+Batch S: status channel definitions 
+Bytes 63 to 70 of an NCOM structure-A packet are collectively called Batch S. Batch S contains status channel information from the INS. The information transmitted in Batch S is defined by the value of the status channel byte, which defines the structure of each status channel and the information it contains. 
+Some fields within status channels have special bits or values that denote ‘invalid’. The invalid values or the validity bits are noted in each table. 
+Byte 
+Format 
+Definition 
+Invalid when 
+
+Long 
+Time in minutes since GPS began (midnight,  6th January 1980) 
+Value < 1000 
+
+UByte 
+Total number of satellites tracked by the main GNSS receiver 
+Value = 255 
+5 
+UByte 
+Position mode of main GNSS 
+Value = 255 
+6 
+UByte 
+Velocity mode of main GNSS 
+Value = 255 
+7 
+UByte 
+Orientation mode of dual antenna systems 
+Value = 255 
+Table 8: 
+Status information, Channel 0 
+Note: For definitions of position, velocity and orientation modes see Table 9. 
+ 
+Value 
+Name 
+Definition 
+0 
+None 
+The GPS is not able to make this measurement 
+1 
+Search 
+The GPS system is solving ambiguities and searching for a valid solution 
+2 
+Doppler 
+The GPS measurement is based on a Doppler measurement 
+3 
+SPS 
+Standard Positioning Service, the GPS measurement has no additional external corrections 
+4 
+Differential 
+The GPS measurement used pseudo-range differential corrections 
+5 
+RTK Float 
+The GPS measurement used L1 carrier-phase differential corrections to give a floating ambiguity solution 
+6 
+RTK Integer 
+The GPS measurement used L1/L2 carrier-phase differential corrections to give an integer ambiguity solution 
+7 
+WAAS 
+The GPS measurement used SBAS corrections 
+8 
+OmniSTAR 
+The GPS measurement used OmniSTAR VBS corrections 
+9 
+OmniSTAR HP 
+The GPS measurement used OmniSTAR HP corrections 
+10 
+No data 
+No Data 
+11 
+Blanked 
+Blanked 
+12 
+Doppler (PP) 
+Doppler GPS measurement post-processed 
+13 
+SPS (PP) 
+SPS GPS measurement post-processed 
+14 
+Differential (PP) 
+Differential GPS measurement post-processed 
+15 
+RTK Float (PP) 
+RTK Float GPS measurement post-processed 
+16 
+RTK Integer (PP) 
+RTK Integer GPS measurement post-processed 
+17 
+OmniSTAR XP 
+The GPS measurement used OmniSTAR XP corrections 
+18 
+CDGPS 
+The GPS measurement used real time Canada wide DGPS service 
+19 
+Not recognised 
+Not recognised 
+20 
+gxDoppler 
+Computed by combining raw Doppler measurements 
+21 
+gxSPS 
+Computed by combining raw pseudo-range measurements 
+22 
+gxDifferential 
+Computed by combining raw pseudo-range measurements and differential corrections 
+23 
+gxFloat 
+Computed by combining raw pseudo-range and L1 carrierphase measurements and differential corrections 
+24 
+gxInteger 
+Computed by combining raw pseudo-range and L1/L2 carrier-phase measurements and differential corrections 
+25 
+ixDoppler 
+Single-satellite updates from raw Doppler measurements 
+26 
+ixSPS 
+Single-satellite updates from raw pseudo-range measurements 
+27 
+ixDifferential 
+Single-satellite updates from raw pseudo-range measurements and differential corrections 
+28 
+ixFloat 
+Single-satellite updates from raw pseudo-range and L1 carrier-phase measurements and differential corrections 
+29 
+ixInteger 
+Single-satellite updates from raw pseudo-range and L1/L2 carrier-phase measurements and differential corrections 
+30 
+PPP converging 
+Converging PPP (Precise Point Positioning) from global PPP corrections 
+31 
+PPP 
+Converged PPP (Precise Point Positioning) from global PPP corrections 
+
+Unknown 
+Unknown 
+
+ 
+Reserved 
+Table 9: 
+Definitions of position mode, velocity mode and orientation mode 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+Byte 
+Bits 1–7: Position x innovation 
+Bit 0 = 1 
+1 
+Byte 
+Bits 1–7: Position y innovation 
+Bit 0 = 1 
+2 
+Byte 
+Bits 1–7: Position z innovation 
+Bit 0 = 1 
+3 
+Byte 
+Bits 1–7: Velocity x innovation 
+Bit 0 = 1 
+4 
+Byte 
+Bits 1–7: Velocity y innovation 
+Bit 0 = 1 
+5 
+Byte 
+Bits 1–7: Velocity z innovation 
+Bit 0 = 1 
+6 
+Byte 
+Bits 1–7: Orientation pitch innovation 
+Bit 0 = 1 
+7 
+Byte 
+Bits 1–7: Orientation heading innovation 
+Bit 0 = 1 
+Table 10: 
+Status information, Channel 1 
+Note 1: The innovations are always expressed as a proportion of the current accuracy. Units are 0.1 . As a general rule, innovations below 1.0 are good; innovations above 1.0 are poor. Usually it is best to filter the square of the innovations and display the square root of the filtered value. 
+ 
+Note 2: If the orientation pitch innovation and/or the orientation heading innovation are always much higher than 1.0  then it is likely that the system or the antennas have changed orientation in the vehicle. (Or the environment is too poor to use the dual antenna system). 
+ 
+Byte 
+Format 
+Definition 
+0–1 
+UShort 
+Characters received from the primary GNSS receiver by the navigation computer 
+2–3 
+UShort 
+Packets received from the primary GNSS receiver by the navigation computer 
+4–5 
+UShort 
+Characters received from the primary GNSS receiver by the navigation computer, but not understood by the decoder 
+6–7 
+UShort 
+Packets received from the primary GNSS receiver by the navigation computer that could not be used to update the Kalman filter (e.g. too old) 
+Table 11: 
+Status information, Channel 2 
+Note: These counters are cyclic and will wrap when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+UShort 
+North position accuracy 
+Age < 150 
+
+UShort 
+East position accuracy 
+Age < 150 
+
+UShort 
+Down position accuracy 
+Age < 150 
+
+UByte 
+Age 
+ 
+
+UByte 
+ABD robot UMAC interface status byte 
+Value 	 0xFF 
+Table 12: 
+Status information, Channel 3 
+Note: The units of the position accuracies are 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+North velocity accuracy 
+Age < 150 
+2–3 
+UShort 
+East velocity accuracy 
+Age < 150 
+4–5 
+UShort 
+Down velocity accuracy 
+Age < 150 
+6 
+UByte 
+Age 
+Always 
+7 
+UByte 
+Processing method used by Blended (Table 14) 
+Always 
+Table 13: 
+Status information, Channel 4 
+Note: The units of the velocity accuracies are 1 mm/s. 
+ 
+Value 
+Name 
+Definition 
+0 
+Invalid 
+Invalid 
+1 
+Real-time 
+Generated in real-time by firmware 
+2 
+Simulated 
+Post-process simulation of real-time blending chronological constraints 
+3 
+Post-process forward 
+Post-processed in forward time direction 
+4 
+Post-process backward 
+Post-processed in backward time direction 
+5 
+Post-process combined 
+Post-processed combination of forward and backward processing results 
+6 
+Unknown 
+Unknown 
+7 
+: 
+255 
+ 
+Reserved 
+Table 14: 
+Definitions of Blended processing methods 
+ 
+Byte 
+Format 
+
+Definition 
+Valid when 
+0–1 
+UShort 
+Heading accuracy 
+
+Age < 150 
+2–3 
+UShort 
+Pitch accuracy 
+
+Age < 150 
+4–5 
+UShort 
+Roll accuracy 
+
+Age < 150 
+6 
+UByte 
+Age 
+
+Always 
+7 
+ 
+Reserved 
+
+N/A 
+Table 15: 
+Status information, Channel 5 
+Note: The units of the orientation accuracies are 1 × 10−5 radians. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+Short 
+Gyro bias x 
+Age < 150 
+
+Short 
+Gyro bias y 
+Age < 150 
+
+Short 
+Gyro bias z 
+Age < 150 
+
+UByte 
+Age 
+ 
+
+UByte 
+Bits 0–3: number of L1 GPS measurements decoded by primary receiver 
+Bits 4–7: number of L2 GPS measurements decoded by primary receiver 
+Value 	 0xF 
+Table 16: 
+Status information, Channel 6 
+Note: The units of the gyro biases are 5 × 10−6 radians/s. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+Short 
+Accelerometer bias x 
+Age < 150 
+
+Short 
+Accelerometer bias y 
+Age < 150 
+
+Short 
+Accelerometer bias z 
+Age < 150 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Bits 0–3: number of L1 GPS measurements decoded by secondary receiver 
+Bits 4–7: number of L2 GPS measurements decoded by secondary receiver 
+Value 	 0xF 
+Table 17: 
+Status information, Channel 7 
+Note: The units of the accelerometer biases are 0.1 mm/s2. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+Short 
+Gyro scale factor x 
+Age < 150 
+
+Short 
+Gyro scale factor y 
+Age < 150 
+
+Short 
+Gyro scale factor z 
+Age < 150 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Bits 0–3: number of L1 GPS measurements decoded by external receiver 
+Bits 4–7: number of L2 GPS measurements decoded by external receiver 
+Value 	 0xF 
+Table 18: 
+Status information, Channel 8 
+Note: The units of the gyro scale factors are 1 ppm (0.0001 %). 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+UShort 
+Accuracy of gyro bias x 
+Age < 150 
+
+UShort 
+Accuracy of gyro bias y 
+Age < 150 
+
+UShort 
+Accuracy of gyro bias z 
+Age < 150 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Bits 0–3: number of L1 GLONASS measurements decoded by primary receiver 
+Bits 4–7: number of L2 GLONASS measurements 
+decoded by primary receiver 
+Value 	 0xF 
+Table 19: 
+Status information, Channel 9 
+Note: The units of the gyro bias accuracies are 1 × 10−6 radians/s. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+UShort 
+Accuracy of accelerometer bias x 
+Age < 150 
+
+UShort 
+Accuracy of accelerometer bias y 
+Age < 150 
+
+UShort 
+Accuracy of accelerometer bias z 
+Age < 150 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Bits 0–3: number of L2 GLONASS measurements decoded by secondary receiver 
+Bits 4–7: number of L1 GLONASS measurements decoded by secondary receiver 
+Value 	 0xF 
+Table 20: 
+Status information, Channel 10 
+Note: The units of the accelerometer biases are 0.01 mm/s2. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+UShort 
+Accuracy of gyro scale factor x 
+Age < 150 
+
+UShort 
+Accuracy of gyro scale factor y 
+Age < 150 
+
+UShort 
+Accuracy of gyro scale factor z 
+Age < 150 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Bits 0–3: number of L1 GLONASS measurements decoded by external receiver 
+Bits 4–7: number of L2 GLONASS measurements decoded by external receiver 
+Value 	 0xF 
+Table 21: 
+Status information, Channel 11Status information, Channel 11 Note: The units of the gyro scale factors are 1 ppm (0.0001 %). 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Distance to primary GNSS antenna in x direction 
+Age < 150 
+2–3 
+Short 
+Distance to primary GNSS antenna in y direction 
+Age < 150 
+4–5 
+Short 
+Distance to primary GNSS antenna in z direction 
+Age < 150 
+6 
+UByte 
+Age 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 22: 
+Status information, Channel 12 Note: The unit of distance is 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+Short 
+Heading orientation of the GNSS antennas 
+Age < 150 
+
+Short 
+Pitch orientation of the GNSS antennas 
+Age < 150 
+
+Short 
+Distance between the GNSS antennas 
+Age < 150 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Bits 0–3: number of GPS satellites available (not necessarily used) in heading module 
+Bits 4–7: number of GPS satellites used in current 
+L1 solution in heading module 
+Value 	 0xF 
+Table 23: 
+Status information, Channel 13 
+Note: The unit of distance is 1 mm. Angles are given in 1 × 10−4 radians. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Accuracy of distance to primary GNSS antenna in x direction 
+Age < 150 
+2–3 
+UShort 
+Accuracy of distance to primary GNSS antenna in y direction 
+Age < 150 
+4–5 
+UShort 
+Accuracy of distance to primary GNSS antenna in z direction 
+Age < 150 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Bits 0–3: number of GPS satellites used in position solution 
+Bits 4–7: number of GLONASS satellites used in position solution 
+Value 	 0xF 
+Table 24: 
+Status information, Channel 14 
+Note: The unit of the distance accuracy is 0.1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Accuracy of heading orientation of the GNSS antennas 
+Age < 150 
+2–3 
+UShort 
+Accuracy of pitch orientation of the GNSS antennas 
+Age < 150 
+4–5 
+UShort 
+Accuracy of distance between the GNSS antennas 
+Age < 150 
+
+UByte 
+Age 
+ 
+
+UByte 
+Bits 0–3: number of GLONASS satellites available (not necessarily used) in heading module 
+Bits 4–7: number of GLONASS satellites used in current L1 solution in heading module 
+Value 	 0xF 
+Table 25: 
+Status information, Channel 15 
+Note: The units of the distances are 1 mm. The units of the orientation angle accuracies are 1 × 10−4 radians. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Heading of the vehicle in the INS co-ordinate frame 
+Byte 6 = 0 
+2–3 
+Short 
+Pitch of the vehicle in the INS co-ordinate frame 
+Byte 6 = 0 
+4–5 
+Short 
+Roll of the vehicle in the INS co-ordinate frame 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+Byte 
+Bits 1–7: UTC time offset 
+Bit 0 = 1 
+Table 26: 
+Status information, Channel 16 
+Note: The units of the orientation angles are 1 × 10−4 radians. To compute UTC time from GPS time add the offset. Currently the offset is −18 seconds. (The offset is always an integer number of seconds. UTC time slips or gains a second occasionally whereas GPS time does not). 
+ 
+Byte 
+Format 
+Definition 
+0–1 
+UShort 
+Characters received from the secondary GNSS receiver by the navigation computer 
+2–3 
+UShort 
+Packets received from the secondary GNSS receiver by the navigation computer 
+4–5 
+UShort 
+Characters received from the secondary GNSS receiver by the navigation computer, but not understood by the decoder 
+6–7 
+UShort 
+Packets received from the secondary GNSS receiver by the navigation computer that could not be used to update the Kalman filter (e.g. too old) 
+Table 27: 
+Status information, Channel 17 
+Note: These counters are cyclic and will wrap when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+0–3 
+ULong 
+Characters received from the IMU by the navigation computer 
+4– 5 
+UShort 
+Packets received from the IMU by the navigation computer 
+6–7 
+UShort 
+Characters received from the IMU by the navigation computer but not understood by the decoder 
+Table 28: 
+Status information, Channel 18 
+Note: These counters are cyclic and will wrap when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+0–7 
+8 × Byte 
+This is the software version or development Id that is running in the INS in ASCII format 
+Table 29: 
+Status information, Channel 19 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Age of the differential corrections from the basestation 
+Value ≠ 0xFFFF 
+2 
+⋮ 
+5 
+4 × Byte 
+Differential station Id in ASCII format 
+Always 
+6–7 
+ 
+Reserved 
+N/A 
+Table 30: 
+Status information, Channel 20 
+Note: The unit of the differential corrections is 0.01 seconds. If the differential station Id is four characters long, a null-terminator will need to be added. If the station Id is three or fewer characters the unused bytes will be zero. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0: 
+⋮
+3 
+Long 
+Disk space remaining in kiB. Note that 
+approximately 8 MB is always left spare on the disk 
+Value > 0 
+
+⋮ 7 
+Long 
+Size of current logged raw data file in kiB. When there is insufficient space on the disk no more data will be written 
+Always 
+Table 31: 
+Status information, Channel 21 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Time mismatch counter. This field counts the number of times that the IMU time and the GPS time disagree. This can occur if GPS has been unavailable for a long period of time and the IMU clock has drifted compared to GPS time. It can occur when the IMU resets unexpectedly 
+Value 	 0xFFFF 
+
+UByte 
+IMU time difference (ms) 
+Value 	 0xFF 
+
+UByte 
+IMU time margin (ms) 
+Value 	 0xFF 
+4–5 
+UShort 
+IMU loop time (ms) 
+Value 	 0xFFFF 
+6–7 
+UShort 
+Output loop time (ms) 
+Value 	 0xFFFF 
+Table 32: 
+Status information, Channel 22 
+ 
+
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Blended navigation system lag time: delay in the calculation of the Kalman filter compared to the targeted time (ms) 
+Value ≠ 0xFFFF 
+2–3 
+UShort 
+Indicates how long the INS has been running for. The field uses a non-linear time scale as follows: 
+Value > 20,700: 	  (value − 20,532 ) (hours) 
+10,800 < value ≤ 20,700: (value − 10,620) (minutes) 
+Value ≤ 10,800: 	  value (seconds) 
+Value ≠ 0xFFFF 
+4 
+UByte 
+Number of consecutive GPS position updates rejected 
+Value ≠ 0xFF 
+5 
+UByte 
+Number of consecutive GPS velocity updates rejected 
+Value ≠ 0xFF 
+6 
+UByte 
+Number of consecutive GPS attitude updates rejected 
+Value ≠ 0xFF 
+7 
+UByte 
+PTP Status 
+0: Invalid 
+1: Initialising 
+2: Faulty 
+3: Disabled 
+4: Listening 
+5: Pre-master 
+6: Master 
+7: Passive 
+8: Uncalibrated 
+9: Slave 
+10: Locked 
+11: Config Error 
+12: Critical Error 
+13: Unknown 
+0 ≤ Value ≤ 255 
+Table 33: 
+Status information, Channel 23 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮
+3 
+Long 
+TRIG_MINUTE. GPS minute when the triggered occurred. Given as minutes since GPS began  (midnight, 6th January 1980) 
+Value > 0 
+4–5 
+UShort 
+TRIG_MSEC. Milliseconds into TRIG_MINUTE when the triggered occurred 
+TRIG_MINUTE > 
+0 
+6 
+Byte 
+TRIG_USEC. Microseconds into TRIG_MSEC when the trigger occurred. Note that the unit is 4 ms 
+TRIG_MINUTE > 
+0 
+7 
+UByte 
+Trigger count, increments each time there is a new trigger 
+Value > 0 
+Table 34: 
+Status information, Channels 24, 43, 65, 79, 80 and 81 
+Note: To find the time a trigger occurred in GPS seconds, compute: 
+(TRIG_MINUTE × 60.0) + (TRIG_MSEC × 0.001) + (TRIG_USEC × 0.000004) 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Output displacement lever arm in x direction 
+Byte 6 = 0 
+2–3 
+Short 
+Output displacement lever arm in y direction 
+Byte 6 = 0 
+4–5 
+Short 
+Output displacement lever arm in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 35: 
+Status information, Channel 26 
+Note: The units of the output displacement are 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+Heading quality 
+0: None—no heading information 
+1: Poor—heading information unusable 
+2: RTK Float—floating ambiguity heading solution 3: RTK Integer—integer ambiguity heading solution 
+4: IX Integer—integer ambiguity heading solution 
+0 ≤ Value ≤ 4 
+1 
+UByte 
+Heading search type 
+0: Idle—not searching at the moment 
+1: L1—using L1 frequency for ambiguity resolution 
+2: L2—using L2 frequency for ambiguity resolution 
+3: L1/L2—using L1 and L2 frequencies for ambiguity resolution 
+0 ≤ Value ≤ 3 
+2 
+UByte 
+Heading search status 
+0: OK 
+1: No spare CPU 
+2: No seed 
+3: No master 
+4: No slave 1 
+5: No slave 2 
+6: No slave 3 
+7: Bad length 
+8: No matching ambiguities 
+9: Too many ambiguities 
+10: Lost master 
+11: Lost slave 1 
+12: Lost slave 2 
+13: Lost slave 3 
+14: Satellite constellation too poor 
+15: Covariance error 
+16: Ambiguous ambiguities 
+17: Lost lock 
+18: Disabled 
+0 ≤ Value ≤ 18 
+3 
+UByte 
+Heading search ready 
+0: Waiting 
+1: Processing 
+0 ≤ Value ≤ 1 
+4–5 
+UShort 
+Initial number of ambiguities in the heading search 
+Value ≠ 0xFFFF 
+6–7 
+UShort 
+Remaining number of ambiguities in the heading search 
+Value ≠ 0xFFFF 
+Table 36: 
+Status information, Channel 27 
+ 
+Byte 
+Format 
+
+0 
+UByte 
+Master satellite PRN in the heading search 
+1 
+UByte 
+Slave 1 satellite PRN in the heading search 
+2 
+UByte 
+Slave 2 satellite PRN in the heading search 
+3 
+UByte 
+Slave 3 satellite PRN in the heading search 
+4–5 
+UShort 
+Heading search duration (in seconds) 
+6–7 
+UShort 
+Number of constraints applied in the heading search 
+Table 37: 
+Status information, Channel 28 
+ 
+
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+“Vehicle starts” option 
+0: Initially not level 
+1: Initially level (roll and pitch within 15°) 
+0 
+ Value 
+ 1 
+1 
+UByte 
+Vibration in the environment option 
+0: Normal 
+1: High 
+2: Very high 
+0 
+ Value 
+ 2 
+2 
+UByte 
+Expected GNSS accuracy or weighting 
+0: Some obstructions—medium GNSS weighting 
+1: Open sky—high GNSS weighting 
+2: Frequent obstructions—low GNSS weighting 
+0 
+ Value 
+ 2 
+3 
+UByte 
+UDP output option 
+0: NCOM 
+1: Reserved 
+2: ABD robot interface 
+3: Reserved 
+4: Reserved 
+5: NMEA 
+6: Reserved 
+7: MCOM 
+8: Reserved 
+9: Reserved 
+10: Reserved 
+11: Reserved 
+12: Reserved 
+13: Reserved 
+14: Reserved 
+15: Reserved 
+16: Reserved 
+0 
+16 
+ Value 
+ 
+4 
+UByte 
+Serial 1 output option 
+See UDP output option for definitions 
+0 
+10 
+ Value 
+ 
+5 
+UByte 
+Serial 2 Output option 
+See UDP Output option for definitions 
+0 	 Value 
+10 
+ 
+6 
+UByte 
+Heading search option 
+0: Never compute dual-antenna heading 
+1: No Search but allow INS-guided dual-antenna 
+“relock” 
+2: Only search after initialisation 
+3: Always perform heading searches 
+0 	 Value 
+ 3 
+7 
+UByte 
+Heave coupling mode 
+0: AC coupled 
+1: DC coupled 
+2: Disabled 
+0 	 Value 	 2 
+Table 38: 
+Status information, Channel 29 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+Operating system version 1 
+Value ≠ 0xFF 
+1 
+UByte 
+Operating system version 2 
+Value ≠ 0xFF 
+2 
+UByte 
+Operating system version 3 
+Value ≠ 0xFF 
+3 
+⋮
+Word 
+Start-up script version 
+ 
+
+UShort 
+16-bit Serial number (see note). 
+Value ≠ 0xFFFF 
+Table 39: 
+Status information, Channel 30 
+Note: If the device’s serial number is above 65535, then the serial number will be transmitted as a 24-bit unsigned integer in bytes 4-6 of status channel 40 instead. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+Byte 
+Bits 1–7: Zero velocity x innovation 
+Bit 0 = 1 
+1 
+Byte 
+Bits 1–7: Zero velocity y innovation 
+Bit 0 = 1 
+2 
+Byte 
+Bits 1–7: Zero velocity z innovation 
+Bit 0 = 1 
+3 
+Byte 
+Bits 1–7: Lateral advanced slip innovation 
+Bit 0 = 1 
+4 
+Byte 
+Bits 1–7: Heading lock innovation 
+Bit 0 = 1 
+5 
+Byte 
+Bits 1–7: Wheel speed innovation 
+Bit 0 = 1 
+6 
+Byte 
+Bits 1–7: Clock offset innovation 
+Bit 0 = 1 
+7 
+Byte 
+Bits 1–7: Clock drift innovation 
+Bit 0 = 1 
+Table 40: 
+Status information, Channel 32 
+Note: The innovations are always expressed as a proportion of the current accuracy. Units are 0.1 . As a general rule, innovations below 1.0  are good; innovations above 1.0  are poor. Usually it is best to filter the square of the innovations and display the square root of the filtered value.  
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Distance to the zero velocity point in x direction 
+Byte 6 = 0 
+2–3 
+Short 
+Distance to the zero velocity point in y direction 
+Byte 6 = 0 
+4–5 
+Short 
+Distance to the zero velocity point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 41: 
+Status information, Channel 33 
+Note: The units of the distances are 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Accuracy of distance to the zero velocity point in x direction 
+Byte 6 = 0 
+2–3 
+UShort 
+Accuracy of distance to the zero velocity point in y direction 
+Byte 6 = 0 
+4–5 
+UShort 
+Accuracy of distance to the zero velocity point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 42: 
+Status information, Channel 34 Note: The units of the distances are 0.1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Distance to the lateral advanced slip point in x direction 
+Byte 6 = 0 
+2–3 
+Short 
+Distance to the lateral advanced slip point in y direction 
+Byte 6 = 0 
+4–5 
+Short 
+Distance to the lateral advanced slip point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 43: 
+Status information, Channel 35 Note: The units of the distances are 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Accuracy of distance to the lateral advanced slip point in x direction 
+Byte 6 = 0 
+2–3 
+UShort 
+Accuracy of distance to the lateral advanced slip point in y direction 
+Byte 6 = 0 
+4–5 
+UShort 
+Accuracy of distance to the lateral advanced slip point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 44: 
+Status information, Channel 36 Note: The units of the distances are 0.1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+Short 
+Heading misalignment angle 
+Byte 6 = 0 
+
+UShort 
+Accuracy of heading misalignment angle 
+Byte 6 = 0 
+
+UByte 
+Total number of satellites used in position solution 
+Value ≠ 0xF 
+
+UByte 
+Total number of satellites used in velocity solution 
+Value ≠ 0xF 
+
+UByte 
+Validity 
+Always 
+
+UByte 
+Total number of satellites used in attitude solution 
+Value ≠ 0xF 
+Table 45: 
+Status information, Channel 37 
+Note: The unit of the angle is 1 × 10−4 radians. The unit of the angle accuracy is 1 × 10−5 radians. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+NCOM format encoder version (currently 22) 
+Value ≠ 0 
+2–3 
+UShort 
+Output latency in units of 10ms. 
+Value ≠ 0xFFFF 
+4 
+⋮
+6 
+UWord 
+ 
+24-bit Serial Number 
+Value ≠ 0xFFFFFF 
+7 
+
+Reserved 
+N/A 
+Table 46: 
+Status information, Channel 40 
+ 
+
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+Serial port 1 baud rate (see Table 48: Status information, Channel 42 
+ 
+) 
+See Table 48: Status information, Channel 42 
+  
+1 
+UByte 
+Serial port 2 baud rate (see Table 48: Status information, Channel 42 
+ 
+) 
+See Table 48: Status information, Channel 42 
+  
+2 
+UByte 
+Serial port 3 baud rate (see Table 48: Status information, Channel 42 
+ 
+) 
+See Table 48: Status information, Channel 42 
+  
+3 
+UByte 
+CAN bus baud rate (see Table 49: Definitions of serial baud rates 
+ 
+) 
+See Table 49: Definitions of serial baud rates 
+  
+4 
+⋮
+7 
+4xUbyte 
+Configured WiFi IP Address 
+Each byte< 0xFF 
+Table 47: 
+Status information, Channel 41 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮
+ 
+Reserved 
+N/A 
+
+UByte 
+Bit 0 = heading mode option raw internal 
+Bit 1 = heading mode option attitude internal 
+Bit 3 = heading mode option attitude external 
+Bit 7 = valid flag for this byte 
+Bit 7 = 0 
+7 
+ 
+Reserved 
+N/A 
+Table 48: 
+Status information, Channel 42 
+ 
+Value 
+Name 
+Definition 
+0 
+Disabled 
+The serial port is disabled or not present 
+1 
+300 
+The serial port outputs at 300 Bd 
+2 
+600 
+The serial port outputs at 600 Bd 
+3 
+1200 
+The serial port outputs at 1,200 Bd 
+4 
+2400 
+The serial port outputs at 2,400 Bd 
+5 
+4800 
+The serial port outputs at 4,800 Bd 
+6 
+9600 
+The serial port outputs at 9,600 Bd 
+7 
+19200 
+The serial port outputs at 19,200 Bd 
+8 
+38400 
+The serial port outputs at 38,400 Bd 
+9 
+57600 
+The serial port outputs at 57,600 Bd 
+10 
+76800 
+The serial port outputs at 76,800 Bd 
+11 
+115200 
+The serial port outputs at 115,200 Bd 
+12 
+230400 
+The serial port outputs at 230,400 Bd 
+13 
+460800 
+The serial port outputs at 460,800 Bd 
+14 
+921600 
+The serial port outputs at 921,600 Bd 
+15 
+14400 
+The serial port outputs at 14,400 Bd 
+16 
+28800 
+The serial port outputs at 28,800 Bd 
+17 
+153600 
+The serial port outputs at 153,600 Bd 
+18 
+307200 
+The serial port outputs at 307,200 Bd 
+19 
+614400 
+The serial port outputs at 614,400 Bd 
+20 
+128000 
+The serial port outputs at 128,000 Bd 
+21 
+256000 
+The serial port outputs at 256,000 Bd 
+22 
+512000 
+The serial port outputs at 521,000 Bd 
+23 
+250000 
+The serial port outputs at 250,000 Bd 
+24 
+300000 
+The serial port outputs at 300,000 Bd 
+25 
+500000 
+The serial port outputs at 500,000 Bd 
+26 
+1500000 
+The serial port outputs at 1,500,000 Bd 
+27 
+2000000 
+The serial port outputs at 2,000,000 Bd 
+28 
+2500000 
+The serial port outputs at 2,500,000 Bd 
+29 
+750000 
+The serial port outputs at 750,000 Bd 
+30 
+10000000 
+The serial port outputs at 1,000,0000 Bd 
+31 
+3000000 
+The serial port outputs at 3,000,000 Bd 
+32 
+1843200 
+The serial port outputs at 1843,200 Bd 
+33 
+3686400 
+The serial port outputs at 3,686,400 Bd 
+34 
+ 
+255 
+ 
+Reserved 
+Table 49: 
+Definitions of serial baud rates 
+ 
+Value 
+Name 
+Definition 
+0 
+Disabled 
+The CAN bus is disabled or not present 
+1 
+100000 
+The CAN bus operates at 100,000 Bd 
+2 
+125000 
+The CAN bus operates at 125,000 Bd 
+3 
+200000 
+The CAN bus operates at 200,000 Bd 
+4 
+250000 
+The CAN bus operates at 250,000 Bd 
+5 
+500000 
+The CAN bus operates at 500,000 Bd 
+6 
+1000000 
+The CAN bus operates at 1,000,000 Bd 
+7 
+⋮ 
+255 
+ 
+Reserved 
+Table 50: 
+Definitions of CAN baud rates 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Wheel speed scaling in units of 0.1 pulses per metre 
+Value ≠ 0xFFFF 
+2–3 
+UShort 
+Wheel speed scaling accuracy in units of 0.002 % 
+Value ≠ 0xFFFF 
+4 
+⋮ 
+7 
+ 
+Reserved 
+N/A 
+Table 51: 
+Status information, Channel 44 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮ 
+ULong 
+Cyclic wheel speed input count. This value increases each time a pulse is detected on the wheel speed input 
+Always 
+
+UShort 
+Timestamp of wheel speed input count measurement above. This time-stamp is transmitted as milliseconds into the current GPS minute 
+Value < 60,000 
+6 
+UByte 
+Time since the wheel speed count last changed, in units of 0.1 s 
+Value ≠ 0xFF 
+7 
+ 
+Reserved 
+N/A 
+Table 52: 
+Status information, Channel 45 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Distance to the wheel speed measurement point in x direction 
+Byte 6 = 0 
+2–3 
+Short 
+Distance to the wheel speed measurement point in y direction 
+Byte 6 = 0 
+4–5 
+Short 
+Distance to the wheel speed measurement point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 53: 
+Status information, Channel 46 Note: The units of the distances are 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Accuracy of distance to the wheel speed measurement point in x direction 
+Byte 6 = 0 
+2–3 
+UShort 
+Accuracy of distance to the wheel speed measurement point in y direction 
+Byte 6 = 0 
+4–5 
+UShort 
+Accuracy of distance to the wheel speed measurement point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 54: 
+Status information, Channel 47 Note: The units of the distances are 0.1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Undulation value (difference between INS altitude and WGS-84 ellipsoidal altitude) 
+Value ≠ 0xFFFF 
+
+UByte 
+HDOP of GPS 
+Value ≠ 0xFF 
+
+UByte 
+PDOP of GPS 
+Value ≠ 0xFF 
+
+ 
+Reserved 
+ 
+
+UByte 
+Configured output co-ordinate datum 
+0: WGS84 
+1:ITRF2008 
+2: ETRF2000(R08) 
+3: NAD83(2011) 
+Value ≠ 0xFF 
+6 
+UByte 
+Datum ellipsoid 
+0: WGS84 
+1: GRS80 
+Value ≠ 0xFF 
+7 
+UByte 
+Earth frame associated with datum ellipsoid 
+0: ITRF2008 
+1: ETRF2000(R08) 
+2: NAD83(2011) 
+Value ≠ 0xFF 
+Table 55: 
+Status information, Channel 48 
+Units of undulation are 5 mm. Units of HDOP/PDOP are 0.1. 
+In the default configuration the INS outputs the geoidal altitude, computed using the EGM96 lookup table. To compute the WGS-84 or elliptical altitude use the following equation: 
+Ellipsoidal altitude = INS altitude – undulation 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Frequency of OmniSTAR tracking loop 
+Value ≠ 0xFFFF 
+2 
+UByte 
+SNR of OmniSTAR signal 
+Value ≠ 0xFF 
+3 
+UByte 
+Time of continuous tracking of OmniSTAR signal 
+Value ≠ 0xFF 
+4 
+UByte 
+OmniSTAR status 
+Value ≠ 0xFF 
+5 
+⋮ 
+7 
+UWord 
+OmniSTAR serial number 
+Value ≠ 0xFFFFFF 
+Table 56: 
+Status information, Channel 49 
+The frequency of the OmniSTAR tracking loop is 1.52 + (Value / 1 × 106) GHz. Units of SNR is 0.2 dB. Units of time for tracking of OmniSTAR signal are 1 s. 
+ 
+Byte 
+Format 
+Definition 
+0–1 
+UShort 
+Characters received on the command port 
+2–3 
+UShort 
+Packets received on the command port 
+4–5 
+UShort 
+Characters received on the command port but not understood by the decoder 
+6–7 
+UShort 
+Errors received on the command port 
+Table 57: 
+Status information, Channel 50 
+Note: The command ports are either Ethernet UDP port 3001 or Serial 1 in some of the serial modes. These counters are cyclic and will wrap when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Distance to the additional slip point in x direction 
+Byte 6 = 0 
+2–3 
+Short 
+Distance to the additional slip point in y direction 
+Byte 6 = 0 
+4–5 
+Short 
+Distance to the additional slip point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 58: 
+Status information, Channels 51, 52, 53, 54, 68, 69, 70 and 71 Note: The units of the distances are 1 mm. 
+ 
+
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+Bits 0-1: GNSS antenna status 
+0: OK 
+1: Open 
+2: Short 
+3: Unknown or invalid 
+Bits 2-3: GNSS antenna power status 
+0: Power on 
+1: Power off 
+2: Power unknown 
+3: Invalid 
+Bits 4-7: Reserved 
+See individual bits 
+
+UByte 
+CPU load on GNSS card (percent) 
+Value 	 0xFF 
+
+UByte 
+Core noise on GNSS card (percent) 
+Value 	 0xFF 
+
+UByte 
+Baud rate of GNSS card (see Table 48: Status information, Channel 42 
+ 
+) 
+Value < 15 
+4 
+UByte 
+Number of satellites tracked 
+Value 	 0xFF 
+5 
+UByte 
+Position mode of GNSS (see Table 9) 
+Value 	 0xFF 
+6 
+UByte 
+Core temperature (°C) = value − 70 
+Value 	 0xFF 
+7 
+UByte 
+GNSS receiver supply voltage (V) = value × 0.1 
+Value 	 0xFF 
+Table 59: 
+Status information, Channels 55, 56 and 62 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Distance to primary GNSS antenna in X direction 
+Age < 150 and scale factor 	 0 
+2–3 
+Short 
+Distance to primary GNSS antenna in Y direction 
+Age < 150 and scale factor 	 0 
+4–5 
+Short 
+Distance to primary GNSS antenna in Z direction 
+Age < 150 and scale factor 	 0 
+
+UByte 
+Age 
+Always 
+
+UByte 
+Scale factor 
+Always 
+Table 60: 
+Status information, Channel 57 
+Note: The unit of the distances is 1 mm and each value has to be multiplied by the scale factor. If the scale factor is 0xFF then the distances are saturated. 
+ 
+Bytes 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Heading of output frame with reference to vehicle frame 
+Byte 6 = 0 
+2–3 
+Short 
+Pitch of output frame with reference to vehicle frame 
+Byte 6 = 0 
+4–5 
+Short 
+Roll of the output frame with reference to vehicle frame 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 61: 
+Status information, Channel 58 
+Note: The units of the orientation angles are 1 × 10−4 radians. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+UShort 
+Number of IMU packets missed 
+Always 
+
+UByte 
+Number of IMU resets detected 
+Always 
+
+UByte 
+Number of IMU errors detected 
+Always 
+
+UShort 
+Calibration date in days since GPS began (midnight, 6th January 1980) 
+Value 	 0xFFFF 
+6–7 
+UShort 
+IMU temperature (ºC) = value × 0.01 − 70 
+Value 	 0xFFFF 
+Table 62: 
+Status information, Channel 59 
+Note: In normal operation the number of packets, resets and errors detected or missed should be zero. These counters are cyclic and will reset to zero when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Surface angle heading rotation 
+Byte 6 = 0 
+2–3 
+Short 
+Surface angle pitch rotation 
+Byte 6 = 0 
+4–5 
+Short 
+Surface angle roll rotation 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 63: 
+Status information, Channel 60 
+Note: The units of the angles are 1 × 10−4 radians. 
+ 
+Byte 
+Format 
+Definition 
+0–1 
+UShort 
+Characters received from the external GNSS by the navigation computer. 
+2–3 
+UShort 
+Packets received from the external GNSS by the navigation computer. 
+4–5 
+UShort 
+Characters received from the external GNSS by the navigation computer, but not understood by the decoder. 
+6–7 
+UShort 
+Packets received from the external GNSS by the navigation computer that could not be used to update the Kalman filter (e.g. too old). 
+Table 64: 
+Status information, Channel 61 
+Note: These counters are cyclic and will wrap when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+CPU type running the navigation computer 
+0: TP400B 
+1: TP500 
+2: TP600 
+3: None 
+4: OMAP3503 
+Others unknown 
+Value 
+ 0xFF 
+1 
+UByte 
+External GNSS type 
+0: Novatel Millennium or BeeLine 
+1: Novatel OEM4 
+2: None 
+3: Novatel OEMV 
+4: u-blox LEA4 
+5: Generic 
+6: Trimble 5700/5800 
+7: Trimble AgGPS 132 
+8: Topcon GB-500 
+9: NavCom Sapphire 
+10: u-Blox LEA6 
+11: Trimble BD920 
+12: Leica GX1200 
+13: Topcon B110 
+14: Novatel OEM6 
+Others unknown 
+Value 
+ 0xFF 
+2 
+UByte 
+External GNSS format 
+0: Novatel OEM2 Binary 
+1: Novatel OEM4/OEMV Binary 
+2: UBX 
+3: NMEA 
+4: GSOF 
+5: TSIP 
+6: GRIL 
+7: Debug 
+8: NCT Binary 
+Value 	 0xFF 
+
+
+9: OWI 
+Others unknown 
+
+3 
+UByte 
+Dual-port RAM status 
+0: Not fitted 
+1: Failed to initialise 
+2: Dead 
+3: Down 
+4: Overloaded 
+5: Sporadic 
+6: Slow 
+7: Acceptable 
+8: OK 
+9: Good 
+10: Excellent 
+Others unknown 
+Value 
+ 0xFF 
+4 
+UByte 
+Bits 0–3: Primary GNSS expected position update rate 
+Bits 4–7: Primary GNSS expected velocity update rate 0: Disabled 
+1: 1 Hz 
+2: 2 Hz 
+3: 4 Hz 4: 5 Hz 
+5: 10 Hz 
+6: 20 Hz 
+Others unknown 
+Value 
+Value 
+ 0xF 
+ 0xF 
+5 
+UByte 
+Bits 0–3: Primary GNSS expected raw data rate 
+Bits 4–7: Secondary GNSS expected raw data rate 
+0: Disabled 
+1: 1 Hz 
+2: 2 Hz 
+3: 4 Hz 4: 5 Hz 
+5: 10 Hz 
+6: 20 Hz 
+Others unknown 
+Value 
+Value 
+ 
+ 0xF 
+ 0xF 
+6 
+ 
+Reserved 
+N/A 
+
+7 
+UByte 
+Product type 
+0: Default 
+1: Survey 
+2: OEM 
+Others unknown 
+Value 	 0xFF 
+Table 65: 
+Status information, Channel 64 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮ 
+3 
+Long 
+Local co-ordinates origin latitude 
+Value ≠ 
+0x80000000 
+4 
+⋮ 
+7 
+Long 
+Local co-ordinates origin longitude 
+Value ≠ 
+0x80000000 
+Table 66: 
+Status information, Channel 66 
+Note: The units of the angles are 1 × 10−7 degrees. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮ 
+3 
+Long 
+Local co-ordinates origin altitude 
+Value ≠ 
+0x80000000 
+4 
+⋮ 
+7 
+Long 
+Local co-ordinates origin heading 
+Value ≠ 
+0x80000000 
+Table 67: 
+Status information, Channel 67 
+Note: The unit for heading is 1 × 10−7 degrees. The unit for Altitude is 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮ 
+ 
+Reserved 
+N/A 
+
+UByte 
+Bits 0–3: number of L1 GPS measurements received in differential corrections 
+Bits 4–7: number of L2 GPS measurements received in differential corrections 
+Value ≠ 0xF 
+Table 68: 
+Status information, Channel 72 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮ 
+ 
+Reserved 
+N/A 
+
+UByte 
+Bits 0–3: number of L1 GLONASS measurements received in differential corrections 
+Bits 4–7: number of L2 GLONASS measurements 
+received in differential corrections 
+Value ≠ 0xF 
+Table 69: 
+Status information, Channel 73 
+ 
+Bytes 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Expiry date in days since GPS began (midnight, 6th January 1980) 
+Value ≠ 0xFFFF 
+2 
+UByte 
+Supply voltage (V) = value × 0.2 
+Value ≠ 0xFF 
+3–4 
+UShort 
+IMU rate (Hz) = value × 0.02 
+Value ≠ 0xFFFF 
+5 
+⋮ 
+7 
+ 
+Reserved 
+N/A 
+Table 70: 
+Status information, Channel 75 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Differential GPS characters received 
+Always 
+2–3 
+UShort 
+Differential GPS packets received 
+Always 
+4–5 
+UShort 
+Differential GPS characters skipped 
+Always 
+6 
+UByte 
+GPS Differential Ntrip status 
+0: Invalid        
+1: Ready to connect      
+2: Resolving URL to IP 
+3: Getting source table 
+4: Pasing source table 
+5: Providing authentication 
+6: Running    
+7: Triggering closing of connection 
+8: Closing connection before retrying 
+9: Reconfiguring and reconnecting 
+10: Disabled      
+11: Error, undefined 
+12: Error, Bad Authentication 
+13: Error, TCP connection failed 
+14: Error, unrecognised mount point 
+15: Error, unable to resolve IP 
+16: Error, invalid address string 
+17: Error, invalid port number     
+Value<0xFF 
+7 
+UByte 
+WiFi Connection Status 
+0: Invalid 
+1: Disconnected 
+2: Established 
+3: Unsupported 
+Value<0xFF 
+Table 71: 
+Status information, Channel 76 
+Note: These counters are cyclic and will wrap when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+Differential GPS format 
+0: None 
+1: RTCM 
+2: RTCA 
+3: CMR 
+4: RTCA2 
+5: RTCMv2 
+6: RTCMv3 
+7: CMR+ 
+8: RTCMv3.2 
+Value ≠ 0xFF 
+1 
+UByte 
+Differential GPS type 
+0: None 
+1: Pass-through primary GNSS receiver 
+2: Pass-through secondary GNSS receiver 
+3: Pass-through EGPS 
+4: RD 
+5: LOG 
+6: RINEX 
+Others unknown 
+Value ≠ 0xFF 
+2 
+UByte 
+Differential GPS number of stations 
+Value ≠ 0xFF 
+3 
+⋮ 
+7 
+ 
+Reserved 
+N/A 
+Table 72: 
+Status information, Channel 77 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+UShort 
+CAN messages transmitted 
+Always 
+
+UShort 
+CAN messages received 
+Always 
+
+UByte 
+CAN transmit percent OK 
+Value ≠ 0xFF 
+
+UByte 
+CAN receive percent OK 
+Value ≠ 0xFF 
+
+UByte 
+CAN number of errors 
+Always 
+
+UByte 
+CAN last error code 
+Always 
+Table 73: 
+Status information, Channel 78 
+Note: The counters for messages transmitted, messages received and errors are cyclic and will wrap when they exceed the limit of the format used. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+⋮
+7 
+UInt64 
+ADK development ID 
+Always 
+Table 74: 
+ADK software version information, Channel 85 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+Bits 0–3: Jerk filter type Bits 4–7: Jerk filter order 
+Value ≠ 0x00 
+Filter order is a multiple of 
+2. 
+See Table 76 
+
+Float 
+Filter cut-off frequency. 
+Value > 0 
+
+ULong 
+Filter moving average window length. 
+Always 
+Table 75: 
+Linear jerk filter settings, Channel 87 
+Note: The filter moving average window length should be interpreted as the three least significant bytes of a 4-byte integer (with the most significant bit set to zero). Units are ms. When set to zero, the moving average is disabled but the filtering still occurs. 
+ 
+Value 
+Name 
+Definition 
+0 
+Disabled 
+The linear jerk filter is disabled. 
+1 
+Butterworth 
+The linear jerk filter is of type Butterworth. 
+2 
+… 
+15 
+Reserved 
+Reserved. 
+Table 76: 
+Linear jerk filter types. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+Byte 
+Bits 1–7: Vertical advanced slip innovation 
+Bit 0 = 1 
+1 
+⋮
+7 
+ 
+Reserved 
+N/A 
+Table 77: 
+Status information, Channel 88 
+Note: The innovations are always expressed as a proportion of the current accuracy. Units are 0.1 . As a general rule, innovations below 1.0  are good; innovations above 1.0  are poor. Usually it is best to filter the square of the innovations and display the square root of the filtered value. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Distance to the vertical advanced slip point in x direction 
+Byte 6 = 0 
+2–3 
+Short 
+Distance to the vertical advanced slip point in y direction 
+Byte 6 = 0 
+4–5 
+Short 
+Distance to the vertical advanced slip point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+ 
+7 
+UByte 
+WiFi access point status 
+0: Invalid 
+1: Disabled 
+2: Enabled 
+3: Unsupported 
+Value < 0xFF 
+Table 78: 
+Status information, Channel 89 Note: The units of the distances are 1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+UShort 
+Accuracy of distance to the vertical advanced slip point in x direction 
+Byte 6 = 0 
+2–3 
+UShort 
+Accuracy of distance to the vertical advanced slip point in y direction 
+Byte 6 = 0 
+4–5 
+UShort 
+Accuracy of distance to the vertical advanced slip point in z direction 
+Byte 6 = 0 
+6 
+UByte 
+Validity 
+Always 
+7 
+UByte 
+WiFi Region 
+0: Invalid 
+1: EU 
+2: USA 
+3: China 
+4: Australia 
+5: Japan 
+Value < 0xFF 
+Table 79: 
+Status information, Channel 90 Note: The units of the distances are 0.1 mm. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+0–1 
+Short 
+Pitch misalignment angle 
+Byte 6 = 0 
+2–3 
+UShort 
+Accuracy of pitch misalignment angle 
+Byte 6 = 0 
+4–5 
+ 
+Reserved 
+N/A 
+6 
+UByte 
+Validity 
+Always 
+7 
+ 
+Reserved 
+N/A 
+Table 80: 
+Status information, Channel 91 
+Note: The unit of the angle is 1 × 10−4 radians. The unit of the angle accuracy is 1 × 10−5 radians. 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+ 
+Reserved 
+ 
+
+
+UByte 
+Bits 0–3: number of Galileo satellites used in position solution 
+Bits 4–7: number of Beidou satellites used in position solution 
+Value 
+ 0xF 
+2 
+UByte 
+Bits 0–3: NMEA output enabled 
+Bits 4–7: PTP Epoch type 
+0: GPS 
+1: Unix 
+2: PTP 
+3: UTC 
+4: Custom 
+Value 
+ 0xF 
+3 
+UByte 
+Bits 0–3: PPS Status 
+0: Invalid 
+1: Coarse 
+2: Fine 
+Bits 4-7: Reserved 
+Value 
+ 0xF 
+4 
+UByte 
+Configured LiDAR IP address least significant byte 
+Value 	 0xFF 
+5 
+UByte 
+Bits 0-3: Timing source 
+0: None (internal SDN time) 
+1: Primary GNSS Receiver 
+2: PTP 
+3: External GNSS Receiver 
+4: User coarse time source from command 5: Calculated from GAD stream Bits 4-7: Reserved. 
+Bits 0-3 	 0xF 
+6–7 
+ 
+Reserved 
+ 
+Table 81: 
+Status information, Channel 93 
+Note: If the time source field is invalid, then clients should assume by default that the time source is GNSS.
+Byte 
+Format 
+Definition 
+Valid when 
+0 
+UByte 
+Bits 0–3: number of Galileo E1 measurements decoded by primary receiver 
+Bits 4–7: number of Galileo E5 measurements decoded by primary receiver 
+Value 
+ 0xF 
+1 
+UByte 
+Bits 0–3: number of Galileo E1 measurements decoded by secondary receiver 
+Bits 4–7: number of Galileo E5 measurements decoded by secondary receiver 
+Value 
+ 0xF 
+2 
+UByte 
+Bits 0–3: number of Galileo E1 measurements decoded by external receiver 
+Bits 4–7: number of Galileo E5 measurements decoded by external receiver 
+Value 
+ 0xF 
+3 
+UByte 
+Bits 0–3: number of Beidou B1 measurements decoded by primary receiver 
+Bits 4–7: number of Beidou B2 measurements decoded by primary receiver 
+Value 
+ 0xF 
+4 
+UByte 
+Bits 0–3: number of Beidou B1 measurements decoded by secondary receiver 
+Bits 4–7: number of Beidou B2 measurements decoded by secondary receiver 
+Value 
+ 0xF 
+5 
+UByte 
+Bits 0–3: number of Beidou B1 measurements decoded by external receiver 
+Bits 4–7: number of Beidou B2 measurements decoded by external receiver 
+Value 
+ 0xF 
+6 
+UByte 
+Bits 0–3: number of Galileo E1 measurements received in differential corrections 
+Bits 4–7: number of Galileo E5 measurements received in differential corrections 
+Value 
+ 0xF 
+7 
+UByte 
+Bits 0–3: number of Beidou B1 measurements received in differential corrections 
+Bits 4–7: number of Beidou B2 measurements received in differential corrections 
+Value 	 0xF 
+Table 82: 
+Status information, Channel 94 
+ 
+Byte 
+Format 
+Definition 
+Valid when 
+
+UByte 
+GAD packet stream Id 
+Value 	 0 
+
+UByte 
+Number of consecutive updates rejected for this stream Id 
+Value 	 0xFF 
+2 
+Byte 
+Bits 1–7: innovation 1 
+Bit 0 = 1 
+3 
+Byte 
+Bits 1–7: innovation 2 
+Bit 0 = 1 
+4 
+Byte 
+Bits 1–7: innovation 3 
+Bit 0 = 1 
+5-6 
+UShort 
+Milliseconds into the current minute 
+Value < 60000 
+7 
+ 
+Reserved 
+N/A 
+Table 83: 
+Status information, Channel 95 
+Note: The innovations are always expressed as a proportion of the current accuracy. Units are 0.1 . As a general rule, innovations below 1.0  are good; innovations above 1.0  are poor. Usually it is best to filter the square of the innovations and display the square root of the filtered value. 
+ 	 
+
+Checksum definition 
+Three simple checksums are calculated during each NCOM packet. Intermediate checksums 1 and 2 of structure-A packets allow users to quickly check the validity of data up to that point, in order to use it without having to wait for the whole packet to be received. To keep the computational load to a minimum, each checksum is simply the sum of bytes up to that point. Note that the Sync byte is not included in any of the checksum calculations. 
+Checksum 3 is calculated in the following way: 
+ unsigned byte csum; 
+ int j; 
+ 
+ // Final checksum  for (j = 1, csum = 0; j < 71; j++)  csum += txbuf[j];  txbuf[71] = csum; 
+Checksums 1 and 2 are calculated in the same way, but only using the bytes preceding that checksum. 
+ 	 
+
+Asynchronous NCOM packets: triggered outputs 
+As well as synchronous NCOM packets delivered via Ethernet and RS232, asynchronous packets can also be transmitted (although they are only available on Ethernet). 
+The state of the event input pin, and/or by distance-based pulses generated by the INS on the camera output/distance output pin can be used to trigger asynchronous NCOM packets. Note that in order to generate distance based NCOM messages, the camera output/distance output pin the must be configured to less than 1 ppm (pulse per metre). 
+Asynchronous NCOM messages can be identified by testing the navigation status byte for values of 20, 21 or 22. The event that triggered the asynchronous NCOM message can be identified by testing the status channel (byte 62) of an NCOM packet. Messages transmitted in response to a falling edge on the event input pin will have a status channel value of 24. Messages triggered by a rising edge on the event input pin have a status channel value of 43 and messages triggered by the camera output/distance output have a status channel value of 65. Messages transmitted in response to a falling edge on the event input 2 pin will have a status channel value of 79. Messages triggered by a rising edge on the event input 2 pin have a status channel value of 80 and messages triggered by the camera output/distance output 2 have a status channel value of 81. See Table 7: Status channel (byte 62) definitions. 
+The INS will automatically interpolate the measurement outputs so they relate to the exact trigger time. Since the time field in Batch A only has a resolution of 1 ms, a more accurate time stamp is contained within the status information of asynchronous messages. Details of how to calculate this are given in Table 34. 
+Asynchronous NCOM outputs are only available in real-time on the faster TP500/TP600/OMAP3503 processor card. Even if the correct firmware is installed on an older TP400B processor card, the asynchronous NCOM outputs will not be output in real-time. On hardware revisions since 2008 and using 2009 firmware, the triggers are logged to the internal RD file and will be output by RT PostProcess. Contact OXTS if you need information on whether your hardware can support the fast triggers or not. 
+ 	 
+Revision history 
+Revision 
+Comment 
+080124 
+Initial version from RT manual 
+090818 
+Updated in line with RT manual: triggering included 
+090820 
+Added more status channel definitions (50–71) 
+140723 
+Template update. Legal notice updated, style alignment, definition update, added checksum definition 
+141222 
+Added more status channel definitions (83–92) 
+150611 
+Added several status bytes for Spring 2015 update. Style tweaks 
+180806 
+Tables 20 and 59 amended 
+220808 
+Added several status bytes.  Added status channel definition (93, 94, 95). Rebranded throughout.  Updated style. 
+220819 
+Added status channel definition (85, 87). Updated table numbers to reflect.  
+240712 
+Clarified status channel 30 (16-bit serial number). Updated status channel definition 40 (24-bit serial number). Updated status channel definition 93 (time source). 
+240731 
+UTC time offset updated 
+250516 
+Incorrect bit information corrected in Table 59 
+250811 
+Heading quality enum updated 
+Table 84: 
+Revision history 
+Blank for user notes 
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+	Registered in England and Wales No. 	NCOM Product Manual  |  2 
+3534778.  VAT GB 704 8399 17 
+
+	Registered in England and Wales No. 	NCOM Product Manual  |  2 
+3534778.  VAT GB 704 8399 17 
+
+
+
+
+
+
+
+
+

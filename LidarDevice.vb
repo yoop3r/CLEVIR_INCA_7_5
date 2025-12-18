@@ -16,6 +16,9 @@ Public Class LidarEventLogger
     Private eventLogWriter As StreamWriter
     Private syncLockObj As New Object()
 
+    ' ✅ REMOVED: These properties don't belong here!
+    ' They should be in LidarDevice class
+
     Public Sub New(pcapFilePath As String)
         ' Create sidecar log file (e.g., "Recording_01_LiDAR1.pcap" -> "Recording_01_LiDAR1.lidar_events.txt")
         eventLogPath = Path.ChangeExtension(pcapFilePath, ".lidar_events.txt")
@@ -30,6 +33,8 @@ Public Class LidarEventLogger
         eventLogWriter.WriteLine("# -------------------------------------------------------------------------")
         eventLogWriter.Flush()
     End Sub
+
+    ' ✅ REMOVED: UpdateFromSdk() doesn't belong here!
 
     Public Sub LogEvent(frameNumber As Long, timestamp As DateTime, eventType As String, message As String, sequenceNumber As Integer)
         SyncLock syncLockObj
@@ -66,7 +71,7 @@ Public Class LidarDevice
     ' ====================================================================
     Public Property LidarAdapterGuid As String = ""
     Public Property LidarIpAddress As String = "192.168.1.201"
-    Public Property LidarDataPort As UShort = 2368
+    Public Property LidarDataPort As UShort = 2311
     Public Property LidarImuPort As UShort = 8308
     Public Property DeviceId As String = "LiDAR1" ' Friendly name for logging
     Public Property Enabled As Boolean = True  ' Default to True for backward compatibility
@@ -80,7 +85,11 @@ Public Class LidarDevice
     Private _packetCount As Long = 0
     Private _totalBytes As Long = 0
     Private _markerCounter As Long = 0
-    Private _droppedPackets As Long = 0  ' ← ADD THIS LINE (line 30)
+    Private _droppedPackets As Long = 0
+
+    ' ✅ NEW: Add Hesai SDK stats properties HERE (in LidarDevice, not LidarEventLogger)
+    Private _checksumErrors As Long = 0
+    Private _outOfOrderPackets As Long = 0
 
     Private ReadOnly _markerQueue As New Concurrent.ConcurrentQueue(Of EventMarker)
 
@@ -112,29 +121,47 @@ Public Class LidarDevice
 
     Public ReadOnly Property PacketCount As Long
         Get
-            Return _packetCount
+            Return Interlocked.Read(_packetCount)
         End Get
     End Property
 
     ''' <summary>
     ''' Total number of dropped packets (packet loss indicator).
-    ''' Updated from PacketCommunicator statistics.
+    ''' Updated from PacketCommunicator statistics or Hesai SDK.
     ''' </summary>
     Public ReadOnly Property DroppedPackets As Long
         Get
-            Return _droppedPackets
+            Return Interlocked.Read(_droppedPackets)
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' ✅ NEW: Checksum errors from Hesai SDK
+    ''' </summary>
+    Public ReadOnly Property ChecksumErrors As Long
+        Get
+            Return Interlocked.Read(_checksumErrors)
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' ✅ NEW: Out-of-order packets from Hesai SDK
+    ''' </summary>
+    Public ReadOnly Property OutOfOrderPackets As Long
+        Get
+            Return Interlocked.Read(_outOfOrderPackets)
         End Get
     End Property
 
     Public ReadOnly Property TotalBytes As Long
         Get
-            Return _totalBytes
+            Return Interlocked.Read(_totalBytes)
         End Get
     End Property
 
     Public ReadOnly Property MarkerCount As Long
         Get
-            Return _markerCounter
+            Return Interlocked.Read(_markerCounter)
         End Get
     End Property
 
@@ -148,7 +175,7 @@ Public Class LidarDevice
         Public EventId As Long
         Public Timestamp As DateTime
         Public Message As String
-        Public SequenceNumber As Integer  ' ✅ ADD THIS
+        Public SequenceNumber As Integer
     End Structure
 
     ' Add to LidarDevice class (around line 50)
@@ -178,6 +205,31 @@ Public Class LidarDevice
     ' ====================================================================
 
     ''' <summary>
+    ''' ✅ NEW: Syncs stats from Hesai SDK (called periodically from background thread)
+    ''' </summary>
+    Public Sub UpdateFromSdk()
+        Try
+            ' Get stats from Hesai SDK via P/Invoke
+            Dim stats As HesaiInterop.HesaiSdkStats = HesaiInterop.GetDeviceStats(DeviceId)
+
+            ' Update thread-safe properties
+            Interlocked.Exchange(_packetCount, CLng(stats.packets_received))
+            Interlocked.Exchange(_droppedPackets, CLng(stats.packets_dropped))
+            Interlocked.Exchange(_checksumErrors, CLng(stats.checksum_errors))
+            Interlocked.Exchange(_outOfOrderPackets, CLng(stats.out_of_order_packets))
+
+            ' Update timestamp if we have new packets
+            If stats.last_packet_timestamp > 0 Then
+                LastPacketTimestamp = DateTimeOffset.FromUnixTimeMilliseconds(stats.last_packet_timestamp).DateTime
+            End If
+
+        Catch ex As Exception
+            ' Don't crash if SDK isn't available - gracefully degrade
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] UpdateFromSdk failed: {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
     ''' ✅ NEW: Test LiDAR + OXTS integration (static development)
     ''' </summary>
     Public Sub TestLidarOxtsIntegration()
@@ -186,6 +238,9 @@ Public Class LidarDevice
         HandleUserMessageLogging("GMRC", $"LiDAR IP: {LidarIpAddress}")
         HandleUserMessageLogging("GMRC", $"Capturing: {_isCapturing}")
         HandleUserMessageLogging("GMRC", $"Packets: {_packetCount:N0}")
+        HandleUserMessageLogging("GMRC", $"Dropped: {_droppedPackets:N0}")
+        HandleUserMessageLogging("GMRC", $"Checksum Errors: {_checksumErrors:N0}")
+        HandleUserMessageLogging("GMRC", $"Out-of-Order: {_outOfOrderPackets:N0}")
         HandleUserMessageLogging("GMRC", $"Markers: {_markerCounter}")
         HandleUserMessageLogging("GMRC", $"Frames: {_frameCounter}")
 
@@ -780,3 +835,4 @@ Public Class LidarDevice
     End Sub
 
 End Class
+

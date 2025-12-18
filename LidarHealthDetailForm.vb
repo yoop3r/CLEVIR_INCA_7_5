@@ -8,18 +8,25 @@ Imports System.Drawing
 Public Class LidarHealthDetailForm
     Private _devices As List(Of LidarDevice)
     Private _refreshTimer As Timer
+    Private _mainForm As GmResidentClient  ' ✅ ADD THIS - Reference to parent form
 
     ''' <summary>
     ''' Constructor accepting list of LiDAR devices
     ''' </summary>
-    Public Sub New(devices As List(Of LidarDevice))
+    Public Sub New(devices As List(Of LidarDevice), Optional mainForm As GmResidentClient = Nothing)
+        ' ✅ This loads all Designer controls (GroupBox_OxtsStatus, Panel_TestActions, buttons, etc.)
         InitializeComponent()
 
         _devices = devices
+        _mainForm = mainForm
 
-        ' Initialize UI
+        ' ✅ Configure DataGridView (still done in code - easier than Designer)
         SetupDataGridView()
+
+        ' ✅ Start auto-refresh timer
         SetupRefreshTimer()
+
+        ' ✅ Load initial data
         LoadDeviceData()
     End Sub
 
@@ -94,12 +101,59 @@ Public Class LidarHealthDetailForm
                 .DefaultCellStyle = New DataGridViewCellStyle With {.Format = "F2"},
                 .FillWeight = 13
             })
+            DataGridView1.Columns.Add(New DataGridViewTextBoxColumn With {
+                                         .Name = "ChecksumErrors",
+                                         .HeaderText = "Checksum Errors",
+                                         .DataPropertyName = "ChecksumErrors",
+                                         .DefaultCellStyle = New DataGridViewCellStyle With {.Format = "N0"},
+                                         .FillWeight = 15
+                                         })
 
+            DataGridView1.Columns.Add(New DataGridViewTextBoxColumn With {
+                                         .Name = "OutOfOrder",
+                                         .HeaderText = "Out-of-Order",
+                                         .DataPropertyName = "OutOfOrderPackets",
+                                         .DefaultCellStyle = New DataGridViewCellStyle With {.Format = "N0"},
+                                         .FillWeight = 15
+                                         })
         Catch ex As Exception
             MessageBox.Show($"Error setting up grid: {ex.Message}", "Setup Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
 
+    ''' <summary>
+    ''' ✅ NEW: Update OXTS status panel (called from RefreshTimer_Tick)
+    ''' </summary>
+    Private Sub UpdateOxtsStatus()
+        If _mainForm Is Nothing OrElse _mainForm.MyOxtsInterface Is Nothing Then
+            Return
+        End If
+
+        Dim oxtsIf = _mainForm.MyOxtsInterface
+
+        ' Update PTP Status
+        Dim lblPtp = TryCast(Me.Controls.Find("Label_PtpStatus", True).FirstOrDefault(), Label)
+        If lblPtp IsNot Nothing Then
+            lblPtp.Text = $"PTP: {oxtsIf.PtpStatus}"
+            lblPtp.ForeColor = If(oxtsIf.IsPtpSynchronized(), Color.Green, Color.Red)
+        End If
+
+        ' Update GPS Lock
+        Dim lblGps = TryCast(Me.Controls.Find("Label_GpsLock", True).FirstOrDefault(), Label)
+        If lblGps IsNot Nothing Then
+            Dim lockStatus = If(oxtsIf.IsGpsLocked, "LOCKED", "NO LOCK")
+            lblGps.Text = $"GPS Lock: {lockStatus}"
+            lblGps.ForeColor = If(oxtsIf.IsGpsLocked, Color.Green, Color.Red)
+        End If
+
+        ' Update Packet Loss (stub - implement GetNcomPacketLossPercent in OxtsNcomInterface)
+        Dim lblLoss = TryCast(Me.Controls.Find("Label_PacketLoss", True).FirstOrDefault(), Label)
+        If lblLoss IsNot Nothing Then
+            ' TODO: Implement oxtsIf.GetNcomPacketLossPercent()
+            lblLoss.Text = "Packet Loss: N/A"
+            lblLoss.ForeColor = Color.Gray
+        End If
+    End Sub
     ''' <summary>
     ''' Sets up auto-refresh timer (updates every 2 seconds)
     ''' </summary>
@@ -152,6 +206,13 @@ Public Class LidarHealthDetailForm
                 ColorCodeRow(DataGridView1.Rows(i), row.HealthStatus)
             Next
 
+            For i As Integer = 0 To DataGridView1.Rows.Count - 1
+                Dim checksumCell = DataGridView1.Rows(i).Cells("ChecksumErrors")
+                If CLng(checksumCell.Value) > 100 Then
+                    checksumCell.Style.BackColor = Color.Red
+                End If
+            Next
+
             ' Update summary label
             Label_Summary.Text = $"Total: {_devices.Count} | Healthy: {healthyCount} | Warning: {warningCount} | Critical: {criticalCount}"
 
@@ -182,6 +243,7 @@ Public Class LidarHealthDetailForm
     ''' </summary>
     Private Sub RefreshTimer_Tick(sender As Object, e As EventArgs)
         LoadDeviceData()
+        UpdateOxtsStatus()  ' ✅ Add this
     End Sub
 
     ''' <summary>
@@ -254,6 +316,94 @@ Public Class LidarHealthDetailForm
     End Sub
 
     ''' <summary>
+    ''' ✅ FIXED: Test OXTS connection using parent form reference
+    ''' </summary>
+    Private Sub TestOxtsConnection_Click(sender As Object, e As EventArgs)
+        If _mainForm Is Nothing Then
+            StatusNotifier.Warn("Main form reference not available", "Test")
+            Return
+        End If
+
+        If _mainForm.MyOxtsInterface Is Nothing Then
+            StatusNotifier.Warn("OXTS not initialized", "Test")
+            Return
+        End If
+
+        _mainForm.MyOxtsInterface.TestOxtsIntegration()
+        LoadDeviceData()  ' Refresh grid immediately
+        StatusNotifier.Toast("OXTS test complete - check diagnostics", "Test")
+    End Sub
+
+    ''' <summary>
+    ''' ✅ FIXED: Test LiDAR capture using device list
+    ''' </summary>
+    Private Sub TestLidarCapture_Click(sender As Object, e As EventArgs)
+        If _devices Is Nothing OrElse _devices.Count = 0 Then
+            StatusNotifier.Warn("No LiDAR devices configured", "Test")
+            Return
+        End If
+
+        For Each lidar In _devices
+            lidar.TestLidarOxtsIntegration()
+        Next
+
+        LoadDeviceData()  ' Refresh grid
+        StatusNotifier.Toast($"LiDAR test complete for {_devices.Count} device(s)", "Test")
+    End Sub
+
+    ''' <summary>
+    ''' ✅ FIXED: Full integration test
+    ''' </summary>
+    Private Sub TestOxtsLidarIntegration_Click(sender As Object, e As EventArgs)
+        HandleUserMessageLogging("GMRC", "=== FULL INTEGRATION TEST ===")
+
+        ' Test OXTS
+        If _mainForm IsNot Nothing AndAlso _mainForm.MyOxtsInterface IsNot Nothing Then
+            _mainForm.MyOxtsInterface.TestOxtsIntegration()
+        Else
+            HandleUserMessageLogging("GMRC", "⚠️ OXTS not initialized")
+        End If
+
+        ' Test LiDAR
+        If _devices IsNot Nothing AndAlso _devices.Count > 0 Then
+            For Each lidar In _devices
+                lidar.TestLidarOxtsIntegration()
+            Next
+        Else
+            HandleUserMessageLogging("GMRC", "⚠️ No LiDAR devices")
+        End If
+
+        HandleUserMessageLogging("GMRC", "=== INTEGRATION TEST COMPLETE ===")
+        LoadDeviceData()  ' Refresh grid
+        UpdateOxtsStatus()  ' Refresh OXTS panel
+        StatusNotifier.Toast("Integration test complete - check logs", "Test")
+    End Sub
+
+    ''' <summary>
+    ''' ✅ FIXED: Inject test marker
+    ''' </summary>
+    Private Sub InjectTestMarker_Click(sender As Object, e As EventArgs)
+        If _devices Is Nothing OrElse _devices.Count = 0 Then
+            StatusNotifier.Warn("No LiDAR devices capturing", "Test")
+            Return
+        End If
+
+        Dim injected As Integer = 0
+        For Each lidar In _devices
+            If lidar.IsCapturing Then
+                lidar.InjectTestMarkerWithOxtsData()
+                injected += 1
+            End If
+        Next
+
+        If injected > 0 Then
+            StatusNotifier.Toast($"Injected test marker into {injected} LiDAR(s)", "Test")
+        Else
+            StatusNotifier.Warn("No active LiDAR captures", "Test")
+        End If
+    End Sub
+
+    ''' <summary>
     ''' Helper enum for device health status
     ''' </summary>
     Private Enum DeviceHealthStatus
@@ -274,12 +424,25 @@ Public Class LidarHealthDetailForm
         Public Property LastPacket As String
         Public Property TotalMB As Double
         Public Property HealthStatus As DeviceHealthStatus
+        Public Property ChecksumErrors As Long
+        Public Property OutOfOrderPackets As Long
 
         Public Sub New(device As LidarDevice)
             DeviceId = device.DeviceId
             PacketCount = device.PacketCount
             DroppedPackets = device.DroppedPackets
             TotalMB = device.TotalBytes / 1024.0 / 1024.0
+            ChecksumErrors = device.ChecksumErrors  ' ← Now populated from SDK
+            OutOfOrderPackets = device.OutOfOrderPackets
+
+            ' Enhanced health logic using real error counts
+            If ChecksumErrors > 100 OrElse OutOfOrderPackets > 50 Then
+                HealthStatus = DeviceHealthStatus.Critical
+                Status = "DATA CORRUPT"
+            ElseIf LossPercent >= 20.0 Then
+                HealthStatus = DeviceHealthStatus.Critical
+                Status = "CRITICAL"
+            End If
 
             ' Calculate loss percentage
             Dim totalPackets As Long = PacketCount + DroppedPackets
