@@ -29,12 +29,15 @@ Partial Class LidarHealthDetailForm
         Me.Button_Export = New System.Windows.Forms.Button()
         Me.Label_Title = New System.Windows.Forms.Label()
         Me.GroupBox_OxtsStatus = New System.Windows.Forms.GroupBox()
+        Me.Label_PacketCount = New System.Windows.Forms.Label()
         Me.Label_PacketLoss = New System.Windows.Forms.Label()
         Me.Label_GpsLock = New System.Windows.Forms.Label()
         Me.Label_PtpStatus = New System.Windows.Forms.Label()
         Me.Button_TestOxts = New System.Windows.Forms.Button()
         Me.Button_TestLidar = New System.Windows.Forms.Button()
         Me.Button_TestIntegration = New System.Windows.Forms.Button()
+        Me.Button_DiagnoseOxts = New System.Windows.Forms.Button()
+        Me.Button_ResetOxtsStats = New System.Windows.Forms.Button()
         Me.Panel_TestActions = New System.Windows.Forms.Panel()
         CType(Me.DataGridView1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.GroupBox_OxtsStatus.SuspendLayout()
@@ -47,10 +50,10 @@ Partial Class LidarHealthDetailForm
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.DataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
-        Me.DataGridView1.Location = New System.Drawing.Point(18, 98)
+        Me.DataGridView1.Location = New System.Drawing.Point(18, 138)
         Me.DataGridView1.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.DataGridView1.Name = "DataGridView1"
-        Me.DataGridView1.Size = New System.Drawing.Size(1140, 493)
+        Me.DataGridView1.Size = New System.Drawing.Size(1140, 453)
         Me.DataGridView1.TabIndex = 0
         '
         'Label_Summary
@@ -63,7 +66,7 @@ Partial Class LidarHealthDetailForm
         Me.Label_Summary.Name = "Label_Summary"
         Me.Label_Summary.Size = New System.Drawing.Size(407, 22)
         Me.Label_Summary.TabIndex = 1
-        Me.Label_Summary.Text = "Total: 0 | Healthy: 0 | Warning: 0 | Critical: 0"
+        Me.Label_Summary.Text = "Total: 0 | ✅ Healthy: 0 | ⚠️ Warning: 0 | ❌ Critical: 0"
         '
         'Button_Refresh
         '
@@ -108,46 +111,58 @@ Partial Class LidarHealthDetailForm
         Me.Label_Title.Location = New System.Drawing.Point(18, 23)
         Me.Label_Title.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
         Me.Label_Title.Name = "Label_Title"
-        Me.Label_Title.Size = New System.Drawing.Size(311, 29)
+        Me.Label_Title.Size = New System.Drawing.Size(393, 29)
         Me.Label_Title.TabIndex = 5
-        Me.Label_Title.Text = "LiDAR Health Diagnostics"
+        Me.Label_Title.Text = "LiDAR Health Diagnostics (Integrity-First)"
         '
         'GroupBox_OxtsStatus
         '
+        Me.GroupBox_OxtsStatus.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_PacketCount)
         Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_PacketLoss)
         Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_GpsLock)
         Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_PtpStatus)
-        Me.GroupBox_OxtsStatus.Dock = System.Windows.Forms.DockStyle.Top
         Me.GroupBox_OxtsStatus.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.GroupBox_OxtsStatus.Location = New System.Drawing.Point(0, 0)
+        Me.GroupBox_OxtsStatus.Location = New System.Drawing.Point(18, 62)
         Me.GroupBox_OxtsStatus.Name = "GroupBox_OxtsStatus"
-        Me.GroupBox_OxtsStatus.Size = New System.Drawing.Size(1176, 80)
+        Me.GroupBox_OxtsStatus.Size = New System.Drawing.Size(1140, 68)
         Me.GroupBox_OxtsStatus.TabIndex = 6
         Me.GroupBox_OxtsStatus.TabStop = False
         Me.GroupBox_OxtsStatus.Text = "OXTS RT3000 Status"
         '
+        'Label_PacketCount
+        '
+        Me.Label_PacketCount.AutoSize = True
+        Me.Label_PacketCount.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label_PacketCount.Location = New System.Drawing.Point(18, 42)
+        Me.Label_PacketCount.Name = "Label_PacketCount"
+        Me.Label_PacketCount.Size = New System.Drawing.Size(200, 20)
+        Me.Label_PacketCount.TabIndex = 3
+        Me.Label_PacketCount.Text = "NCOM: 0 valid / 0 total"
+        '
         'Label_PacketLoss
         '
         Me.Label_PacketLoss.AutoSize = True
-        Me.Label_PacketLoss.Location = New System.Drawing.Point(401, 32)
+        Me.Label_PacketLoss.Location = New System.Drawing.Point(632, 24)
         Me.Label_PacketLoss.Name = "Label_PacketLoss"
-        Me.Label_PacketLoss.Size = New System.Drawing.Size(159, 22)
+        Me.Label_PacketLoss.Size = New System.Drawing.Size(280, 22)
         Me.Label_PacketLoss.TabIndex = 2
-        Me.Label_PacketLoss.Text = "Packet Loss: 0%"
+        Me.Label_PacketLoss.Text = "Integrity: 100% (Corrupt: 0%)"
         '
         'Label_GpsLock
         '
         Me.Label_GpsLock.AutoSize = True
-        Me.Label_GpsLock.Location = New System.Drawing.Point(203, 32)
+        Me.Label_GpsLock.Location = New System.Drawing.Point(406, 24)
         Me.Label_GpsLock.Name = "Label_GpsLock"
         Me.Label_GpsLock.Size = New System.Drawing.Size(193, 22)
         Me.Label_GpsLock.TabIndex = 1
-        Me.Label_GpsLock.Text = "GPS Lock: Unknown"
+        Me.Label_GpsLock.Text = "GPS: Unknown"
         '
         'Label_PtpStatus
         '
         Me.Label_PtpStatus.AutoSize = True
-        Me.Label_PtpStatus.Location = New System.Drawing.Point(18, 30)
+        Me.Label_PtpStatus.Location = New System.Drawing.Point(18, 24)
         Me.Label_PtpStatus.Name = "Label_PtpStatus"
         Me.Label_PtpStatus.Size = New System.Drawing.Size(168, 22)
         Me.Label_PtpStatus.TabIndex = 0
@@ -186,9 +201,33 @@ Partial Class LidarHealthDetailForm
         Me.Button_TestIntegration.UseVisualStyleBackColor = True
         AddHandler Me.Button_TestIntegration.Click, AddressOf Me.TestOxtsLidarIntegration_Click
         '
+        'Button_DiagnoseOxts
+        '
+        Me.Button_DiagnoseOxts.Location = New System.Drawing.Point(444, 7)
+        Me.Button_DiagnoseOxts.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.Button_DiagnoseOxts.Name = "Button_DiagnoseOxts"
+        Me.Button_DiagnoseOxts.Size = New System.Drawing.Size(160, 46)
+        Me.Button_DiagnoseOxts.TabIndex = 8
+        Me.Button_DiagnoseOxts.Text = "📊 Integrity Report"
+        Me.Button_DiagnoseOxts.UseVisualStyleBackColor = True
+        AddHandler Me.Button_DiagnoseOxts.Click, AddressOf Me.Button_DiagnoseOxts_Click
+        '
+        'Button_ResetOxtsStats
+        '
+        Me.Button_ResetOxtsStats.Location = New System.Drawing.Point(612, 7)
+        Me.Button_ResetOxtsStats.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
+        Me.Button_ResetOxtsStats.Name = "Button_ResetOxtsStats"
+        Me.Button_ResetOxtsStats.Size = New System.Drawing.Size(125, 46)
+        Me.Button_ResetOxtsStats.TabIndex = 9
+        Me.Button_ResetOxtsStats.Text = "🔄 Reset Stats"
+        Me.Button_ResetOxtsStats.UseVisualStyleBackColor = True
+        AddHandler Me.Button_ResetOxtsStats.Click, AddressOf Me.Button_ResetOxtsStats_Click
+        '
         'Panel_TestActions
         '
         Me.Panel_TestActions.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
+        Me.Panel_TestActions.Controls.Add(Me.Button_ResetOxtsStats)
+        Me.Panel_TestActions.Controls.Add(Me.Button_DiagnoseOxts)
         Me.Panel_TestActions.Controls.Add(Me.Button_TestIntegration)
         Me.Panel_TestActions.Controls.Add(Me.Button_TestLidar)
         Me.Panel_TestActions.Controls.Add(Me.Button_TestOxts)
@@ -215,7 +254,7 @@ Partial Class LidarHealthDetailForm
         Me.MinimumSize = New System.Drawing.Size(1189, 678)
         Me.Name = "LidarHealthDetailForm"
         Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent
-        Me.Text = "LiDAR Health Detail"
+        Me.Text = "LiDAR Health Detail - Integrity Monitor"
         CType(Me.DataGridView1, System.ComponentModel.ISupportInitialize).EndInit()
         Me.GroupBox_OxtsStatus.ResumeLayout(False)
         Me.GroupBox_OxtsStatus.PerformLayout()
@@ -234,9 +273,12 @@ Partial Class LidarHealthDetailForm
     Friend WithEvents Button_TestOxts As System.Windows.Forms.Button
     Friend WithEvents Button_TestLidar As System.Windows.Forms.Button
     Friend WithEvents Button_TestIntegration As System.Windows.Forms.Button
+    Friend WithEvents Button_DiagnoseOxts As System.Windows.Forms.Button
+    Friend WithEvents Button_ResetOxtsStats As System.Windows.Forms.Button
     Friend WithEvents Panel_TestActions As System.Windows.Forms.Panel
     Friend WithEvents GroupBox_OxtsStatus As System.Windows.Forms.GroupBox
     Friend WithEvents Label_PtpStatus As System.Windows.Forms.Label
     Friend WithEvents Label_GpsLock As System.Windows.Forms.Label
     Friend WithEvents Label_PacketLoss As System.Windows.Forms.Label
+    Friend WithEvents Label_PacketCount As System.Windows.Forms.Label
 End Class

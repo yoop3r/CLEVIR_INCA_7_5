@@ -26,7 +26,7 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF TH
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 #pragma once
-#include "lidar.h"
+#include "../../HesaiLidar_SDK_2.0-master/libhesai/Lidar/lidar.h"
 #ifdef USE_CUDA
 #include "udp_parser_gpu.h"
 #endif

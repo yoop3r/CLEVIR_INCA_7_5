@@ -70,7 +70,7 @@ Public Class LidarDevice
     ' Instance-level configuration (each LiDAR has its own settings)
     ' ====================================================================
     Public Property LidarAdapterGuid As String = ""
-    Public Property LidarIpAddress As String = "192.168.1.201"
+    Public Property LidarIpAddress As String = "10.5.55.14"
     Public Property LidarDataPort As UShort = 2311
     Public Property LidarImuPort As UShort = 8308
     Public Property DeviceId As String = "LiDAR1" ' Friendly name for logging
@@ -205,28 +205,11 @@ Public Class LidarDevice
     ' ====================================================================
 
     ''' <summary>
-    ''' ✅ NEW: Syncs stats from Hesai SDK (called periodically from background thread)
+    ''' ✅ DEPRECATED: Use UpdateStatistics() instead (called automatically during capture)
+    ''' This method is kept for backward compatibility but redirects to UpdateStatistics()
     ''' </summary>
     Public Sub UpdateFromSdk()
-        Try
-            ' Get stats from Hesai SDK via P/Invoke
-            Dim stats As HesaiInterop.HesaiSdkStats = HesaiInterop.GetDeviceStats(DeviceId)
-
-            ' Update thread-safe properties
-            Interlocked.Exchange(_packetCount, CLng(stats.packets_received))
-            Interlocked.Exchange(_droppedPackets, CLng(stats.packets_dropped))
-            Interlocked.Exchange(_checksumErrors, CLng(stats.checksum_errors))
-            Interlocked.Exchange(_outOfOrderPackets, CLng(stats.out_of_order_packets))
-
-            ' Update timestamp if we have new packets
-            If stats.last_packet_timestamp > 0 Then
-                LastPacketTimestamp = DateTimeOffset.FromUnixTimeMilliseconds(stats.last_packet_timestamp).DateTime
-            End If
-
-        Catch ex As Exception
-            ' Don't crash if SDK isn't available - gracefully degrade
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] UpdateFromSdk failed: {ex.Message}")
-        End Try
+        UpdateStatistics() ' Redirect to the main statistics update method
     End Sub
 
     ''' <summary>
@@ -362,6 +345,14 @@ Public Class LidarDevice
         Dim logPrefix As String = $"[{DeviceId}] StartCapture"
 
         Try
+
+            '' ✅ Register with Hesai SDK if available
+            If HesaiInterop.IsAvailable() Then
+                If HesaiInterop.RegisterDevice(DeviceId, LidarIpAddress, CInt(LidarDataPort)) Then
+                    HandleUserMessageLogging("GMRC", $"[{DeviceId}] Registered with Hesai SDK")
+                End If
+            End If
+
             ' Check if already capturing
             If _isCapturing Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Already active")
@@ -432,13 +423,42 @@ Public Class LidarDevice
         End Try
     End Sub
     ''' <summary>
-    ''' Updates statistics (simplified version without PacketTotalStatistics)
+    ''' Updates statistics from Hesai SDK (if available) or uses PcapDotNet fallback
+    ''' Called periodically during capture (every 1000 packets)
     ''' </summary>
     Private Sub UpdateStatistics()
-        ' For now, just keep the counter at 0 or increment on errors
-        ' The UI will still show "0 dropped" which is acceptable
-        ' True packet loss can be analyzed post-capture using:
-        ' editcap -C <offset> input.pcap output.pcap (to check for gaps)
+        Try
+            ' ✅ PRIORITY 1: Try to get stats from Hesai SDK
+            If HesaiInterop.IsAvailable() Then
+                Dim stats = HesaiInterop.GetDeviceStats(DeviceId)
+
+                ' Only update if SDK is returning valid data
+                If stats.packets_received > 0 Then
+                    ' Sync dropped packets from SDK (most accurate)
+                    Interlocked.Exchange(_droppedPackets, CLng(stats.packets_dropped))
+
+                    ' Sync checksum and out-of-order errors
+                    Interlocked.Exchange(_checksumErrors, CLng(stats.checksum_errors))
+                    Interlocked.Exchange(_outOfOrderPackets, CLng(stats.out_of_order_packets))
+
+                    ' Optional: Sync total bytes if SDK provides it
+                    If stats.total_bytes > 0 Then
+                        Interlocked.Exchange(_totalBytes, CLng(stats.total_bytes))
+                    End If
+
+                    Return ' Success - SDK stats updated
+                End If
+            End If
+
+            ' ✅ FALLBACK: If Hesai SDK not available, dropped packets remain at 0
+            ' True packet loss can be analyzed post-capture using:
+            ' editcap -C <offset> input.pcap output.pcap (to check for gaps)
+            ' or Wireshark's "Expert Info" analysis
+
+        Catch ex As Exception
+            ' Don't crash capture thread if stats update fails
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] UpdateStatistics error: {ex.Message}")
+        End Try
     End Sub
 
     ''' <summary>
@@ -450,6 +470,12 @@ Public Class LidarDevice
         Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
 
         Try
+
+            If HesaiInterop.IsAvailable() Then
+                HesaiInterop.UnregisterDevice(DeviceId)
+                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Unregistered from Hesai SDK")
+            End If
+
             If Not _isCapturing Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Not currently capturing")
                 Return
@@ -681,25 +707,25 @@ Public Class LidarDevice
             Dim dstIp As IpV4Address = New IpV4Address("192.168.40.255")
 
             Dim ethernetLayer As New EthernetLayer With {
-                .Source = srcMac,
-                .Destination = dstMac,
-                .EtherType = EthernetType.IpV4
-            }
+            .Source = srcMac,
+            .Destination = dstMac,
+            .EtherType = EthernetType.IpV4
+        }
 
             Dim ipV4Layer As New IpV4Layer With {
-                .Source = srcIp,
-                .CurrentDestination = dstIp,
-                .Ttl = 128
-            }
+            .Source = srcIp,
+            .CurrentDestination = dstIp,
+            .Ttl = 128
+        }
 
             Dim udpLayer As New UdpLayer With {
-                .SourcePort = MarkerSourcePort,
-                .DestinationPort = MarkerDestPort
-            }
+            .SourcePort = MarkerSourcePort,
+            .DestinationPort = MarkerDestPort
+        }
 
             Dim payloadLayer As New PayloadLayer With {
-                .Data = New Datagram(payloadBytes)
-            }
+            .Data = New Datagram(payloadBytes)
+        }
 
             ' Build and write marker packet to PCAP
             Dim builder As New PacketBuilder(ethernetLayer, ipV4Layer, udpLayer, payloadLayer)

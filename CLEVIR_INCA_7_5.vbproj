@@ -597,13 +597,14 @@
     <Compile Include="AudioToTextProgressForm.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="OxtsNcomChecksum.vb" />
+    <Compile Include="HesaiInterop.vb" />
     <Compile Include="LidarDeviceEditorForm.Designer.vb">
       <DependentUpon>LidarDeviceEditorForm.vb</DependentUpon>
     </Compile>
     <Compile Include="LidarDeviceEditorForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="HesaiInterop.vb" />
     <Compile Include="NcomDiagnostics.vb" />
     <Compile Include="OxtsGadDecoder.vb" />
     <Compile Include="OxtsNcomInterface.vb" />

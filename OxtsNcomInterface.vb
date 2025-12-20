@@ -1,10 +1,11 @@
 ﻿Imports System.Net
 Imports System.Net.Sockets
 Imports System.Threading
-Imports System.Net.NetworkInformation ' For NIC enumeration
+Imports System.Net.NetworkInformation
 
 ''' <summary>
-''' Listens to OXTS NCOM packets for GPS time synchronization
+''' Listens to OXTS NCOM packets with integrity-first validation approach.
+''' Prioritizes checksum verification over packet loss monitoring per NCOM specification.
 ''' </summary>
 Public Class OxtsNcomInterface
     Private _udpClient As UdpClient
@@ -12,8 +13,8 @@ Public Class OxtsNcomInterface
     Private _isRunning As Boolean = False
 
     ' NCOM configuration
-    Public Property NcomIpAddress As String = "10.5.55.200" ' OXTS IP
-    Public Property NcomPort As Integer = 3000 ' Default NCOM port
+    Public Property NcomIpAddress As String = "10.5.55.200"
+    Public Property NcomPort As Integer = 3000
 
     ' Time synchronization data
     Public Property LastGpsTime As DateTime?
@@ -22,7 +23,7 @@ Public Class OxtsNcomInterface
     Public Property GpsWeek As Integer = 0
     Public Property GpsTimeOfWeek As Double = 0
 
-    ' Position data (for event markers)
+    ' Position data
     Public Property Latitude As Double = 0
     Public Property Longitude As Double = 0
     Public Property Altitude As Double = 0
@@ -30,12 +31,12 @@ Public Class OxtsNcomInterface
     Public Property Roll As Double = 0
     Public Property Pitch As Double = 0
 
-    ' ✅ NEW: Velocity data (m/s, NED frame)
+    ' Velocity data (m/s, NED frame)
     Public Property VelocityNorth As Double = 0
     Public Property VelocityEast As Double = 0
     Public Property VelocityDown As Double = 0
 
-    ' ✅ NEW: Angular rate data (rad/s, body frame)
+    ' Angular rate data (rad/s, body frame)
     Public Property YawRate As Double = 0
     Public Property PitchRate As Double = 0
     Public Property RollRate As Double = 0
@@ -46,20 +47,70 @@ Public Class OxtsNcomInterface
     Public Property AllowNoGpsLock As Boolean = False
     Public Property DiagnosticLoggingEnabled As Boolean = False
 
-    ' ✅ NEW: PTP Synchronization Status
+    ' PTP Synchronization Status
     Public Property PtpStatus As OxtsStatusChannelDecoder.PtpStatusEnum = OxtsStatusChannelDecoder.PtpStatusEnum.Unknown
     Public Property PtpTimingSource As OxtsStatusChannelDecoder.TimingSourceEnum = OxtsStatusChannelDecoder.TimingSourceEnum.None
     Public Property LastPtpStatusTime As DateTime?
     Public Property SystemUptime As String = "Unknown"
 
-    ' ✅ NEW: Status channel tracking (cycles through ~200 packets)
+    ' Status channel tracking
     Private _statusChannelHistory As New Dictionary(Of Byte, DateTime)
 
-    'OXTS position tracking
-    Private _lastPosition As (Latitude As Double, Longitude As Double, Altitude As Double) = (0, 0, 0)
-    Private _lastPositionTime As DateTime = DateTime.MinValue
-    Private _latestPosition As OxtsPosition? = Nothing ' Nullable OxtsPosition
+    ' Position tracking
+    Private _latestPosition As OxtsPosition?
     Private _latestPositionTime As DateTime = DateTime.MinValue
+
+    ' ✅ NEW: Integrity-focused statistics (replacing packet loss tracking)
+    Private _stats As New PacketStatistics()
+
+    ''' <summary>
+    ''' ✅ NEW: Packet integrity statistics (replaces sequence number tracking)
+    ''' </summary>
+    Private Class PacketStatistics
+        Public TotalReceived As Long = 0
+        Public ValidPackets As Long = 0
+        Public InvalidSyncByte As Long = 0
+        Public InvalidNavStatus As Long = 0
+        Public StructureBPackets As Long = 0
+        Public Checksum1Failures As Long = 0
+        Public Checksum2Failures As Long = 0
+        Public Checksum3Failures As Long = 0
+        Public CorruptedPackets As Long = 0
+        Public LastResetTime As DateTime = DateTime.UtcNow
+
+        Public ReadOnly Property IntegrityPercent As Double
+            Get
+                If TotalReceived = 0 Then Return 0
+                Return (CDbl(ValidPackets) / CDbl(TotalReceived)) * 100.0
+            End Get
+        End Property
+
+        Public ReadOnly Property CorruptionPercent As Double
+            Get
+                If TotalReceived = 0 Then Return 0
+                Return (CDbl(CorruptedPackets) / CDbl(TotalReceived)) * 100.0
+            End Get
+        End Property
+
+        Public Sub Reset()
+            TotalReceived = 0
+            ValidPackets = 0
+            InvalidSyncByte = 0
+            InvalidNavStatus = 0
+            StructureBPackets = 0
+            Checksum1Failures = 0
+            Checksum2Failures = 0
+            Checksum3Failures = 0
+            CorruptedPackets = 0
+            LastResetTime = DateTime.UtcNow
+        End Sub
+
+        Public Function GetSummary() As String
+            Return $"Total: {TotalReceived:N0} | Valid: {ValidPackets:N0} ({IntegrityPercent:F2}%) | " &
+                   $"Corrupted: {CorruptedPackets:N0} ({CorruptionPercent:F2}%) | " &
+                   $"CS Failures: {Checksum1Failures + Checksum2Failures + Checksum3Failures}"
+        End Function
+    End Class
 
     ''' <summary>
     ''' Position data structure for event markers
@@ -72,105 +123,105 @@ Public Class OxtsNcomInterface
         Public Heading As Double
         Public Pitch As Double
         Public Roll As Double
-
-        ' ✅ NEW: Velocities (m/s, NED frame)
         Public VelocityNorth As Double
         Public VelocityEast As Double
         Public VelocityDown As Double
-
-        ' ✅ NEW: Angular rates (rad/s, body frame)
-        Public YawRate As Double      ' Wz (rotation about vertical/down axis)
-        Public PitchRate As Double    ' Wy (rotation about lateral axis)
-        Public RollRate As Double     ' Wx (rotation about longitudinal axis)
-
-        Public GpsMode As Integer        ' ← CRITICAL: Must exist
-        Public NavigationStatus As Byte  ' ← CRITICAL: Must exist
-        Public RtkStatus As String       ' ← NEW: Added for clarity
+        Public YawRate As Double
+        Public PitchRate As Double
+        Public RollRate As Double
+        Public GpsMode As Integer
+        Public NavigationStatus As Byte
+        Public RtkStatus As String
     End Structure
 
-    ' ✅ NEW: Packet statistics
-    Private _packetCount As Long = 0
-    Public ReadOnly Property PacketCount As Long
+    ' ✅ SIMPLIFIED: Remove packet loss methods, add integrity reporting
+    Public ReadOnly Property PacketIntegrityPercent As Double
         Get
-            Return _packetCount
+            SyncLock _stats
+                Return _stats.IntegrityPercent
+            End SyncLock
         End Get
     End Property
 
+    Public ReadOnly Property PacketCorruptionPercent As Double
+        Get
+            SyncLock _stats
+                Return _stats.CorruptionPercent
+            End SyncLock
+        End Get
+    End Property
+
+    Public ReadOnly Property TotalPacketsReceived As Long
+        Get
+            SyncLock _stats
+                Return _stats.TotalReceived
+            End SyncLock
+        End Get
+    End Property
+
+    Public ReadOnly Property ValidPacketsReceived As Long
+        Get
+            SyncLock _stats
+                Return _stats.ValidPackets
+            End SyncLock
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' Starts listening for OXTS NCOM packets
+    ''' </summary>
     Public Sub OxtsStartListening()
-        If _isRunning Then
-            HandleUserMessageLogging("GMRC", "⚠️ OXTS listener already running - ignoring duplicate start")
-            Return
-        End If
+        SyncLock Me
+            If _isRunning Then
+                HandleUserMessageLogging("GMRC", $"⚠️ OXTS listener already running on instance {Me.GetHashCode()} - ignoring duplicate start")
+                Return
+            End If
+            _isRunning = True
+            HandleUserMessageLogging("GMRC", $"🔧 OXTS: Starting listener on instance {Me.GetHashCode()}")
+        End SyncLock
 
         Try
             Dim localIp As IPAddress = GetOxtsSubnetInterface()
             Dim localEndPoint As New IPEndPoint(localIp, NcomPort)
 
             _udpClient = New UdpClient()
-
-            ' ✅ CRITICAL FIX: Enable port sharing (allows coexistence with UDPService)
             _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, True)
             _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, False)
-
-            ' Bind to the endpoint
             _udpClient.Client.Bind(localEndPoint)
 
-            _isRunning = True
-
-            HandleUserMessageLogging("GMRC", $"✅ OXTS NCOM listener bound to {localEndPoint} (SHARED mode with UDPService)")
+            HandleUserMessageLogging("GMRC", $"✅ OXTS NCOM listener bound to {localEndPoint} (Instance={Me.GetHashCode()})")
 
             _listenerThread = New Thread(AddressOf ListenLoop) With {
                 .IsBackground = True,
-                .Name = "OXTS_NCOM_Listener"
-                }
+                .Name = $"OXTS_NCOM_{Me.GetHashCode()}"
+            }
             _listenerThread.Start()
 
         Catch ex As SocketException
+            _isRunning = False
             HandleUserMessageLogging("GMRC",
                                      $"❌ Socket error binding to port {NcomPort}: {ex.Message} (Error: {ex.ErrorCode}){Environment.NewLine}" &
-                                     $"💡 UDPService (PID 6496) is using this port. Try closing NAVDisplay or rebooting.",
+                                     $"💡 Port may be in use by another process.",
                                      DisplayMsgBox)
-            _isRunning = False
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"Failed to start NCOM listener: {ex.Message}")
             _isRunning = False
+            HandleUserMessageLogging("GMRC", $"Failed to start NCOM listener: {ex.Message}")
         End Try
     End Sub
-
-    ''' <summary>
-    ''' Checks if a UDP port is already in use
-    ''' </summary>
-    Private Function IsPortInUse(port As Integer) As Boolean
-        Try
-            Dim ipGlobalProperties = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties()
-            Dim udpListeners = ipGlobalProperties.GetActiveUdpListeners()
-
-            Return udpListeners.Any(Function(ep) ep.Port = port)
-
-        Catch ex As Exception
-            ' If check fails, let the bind attempt proceed (will fail if truly in use)
-            Return False
-        End Try
-    End Function
-
 
     ''' <summary>
     ''' Finds the network interface on the 10.5.55.x subnet (OXTS subnet)
     ''' </summary>
     Private Function GetOxtsSubnetInterface() As IPAddress
         Try
-            ' Import at top: Imports System.Net.NetworkInformation
-            For Each nic In System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
-                If nic.OperationalStatus <> System.Net.NetworkInformation.OperationalStatus.Up Then
-                    Continue For
-                End If
+            For Each nic In NetworkInterface.GetAllNetworkInterfaces()
+                If nic.OperationalStatus <> OperationalStatus.Up Then Continue For
 
                 For Each unicastAddr In nic.GetIPProperties().UnicastAddresses
                     Dim ip = unicastAddr.Address
                     If ip.AddressFamily = Sockets.AddressFamily.InterNetwork Then
                         Dim ipStr = ip.ToString()
-                        ' Match the OXTS subnet (10.5.55.x)
                         If ipStr.StartsWith("10.5.55.") Then
                             HandleUserMessageLogging("GMRC", $"OXTS: Found interface on OXTS subnet: {ipStr} ({nic.Name})")
                             Return ip
@@ -179,7 +230,6 @@ Public Class OxtsNcomInterface
                 Next
             Next
 
-            ' ✅ Fallback: bind to any interface (0.0.0.0)
             HandleUserMessageLogging("GMRC", "OXTS: No interface on 10.5.55.x subnet found, binding to 0.0.0.0")
             Return IPAddress.Any
 
@@ -188,6 +238,7 @@ Public Class OxtsNcomInterface
             Return IPAddress.Any
         End Try
     End Function
+
     Public Sub OxtsStopListening()
         _isRunning = False
 
@@ -205,32 +256,66 @@ Public Class OxtsNcomInterface
 
     Private Sub ListenLoop()
         Dim remoteEndPoint As New IPEndPoint(IPAddress.Any, 0)
-        Dim loopCount As Integer = 0
+        Static lastStatsLogTime As DateTime = DateTime.MinValue
 
         While _isRunning
             Try
-                ' ✅ Enhanced logging
                 If _udpClient.Available > 0 Then
                     Dim ncomData As Byte() = _udpClient.Receive(remoteEndPoint)
                     LastPacketTime = DateTime.UtcNow
-                    Interlocked.Increment(_packetCount)
 
-                    ' ✅ Log first 10 packets, then every 100
-                    'If _packetCount <= 10 OrElse (_packetCount Mod 100 = 0) Then
-                    '    HandleUserMessageLogging("GMRC", $"✅ OXTS: Packet #{_packetCount} from {remoteEndPoint}, {ncomData.Length} bytes, GPS Lock: {IsGpsLocked}")
-                    'End If
+                    ' ✅ CRITICAL: Validate packet BEFORE processing
+                    Dim validationResult As NcomValidationResult = Nothing
+                    Dim isValid As Boolean = OxtsNcomChecksum.ValidatePacket(ncomData, validationResult)
 
-                    ' Parse NCOM packet
+                    ' Update statistics
+                    SyncLock _stats
+                        _stats.TotalReceived += 1
+
+                        If Not isValid Then
+                            ' Categorize failure type
+                            If Not validationResult.SyncByteValid Then
+                                _stats.InvalidSyncByte += 1
+                            ElseIf Not validationResult.NavigationStatusValid Then
+                                If validationResult.NavigationStatus = 11 Then
+                                    _stats.StructureBPackets += 1
+                                Else
+                                    _stats.InvalidNavStatus += 1
+                                End If
+                            ElseIf Not validationResult.Checksum1Valid Then
+                                _stats.Checksum1Failures += 1
+                                _stats.CorruptedPackets += 1
+                            ElseIf Not validationResult.Checksum2Valid Then
+                                _stats.Checksum2Failures += 1
+                                _stats.CorruptedPackets += 1
+                            ElseIf Not validationResult.Checksum3Valid Then
+                                _stats.Checksum3Failures += 1
+                                _stats.CorruptedPackets += 1
+                            End If
+
+                            ' Log corruption (critical issue)
+                            If _stats.CorruptedPackets Mod 10 = 1 Then ' Log first and every 10th
+                                HandleUserMessageLogging("GMRC", $"⚠️ OXTS: {validationResult.ErrorMessage}")
+                            End If
+
+                            Continue While ' Skip corrupted packet
+                        End If
+
+                        ' Packet is valid
+                        _stats.ValidPackets += 1
+                    End SyncLock
+
+                    ' ✅ Parse validated packet
                     If ParseNcomPacket(ncomData) Then
                         UpdateTimeOffset()
                     End If
 
-                    loopCount = 0 ' Reset timeout counter on successful receive
-                Else
-                    ' ✅ Log when no data (every 10 seconds)
-                    loopCount += 1
-                    If loopCount Mod 1000 = 0 Then ' 10ms * 1000 = 10 sec
-                        HandleUserMessageLogging("GMRC", $"⚠️ OXTS: No data in last 10 sec (total: {_packetCount})")
+                    ' ✅ Log statistics every 10 seconds
+                    If (DateTime.UtcNow - lastStatsLogTime).TotalSeconds >= 10 Then
+                        SyncLock _stats
+                            HandleUserMessageLogging("GMRC", $"📊 OXTS Stats: {_stats.GetSummary()}")
+                        End SyncLock
+                        lastStatsLogTime = DateTime.UtcNow
                     End If
                 End If
 
@@ -247,65 +332,45 @@ Public Class OxtsNcomInterface
             End Try
         End While
     End Sub
+
     ''' <summary>
-    ''' Parses NCOM Batch S (Status Channel) - FINAL CORRECTED VERSION
-    ''' Reference: OXTS NCOM Technical Manual
+    ''' ✅ SIMPLIFIED: Parses NCOM packet (assumes validation already done)
     ''' </summary>
     Private Function ParseNcomPacket(data As Byte()) As Boolean
         Try
-            If data.Length < 72 Then Return False
-            If data(0) <> &HE7 Then Return False
-
-            ' ✅ NEW: Extract and process Status Channel (Batch S)
+            ' Extract and process Status Channel (Batch S)
             Dim statusInfo = OxtsStatusChannelDecoder.ExtractBatchS(data)
             ProcessStatusChannel(statusInfo.ChannelId, statusInfo.BatchS)
 
-            ' ✅ DEBUG: Dump packet for analysis (comment out after verification)
-            Static packetCount As Integer = 0
-            packetCount += 1
-            If packetCount <= 3 Then ' Only dump first 3 packets
-                'Console.WriteLine($"=== NCOM Packet #{packetCount} ===")
-                'NcomDiagnostics.DumpNcomPacket(data)
-                'NcomDiagnostics.VerifyNcomDecoding(data)
-            End If
-
-            ' ✅ Use OXTS NCOM Decoder to decode packet
+            ' Decode position data
             Dim position = OxtsNcomDecoder.DecodePacket(data)
 
             If position.HasValue Then
-                ' Position and orientation
+                ' Update properties
                 Latitude = position.Value.Latitude
                 Longitude = position.Value.Longitude
                 Altitude = position.Value.Altitude
                 Heading = position.Value.Heading
                 Pitch = position.Value.Pitch
                 Roll = position.Value.Roll
-
-                ' ✅ NEW: Store velocities
                 VelocityNorth = position.Value.VelocityNorth
                 VelocityEast = position.Value.VelocityEast
                 VelocityDown = position.Value.VelocityDown
-
-                ' ✅ NEW: Store angular rates
                 YawRate = position.Value.YawRate
                 PitchRate = position.Value.PitchRate
                 RollRate = position.Value.RollRate
 
-                ' ✅ FIXED: Use actual GPS time from NCOM packet instead of system time
-                ' GPS time is provided in the position structure (if decoder extracts it)
-                ' For now, compute from GPS Week + Time of Week
+                ' Compute GPS time from Week + TOW
                 If GpsWeek > 0 AndAlso GpsTimeOfWeek >= 0 Then
-                    ' GPS epoch: January 6, 1980 00:00:00 UTC
                     Dim gpsEpoch As New DateTime(1980, 1, 6, 0, 0, 0, DateTimeKind.Utc)
                     LastGpsTime = gpsEpoch.AddDays(GpsWeek * 7).AddSeconds(GpsTimeOfWeek)
                 Else
-                    ' Fallback: use system time if GPS time not available yet
                     LastGpsTime = DateTime.UtcNow
                 End If
 
                 ' Extract navigation status
-                Dim navStatus As Byte = If(data.Length > 40, data(40), data(21))
-                IsGpsLocked = (navStatus And &H1) <> 0
+                Dim navStatus As Byte = data(21)
+                IsGpsLocked = (navStatus = 4) ' Status 4 = "Locked"
 
                 UpdateLatestPosition(navStatus)
                 Return True
@@ -320,18 +385,58 @@ Public Class OxtsNcomInterface
     End Function
 
     ''' <summary>
-    ''' ✅ NEW: Processes NCOM Status Channels to extract PTP sync status
-    ''' Status channels cycle through ~200 packets, so we track when each appears
+    ''' ✅ NEW: Reports comprehensive packet integrity diagnostics
     ''' </summary>
+    Public Sub ReportPacketIntegrity()
+        SyncLock _stats
+            HandleUserMessageLogging("GMRC", "=== OXTS Packet Integrity Report ===")
+            HandleUserMessageLogging("GMRC", $"Runtime: {(DateTime.UtcNow - _stats.LastResetTime).TotalSeconds:F1}s")
+            HandleUserMessageLogging("GMRC", "")
+            HandleUserMessageLogging("GMRC", $"Total Received: {_stats.TotalReceived:N0}")
+            HandleUserMessageLogging("GMRC", $"Valid Packets: {_stats.ValidPackets:N0} ({_stats.IntegrityPercent:F2}%)")
+            HandleUserMessageLogging("GMRC", $"Corrupted: {_stats.CorruptedPackets:N0} ({_stats.CorruptionPercent:F2}%)")
+            HandleUserMessageLogging("GMRC", "")
+            HandleUserMessageLogging("GMRC", "=== Failure Breakdown ===")
+            HandleUserMessageLogging("GMRC", $"Invalid Sync Byte: {_stats.InvalidSyncByte:N0}")
+            HandleUserMessageLogging("GMRC", $"Invalid Nav Status: {_stats.InvalidNavStatus:N0}")
+            HandleUserMessageLogging("GMRC", $"Structure-B (ignored): {_stats.StructureBPackets:N0}")
+            HandleUserMessageLogging("GMRC", $"Checksum 1 Failures: {_stats.Checksum1Failures:N0} (Batch A)")
+            HandleUserMessageLogging("GMRC", $"Checksum 2 Failures: {_stats.Checksum2Failures:N0} (Batch A+B)")
+            HandleUserMessageLogging("GMRC", $"Checksum 3 Failures: {_stats.Checksum3Failures:N0} (Full packet)")
+            HandleUserMessageLogging("GMRC", "")
+
+            ' Recommendations
+            If _stats.CorruptionPercent > 5 Then
+                HandleUserMessageLogging("GMRC", "⚠️ WARNING: High corruption rate detected!")
+                HandleUserMessageLogging("GMRC", "   Recommendations:")
+                HandleUserMessageLogging("GMRC", "   - Check network cable integrity")
+                HandleUserMessageLogging("GMRC", "   - Verify switch/router not overloaded")
+                HandleUserMessageLogging("GMRC", "   - Ensure OXTS firmware is up to date")
+            ElseIf _stats.IntegrityPercent < 95 Then
+                HandleUserMessageLogging("GMRC", "⚠️ Moderate integrity issues detected")
+            Else
+                HandleUserMessageLogging("GMRC", "✅ Excellent data integrity")
+            End If
+        End SyncLock
+    End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Resets integrity statistics
+    ''' </summary>
+    Public Sub ResetIntegrityStats()
+        SyncLock _stats
+            _stats.Reset()
+            HandleUserMessageLogging("GMRC", "OXTS integrity statistics reset")
+        End SyncLock
+    End Sub
+
     Private Sub ProcessStatusChannel(channelId As Byte, batchS As Byte())
         If batchS Is Nothing Then Return
 
-        ' Track when we last saw this channel
         SyncLock _statusChannelHistory
             _statusChannelHistory(channelId) = DateTime.UtcNow
         End SyncLock
 
-        ' Process specific status channels
         Select Case channelId
             Case 23 ' PTP Status + System Uptime
                 Dim status23 = OxtsStatusChannelDecoder.DecodeStatusChannel23(batchS)
@@ -340,7 +445,6 @@ Public Class OxtsNcomInterface
                     SystemUptime = OxtsStatusChannelDecoder.DecodeSystemUptime(status23.SystemUptime)
                     LastPtpStatusTime = DateTime.UtcNow
 
-                    ' Log PTP status changes
                     Static lastPtpStatus As OxtsStatusChannelDecoder.PtpStatusEnum = OxtsStatusChannelDecoder.PtpStatusEnum.Unknown
                     If status23.PtpStatus <> lastPtpStatus Then
                         Dim statusDesc = OxtsStatusChannelDecoder.GetPtpStatusDescription(status23.PtpStatus)
@@ -354,7 +458,6 @@ Public Class OxtsNcomInterface
                 If status93.IsValid Then
                     PtpTimingSource = status93.TimingSource
 
-                    ' Log timing source changes
                     Static lastTimingSource As OxtsStatusChannelDecoder.TimingSourceEnum = OxtsStatusChannelDecoder.TimingSourceEnum.None
                     If status93.TimingSource <> lastTimingSource Then
                         Dim sourceDesc = OxtsStatusChannelDecoder.GetTimingSourceDescription(status93.TimingSource)
@@ -366,32 +469,24 @@ Public Class OxtsNcomInterface
     End Sub
 
     Public Function GetRtkStatus() As String
-        ' Returns: "None", "Float", "Integer"
         SyncLock Me
             If Not _latestPosition.HasValue Then Return "None"
 
             Select Case _latestPosition.Value.GpsMode
-                Case 4 ' RTK Fixed/Integer
-                    Return "Integer"
-                Case 5 ' RTK Float
-                    Return "Float"
-                Case Else
-                    Return "None"
+                Case 4 : Return "Integer"
+                Case 5 : Return "Float"
+                Case Else : Return "None"
             End Select
         End SyncLock
     End Function
 
     Public Function IsRealtime() As Boolean
-        ' Check if data is arriving in realtime (within last 2 seconds)
         SyncLock Me
             If Not _latestPosition.HasValue Then Return False
             Return (DateTime.Now - _latestPositionTime).TotalSeconds < 2
         End SyncLock
     End Function
-    ''' <summary>
-    ''' Updates the latest position data when a packet is parsed
-    ''' Call this from ParseNcomPacket after extracting data
-    ''' </summary>
+
     Private Sub UpdateLatestPosition(navStatus As Byte)
         SyncLock Me
             _latestPosition = New OxtsPosition With {
@@ -411,38 +506,11 @@ Public Class OxtsNcomInterface
                 .GpsMode = navStatus And &H3,
                 .NavigationStatus = navStatus,
                 .RtkStatus = GetRtkStatusFromMode(navStatus And &H3)
-                }
+            }
             _latestPositionTime = DateTime.UtcNow
-
-            'Dim pos = GetGpsPosition()
-            'If pos.HasValue Then
-            '    ' Position
-            '    Console.WriteLine($"Lat: {pos.Value.Latitude:F8}°")
-            '    Console.WriteLine($"Lon: {pos.Value.Longitude:F8}°")
-            '    Console.WriteLine($"Alt: {pos.Value.Altitude:F2} m")
-
-            '    ' Orientation
-            '    Console.WriteLine($"Heading: {pos.Value.Heading:F2}°")
-            '    Console.WriteLine($"Pitch: {pos.Value.Pitch:F2}°")
-            '    Console.WriteLine($"Roll: {pos.Value.Roll:F2}°")
-
-            '    ' ✅ NEW: Velocities
-            '    Console.WriteLine($"Velocity North: {pos.Value.VelocityNorth:F3} m/s")
-            '    Console.WriteLine($"Velocity East: {pos.Value.VelocityEast:F3} m/s")
-            '    Console.WriteLine($"Velocity Down: {pos.Value.VelocityDown:F3} m/s")
-
-            '    ' ✅ NEW: Angular rates
-            '    Console.WriteLine($"Yaw Rate: {pos.Value.YawRate:F4} rad/s")
-            '    Console.WriteLine($"Pitch Rate: {pos.Value.PitchRate:F4} rad/s")
-            '    Console.WriteLine($"Roll Rate: {pos.Value.RollRate:F4} rad/s")
-            'End If
-
         End SyncLock
     End Sub
 
-    ''' <summary>
-    ''' Helper to convert GPS mode byte to readable string
-    ''' </summary>
     Private Function GetRtkStatusFromMode(gpsMode As Integer) As String
         Select Case gpsMode
             Case 0 : Return "Initializing"
@@ -454,23 +522,14 @@ Public Class OxtsNcomInterface
         End Select
     End Function
 
-    ''' <summary>
-    ''' Gets the most recent GPS position (if available and valid)
-    ''' </summary>
     Public Function GetGpsPosition() As OxtsPosition?
         SyncLock Me
-            If Not _latestPosition.HasValue Then
-                Return Nothing
-            End If
-
-            ' Check if data is stale (older than 2 seconds)
-            If (DateTime.UtcNow - _latestPositionTime).TotalSeconds > 2 Then
-                Return Nothing
-            End If
-
+            If Not _latestPosition.HasValue Then Return Nothing
+            If (DateTime.UtcNow - _latestPositionTime).TotalSeconds > 2 Then Return Nothing
             Return _latestPosition
         End SyncLock
     End Function
+
     Private Sub UpdateTimeOffset()
         If LastGpsTime.HasValue Then
             LastSystemTime = DateTime.UtcNow
@@ -478,14 +537,8 @@ Public Class OxtsNcomInterface
         End If
     End Sub
 
-    ''' <summary>
-    ''' Returns GPS-synchronized timestamp for current moment
-    ''' </summary>
     Public Function GetSynchronizedTimestamp() As DateTime
-        If Not LastGpsTime.HasValue Then
-            Return DateTime.UtcNow ' Fallback to system time
-        End If
-
+        If Not LastGpsTime.HasValue Then Return DateTime.UtcNow
         Return DateTime.UtcNow.Add(TimeOffset)
     End Function
 
@@ -494,7 +547,6 @@ Public Class OxtsNcomInterface
             If _latestPosition.HasValue Then
                 Return _latestPosition.Value
             Else
-                ' Fallback: return current properties (may be stale)
                 Return New OxtsPosition With {
                     .Timestamp = DateTime.UtcNow,
                     .Latitude = Me.Latitude,
@@ -512,14 +564,11 @@ Public Class OxtsNcomInterface
                     .GpsMode = If(IsGpsLocked, 2, 0),
                     .NavigationStatus = 0,
                     .RtkStatus = "Unknown"
-                    }
+                }
             End If
         End SyncLock
     End Function
 
-    ''' <summary>
-    ''' ✅ NEW: Relaxed GPS lock check for development
-    ''' </summary>
     Public Function WaitForGpsLock(timeoutMs As Integer) As Boolean
         If AllowNoGpsLock Then
             HandleUserMessageLogging("GMRC", "OXTS: Skipping GPS lock check (AllowNoGpsLock = True)")
@@ -540,13 +589,14 @@ Public Class OxtsNcomInterface
         Return False
     End Function
 
-    ''' <summary>
-    ''' ✅ NEW: Diagnostic test function
-    ''' </summary>
     Public Sub TestOxtsIntegration()
         HandleUserMessageLogging("GMRC", "=== OXTS Integration Test ===")
         HandleUserMessageLogging("GMRC", $"Listening: {_isRunning}")
-        HandleUserMessageLogging("GMRC", $"Packets Received: {_packetCount}")
+
+        SyncLock _stats
+            HandleUserMessageLogging("GMRC", $"Packets: {_stats.GetSummary()}")
+        End SyncLock
+
         HandleUserMessageLogging("GMRC", $"GPS Week: {GpsWeek}")
         HandleUserMessageLogging("GMRC", $"GPS TOW: {GpsTimeOfWeek:F3} seconds")
         HandleUserMessageLogging("GMRC", $"GPS Time: {If(LastGpsTime.HasValue, LastGpsTime.Value.ToString("yyyy-MM-dd HH:mm:ss.fff"), "N/A")}")
@@ -570,33 +620,20 @@ Public Class OxtsNcomInterface
         HandleUserMessageLogging("GMRC", $"Last PTP Update: {If(LastPtpStatusTime.HasValue, LastPtpStatusTime.Value.ToString("HH:mm:ss.fff"), "N/A")}")
     End Sub
 
-    ''' <summary>
-    ''' ✅ NEW: Checks if PTP is properly synchronized
-    ''' </summary>
     Public Function IsPtpSynchronized() As Boolean
         Return PtpStatus = OxtsStatusChannelDecoder.PtpStatusEnum.Locked OrElse
                PtpStatus = OxtsStatusChannelDecoder.PtpStatusEnum.Master
     End Function
 
-    ''' <summary>
-    ''' ✅ NEW: Gets PTP synchronization quality (0-100%)
-    ''' </summary>
     Public Function GetPtpSyncQuality() As Integer
         Select Case PtpStatus
-            Case OxtsStatusChannelDecoder.PtpStatusEnum.Locked
-                Return 100 ' Perfect sync
-            Case OxtsStatusChannelDecoder.PtpStatusEnum.Master
-                Return 95  ' Acting as grandmaster (very good)
-            Case OxtsStatusChannelDecoder.PtpStatusEnum.Slave
-                Return 75  ' Syncing but not locked yet
-            Case OxtsStatusChannelDecoder.PtpStatusEnum.Listening
-                Return 50  ' Searching for master
-            Case OxtsStatusChannelDecoder.PtpStatusEnum.Initialising
-                Return 25  ' Starting up
-            Case OxtsStatusChannelDecoder.PtpStatusEnum.Disabled
-                Return 0   ' Not enabled
-            Case Else
-                Return 0   ' Error or unknown
+            Case OxtsStatusChannelDecoder.PtpStatusEnum.Locked : Return 100
+            Case OxtsStatusChannelDecoder.PtpStatusEnum.Master : Return 95
+            Case OxtsStatusChannelDecoder.PtpStatusEnum.Slave : Return 75
+            Case OxtsStatusChannelDecoder.PtpStatusEnum.Listening : Return 50
+            Case OxtsStatusChannelDecoder.PtpStatusEnum.Initialising : Return 25
+            Case OxtsStatusChannelDecoder.PtpStatusEnum.Disabled : Return 0
+            Case Else : Return 0
         End Select
     End Function
 End Class
