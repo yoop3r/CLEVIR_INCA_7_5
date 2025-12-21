@@ -2320,7 +2320,7 @@
     <None Include="PTP_INTEGRATION_COMPLETE_SUMMARY.md" />
     <None Include="PTP_INTEGRATION_PHASE1.md" />
     <None Include="PTP_INTEGRATION_PHASE3_HESAI_CONFIG.md" />
-    <None Include="PTP_QUICK_REFERENCE.md" />
+    <None Include="PTP_QUICK_REFERENCE and NCOM Integrity Migration Guide.md" />
     <None Include="Resources\mic 50 Red.jpg" />
     <None Include="Resources\mic 50 Green.jpg" />
     <None Include="Resources\cropped image 60.jpg" />

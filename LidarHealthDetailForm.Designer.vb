@@ -53,6 +53,7 @@ Partial Class LidarHealthDetailForm
         Me.DataGridView1.Location = New System.Drawing.Point(18, 138)
         Me.DataGridView1.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.DataGridView1.Name = "DataGridView1"
+        Me.DataGridView1.RowHeadersWidth = 62
         Me.DataGridView1.Size = New System.Drawing.Size(1140, 453)
         Me.DataGridView1.TabIndex = 0
         '
@@ -61,10 +62,10 @@ Partial Class LidarHealthDetailForm
         Me.Label_Summary.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left), System.Windows.Forms.AnchorStyles)
         Me.Label_Summary.AutoSize = True
         Me.Label_Summary.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label_Summary.Location = New System.Drawing.Point(749, 610)
+        Me.Label_Summary.Location = New System.Drawing.Point(659, 610)
         Me.Label_Summary.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
         Me.Label_Summary.Name = "Label_Summary"
-        Me.Label_Summary.Size = New System.Drawing.Size(407, 22)
+        Me.Label_Summary.Size = New System.Drawing.Size(494, 22)
         Me.Label_Summary.TabIndex = 1
         Me.Label_Summary.Text = "Total: 0 | ✅ Healthy: 0 | ⚠️ Warning: 0 | ❌ Critical: 0"
         '
@@ -78,7 +79,6 @@ Partial Class LidarHealthDetailForm
         Me.Button_Refresh.TabIndex = 2
         Me.Button_Refresh.Text = "Refresh"
         Me.Button_Refresh.UseVisualStyleBackColor = True
-        AddHandler Me.Button_Refresh.Click, AddressOf Me.Button_Refresh_Click
         '
         'Button_Close
         '
@@ -90,7 +90,6 @@ Partial Class LidarHealthDetailForm
         Me.Button_Close.TabIndex = 3
         Me.Button_Close.Text = "Close"
         Me.Button_Close.UseVisualStyleBackColor = True
-        AddHandler Me.Button_Close.Click, AddressOf Me.Button_Close_Click
         '
         'Button_Export
         '
@@ -102,7 +101,6 @@ Partial Class LidarHealthDetailForm
         Me.Button_Export.TabIndex = 4
         Me.Button_Export.Text = "Export CSV"
         Me.Button_Export.UseVisualStyleBackColor = True
-        AddHandler Me.Button_Export.Click, AddressOf Me.Button_Export_Click
         '
         'Label_Title
         '
@@ -111,7 +109,7 @@ Partial Class LidarHealthDetailForm
         Me.Label_Title.Location = New System.Drawing.Point(18, 23)
         Me.Label_Title.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
         Me.Label_Title.Name = "Label_Title"
-        Me.Label_Title.Size = New System.Drawing.Size(393, 29)
+        Me.Label_Title.Size = New System.Drawing.Size(490, 29)
         Me.Label_Title.TabIndex = 5
         Me.Label_Title.Text = "LiDAR Health Diagnostics (Integrity-First)"
         '
@@ -134,37 +132,41 @@ Partial Class LidarHealthDetailForm
         'Label_PacketCount
         '
         Me.Label_PacketCount.AutoSize = True
-        Me.Label_PacketCount.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label_PacketCount.Location = New System.Drawing.Point(18, 42)
+        Me.Label_PacketCount.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label_PacketCount.Location = New System.Drawing.Point(783, 24)
         Me.Label_PacketCount.Name = "Label_PacketCount"
-        Me.Label_PacketCount.Size = New System.Drawing.Size(200, 20)
+        Me.Label_PacketCount.Size = New System.Drawing.Size(187, 20)
         Me.Label_PacketCount.TabIndex = 3
         Me.Label_PacketCount.Text = "NCOM: 0 valid / 0 total"
+        Me.Label_PacketCount.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
         '
         'Label_PacketLoss
         '
         Me.Label_PacketLoss.AutoSize = True
-        Me.Label_PacketLoss.Location = New System.Drawing.Point(632, 24)
+        Me.Label_PacketLoss.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label_PacketLoss.Location = New System.Drawing.Point(485, 24)
         Me.Label_PacketLoss.Name = "Label_PacketLoss"
-        Me.Label_PacketLoss.Size = New System.Drawing.Size(280, 22)
+        Me.Label_PacketLoss.Size = New System.Drawing.Size(242, 20)
         Me.Label_PacketLoss.TabIndex = 2
         Me.Label_PacketLoss.Text = "Integrity: 100% (Corrupt: 0%)"
         '
         'Label_GpsLock
         '
         Me.Label_GpsLock.AutoSize = True
-        Me.Label_GpsLock.Location = New System.Drawing.Point(406, 24)
+        Me.Label_GpsLock.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label_GpsLock.Location = New System.Drawing.Point(339, 24)
         Me.Label_GpsLock.Name = "Label_GpsLock"
-        Me.Label_GpsLock.Size = New System.Drawing.Size(193, 22)
+        Me.Label_GpsLock.Size = New System.Drawing.Size(130, 20)
         Me.Label_GpsLock.TabIndex = 1
         Me.Label_GpsLock.Text = "GPS: Unknown"
         '
         'Label_PtpStatus
         '
         Me.Label_PtpStatus.AutoSize = True
-        Me.Label_PtpStatus.Location = New System.Drawing.Point(18, 24)
+        Me.Label_PtpStatus.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label_PtpStatus.Location = New System.Drawing.Point(8, 24)
         Me.Label_PtpStatus.Name = "Label_PtpStatus"
-        Me.Label_PtpStatus.Size = New System.Drawing.Size(168, 22)
+        Me.Label_PtpStatus.Size = New System.Drawing.Size(147, 20)
         Me.Label_PtpStatus.TabIndex = 0
         Me.Label_PtpStatus.Text = "PTP: Initializing..."
         '
@@ -177,7 +179,6 @@ Partial Class LidarHealthDetailForm
         Me.Button_TestOxts.TabIndex = 5
         Me.Button_TestOxts.Text = "🔌 Test OXTS"
         Me.Button_TestOxts.UseVisualStyleBackColor = True
-        AddHandler Me.Button_TestOxts.Click, AddressOf Me.TestOxtsConnection_Click
         '
         'Button_TestLidar
         '
@@ -188,7 +189,6 @@ Partial Class LidarHealthDetailForm
         Me.Button_TestLidar.TabIndex = 6
         Me.Button_TestLidar.Text = "📡 Test LiDAR"
         Me.Button_TestLidar.UseVisualStyleBackColor = True
-        AddHandler Me.Button_TestLidar.Click, AddressOf Me.TestLidarCapture_Click
         '
         'Button_TestIntegration
         '
@@ -199,7 +199,6 @@ Partial Class LidarHealthDetailForm
         Me.Button_TestIntegration.TabIndex = 7
         Me.Button_TestIntegration.Text = "🔗 Integration"
         Me.Button_TestIntegration.UseVisualStyleBackColor = True
-        AddHandler Me.Button_TestIntegration.Click, AddressOf Me.TestOxtsLidarIntegration_Click
         '
         'Button_DiagnoseOxts
         '
@@ -210,7 +209,6 @@ Partial Class LidarHealthDetailForm
         Me.Button_DiagnoseOxts.TabIndex = 8
         Me.Button_DiagnoseOxts.Text = "📊 Integrity Report"
         Me.Button_DiagnoseOxts.UseVisualStyleBackColor = True
-        AddHandler Me.Button_DiagnoseOxts.Click, AddressOf Me.Button_DiagnoseOxts_Click
         '
         'Button_ResetOxtsStats
         '
@@ -219,9 +217,8 @@ Partial Class LidarHealthDetailForm
         Me.Button_ResetOxtsStats.Name = "Button_ResetOxtsStats"
         Me.Button_ResetOxtsStats.Size = New System.Drawing.Size(125, 46)
         Me.Button_ResetOxtsStats.TabIndex = 9
-        Me.Button_ResetOxtsStats.Text = "🔄 Reset Stats"
+        Me.Button_ResetOxtsStats.Text = "🔄 Reset"
         Me.Button_ResetOxtsStats.UseVisualStyleBackColor = True
-        AddHandler Me.Button_ResetOxtsStats.Click, AddressOf Me.Button_ResetOxtsStats_Click
         '
         'Panel_TestActions
         '

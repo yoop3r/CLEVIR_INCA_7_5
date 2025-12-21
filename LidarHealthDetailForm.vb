@@ -327,7 +327,7 @@ Public Class LidarHealthDetailForm
         End Using
     End Sub
 
-    Private Sub TestOxtsConnection_Click(sender As Object, e As EventArgs)
+    Private Sub TestOxtsConnection_Click(sender As Object, e As EventArgs) Handles Button_TestOxts.Click
         If _mainForm Is Nothing Then
             StatusNotifier.Warn("Main form reference not available", "Test")
             Return
@@ -343,7 +343,7 @@ Public Class LidarHealthDetailForm
         StatusNotifier.Toast("OXTS test complete - check diagnostics", "Test")
     End Sub
 
-    Private Sub TestLidarCapture_Click(sender As Object, e As EventArgs)
+    Private Sub TestLidarCapture_Click(sender As Object, e As EventArgs) Handles Button_TestLidar.Click
         If _devices Is Nothing OrElse _devices.Count = 0 Then
             StatusNotifier.Warn("No LiDAR devices configured", "Test")
             Return
@@ -357,7 +357,7 @@ Public Class LidarHealthDetailForm
         StatusNotifier.Toast($"LiDAR test complete for {_devices.Count} device(s)", "Test")
     End Sub
 
-    Private Sub TestOxtsLidarIntegration_Click(sender As Object, e As EventArgs)
+    Private Sub TestOxtsLidarIntegration_Click(sender As Object, e As EventArgs) Handles Button_TestIntegration.Click
         HandleUserMessageLogging("GMRC", "=== FULL INTEGRATION TEST ===")
 
         If _mainForm IsNot Nothing AndAlso _mainForm.MyOxtsInterface IsNot Nothing Then
@@ -423,7 +423,7 @@ Public Class LidarHealthDetailForm
     ''' <summary>
     ''' ✅ NEW: Reset OXTS integrity statistics
     ''' </summary>
-    Private Sub Button_ResetOxtsStats_Click(sender As Object, e As EventArgs)
+    Private Sub Button_ResetOxtsStats_Click(sender As Object, e As EventArgs) Handles Button_ResetOxtsStats.Click
         If _mainForm Is Nothing OrElse _mainForm.MyOxtsInterface Is Nothing Then
             StatusNotifier.Warn("OXTS not initialized", "Reset")
             Return
