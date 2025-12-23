@@ -110,6 +110,14 @@ Public Class LidarHealthDetailForm
                 .FillWeight = 13
             })
 
+            ' ✅ NEW: Operational state column
+            DataGridView1.Columns.Add(New DataGridViewTextBoxColumn With {
+                .Name = "OperationalInfo",
+                .HeaderText = "Operational Info",
+                .DataPropertyName = "OperationalInfo",
+                .FillWeight = 20
+            })
+
             ' Data volume
             DataGridView1.Columns.Add(New DataGridViewTextBoxColumn With {
                 .Name = "TotalBytes",
@@ -320,7 +328,7 @@ Public Class LidarHealthDetailForm
             For Each row As DataGridViewRow In DataGridView1.Rows
                 Dim values As New List(Of String)
                 For Each cell As DataGridViewCell In row.Cells
-                    values.Add($"""{cell.Value}""")
+                    values.Add($"""")
                 Next
                 writer.WriteLine(String.Join(",", values))
             Next
@@ -450,62 +458,63 @@ Public Class LidarHealthDetailForm
     End Enum
 
     ''' <summary>
-    ''' ✅ REFACTORED: Data row with integrity-focused metrics
+    ''' ✅ REFACTORED: Data row using Hesai packet parser for accurate health monitoring
+    ''' Parses UDP sequence numbers directly from Hesai AT128 packets
     ''' </summary>
     Private Class DeviceHealthRow
         Public Property DeviceId As String
         Public Property Status As String
         Public Property PacketCount As Long
-        Public Property IntegrityPercent As Double        ' ✅ NEW: Replaces "LossPercent"
-        Public Property CorruptedPackets As Long          ' ✅ NEW: Replaces "DroppedPackets"
+        Public Property IntegrityPercent As Double
+        Public Property CorruptedPackets As Long
         Public Property ChecksumErrors As Long
         Public Property OutOfOrderPackets As Long
         Public Property LastPacket As String
         Public Property TotalMB As Double
         Public Property HealthStatus As DeviceHealthStatus
+        Public Property OperationalInfo As String  ' ✅ NEW: Operational state + RPM
 
         Public Sub New(device As LidarDevice)
             DeviceId = device.DeviceId
 
-            ' Gather stats from Hesai SDK (if available) or PcapDotNet
-            If HesaiInterop.IsAvailable() Then
-                Dim stats = HesaiInterop.GetDeviceStats(device.DeviceId)
+            ' Get basic counters
+            PacketCount = device.PacketCount
+            ChecksumErrors = 0  ' Not tracked by parser yet
+            OutOfOrderPackets = device.OutOfOrderPackets
 
-                If stats.packets_received > 0 Then
-                    PacketCount = CLng(stats.packets_received)
-                    ChecksumErrors = CLng(stats.checksum_errors)
-                    OutOfOrderPackets = CLng(stats.out_of_order_packets)
+            ' ✅ NEW: Use DroppedPackets from Hesai sequence gap detection
+            Dim droppedPackets As Long = device.DroppedPackets
+            CorruptedPackets = droppedPackets + OutOfOrderPackets
 
-                    ' ✅ Calculate integrity metrics
-                    Dim totalProcessed = PacketCount + ChecksumErrors
-                    CorruptedPackets = ChecksumErrors + OutOfOrderPackets
-
-                    If totalProcessed > 0 Then
-                        IntegrityPercent = ((totalProcessed - CorruptedPackets) / CDbl(totalProcessed)) * 100.0
-                    Else
-                        IntegrityPercent = 100.0
-                    End If
-                Else
-                    PacketCount = device.PacketCount
-                    ChecksumErrors = 0
-                    OutOfOrderPackets = 0
-                    CorruptedPackets = 0
-                    IntegrityPercent = 100.0
-                End If
+            ' ✅ Calculate integrity from actual sequence gaps
+            Dim totalExpected As Long = PacketCount + droppedPackets
+            If totalExpected > 0 Then
+                IntegrityPercent = ((totalExpected - droppedPackets) / CDbl(totalExpected)) * 100.0
             Else
-                PacketCount = device.PacketCount
-                ChecksumErrors = device.ChecksumErrors
-                OutOfOrderPackets = device.OutOfOrderPackets
-                CorruptedPackets = ChecksumErrors + OutOfOrderPackets
-
-                If PacketCount > 0 Then
-                    IntegrityPercent = ((PacketCount - CorruptedPackets) / CDbl(PacketCount)) * 100.0
-                Else
-                    IntegrityPercent = 100.0
-                End If
+                IntegrityPercent = 100.0
             End If
 
             TotalMB = device.TotalBytes / 1024.0 / 1024.0
+
+            ' ✅ NEW: Show Hesai operational state and motor speed
+            Dim hesaiInfo As HesaiPacketInfo = device.LastHesaiInfo
+            If hesaiInfo.IsValid Then
+                Dim opState As String = GetOperationalStateString(hesaiInfo.OperationalState)
+                Dim returnMode As String = GetReturnModeString(hesaiInfo.ReturnMode)
+                OperationalInfo = $"{opState} @ {hesaiInfo.MotorSpeed} RPM | {returnMode}"
+
+                ' ✅ Show functional safety alerts if present
+                If hesaiInfo.HasFunctionalSafety AndAlso hesaiInfo.LidarState > 1 Then
+                    Dim fsState As String = GetLidarStateString(hesaiInfo.LidarState)
+                    OperationalInfo &= $" | FS: {fsState}"
+
+                    If hesaiInfo.FaultCode > 0 Then
+                        OperationalInfo &= $" (Fault: 0x{hesaiInfo.FaultCode:X4})"
+                    End If
+                End If
+            Else
+                OperationalInfo = "Parsing..."
+            End If
 
             ' Format last packet time
             If device.LastPacketTimestamp.HasValue Then
@@ -521,7 +530,7 @@ Public Class LidarHealthDetailForm
                 LastPacket = "Never"
             End If
 
-            ' ✅ REFACTORED: Health determination prioritizes data corruption
+            ' ✅ REFACTORED: Health determination with integrity thresholds
             If Not device.LastPacketTimestamp.HasValue AndAlso device.PacketCount = 0 Then
                 HealthStatus = DeviceHealthStatus.Critical
                 Status = "NO COMMS"
@@ -530,30 +539,92 @@ Public Class LidarHealthDetailForm
                 HealthStatus = DeviceHealthStatus.Critical
                 Status = "STOPPED"
 
-                ' ✅ NEW: Critical data corruption (integrity < 90%)
+            ElseIf hesaiInfo.IsValid AndAlso hesaiInfo.OperationalState = 1 Then
+                ' Operational State = 1 = Shutdown
+                HealthStatus = DeviceHealthStatus.Critical
+                Status = "SHUTDOWN"
+
+            ElseIf hesaiInfo.HasFunctionalSafety AndAlso hesaiInfo.LidarState >= 5 Then
+                ' LidarState: 5=Pre-Shutdown, 6=Shutdown
+                HealthStatus = DeviceHealthStatus.Critical
+                Status = "FS: PRE-SHUTDOWN"
+
             ElseIf IntegrityPercent < 90.0 Then
+                ' Critical packet loss (>10%)
                 HealthStatus = DeviceHealthStatus.Critical
-                Status = "DATA CORRUPT"
+                Status = "DATA LOSS"
 
-                ' ✅ NEW: High checksum errors
-            ElseIf ChecksumErrors > 100 Then
-                HealthStatus = DeviceHealthStatus.Critical
-                Status = "CHECKSUM ERR"
+            ElseIf hesaiInfo.HasFunctionalSafety AndAlso hesaiInfo.LidarState >= 3 Then
+                ' LidarState: 3=Pre-Perf Degradation, 4=Perf Degradation
+                HealthStatus = DeviceHealthStatus.Warning
+                Status = "FS: DEGRADED"
 
-                ' ✅ NEW: Warning on moderate corruption (90-95% integrity)
             ElseIf IntegrityPercent < 95.0 Then
+                ' Warning on moderate packet loss (5-10%)
                 HealthStatus = DeviceHealthStatus.Warning
                 Status = "INTEGRITY LOW"
 
-                ' ✅ NEW: Warning on moderate checksum errors
-            ElseIf ChecksumErrors > 50 OrElse OutOfOrderPackets > 25 Then
+            ElseIf droppedPackets > 1000 Then
+                ' Warning on high absolute loss
                 HealthStatus = DeviceHealthStatus.Warning
-                Status = "WARNING"
+                Status = "PACKET LOSS"
 
-            Else
+            ElseIf device.IsCapturing AndAlso device.PacketCount > 0 Then
+                HealthStatus = DeviceHealthStatus.Healthy
+                Status = "Capturing"
+
+            ElseIf device.PacketCount > 0 Then
                 HealthStatus = DeviceHealthStatus.Healthy
                 Status = "Healthy"
+
+            Else
+                HealthStatus = DeviceHealthStatus.Warning
+                Status = "Idle"
             End If
         End Sub
+
+        ''' <summary>
+        ''' ✅ NEW: Decode Hesai operational state byte
+        ''' </summary>
+        Private Shared Function GetOperationalStateString(state As Byte) As String
+            Select Case state
+                Case 0 : Return "High Resolution"
+                Case 1 : Return "Shutdown"
+                Case 2 : Return "Standard"
+                Case 3 : Return "Energy Saving"
+                Case Else : Return $"Unknown ({state})"
+            End Select
+        End Function
+
+        ''' <summary>
+        ''' ✅ NEW: Decode Hesai return mode byte
+        ''' </summary>
+        Private Shared Function GetReturnModeString(mode As Byte) As String
+            Select Case mode
+                Case &H33 : Return "First"
+                Case &H37 : Return "Strongest"
+                Case &H38 : Return "Last"
+                Case &H39 : Return "Dual(Last+Strong)"
+                Case &H3B : Return "Dual(Last+First)"
+                Case &H3C : Return "Dual(First+Strong)"
+                Case Else : Return $"Mode 0x{mode:X2}"
+            End Select
+        End Function
+
+        ''' <summary>
+        ''' ✅ NEW: Decode Hesai functional safety LiDAR state
+        ''' </summary>
+        Private Shared Function GetLidarStateString(state As Byte) As String
+            Select Case state
+                Case 0 : Return "Init"
+                Case 1 : Return "Normal"
+                Case 2 : Return "Warning"
+                Case 3 : Return "Pre-Perf Degradation"
+                Case 4 : Return "Perf Degradation"
+                Case 5 : Return "Pre-Shutdown"
+                Case 6 : Return "Shutdown"
+                Case Else : Return $"Unknown ({state})"
+            End Select
+        End Function
     End Class
 End Class

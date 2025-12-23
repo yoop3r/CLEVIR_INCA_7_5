@@ -35,7 +35,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef Lidar_H
 #define Lidar_H
 #include <time.h>
-#include "lidar_types.h"
+#include "C:\DEV\HesaiLidar_SDK_2.0-master\libhesai\lidar_types.h"
 #include "ptc_client.h"
 #include "tcp_client.h"
 #include "udp_parser.h"

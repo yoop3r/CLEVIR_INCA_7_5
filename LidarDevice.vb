@@ -2,6 +2,7 @@
 Imports System.IO
 Imports System.Speech.Synthesis
 Imports System.Threading
+Imports System.Threading.Tasks
 Imports PcapDotNet.Core
 Imports PcapDotNet.Packets
 Imports PcapDotNet.Packets.Ethernet
@@ -15,9 +16,6 @@ Public Class LidarEventLogger
     Private eventLogPath As String
     Private eventLogWriter As StreamWriter
     Private syncLockObj As New Object()
-
-    ' ✅ REMOVED: These properties don't belong here!
-    ' They should be in LidarDevice class
 
     Public Sub New(pcapFilePath As String)
         ' Create sidecar log file (e.g., "Recording_01_LiDAR1.pcap" -> "Recording_01_LiDAR1.lidar_events.txt")
@@ -62,6 +60,23 @@ Public Class LidarEventLogger
 End Class
 
 ''' <summary>
+''' ✅ NEW: Hesai AT128 packet information structure
+''' Parsed directly from UDP payload for health monitoring
+''' </summary>
+Public Structure HesaiPacketInfo
+    Public IsValid As Boolean
+    Public UdpSequence As UInteger
+    Public OperationalState As Byte  ' 0=High Res, 1=Shutdown, 2=Standard, 3=Energy Saving
+    Public ReturnMode As Byte
+    Public MotorSpeed As UShort      ' RPM
+    Public HasFunctionalSafety As Boolean
+    Public HasIMU As Boolean
+    Public HasSignature As Boolean
+    Public LidarState As Byte        ' From Functional Safety (if present)
+    Public FaultCode As UShort       ' From Functional Safety (if present)
+End Structure
+
+''' <summary>
 ''' Represents a single LiDAR sensor device with independent capture state
 ''' </summary>
 Public Class LidarDevice
@@ -90,6 +105,9 @@ Public Class LidarDevice
     ' ✅ NEW: Add Hesai SDK stats properties HERE (in LidarDevice, not LidarEventLogger)
     Private _checksumErrors As Long = 0
     Private _outOfOrderPackets As Long = 0
+    Private _lastHesaiSequence As UInteger = 0
+    Private _hesaiSequenceInitialized As Boolean = False
+    Private _lastHesaiInfo As HesaiPacketInfo
 
     Private ReadOnly _markerQueue As New Concurrent.ConcurrentQueue(Of EventMarker)
 
@@ -105,6 +123,11 @@ Public Class LidarDevice
 
     Private _frameCounter As Long = 0  ' Tracks PCAP frame number
     Private _eventLogger As LidarEventLogger
+
+    ' ✅ NEW: Store Hesai config for lazy registration
+    Public Property HesaiConfig As HesaiInterop.HesaiDeviceConfig
+    Public Property HasHesaiConfig As Boolean = False
+    Public Property IsHesaiRegistered As Boolean = False
 
     Public ReadOnly Property CurrentFrameNumber As Long
         Get
@@ -166,6 +189,15 @@ Public Class LidarDevice
     End Property
 
     Public Property LastPacketTimestamp As DateTime?
+
+    ''' <summary>
+    ''' ✅ NEW: Last parsed Hesai packet info (for health monitoring)
+    ''' </summary>
+    Public ReadOnly Property LastHesaiInfo As HesaiPacketInfo
+        Get
+            Return _lastHesaiInfo
+        End Get
+    End Property
 
     ''' <summary>
     ''' Event marker structure
@@ -345,14 +377,6 @@ Public Class LidarDevice
         Dim logPrefix As String = $"[{DeviceId}] StartCapture"
 
         Try
-
-            '' ✅ Register with Hesai SDK if available
-            If HesaiInterop.IsAvailable() Then
-                If HesaiInterop.RegisterDevice(DeviceId, LidarIpAddress, CInt(LidarDataPort)) Then
-                    HandleUserMessageLogging("GMRC", $"[{DeviceId}] Registered with Hesai SDK")
-                End If
-            End If
-
             ' Check if already capturing
             If _isCapturing Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Already active")
@@ -416,6 +440,29 @@ Public Class LidarDevice
             ' Write event to INCA
             MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} capture started (seq {sequence:D2})", True)
 
+            ' ════════════════════════════════════════════════════════════════
+            ' ✅ VALIDATION-ONLY MODE: Register with Hesai SDK for stats tracking
+            '    WITHOUT binding to UDP ports (PcapDotNet handles capture)
+            ' ════════════════════════════════════════════════════════════════
+            If HesaiInterop.IsAvailable() AndAlso Not IsHesaiRegistered Then
+                Task.Run(Sub()
+                             Try
+                                 ' ✅ ALWAYS use validation-only mode to avoid UDP port conflicts
+                                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Registering with Hesai SDK in VALIDATION-ONLY mode...")
+
+                                 If HesaiInterop.RegisterDeviceValidationOnly(DeviceId, LidarIpAddress, CInt(LidarDataPort)) Then
+                                     IsHesaiRegistered = True
+                                     HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Registered with Hesai SDK (validation-only, no UDP bind)")
+                                 Else
+                                     HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Hesai SDK validation-only registration failed")
+                                 End If
+
+                             Catch hesaiEx As Exception
+                                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Hesai SDK registration error: {hesaiEx.Message}")
+                             End Try
+                         End Sub)
+            End If
+
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
             CleanupResources()
@@ -462,7 +509,9 @@ Public Class LidarDevice
     End Sub
 
     ''' <summary>
-    ''' Stops packet capture for this LiDAR device
+    ''' Stops packet capture for this LiDAR device.
+    ''' ✅ NOTE: This does NOT unregister from Hesai SDK - SDK stays running between sequences.
+    ''' Use ShutdownDevice() to fully release the SDK when done with all recording.
     ''' </summary>
     Public Sub StopCapture()
         Dim logPrefix As String = $"[{DeviceId}] StopCapture"
@@ -470,18 +519,16 @@ Public Class LidarDevice
         Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
 
         Try
-
-            If HesaiInterop.IsAvailable() Then
-                HesaiInterop.UnregisterDevice(DeviceId)
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Unregistered from Hesai SDK")
-            End If
+            ' ✅ CHANGED: Do NOT unregister SDK here - keep it running between sequences
+            ' The SDK will continue to track packet loss statistics across sequences
+            ' Use ShutdownDevice() when you want to fully release the SDK
 
             If Not _isCapturing Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Not currently capturing")
                 Return
             End If
 
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping capture...")
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping capture (SDK stays registered for next sequence)...")
 
             ' Inject stop marker before stopping
             InjectEventMarker("STOP", "Recording stopped", currentSeq)
@@ -521,13 +568,43 @@ Public Class LidarDevice
             ' Write event to INCA
             MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts, {_markerCounter} markers", True)
 
-            ' Close event logger
-            _eventLogger?.Close()
-            _eventLogger = Nothing
+            ' Close event logger (duplicate call removed - already closed above)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}")
             HandleUserMessageLogging("GMRC", $"LidarDevice.StopCapture ({DeviceId}): {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Fully shuts down the device, including unregistering from Hesai SDK.
+    ''' Call this when:
+    '''   - Application is closing
+    '''   - User manually stops ALL recording (not just between sequences)
+    '''   - Device configuration changes require SDK restart
+    ''' </summary>
+    Public Sub ShutdownDevice()
+        Dim logPrefix As String = $"[{DeviceId}] ShutdownDevice"
+
+        Try
+            ' First, stop any active capture
+            If _isCapturing Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping active capture first...")
+                StopCapture()
+            End If
+
+            ' Now unregister from Hesai SDK
+            If HesaiInterop.IsAvailable() AndAlso IsHesaiRegistered Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Unregistering from Hesai SDK...")
+                HesaiInterop.UnregisterDevice(DeviceId)
+                IsHesaiRegistered = False
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Unregistered from Hesai SDK")
+            End If
+
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Device fully shut down")
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}")
         End Try
     End Sub
 
@@ -598,6 +675,55 @@ Public Class LidarDevice
                             ' Update statistics
                             Interlocked.Increment(_packetCount)
                             Interlocked.Add(_totalBytes, packet.Length)
+
+                            ' ✅ NEW: Parse Hesai packet for sequence tracking (every 100th packet to reduce overhead)
+                            If _packetCount Mod 100 = 0 Then
+                                Try
+                                    Dim eth = packet.Ethernet
+                                    If eth IsNot Nothing AndAlso eth.IpV4 IsNot Nothing Then
+                                        Dim udp = eth.IpV4.Udp
+                                        If udp IsNot Nothing AndAlso udp.Payload.Length > 0 Then
+                                            Dim udpPayload As Byte() = udp.Payload.ToArray()
+                                            Dim info As HesaiPacketInfo = ParseHesaiPacket(udpPayload)
+
+                                            If info.IsValid Then
+                                                ' Store last packet info
+                                                _lastHesaiInfo = info
+
+                                                ' Check for sequence gaps (packet loss detection)
+                                                If _hesaiSequenceInitialized Then
+                                                    ' Calculate expected sequence (wraps at UInteger.MaxValue)
+                                                    Dim expectedSeq As UInteger = _lastHesaiSequence + 100UI
+
+                                                    ' Handle wrap-around
+                                                    Dim gap As Long
+                                                    If info.UdpSequence >= expectedSeq Then
+                                                        gap = CLng(info.UdpSequence) - CLng(expectedSeq)
+                                                    Else
+                                                        ' Wrapped around
+                                                        gap = (CLng(UInteger.MaxValue) - CLng(expectedSeq)) + CLng(info.UdpSequence) + 1
+                                                    End If
+
+                                                    ' Only count reasonable gaps (not sensor restarts)
+                                                    If gap > 0 AndAlso gap < 10000 Then
+                                                        Interlocked.Add(_droppedPackets, gap)
+                                                        Interlocked.Add(_outOfOrderPackets, 1)
+                                                    End If
+                                                Else
+                                                    _hesaiSequenceInitialized = True
+                                                End If
+
+                                                _lastHesaiSequence = info.UdpSequence
+                                            End If
+                                        End If
+                                    End If
+                                Catch parseEx As Exception
+                                    ' Don't crash capture on parse errors
+                                    If _packetCount Mod 10000 = 0 Then
+                                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] Packet parse error: {parseEx.Message}")
+                                    End If
+                                End Try
+                            End If
 
                             ' Update stats every 1000 packets
                             If _packetCount Mod 1000 = 0 Then
@@ -707,25 +833,25 @@ Public Class LidarDevice
             Dim dstIp As IpV4Address = New IpV4Address("192.168.40.255")
 
             Dim ethernetLayer As New EthernetLayer With {
-            .Source = srcMac,
-            .Destination = dstMac,
-            .EtherType = EthernetType.IpV4
-        }
+                .Source = srcMac,
+                .Destination = dstMac,
+                .EtherType = EthernetType.IpV4
+            }
 
             Dim ipV4Layer As New IpV4Layer With {
-            .Source = srcIp,
-            .CurrentDestination = dstIp,
-            .Ttl = 128
-        }
+                .Source = srcIp,
+                .CurrentDestination = dstIp,
+                .Ttl = 128
+            }
 
             Dim udpLayer As New UdpLayer With {
-            .SourcePort = MarkerSourcePort,
-            .DestinationPort = MarkerDestPort
-        }
+                .SourcePort = MarkerSourcePort,
+                .DestinationPort = MarkerDestPort
+            }
 
             Dim payloadLayer As New PayloadLayer With {
-            .Data = New Datagram(payloadBytes)
-        }
+                .Data = New Datagram(payloadBytes)
+            }
 
             ' Build and write marker packet to PCAP
             Dim builder As New PacketBuilder(ethernetLayer, ipV4Layer, udpLayer, payloadLayer)
@@ -734,7 +860,6 @@ Public Class LidarDevice
             _dumpFile.Dump(markerPacket)
 
             ' Increment frame counter for the injected marker packet
-            _dumpFile.Dump(markerPacket)
             Interlocked.Increment(_frameCounter)
 
             ' Directly log to sidecar .txt file (don't wait to read it back from network)
@@ -859,6 +984,92 @@ Public Class LidarDevice
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: {ex.Message}")
         End Try
     End Sub
+
+    ' ====================================================================
+    ' ✅ NEW: Hesai Packet Parser
+    ' ====================================================================
+
+    ''' <summary>
+    ''' ✅ NEW: Parse Hesai AT128 UDP packet for health monitoring
+    ''' Based on Hesai AT128 User Manual packet structure
+    ''' </summary>
+    Private Function ParseHesaiPacket(udpPayload As Byte()) As HesaiPacketInfo
+        Dim info As New HesaiPacketInfo With {.IsValid = False}
+
+        Try
+            ' Minimum size check (Pre-Header + Header + Body minimum)
+            If udpPayload.Length < 800 Then Return info
+
+            ' Verify Pre-Header magic bytes (0xEE 0xFF)
+            If udpPayload(0) <> &HEE OrElse udpPayload(1) <> &HFF Then Return info
+
+            ' Read Protocol Version (bytes 2-3)
+            Dim versionMajor As Byte = udpPayload(2)
+            Dim versionMinor As Byte = udpPayload(3)
+
+            ' Read Header Flags (byte 11 - last byte of Header section)
+            Dim flags As Byte = udpPayload(11)
+            info.HasSignature = (flags And &H8) <> 0      ' Bit 3
+            info.HasFunctionalSafety = (flags And &H4) <> 0  ' Bit 2
+            info.HasIMU = (flags And &H2) <> 0            ' Bit 1
+            ' Bit 0 is UDP sequence flag (should always be 1)
+
+            ' Calculate Tail offset
+            ' Pre-Header(6) + Header(6) + Body(776) = 788
+            Dim tailOffset As Integer = 788
+
+            ' Add Functional Safety section if present (17 bytes)
+            If info.HasFunctionalSafety Then
+                If udpPayload.Length < tailOffset + 17 Then Return info
+
+                ' Parse Functional Safety data
+                Dim fsVersion As Byte = udpPayload(tailOffset)
+                Dim lidarStateAndFlags As Byte = udpPayload(tailOffset + 1)
+                info.LidarState = CByte((lidarStateAndFlags >> 5) And &H7)  ' Bits [7:5]
+
+                ' Fault code is 2 bytes at offset +4
+                If udpPayload.Length >= tailOffset + 6 Then
+                    info.FaultCode = BitConverter.ToUInt16(udpPayload, tailOffset + 4)
+                End If
+
+                tailOffset += 17
+            End If
+
+            ' Ensure we have enough data for Tail section
+            If udpPayload.Length < tailOffset + 30 Then Return info
+
+            ' Parse Tail section
+            ' Skip Reserved (9 bytes) + Azimuth State (2 bytes)
+            Dim tailDataOffset As Integer = tailOffset + 11
+
+            ' Operational State (1 byte)
+            info.OperationalState = udpPayload(tailDataOffset)
+            tailDataOffset += 1
+
+            ' Return Mode (1 byte)
+            info.ReturnMode = udpPayload(tailDataOffset)
+            tailDataOffset += 1
+
+            ' Motor Speed (2 bytes, little-endian)
+            info.MotorSpeed = BitConverter.ToUInt16(udpPayload, tailDataOffset)
+            tailDataOffset += 2
+
+            ' Skip Date & Time (6 bytes) + Timestamp (4 bytes) + Factory Info (1 byte)
+            tailDataOffset += 11
+
+            ' UDP Sequence (4 bytes, little-endian)
+            If udpPayload.Length < tailDataOffset + 4 Then Return info
+            info.UdpSequence = BitConverter.ToUInt32(udpPayload, tailDataOffset)
+
+            info.IsValid = True
+
+        Catch ex As Exception
+            ' Parsing failed - return invalid
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ParseHesaiPacket error: {ex.Message}")
+        End Try
+
+        Return info
+    End Function
 
 End Class
 

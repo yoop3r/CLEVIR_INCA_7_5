@@ -28,8 +28,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 #include <string>
-#include "logger.h"  
 #include "hs_com.h"
+#include "logger.h"
 namespace hesai
 {
 namespace lidar

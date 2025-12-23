@@ -212,4 +212,4 @@ void Logger::setLogLevelRule(uint8_t rule)
 
 void Logger::bindLogCallback(std::function<void(LOGLEVEL loglevel, const char* pszFile, int lineNo, const char* pszFuncSig, char* pszFmt)> log_callback) {
 	log_callback_ = log_callback;
-}
+}}

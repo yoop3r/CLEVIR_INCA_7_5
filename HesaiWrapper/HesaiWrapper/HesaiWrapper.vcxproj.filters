@@ -35,5 +35,32 @@
     <ClCompile Include="HesaiWrapper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Logger\src\logger.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcClient\src\ptc_client.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src\pcap_source.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src\pcap_saver.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src\serial_source.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src\socket_source.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src\tcp_source.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\SerialClient\src\serial_client.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Common\src\plat_utils.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
