@@ -3,6 +3,7 @@ Imports System.IO
 Imports System.Threading.Tasks
 Imports System.Xml
 Imports System.Text.RegularExpressions
+Imports System.Linq
 
 Public Class AudioToTextProgressForm
     Private _conversionTask As Task
@@ -72,6 +73,10 @@ Public Class AudioToTextProgressForm
     Private fileEstimatedSeconds As Integer = 40  ' Estimated seconds per file.
     Private currentFileSecondsElapsed As Integer = 0
 
+    ' Collection to store all error messages from Python script
+    Private errorMessages As New System.Collections.Concurrent.ConcurrentBag(Of String)
+    Private allOutputLines As New System.Collections.Concurrent.ConcurrentBag(Of String)
+
     ' A timer to update the progress bar gradually.
     ' (Alternatively, drop a Timer control on the form and set its Interval to 1000.)
     Private WithEvents progressTimer As New Timer With {.Interval = 1000} ' 1-second interval
@@ -114,6 +119,14 @@ Public Class AudioToTextProgressForm
             process.StartInfo.RedirectStandardError = True
             process.StartInfo.CreateNoWindow = True
 
+            ' Set environment variable to force Python to use UTF-8 encoding
+            ' This fixes the Unicode character encoding issue when stdout/stderr are redirected
+            process.StartInfo.EnvironmentVariables("PYTHONIOENCODING") = "utf-8"
+
+            ' Also set the standard output/error encoding to UTF-8
+            process.StartInfo.StandardOutputEncoding = System.Text.Encoding.UTF8
+            process.StartInfo.StandardErrorEncoding = System.Text.Encoding.UTF8
+
             ' Update the UI before starting.
             UpdateUI("Audio-to-text conversion, please wait...", 0)
 
@@ -129,12 +142,59 @@ Public Class AudioToTextProgressForm
             ' Wait for the process to complete.
             process.WaitForExit()
 
-            ' Remove event handlers before continuing
+            ' Cancel asynchronous read operations to stop any pending callbacks
+            Try
+                process.CancelOutputRead()
+            Catch ex As InvalidOperationException
+                ' Already completed or not started
+            End Try
+
+            Try
+                process.CancelErrorRead()
+            Catch ex As InvalidOperationException
+                ' Already completed or not started
+            End Try
+
+            ' Give a brief moment for any pending callbacks to complete
+            Threading.Thread.Sleep(100)
+
+            ' Remove event handlers after canceling reads
             RemoveHandler process.OutputDataReceived, AddressOf Process_OutputDataReceived
             RemoveHandler process.ErrorDataReceived, AddressOf Process_ErrorDataReceived
 
+            ' Store the exit code before any potential disposal
+            Dim exitCode As Integer = process.ExitCode
+
+            ' Write comprehensive diagnostics to log file
+            WritePythonDiagnostics(pythonPath, arguments, workingDirectory, exitCode)
+
+            ' Log the command that was executed for debugging
+            Dim commandLine As String = $"{pythonPath} {arguments}"
+            SafeHandleUserMessageLogging("GMRC", $"Python command executed: {commandLine}")
+            SafeHandleUserMessageLogging("GMRC", $"Working directory: {workingDirectory}")
+            SafeHandleUserMessageLogging("GMRC", $"Exit code: {exitCode}")
+
+            ' Log all captured error messages
+            If errorMessages.Count > 0 Then
+                SafeHandleUserMessageLogging("GMRC", "=== Python Script Error Output ===")
+                For Each errMsg In errorMessages
+                    SafeHandleUserMessageLogging("GMRC", errMsg)
+                Next
+                SafeHandleUserMessageLogging("GMRC", "=== End Error Output ===")
+            End If
+
+            ' Log a sample of output messages for debugging
+            If allOutputLines.Count > 0 Then
+                SafeHandleUserMessageLogging("GMRC", $"Total output lines captured: {allOutputLines.Count}")
+                Dim sampleCount As Integer = Math.Min(10, allOutputLines.Count)
+                SafeHandleUserMessageLogging("GMRC", $"First {sampleCount} output lines:")
+                For i As Integer = 0 To Math.Min(sampleCount - 1, allOutputLines.Count - 1)
+                    SafeHandleUserMessageLogging("GMRC", allOutputLines(i))
+                Next
+            End If
+
             ' Update the UI on the UI thread based on the process outcome.
-            If process.ExitCode = 0 Then
+            If exitCode = 0 Then
                 ' Check if form is not disposed before invoking
                 If Not Me.IsDisposed AndAlso Me.IsHandleCreated Then
                     Try
@@ -158,7 +218,21 @@ Public Class AudioToTextProgressForm
                 If Not Me.IsDisposed AndAlso Me.IsHandleCreated Then
                     Try
                         Me.Invoke(Sub()
-                                      UpdateUI("Conversion completed with errors.", 100)
+                                      ' Build a detailed error message
+                                      Dim errorSummary As String = "Conversion completed with errors."
+                                      If errorMessages.Count > 0 Then
+                                          errorSummary &= vbCrLf & "Recent errors:" & vbCrLf
+                                          Dim errorCount As Integer = 0
+                                          For Each errMsg In errorMessages.Take(5) ' Show first 5 errors
+                                              errorSummary &= "• " & errMsg & vbCrLf
+                                              errorCount += 1
+                                          Next
+                                          If errorMessages.Count > 5 Then
+                                              errorSummary &= $"... and {errorMessages.Count - 5} more errors"
+                                          End If
+                                      End If
+
+                                      UpdateUI(errorSummary, 100)
                                       ' Only in the error case, display the OK button.
                                       btnOK.Visible = True
                                   End Sub)
@@ -225,6 +299,9 @@ Public Class AudioToTextProgressForm
     '---------------------------------------------------------------------------
     Private Sub Process_OutputDataReceived(sender As Object, e As DataReceivedEventArgs)
         If Not String.IsNullOrEmpty(e.Data) Then
+            ' Store all output lines for debugging
+            allOutputLines.Add(e.Data)
+
             Dim message As String = CleanOutput(e.Data)
             If Not String.IsNullOrEmpty(message) Then
                 ' Add disposal check before UI updates
@@ -287,6 +364,12 @@ Public Class AudioToTextProgressForm
     '---------------------------------------------------------------------------
     Private Sub Process_ErrorDataReceived(sender As Object, e As DataReceivedEventArgs)
         If Not String.IsNullOrEmpty(e.Data) Then
+            ' Store all error messages
+            errorMessages.Add(e.Data)
+
+            ' Also log to file/console for debugging
+            SafeHandleUserMessageLogging("GMRC", $"Python Error: {e.Data}")
+
             ' Add disposal check before UI updates
             If Not Me.IsDisposed AndAlso Me.IsHandleCreated Then
                 If e.Data.Contains("No such file or directory") Then
@@ -383,6 +466,53 @@ Public Class AudioToTextProgressForm
             ' If HandleUserMessageLogging doesn't exist or fails, just ignore it
             ' This prevents the exception from propagating up
             Console.WriteLine($"Logging failed: {message}")
+        End Try
+    End Sub
+
+    '---------------------------------------------------------------------------
+    ' Write detailed diagnostics to a log file
+    '---------------------------------------------------------------------------
+    Private Sub WritePythonDiagnostics(pythonPath As String, arguments As String, workingDirectory As String, exitCode As Integer)
+        Try
+            Dim logFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, "AudioToText_Debug.log")
+            Using writer As New StreamWriter(logFilePath, True) ' Append mode
+                writer.WriteLine($"=== Audio To Text Conversion Log - {DateTime.Now} ===")
+                writer.WriteLine($"Python Path: {pythonPath}")
+                writer.WriteLine($"Arguments: {arguments}")
+                writer.WriteLine($"Working Directory: {workingDirectory}")
+                writer.WriteLine($"Exit Code: {exitCode}")
+                writer.WriteLine()
+
+                If errorMessages.Count > 0 Then
+                    writer.WriteLine($"=== Error Messages ({errorMessages.Count}) ===")
+                    For Each errMsg In errorMessages
+                        writer.WriteLine(errMsg)
+                    Next
+                    writer.WriteLine()
+                Else
+                    writer.WriteLine("No error messages captured.")
+                    writer.WriteLine()
+                End If
+
+                If allOutputLines.Count > 0 Then
+                    writer.WriteLine($"=== Standard Output ({allOutputLines.Count} lines) ===")
+                    For Each line In allOutputLines
+                        writer.WriteLine(line)
+                    Next
+                    writer.WriteLine()
+                Else
+                    writer.WriteLine("No output lines captured.")
+                    writer.WriteLine()
+                End If
+
+                writer.WriteLine("=== End of Log Entry ===")
+                writer.WriteLine()
+            End Using
+
+            ' Notify user about the log file
+            SafeHandleUserMessageLogging("GMRC", $"Detailed diagnostics written to: {logFilePath}")
+        Catch ex As Exception
+            Console.WriteLine($"Failed to write diagnostics: {ex.Message}")
         End Try
     End Sub
 

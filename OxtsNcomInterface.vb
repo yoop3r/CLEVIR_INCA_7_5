@@ -13,8 +13,8 @@ Public Class OxtsNcomInterface
     Private _isRunning As Boolean = False
 
     ' NCOM configuration
-    Public Property NcomIpAddress As String = "10.5.55.200"
-    Public Property NcomPort As Integer = 3000
+    Public Property NcomIpAddress As String ' Set via configuration
+    Public Property NcomPort As Integer ' Set via configuration
 
     ' Time synchronization data
     Public Property LastGpsTime As DateTime?
@@ -258,11 +258,29 @@ Public Class OxtsNcomInterface
         Dim remoteEndPoint As New IPEndPoint(IPAddress.Any, 0)
         Static lastStatsLogTime As DateTime = DateTime.MinValue
 
+        ' ✅ NEW: Connection health tracking
+        Dim connectionEstablished As Boolean = False
+        Dim lastPacketReceived As DateTime = DateTime.UtcNow
+        Const InitialConnectionTimeout As Integer = 30000  ' 30 seconds to establish
+        Const OngoingConnectionTimeout As Integer = 10000  ' 10 seconds during operation
+
+        HandleUserMessageLogging("GMRC", $"OXTS: Waiting {InitialConnectionTimeout}ms for initial packet...")
+
         While _isRunning
             Try
+                ' ✅ Check for graceful shutdown request
+                If Not _isRunning Then Exit While
+
                 If _udpClient.Available > 0 Then
                     Dim ncomData As Byte() = _udpClient.Receive(remoteEndPoint)
                     LastPacketTime = DateTime.UtcNow
+                    lastPacketReceived = DateTime.UtcNow
+
+                    ' Mark connection as established on first valid packet
+                    If Not connectionEstablished Then
+                        connectionEstablished = True
+                        HandleUserMessageLogging("GMRC", $"✅ OXTS: Connection established from {remoteEndPoint}")
+                    End If
 
                     ' ✅ CRITICAL: Validate packet BEFORE processing
                     Dim validationResult As NcomValidationResult = Nothing
@@ -317,20 +335,56 @@ Public Class OxtsNcomInterface
                         End SyncLock
                         lastStatsLogTime = DateTime.UtcNow
                     End If
+                Else
+                    ' ✅ NEW: Check for connection timeout
+                    Dim timeSinceLastPacket As Double = (DateTime.UtcNow - lastPacketReceived).TotalMilliseconds
+
+                    If Not connectionEstablished Then
+                        If timeSinceLastPacket > InitialConnectionTimeout Then
+                            HandleUserMessageLogging("GMRC",
+                                                     $"⚠️ OXTS: No packets received after {InitialConnectionTimeout}ms - OXTS may not be connected. Stopping listener.",
+                                                     DisplayMsgBox)
+                            _isRunning = False
+                            Exit While
+                        End If
+                    Else
+                        ' Connection was established but went silent
+                        If timeSinceLastPacket > OngoingConnectionTimeout Then
+                            ' ✅ Only show message box if actively recording
+                            If GmResidentClient._isMonitorTaskRunning Then
+                                HandleUserMessageLogging("GMRC",
+                                                         $"⚠️ OXTS: Connection lost (no packets for {OngoingConnectionTimeout}ms). Stopping listener.",
+                                                         DisplayMsgBox)
+                            Else
+                                ' Still log but don't show message box when not recording
+                                HandleUserMessageLogging("GMRC",
+                                                         $"⚠️ OXTS: Connection lost (no packets for {OngoingConnectionTimeout}ms). Stopping listener.")
+                            End If
+                            _isRunning = False
+                            Exit While
+                        End If
+                    End If
                 End If
 
-                Thread.Sleep(10)
+                ' ✅ Break sleep into 100ms chunks for faster shutdown response
+                For i As Integer = 0 To 10 Step 1
+                    If Not _isRunning Then Exit While
+                    Thread.Sleep(10)
+                Next
 
             Catch ex As SocketException
                 If _isRunning Then
-                    HandleUserMessageLogging("GMRC", $"NCOM socket error: {ex.Message}")
+                    HandleUserMessageLogging("GMRC", $"❌ OXTS socket error: {ex.Message}")
                 End If
                 Exit While
 
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"NCOM listener error: {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"❌ OXTS listener error: {ex.Message}")
             End Try
         End While
+
+        ' ✅ Cleanup notification
+        HandleUserMessageLogging("GMRC", $"OXTS: Listener loop exited (Instance={Me.GetHashCode()})")
     End Sub
 
     ''' <summary>

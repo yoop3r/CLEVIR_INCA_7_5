@@ -20,7 +20,7 @@
 	<!-- Alternate Recording (CANalyzer/VehicleSpy) -->
 	<!-- ================================================================ -->
 	<AlternateRecordEnabled>True</AlternateRecordEnabled>
-	<AlternateRecordConfig>LC_CANFD</AlternateRecordConfig>
+	<AlternateRecordConfig>CANalyzer</AlternateRecordConfig>
 	<EnableAltRecReStartAfterRecordStop>False</EnableAltRecReStartAfterRecordStop>
 	<!-- ================================================================ -->
 	<!-- Data Storage & Network -->

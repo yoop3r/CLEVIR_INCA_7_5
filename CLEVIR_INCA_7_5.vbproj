@@ -2237,8 +2237,10 @@
       <CustomToolNamespace>My</CustomToolNamespace>
       <LastGenOutput>Settings.Designer.vb</LastGenOutput>
     </None>
+    <None Include="PYTHON_ERROR_DIAGNOSTICS.md" />
     <None Include="START_HERE_PTP_CONFIGURATION.md" />
     <None Include="Test-HesaiPTC.ps1" />
+    <None Include="UNICODE_FIX_EXPLANATION.md" />
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="VBIDE">
@@ -2865,9 +2867,9 @@
     <PackageReference Include="System.ValueTuple">
       <Version>4.6.1</Version>
     </PackageReference>
-    <PackageReference Include="TaskScheduler">
+    <!--<PackageReference Include="TaskScheduler">
       <Version>2.12.2</Version>
-    </PackageReference>
+    </PackageReference> -->
   </ItemGroup>
   <ItemGroup>
     <Folder Include="HesaiLidar_SDK_2.0-master\.vs\HesaiLidar_SDK_2.0-master.slnx\copilot-chat\117df1c7\sessions\" />
