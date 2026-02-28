@@ -9,6 +9,7 @@ Public Class SignalRegistrationProgressForm
     Private _failureCount As Integer = 0
     Private _skippedCount As Integer = 0
     Private _startTime As DateTime = DateTime.Now
+    Private _isCachedRegistration As Boolean = False
 
     ' Timer for elapsed time display
     Private WithEvents UpdateTimer As New System.Windows.Forms.Timer()
@@ -37,6 +38,66 @@ Public Class SignalRegistrationProgressForm
         Label_Failed.Text = "Failed: 0"
         Label_Skipped.Text = "Skipped: 0"
         Label_ElapsedTime.Text = "Elapsed Time: 00:00:00"
+    End Sub
+
+    ''' <summary>
+    ''' Show cached registration mode with visual indicator
+    ''' </summary>
+    Public Sub ShowCachedRegistrationMode(cacheSignalCount As Integer)
+        If Me.InvokeRequired Then
+            Me.Invoke(Sub() ShowCachedRegistrationMode(cacheSignalCount))
+            Return
+        End If
+
+        _isCachedRegistration = True
+
+        ' Update title to indicate cached registration
+        Me.Text = "Signal Registration (From Cache)"
+
+        ' Update labels to show cache mode
+        Label_TotalSignals.Text = $"📦 Registering from cache: {cacheSignalCount} signals"
+        Label_TotalSignals.ForeColor = Color.DarkGreen
+
+        Label_Success.Text = "Subscribing signals to measurement group..."
+        Label_Success.ForeColor = Color.DarkBlue
+
+        Label_Failed.Text = ""
+        Label_Skipped.Text = "⚡ Fast registration - signals already in INCA"
+
+        ' Set progress bar to marquee style for initial validation
+        ProgressBar1.Style = ProgressBarStyle.Marquee
+        ProgressBar1.MarqueeAnimationSpeed = 30
+
+        Me.Refresh()
+        Application.DoEvents()
+    End Sub
+
+    ''' <summary>
+    ''' Update progress during cached registration
+    ''' </summary>
+    Public Sub UpdateCachedProgress(subscribedCount As Integer, totalCount As Integer)
+        If Me.InvokeRequired Then
+            Me.Invoke(Sub() UpdateCachedProgress(subscribedCount, totalCount))
+            Return
+        End If
+
+        ' Switch to continuous progress bar if we were in marquee mode
+        If ProgressBar1.Style = ProgressBarStyle.Marquee Then
+            ProgressBar1.Style = ProgressBarStyle.Continuous
+            ProgressBar1.Maximum = totalCount
+        End If
+
+        ProgressBar1.Value = Math.Min(subscribedCount, totalCount)
+
+        ' Update labels
+        Label_Success.Text = $"Subscribed: {subscribedCount} / {totalCount}"
+
+        ' Update percentage
+        Dim percentage As Integer = CInt((subscribedCount / CDbl(totalCount)) * 100)
+        Label_Percentage.Text = $"{percentage}%"
+
+        Me.Refresh()
+        Application.DoEvents()
     End Sub
 
     ''' <summary>
@@ -92,8 +153,15 @@ Public Class SignalRegistrationProgressForm
 
         If success Then
             ' ✅ SHOW SUCCESS MESSAGE BRIEFLY
-            Label_Success.Text = "✓ Registration Complete!"
+            If _isCachedRegistration Then
+                Label_Success.Text = "✓ Cache Registration Complete!"
+                Label_Skipped.Text = "⚡ Faster startup using cached signals"
+            Else
+                Label_Success.Text = "✓ Registration Complete!"
+            End If
             Label_Success.ForeColor = Color.Green
+            ProgressBar1.Style = ProgressBarStyle.Continuous
+            ProgressBar1.Value = ProgressBar1.Maximum
             Me.Refresh()
             Thread.Sleep(1500)  ' Show for 1.5 seconds
 

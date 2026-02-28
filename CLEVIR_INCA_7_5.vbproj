@@ -70,7 +70,7 @@
     <OutputPath>bin\x64\Debug\</OutputPath>
     <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <NoWarn>42353,42354,42355,MSB3277</NoWarn>
-    <PlatformTarget>x86</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <RemoveIntegerChecks>true</RemoveIntegerChecks>
     <WarningsAsErrors>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036</WarningsAsErrors>
     <Prefer32Bit>false</Prefer32Bit>
@@ -597,6 +597,7 @@
     <Compile Include="AudioToTextProgressForm.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="OxtsNcomCaptureDevice.vb" />
     <Compile Include="OxtsNcomChecksum.vb" />
     <Compile Include="HesaiInterop.vb" />
     <Compile Include="LidarDeviceEditorForm.Designer.vb">
@@ -644,6 +645,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="OxtsNcomPcapCapture.vb" />
     <Compile Include="OxtsStatusChannelDecoder.vb" />
     <Compile Include="PercentageProgressBar.vb">
       <SubType>Component</SubType>
@@ -877,13 +879,12 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="ClassDiagram1.cd" />
+    <None Include="claudeprompt.md" />
     <None Include="CLEVIR_INCA_7_5_1_TemporaryKey.pfx" />
     <None Include="CLEVIR_INCA_7_5_2_TemporaryKey.pfx" />
     <None Include="CLEVIR_INCA_7_5_3_TemporaryKey.pfx" />
     <None Include="CLEVIR_INCA_7_5_4_TemporaryKey.pfx" />
     <None Include="CLEVIR_INCA_7_5_TemporaryKey.pfx" />
-    <None Include="Configure-HesaiPTP-Simple.ps1" />
-    <None Include="Configure-HesaiPTP.ps1" />
     <None Include="HesaiLidar_SDK_2.0-master\.vs\CMake Overview" />
     <None Include="HesaiLidar_SDK_2.0-master\.vs\HesaiLidar_SDK_2.0-master.slnx\FileContentIndex\a7d82182-82f9-4fdc-bd0c-b56379b9976d.vsidx" />
     <None Include="HesaiLidar_SDK_2.0-master\.vs\HesaiLidar_SDK_2.0-master.slnx\v18\DocumentLayout.json" />
@@ -2239,7 +2240,6 @@
     </None>
     <None Include="PYTHON_ERROR_DIAGNOSTICS.md" />
     <None Include="START_HERE_PTP_CONFIGURATION.md" />
-    <None Include="Test-HesaiPTC.ps1" />
     <None Include="UNICODE_FIX_EXPLANATION.md" />
   </ItemGroup>
   <ItemGroup>
@@ -2280,7 +2280,6 @@
     <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1].ico" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="TextFile1.xml" />
     <None Include="bin\x64\Debug\green vehicle ahead.png" />
     <None Include="bin\x64\Debug\orange vehicle ahead.png" />
     <None Include="bin\x64\Debug\red vehicle ahead.png" />
@@ -2707,7 +2706,6 @@
     <Content Include="NCOMdecoder\NCOMdecoder.dll" />
     <Content Include="NCOMdecoder\ncom_simple.c" />
     <Content Include="NCOMdecoder\test_ncom.c" />
-    <Content Include="NCOM_man.txt" />
     <Content Include="testicon_256px.ico" />
   </ItemGroup>
   <ItemGroup>

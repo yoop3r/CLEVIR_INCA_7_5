@@ -229,7 +229,19 @@ Public Module StatusNotifier
 
     ' EXISTING auto-fading toast
     Private Sub ShowToastInternal(message As String, title As String, durationMs As Integer, kind As ToastKind, ensureMainOnTop As Boolean)
+        ' ════════════════════════════════════════════════════════════════════════
+        ' ✅ FIX: Don't use owner if LoginForm/modal is active to avoid interference
+        ' ════════════════════════════════════════════════════════════════════════
         Dim owner = GetOwner()
+        Dim loginActive As Boolean =
+            (LoginForm IsNot Nothing AndAlso Not LoginForm.IsDisposed AndAlso
+             LoginForm.IsHandleCreated AndAlso LoginForm.Visible)
+        Dim modalActive As Boolean = HasActiveModalForm()
+
+        ' If modal/login active, show without owner to avoid focus issues
+        If loginActive OrElse modalActive Then
+            owner = Nothing
+        End If
 
         Dim colors = GetToastColors(kind)
         Dim bg As Color = colors.Back
@@ -301,11 +313,9 @@ Public Module StatusNotifier
                         End Sub)
 
         Try
-            If owner IsNot Nothing AndAlso owner.IsHandleCreated Then
-                toast.Show(owner)
-            Else
-                toast.Show()
-            End If
+            ' ✅ FIX: Show without owner to ensure visibility regardless of parent state
+            ' TopMost property ensures toast appears on top anyway
+            toast.Show()  ' Always show without owner for maximum visibility
             toast.Refresh()
         Catch
             SafeCloseToast(toast, ensureMainOnTop)
@@ -395,11 +405,9 @@ Public Module StatusNotifier
         }
 
         Try
-            If owner IsNot Nothing AndAlso owner.IsHandleCreated Then
-                toast.Show(owner)
-            Else
-                toast.Show() ' show without owner if none available
-            End If
+            ' ✅ FIX: Always show without owner for maximum visibility
+            ' TopMost property (when set) ensures toast appears on top
+            toast.Show()  ' Don't use owner - ensures visibility regardless of parent state
             toast.Refresh()
         Catch
             ' If show failed, cleanup state

@@ -354,18 +354,18 @@ Public Class LidarDevice
                                       Double.MaxValue)
 
         If timeSinceLastPacket > 10 Then
-            Return $"{DeviceId} has stopped responding"
+            Return $"LiDAR {DeviceId} has stopped responding"
         End If
 
         Dim totalPackets As Long = PacketCount + DroppedPackets
         If totalPackets > 100 Then
             Dim lossPercent As Double = (CDbl(DroppedPackets) / CDbl(totalPackets)) * 100.0
             If lossPercent >= 20.0 Then
-                Return $"{DeviceId} critical packet loss detected"
+                Return $"LiDAR {DeviceId} critical packet loss detected"
             End If
         End If
 
-        Return $"{DeviceId} performance degraded"
+        Return $"LiDAR {DeviceId} performance degraded"
     End Function
 
     ''' <summary>
@@ -422,6 +422,10 @@ Public Class LidarDevice
             _totalBytes = 0
             _markerCounter = 0
             _frameCounter = 0  ' ← Reset frame counter here
+            _droppedPackets = 0
+            _checksumErrors = 0
+            _outOfOrderPackets = 0
+            _hesaiSequenceInitialized = False  ' Reset sequence tracking for new capture
             While _markerQueue.TryDequeue(Nothing) ' Clear queue
             End While
 
@@ -514,7 +518,7 @@ Public Class LidarDevice
     ''' Use ShutdownDevice() to fully release the SDK when done with all recording.
     ''' </summary>
     Public Sub StopCapture()
-        Dim logPrefix As String = $"[{DeviceId}] StopCapture"
+        Dim logPrefix As String = $"DeviceID: [{DeviceId}] LiDARStopCapture"
         Dim currentActiveSequence As String = GetCurrentActiveSequence()
         Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
 
@@ -566,7 +570,7 @@ Public Class LidarDevice
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Captured {_packetCount:N0} packets, {_totalBytes:N0} bytes, {_markerCounter} markers")
 
             ' Write event to INCA
-            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts, {_markerCounter} markers", True)
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} LiDAR DeviceID: {DeviceId} stopped - {_packetCount:N0} pkts, {_markerCounter} markers", True)
 
             ' Close event logger (duplicate call removed - already closed above)
 
@@ -584,7 +588,7 @@ Public Class LidarDevice
     '''   - Device configuration changes require SDK restart
     ''' </summary>
     Public Sub ShutdownDevice()
-        Dim logPrefix As String = $"[{DeviceId}] ShutdownDevice"
+        Dim logPrefix As String = $"DeviceID: [{DeviceId}] LiDARShutdownDevice"
 
         Try
             ' First, stop any active capture
@@ -628,11 +632,11 @@ Public Class LidarDevice
                     }
 
             _markerQueue.Enqueue(marker)
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Queued marker #{marker.EventId} - {eventType}: {message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Queued marker #{marker.EventId} - {eventType}: {message}")
             Return markerFrame
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectEventMarker: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR InjectEventMarker: {ex.Message}")
             Return -1
         End Try
     End Function
@@ -646,7 +650,7 @@ Public Class LidarDevice
     ''' </summary>
     Private Sub CapturePacketsLoop()
         Try
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Capture thread started")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Capture thread started")
 
             While _isCapturing
                 ' Check for pending event markers to inject
@@ -720,7 +724,7 @@ Public Class LidarDevice
                                 Catch parseEx As Exception
                                     ' Don't crash capture on parse errors
                                     If _packetCount Mod 10000 = 0 Then
-                                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] Packet parse error: {parseEx.Message}")
+                                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Packet parse error: {parseEx.Message}")
                                     End If
                                 End Try
                             End If
@@ -736,24 +740,24 @@ Public Class LidarDevice
                         Continue While
 
                     Case PacketCommunicatorReceiveResult.Eof
-                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] Unexpected EOF")
+                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Unexpected EOF")
                         Exit While
 
                     Case Else
-                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] Error receiving packet: {result}")
+                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Error receiving packet: {result}")
                         ' Increment dropped packet counter on errors
                         Interlocked.Increment(_droppedPackets)
                         Exit While
                 End Select
             End While
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Capture thread exiting normally")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Capture thread exiting normally")
 
         Catch ex As ThreadAbortException
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Thread aborted")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Thread aborted")
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] CapturePacketsLoop exception: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR CapturePacketsLoop exception: {ex.Message}")
 
         Finally
             ' Ensure dump file is closed
@@ -824,7 +828,7 @@ Public Class LidarDevice
             Dim payload As String = $"{marker.EventType}|{marker.Message}|{marker.SequenceNumber:D2}|GPS:{timestamp:yyyy-MM-dd HH:mm:ss.fff}"
             Dim payloadBytes() As Byte = System.Text.Encoding.UTF8.GetBytes(payload)
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Injecting marker payload: {payload}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Injecting marker payload: {payload}")
 
             ' Create synthetic packet layers
             Dim srcMac As MacAddress = New MacAddress("02:00:00:00:00:01")
@@ -865,7 +869,7 @@ Public Class LidarDevice
             ' Directly log to sidecar .txt file (don't wait to read it back from network)
             _eventLogger?.LogEvent(_frameCounter, timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker logged: Frame {_frameCounter} - {marker.EventType}: {marker.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Marker logged: Frame {_frameCounter} - {marker.EventType}: {marker.Message}")
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectMarkerPacket failed: {ex.Message}")
@@ -882,34 +886,34 @@ Public Class LidarDevice
             Try
                 allDevices = LivePacketDevice.AllLocalMachine
             Catch driverEx As Exception
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Failed to access network adapters. Ensure Npcap is installed. Error: {driverEx.Message}")
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Failed to access network adapters. Ensure Npcap is installed. Error: {driverEx.Message}")
                 Return False
             End Try
 
             If allDevices.Count = 0 Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] No network adapters found")
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] No network adapters found")
                 Return False
             End If
 
             ' PRIORITY 1: Try to find adapter by GUID if specified
             If Not String.IsNullOrWhiteSpace(LidarAdapterGuid) Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Searching for adapter with GUID: {LidarAdapterGuid}")
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Searching for adapter with GUID: {LidarAdapterGuid}")
 
                 ' Remove braces from config GUID for comparison
                 Dim guidToMatch As String = LidarAdapterGuid.Replace("{", "").Replace("}", "").ToUpper()
 
                 For Each device In allDevices
-                    HandleUserMessageLogging("GMRC", $"[{DeviceId}] Checking: {device.Name}")
+                    HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Checking: {device.Name}")
 
                     ' Check if device name contains the GUID (with or without braces)
                     If device.Name.ToUpper().Contains(guidToMatch) Then
                         _captureDevice = device
-                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] Selected by GUID: {device.Description}")
+                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Selected by GUID: {device.Description}")
                         Return True
                     End If
                 Next
 
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] GUID not found, trying IP-based detection")
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] GUID not found, trying IP-based detection")
             End If
 
             ' PRIORITY 2: Find adapter on same subnet as LiDAR
@@ -923,7 +927,7 @@ Public Class LidarDevice
                            Not addrStr.Contains(":") AndAlso
                            addrStr <> LidarIpAddress Then
                             _captureDevice = device
-                            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Selected by subnet: {device.Description} ({addrStr})")
+                            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Selected by subnet: {device.Description} ({addrStr})")
                             Return True
                         End If
                     End If
@@ -937,18 +941,18 @@ Public Class LidarDevice
                         Dim addrStr As String = address.Address.ToString()
                         If Not addrStr.Contains(":") Then
                             _captureDevice = device
-                            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Using fallback: {device.Description} ({addrStr})")
+                            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Using fallback: {device.Description} ({addrStr})")
                             Return True
                         End If
                     End If
                 Next
             Next
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] No suitable adapter found")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] No suitable adapter found")
             Return False
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] FindNetworkAdapter: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] FindNetworkAdapter: {ex.Message}")
             Return False
         End Try
     End Function
@@ -981,7 +985,7 @@ Public Class LidarDevice
             _captureDevice = Nothing
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] CleanupResources: {ex.Message}")
         End Try
     End Sub
 
@@ -1065,7 +1069,7 @@ Public Class LidarDevice
 
         Catch ex As Exception
             ' Parsing failed - return invalid
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ParseHesaiPacket error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] ParseHesaiPacket error: {ex.Message}")
         End Try
 
         Return info

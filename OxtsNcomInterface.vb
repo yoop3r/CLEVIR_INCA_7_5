@@ -329,12 +329,12 @@ Public Class OxtsNcomInterface
                     End If
 
                     ' ✅ Log statistics every 10 seconds
-                    If (DateTime.UtcNow - lastStatsLogTime).TotalSeconds >= 10 Then
-                        SyncLock _stats
-                            HandleUserMessageLogging("GMRC", $"📊 OXTS Stats: {_stats.GetSummary()}")
-                        End SyncLock
-                        lastStatsLogTime = DateTime.UtcNow
-                    End If
+                    'If (DateTime.UtcNow - lastStatsLogTime).TotalSeconds >= 10 Then
+                    '    SyncLock _stats
+                    '        HandleUserMessageLogging("GMRC", $"📊 OXTS Stats: {_stats.GetSummary()}")
+                    '    End SyncLock
+                    '    lastStatsLogTime = DateTime.UtcNow
+                    'End If
                 Else
                     ' ✅ NEW: Check for connection timeout
                     Dim timeSinceLastPacket As Double = (DateTime.UtcNow - lastPacketReceived).TotalMilliseconds

@@ -1,4 +1,5 @@
 ﻿Option Strict On
+Imports System.IO
 Imports System.Runtime.InteropServices
 
 ''' <summary>
@@ -6,6 +7,30 @@ Imports System.Runtime.InteropServices
 ''' Maps to functions in HesaiWrapper.dll
 ''' </summary>
 Public Class HesaiInterop
+
+    ' ====================================================================
+    ' Win32 API for DLL Search Path
+    ' ====================================================================
+    <DllImport("kernel32.dll", CharSet:=CharSet.Unicode, SetLastError:=True)>
+    Private Shared Function SetDllDirectory(lpPathName As String) As Boolean
+    End Function
+
+    ''' <summary>
+    ''' ✅ Sets the DLL search directory to the application folder
+    ''' Call this BEFORE any other HesaiInterop methods
+    ''' </summary>
+    Public Shared Sub SetDllSearchPath()
+        Try
+            Dim appDir As String = AppDomain.CurrentDomain.BaseDirectory
+            If SetDllDirectory(appDir) Then
+                HandleUserMessageLogging("GMRC", $"✓ DLL search path set to: {appDir}")
+            Else
+                HandleUserMessageLogging("GMRC", $"⚠️ Failed to set DLL search path")
+            End If
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"SetDllSearchPath error: {ex.Message}")
+        End Try
+    End Sub
 
     ' ====================================================================
     ' P/Invoke Declarations
@@ -382,13 +407,45 @@ Public Class HesaiInterop
     ''' </summary>
     Public Shared Function IsAvailable() As Boolean
         Try
+            ' Check if DLL exists
+            Dim dllPath As String = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HesaiWrapper.dll")
+
+            If Not File.Exists(dllPath) Then
+                HandleUserMessageLogging("GMRC", "⚠️ HesaiWrapper.dll not found - SDK statistics unavailable")
+                Return False
+            End If
+
+            ' Try to call a function to verify DLL loads
             Dim testStats As New HesaiSdkStats()
             hesai_get_device_stats("", testStats)
             Return True
+
         Catch ex As DllNotFoundException
-            HandleUserMessageLogging("GMRC", "⚠️ Hesai SDK wrapper (HesaiWrapper.dll) not found - SDK statistics unavailable")
+            ' Show detailed diagnostics only on failure
+            HandleUserMessageLogging("GMRC", $"⚠️ HesaiWrapper.dll load failed: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"   HRESULT: 0x{Marshal.GetHRForException(ex):X8}")
+
+            ' Check for common missing dependencies
+            Dim commonDeps As String() = {"vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "ws2_32.dll"}
+            HandleUserMessageLogging("GMRC", $"   Checking dependencies in System32:")
+            For Each dep In commonDeps
+                Dim depPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), dep)
+                HandleUserMessageLogging("GMRC", $"     {dep}: {If(File.Exists(depPath), "✓", "✗ MISSING")}")
+            Next
             Return False
-        Catch
+
+        Catch ex As BadImageFormatException
+            HandleUserMessageLogging("GMRC", $"❌ HesaiWrapper.dll architecture mismatch: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"   Process is {If(Environment.Is64BitProcess, "64-bit", "32-bit")}")
+            Return False
+
+        Catch ex As EntryPointNotFoundException
+            HandleUserMessageLogging("GMRC", $"❌ HesaiWrapper.dll missing function: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"   DLL may be outdated or incorrectly built")
+            Return False
+
+        Catch ex As Exception
+            ' Any other exception means DLL loaded successfully (empty device ID test fails, which is expected)
             Return True
         End Try
     End Function

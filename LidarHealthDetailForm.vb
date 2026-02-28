@@ -348,7 +348,7 @@ Public Class LidarHealthDetailForm
 
         _mainForm.MyOxtsInterface.TestOxtsIntegration()
         LoadDeviceData()
-        StatusNotifier.Toast("OXTS test complete - check diagnostics", "Test")
+        StatusNotifier.Toast("OXTS test complete - check diagnostics", "Test", durationMs:=2000, ensureMainOnTop:=False)
     End Sub
 
     Private Sub TestLidarCapture_Click(sender As Object, e As EventArgs) Handles Button_TestLidar.Click
@@ -362,7 +362,7 @@ Public Class LidarHealthDetailForm
         Next
 
         LoadDeviceData()
-        StatusNotifier.Toast($"LiDAR test complete for {_devices.Count} device(s)", "Test")
+        StatusNotifier.Toast($"LiDAR test complete for {_devices.Count} device(s)", "Test", durationMs:=2000, ensureMainOnTop:=False)
     End Sub
 
     Private Sub TestOxtsLidarIntegration_Click(sender As Object, e As EventArgs) Handles Button_TestIntegration.Click
@@ -385,7 +385,7 @@ Public Class LidarHealthDetailForm
         HandleUserMessageLogging("GMRC", "=== INTEGRATION TEST COMPLETE ===")
         LoadDeviceData()
         UpdateOxtsStatus()
-        StatusNotifier.Toast("Integration test complete - check logs", "Test")
+        StatusNotifier.Toast("Integration test complete - check logs", "Test", durationMs:=2000, ensureMainOnTop:=False)
     End Sub
 
     Private Sub InjectTestMarker_Click(sender As Object, e As EventArgs)
@@ -403,7 +403,7 @@ Public Class LidarHealthDetailForm
         Next
 
         If injected > 0 Then
-            StatusNotifier.Toast($"Injected test marker into {injected} LiDAR(s)", "Test")
+            StatusNotifier.Toast($"Injected test marker into {injected} LiDAR(s)", "Test", durationMs:=2000, ensureMainOnTop:=False)
         Else
             StatusNotifier.Warn("No active LiDAR captures", "Test")
         End If
@@ -425,7 +425,7 @@ Public Class LidarHealthDetailForm
         UpdateOxtsStatus()
         LoadDeviceData()
 
-        StatusNotifier.Toast("OXTS integrity report generated - check diagnostics window", "Diagnose")
+        StatusNotifier.Toast("OXTS integrity report generated - check diagnostics window", "Diagnose", durationMs:=2000, ensureMainOnTop:=False)
     End Sub
 
     ''' <summary>
@@ -448,7 +448,7 @@ Public Class LidarHealthDetailForm
                                End Sub)
                  End Function)
 
-        StatusNotifier.Toast("OXTS integrity counters reset. Check again in 5 seconds.", "Reset")
+        StatusNotifier.Toast("OXTS integrity counters reset. Check again in 5 seconds.", "Reset", durationMs:=2000, ensureMainOnTop:=False)
     End Sub
 
     Private Enum DeviceHealthStatus

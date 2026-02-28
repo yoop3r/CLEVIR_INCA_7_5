@@ -117,11 +117,17 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Common\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Common\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcClient\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcClient\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpProtocol;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpProtocol\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Lidar;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\driver;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Source;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParser;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParser\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParser\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParserGpu;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParserGpu\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParserGpu\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Container\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Container\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\SerialClient\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\SerialClient\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Logger\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Logger\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\test;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\tool;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\tool_ptc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableUAC>false</EnableUAC>
-    </Link>
+	<Link>
+	  <SubSystem>Windows</SubSystem>
+	  <GenerateDebugInformation>true</GenerateDebugInformation>
+	  <EnableUAC>false</EnableUAC>
+	  <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+	</Link>
+	  <PostBuildEvent>
+    <Command>xcopy /Y "$(TargetPath)" "$(SolutionDir)bin\$(Platform)\$(Configuration)\"
+xcopy /Y "$(TargetDir)*.pdb" "$(SolutionDir)bin\$(Platform)\$(Configuration)\"</Command>
+  </PostBuildEvent>
+
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -136,11 +142,12 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Common\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Common\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcClient\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcClient\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpProtocol;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpProtocol\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Lidar;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\driver;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Source;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParser;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParser\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParser\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParserGpu;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParserGpu\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\UdpParserGpu\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Container\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Container\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\SerialClient\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\SerialClient\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Logger\src;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\libhesai\Logger\include;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\test;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\tool;$(SolutionDir)..\..\HesaiLidar_SDK_2.0-master\tool_ptc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableUAC>false</EnableUAC>
-    </Link>
+	<Link>
+	  <SubSystem>Windows</SubSystem>
+	  <GenerateDebugInformation>true</GenerateDebugInformation>
+	  <EnableUAC>false</EnableUAC>
+	  <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+	</Link>
     <PostBuildEvent>
       <Command>xcopy /Y "$(TargetPath)" "$(SolutionDir)bin\$(Platform)\$(Configuration)\"
 xcopy /Y "$(TargetDir)*.pdb" "$(SolutionDir)bin\$(Platform)\$(Configuration)\"</Command>
