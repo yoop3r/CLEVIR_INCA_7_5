@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+═══════════════════════════════════════════════════════════════════
+CAMERA CONFIGURATION EXAMPLE
+═══════════════════════════════════════════════════════════════════
+Add this section to your config.xml file to configure camera IP mappings.
+Place it after the existing <MaxCameras> tag.
+
+This replaces the need for:
+  - Hardcoded CameraIPAddresses array
+  - CameraIPAddresses.txt file
+  
+The system will now use:
+  1. VehicleConfigurationsNF.csv defines which POSITIONS are in each vehicle (FRONT, REAR, etc.)
+  2. config.xml defines which IP ADDRESS maps to each POSITION
+  3. Runtime merges them into ActiveCameras list
+═══════════════════════════════════════════════════════════════════
+-->
+
+<Configuration>
+    <!-- ================================================================ -->
+    <!-- Camera Configuration                                            -->
+    <!-- Maps camera positions to IP addresses and settings              -->
+    <!-- ================================================================ -->
+    <CameraConfiguration>
+        <MaxCameras>9</MaxCameras>
+        
+        <!-- Position → IP Address Mapping -->
+        <!-- Only cameras defined in VehicleConfigurationsNF.csv will be used -->
+        <Cameras>
+            <Camera position="FRONT"   ipAddress="192.168.40.101" enabled="true" />
+            <Camera position="REAR"    ipAddress="192.168.40.102" enabled="true" />
+            <Camera position="LEFT"    ipAddress="192.168.40.103" enabled="true" />
+            <Camera position="RIGHT"   ipAddress="192.168.40.104" enabled="true" />
+            <Camera position="FRONT_L" ipAddress="192.168.40.105" enabled="true" />
+            <Camera position="FRONT_R" ipAddress="192.168.40.106" enabled="true" />
+            <Camera position="REAR_L"  ipAddress="192.168.40.107" enabled="true" />
+            <Camera position="REAR_R"  ipAddress="192.168.40.108" enabled="true" />
+            <Camera position="TOP"     ipAddress="192.168.40.109" enabled="true" />
+        </Cameras>
+        
+        <!-- Camera validation/ping settings -->
+        <InitialWaitTime>10</InitialWaitTime>  <!-- seconds -->
+        <PingTimeout>20</PingTimeout>          <!-- seconds -->
+    </CameraConfiguration>
+</Configuration>

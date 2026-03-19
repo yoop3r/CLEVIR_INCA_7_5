@@ -2,7 +2,7 @@
 # Confirms LiDAR is responding on configuration port 9347
 
 param(
-    [string]$LidarIP = "10.5.55.14",
+    [string]$LidarIP = "10.5.58.14",
     [int]$PtcPort = 9347
 )
 
