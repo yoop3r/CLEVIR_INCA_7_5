@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -311,9 +311,6 @@
     <Compile Include="..\CommonFiles\CANalyzerStuff.vb">
       <Link>CANalyzerStuff.vb</Link>
     </Compile>
-    <Compile Include="..\CommonFiles\LidarPcapCapture.vb">
-      <Link>LidarPcapCapture.vb</Link>
-    </Compile>
     <Compile Include="..\CommonFiles\CLEVIRCalibrationInterface.designer.vb">
       <Link>CLEVIRCalibrationInterface.designer.vb</Link>
       <DependentUpon>CLEVIRCalibrationInterface.vb</DependentUpon>
@@ -597,6 +594,9 @@
     <Compile Include="AudioToTextProgressForm.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ITimeSyncProvider.vb" />
+    <Compile Include="LidarDevice.vb" />
+    <Compile Include="LidarPcapCapture.vb" />
     <Compile Include="OxtsNcomCaptureDevice.vb" />
     <Compile Include="OxtsNcomChecksum.vb" />
     <Compile Include="HesaiInterop.vb" />
@@ -622,7 +622,6 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="IncaVersionSpecific.vb" />
-    <Compile Include="LidarDevice.vb" />
     <Compile Include="LidarHealthDetailForm.Designer.vb">
       <DependentUpon>LidarHealthDetailForm.vb</DependentUpon>
     </Compile>
@@ -658,6 +657,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="StatusNotifier.vb" />
+    <Compile Include="TimeMachineTimeSyncProvider.vb" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.resx">
@@ -2804,16 +2804,13 @@
       <Version>13.0.5-beta1</Version>
     </PackageReference>
     <PackageReference Include="PacketDotNet">
-      <Version>1.4.9-pre53</Version>
-    </PackageReference>
-    <PackageReference Include="Pcap.Net.x64">
-      <Version>1.0.4.1</Version>
-    </PackageReference>
-    <PackageReference Include="runtime.native.System.IO.Compression">
-      <Version>4.3.2</Version>
+      <Version>1.4.9-pre51</Version>
     </PackageReference>
     <PackageReference Include="SharpPcap">
       <Version>6.3.1</Version>
+    </PackageReference>
+    <PackageReference Include="runtime.native.System.IO.Compression">
+      <Version>4.3.2</Version>
     </PackageReference>
     <PackageReference Include="SharpZipLib">
       <Version>1.4.2</Version>

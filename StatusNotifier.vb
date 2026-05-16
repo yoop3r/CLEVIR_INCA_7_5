@@ -331,7 +331,7 @@ Public Module StatusNotifier
             (LoginForm IsNot Nothing AndAlso Not LoginForm.IsDisposed AndAlso LoginForm.IsHandleCreated AndAlso LoginForm.Visible)
         Dim modalActive As Boolean = HasActiveModalForm()
 
-        Dim localEnsureMainOnTop As Boolean = If(loginActive Or modalActive, False, ensureMainOnTop)
+        Dim localEnsureMainOnTop As Boolean = Not loginActive And Not modalActive AndAlso ensureMainOnTop
         If loginActive Or modalActive Then
             owner = Nothing
         End If

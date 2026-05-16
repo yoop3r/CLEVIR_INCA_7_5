@@ -86,7 +86,7 @@ Module OxtsNcomPcapCapture
             If OxtsCaptureDevice.IsCapturing Then
                 OxtsCaptureStarted = True
                 HandleUserMessageLogging("GMRC", "✅ OXTS NCOM capture started")
-                StatusNotifier.Toast("OXTS NCOM capture started", ToastKind.Info)
+                StatusNotifier.Toast("OXTS NCOM capture started", ToastKind.Info, "OXTS", 3000, True)
             Else
                 HandleUserMessageLogging("GMRC", "⚠️ OXTS NCOM capture failed to start")
             End If
@@ -115,7 +115,7 @@ Module OxtsNcomPcapCapture
 
             OxtsCaptureStarted = False
             HandleUserMessageLogging("GMRC", "✅ OXTS NCOM capture stopped")
-            StatusNotifier.Toast("OXTS NCOM capture stopped", ToastKind.Info)
+            StatusNotifier.Toast("OXTS NCOM capture stopped", ToastKind.Info, "OXTS", 3000, True)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"StopOxtsCapture: {ex.Message}")

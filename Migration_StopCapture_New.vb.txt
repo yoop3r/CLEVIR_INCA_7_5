@@ -1,0 +1,111 @@
+<!--\nExcluded from build - reference only\n''' <summary>
+''' ✅ NEW: Stop capture using SharpPcap API
+''' </summary>
+Public Sub StopCapture()
+    Dim logPrefix As String = $"[{DeviceId}] StopCapture"
+
+    Try
+        If Not _isCapturing Then
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Not capturing")
+            Return
+        End If
+
+        HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping capture...")
+
+        ' ═══════════════════════════════════════════════════════════════════
+        ' Inject STOP marker before stopping
+        ' ═══════════════════════════════════════════════════════════════════
+        Dim currentActiveSequence As String = GetCurrentActiveSequence()
+        Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
+        InjectEventMarker("STOP", "Recording stopped", currentSeq)
+
+        Thread.Sleep(200) ' Allow marker to be processed
+
+        ' ═══════════════════════════════════════════════════════════════════
+        ' Signal capture loop to stop
+        ' ═══════════════════════════════════════════════════════════════════
+        _isCapturing = False
+
+        ' ═══════════════════════════════════════════════════════════════════
+        ' Remove event handler (prevents memory leaks)
+        ' ═══════════════════════════════════════════════════════════════════
+        If _captureDevice IsNot Nothing Then
+            RemoveHandler _captureDevice.OnPacketArrival, AddressOf OnPacketArrival
+        End If
+
+        ' ═══════════════════════════════════════════════════════════════════
+        ' Wait for capture thread to finish gracefully
+        ' ═══════════════════════════════════════════════════════════════════
+        If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
+            If Not _captureThread.Join(5000) Then  ' 5 second timeout
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Thread did not exit gracefully, forcing abort")
+                _captureThread.Abort()
+            End If
+            _captureThread = Nothing
+        End If
+
+        ' ═══════════════════════════════════════════════════════════════════
+        ' Close Resources
+        ' ═══════════════════════════════════════════════════════════════════
+
+        ' Close event logger
+        If _eventLogger IsNot Nothing Then
+            _eventLogger.Close()
+            _eventLogger = Nothing
+        End If
+
+        ' Close dump file
+        If _dumpFile IsNot Nothing Then
+            _dumpFile.Close()
+            _dumpFile = Nothing
+        End If
+
+        ' Close capture device
+        If _captureDevice IsNot Nothing Then
+            _captureDevice.Close()
+            ' Don't set to Nothing - keep reference for next capture
+        End If
+
+        ' ═══════════════════════════════════════════════════════════════════
+        ' Log Final Statistics
+        ' ═══════════════════════════════════════════════════════════════════
+        HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Stopped - {_packetCount:N0} pkts, {_droppedPackets:N0} drops, {_markerCounter} markers")
+
+        StatusNotifier.Toast($"LiDAR {DeviceId} capture stopped", ToastKind.Info, "LiDAR", 3000, True)
+        MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts", True)
+
+    Catch ex As Exception
+        HandleUserMessageLogging("GMRC", $"{logPrefix}: Error: {ex.Message}")
+    End Try
+End Sub
+
+''' <summary>
+''' ✅ UPDATED: Cleanup resources (called internally and from Dispose)
+''' </summary>
+Private Sub CleanupResources()
+    Try
+        ' Close dump file
+        If _dumpFile IsNot Nothing Then
+            Try
+                _dumpFile.Close()
+            Catch
+                ' Ignore disposal errors
+            End Try
+            _dumpFile = Nothing
+        End If
+
+        ' Close capture device
+        If _captureDevice IsNot Nothing Then
+            Try
+                _captureDevice.Close()
+            Catch
+                ' Ignore disposal errors
+            End Try
+            ' Don't set to Nothing - may reuse for next capture
+        End If
+
+    Catch ex As Exception
+        HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: {ex.Message}")
+    End Try
+End Sub
+
