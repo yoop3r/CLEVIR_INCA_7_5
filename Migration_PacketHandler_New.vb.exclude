@@ -1,0 +1,96 @@
+''' <summary>
+''' ✅ NEW: Event-driven packet handler (replaces polling loop)
+''' Called automatically by SharpPcap when packets arrive
+''' </summary>
+Private Sub OnPacketArrival(sender As Object, e As PacketCapture)
+    Try
+        ' Get raw packet from event args
+        Dim rawPacket = e.GetPacket()
+
+        ' Parse packet using PacketDotNet
+        Dim packet = packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
+
+        ' Write to PCAP dump file
+        If _dumpFile IsNot Nothing AndAlso _isCapturing Then
+            _dumpFile.Write(rawPacket)
+
+            ' Update counters (thread-safe)
+            Interlocked.Increment(_frameCounter)
+            Interlocked.Increment(_packetCount)
+            Interlocked.Add(_totalBytes, rawPacket.Data.Length)
+
+            ' Update health monitoring timestamp
+            LastPacketTimestamp = DateTime.Now
+
+            ' ═══════════════════════════════════════════════════════════════
+            ' Parse Hesai packet for health monitoring (every 100th packet)
+            ' ═══════════════════════════════════════════════════════════════
+            If _packetCount Mod 100 = 0 Then
+                Try
+                    UpdateStatisticsFromPacket(packet)
+                Catch parseEx As Exception
+                    If _packetCount Mod 10000 = 0 Then
+                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] Parse error: {parseEx.Message}")
+                    End If
+                End Try
+            End If
+        End If
+
+    Catch ex As Exception
+        ' Don't crash capture on single packet errors
+        If _packetCount Mod 10000 = 0 Then
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Packet handler error: {ex.Message}")
+        End If
+    End Try
+End Sub
+
+''' <summary>
+''' ✅ NEW: Update statistics from parsed packet
+''' </summary>
+Private Sub UpdateStatisticsFromPacket(packet As Packet)
+    Try
+        ' Extract UDP payload for Hesai packet parsing
+        Dim ethPacket = TryCast(packet, EthernetPacket)
+        If ethPacket Is Nothing Then Return
+
+        Dim ipPacket = TryCast(ethPacket.PayloadPacket, IPv4Packet)
+        If ipPacket Is Nothing Then Return
+
+        Dim udpPacket = TryCast(ipPacket.PayloadPacket, UdpPacket)
+        If udpPacket Is Nothing OrElse udpPacket.PayloadData Is Nothing Then Return
+
+        ' Parse Hesai packet structure
+        Dim info As HesaiPacketInfo = ParseHesaiPacket(udpPacket.PayloadData)
+
+        If info.IsValid Then
+            ' Store last packet info for health monitoring
+            _lastHesaiInfo = info
+
+            ' Check for sequence gaps (packet loss detection)
+            If _hesaiSequenceInitialized Then
+                Dim expectedSeq As UInteger = _lastHesaiSequence + 100UI
+                Dim gap As Long
+
+                If info.UdpSequence >= expectedSeq Then
+                    gap = CLng(info.UdpSequence) - CLng(expectedSeq)
+                Else
+                    ' Handle wrap-around at UInteger.MaxValue
+                    gap = (CLng(UInteger.MaxValue) - CLng(expectedSeq)) + CLng(info.UdpSequence) + 1
+                End If
+
+                ' Only count reasonable gaps (not sensor restarts)
+                If gap > 0 AndAlso gap < 10000 Then
+                    Interlocked.Add(_droppedPackets, gap)
+                    Interlocked.Add(_outOfOrderPackets, 1)
+                End If
+            Else
+                _hesaiSequenceInitialized = True
+            End If
+
+            _lastHesaiSequence = info.UdpSequence
+        End If
+
+    Catch ex As Exception
+        ' Silent fail - don't log every parse error
+    End Try
+End Sub

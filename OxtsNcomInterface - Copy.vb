@@ -9,7 +9,6 @@ Imports System.Net.NetworkInformation
 ''' </summary>
 Public Class OxtsNcomInterface
     Implements ITimeSyncProvider
-
     Private _udpClient As UdpClient
     Private _listenerThread As Thread
     Private _isRunning As Boolean = False
@@ -48,6 +47,18 @@ Public Class OxtsNcomInterface
     Public Property LastPacketTime As DateTime?
     Public Property AllowNoGpsLock As Boolean = False
     Public Property DiagnosticLoggingEnabled As Boolean = False
+
+    Public ReadOnly Property ProviderName As String Implements ITimeSyncProvider.ProviderName
+        Get
+            Return "OXTS"
+        End Get
+    End Property
+
+    Public ReadOnly Property LastUpdateUtc As DateTime? Implements ITimeSyncProvider.LastUpdateUtc
+        Get
+            Return LastPacketTime
+        End Get
+    End Property
 
     ' PTP Synchronization Status
     Public Property PtpStatus As OxtsStatusChannelDecoder.PtpStatusEnum = OxtsStatusChannelDecoder.PtpStatusEnum.Unknown
@@ -212,6 +223,14 @@ Public Class OxtsNcomInterface
         End Try
     End Sub
 
+    Public Sub Start() Implements ITimeSyncProvider.Start
+        OxtsStartListening()
+    End Sub
+
+    Public Sub [Stop]() Implements ITimeSyncProvider.Stop
+        OxtsStopListening()
+    End Sub
+
     ''' <summary>
     ''' Finds the network interface on the 10.5.55.x subnet (OXTS subnet)
     ''' </summary>
@@ -239,6 +258,10 @@ Public Class OxtsNcomInterface
             HandleUserMessageLogging("GMRC", $"OXTS: Interface detection failed: {ex.Message}")
             Return IPAddress.Any
         End Try
+    End Function
+
+    Public Function IsSynchronized() As Boolean Implements ITimeSyncProvider.IsSynchronized
+        Return IsRealtime()
     End Function
 
     Public Sub OxtsStopListening()
@@ -593,6 +616,11 @@ Public Class OxtsNcomInterface
         End If
     End Sub
 
+    Public Function GetSynchronizedTimestamp() As DateTime Implements ITimeSyncProvider.GetSynchronizedTimestamp
+        If Not LastGpsTime.HasValue Then Return DateTime.UtcNow
+        Return DateTime.UtcNow.Add(TimeOffset)
+    End Function
+
     Public Function GetCurrentPosition() As OxtsPosition
         SyncLock Me
             If _latestPosition.HasValue Then
@@ -676,35 +704,6 @@ Public Class OxtsNcomInterface
                PtpStatus = OxtsStatusChannelDecoder.PtpStatusEnum.Master
     End Function
 
-    Public ReadOnly Property ProviderName As String Implements ITimeSyncProvider.ProviderName
-        Get
-            Return "OXTS"
-        End Get
-    End Property
-
-    Public ReadOnly Property LastUpdateUtc As DateTime? Implements ITimeSyncProvider.LastUpdateUtc
-        Get
-            Return LastPacketTime
-        End Get
-    End Property
-
-    Public Sub Start() Implements ITimeSyncProvider.Start
-        OxtsStartListening()
-    End Sub
-
-    Public Sub [Stop]() Implements ITimeSyncProvider.Stop
-        OxtsStopListening()
-    End Sub
-
-    Public Function IsSynchronized() As Boolean Implements ITimeSyncProvider.IsSynchronized
-        Return IsRealtime()
-    End Function
-
-    Public Function GetSynchronizedTimestamp() As DateTime Implements ITimeSyncProvider.GetSynchronizedTimestamp
-        If Not LastGpsTime.HasValue Then Return DateTime.UtcNow
-        Return DateTime.UtcNow.Add(TimeOffset)
-    End Function
-
     Public Function GetPtpStatusText() As String Implements ITimeSyncProvider.GetPtpStatusText
         Return $"PTP: {OxtsStatusChannelDecoder.GetPtpStatusDescription(PtpStatus)}"
     End Function
@@ -713,6 +712,7 @@ Public Class OxtsNcomInterface
         If LastPacketTime.HasValue Then
             Return $"NTP: OXTS source (packet age {(DateTime.UtcNow - LastPacketTime.Value).TotalSeconds:F1}s)"
         End If
+
         Return "NTP: OXTS source (no packets yet)"
     End Function
 
