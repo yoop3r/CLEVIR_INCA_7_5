@@ -646,7 +646,6 @@
     </Compile>
     <Compile Include="OxtsNcomPcapCapture.vb" />
     <Compile Include="OxtsStatusChannelDecoder.vb" />
-    <Compile Include="PcapEventBridgeVB.vb" />
     <Compile Include="PercentageProgressBar.vb">
       <SubType>Component</SubType>
     </Compile>
@@ -2241,7 +2240,7 @@
       <CustomToolNamespace>My</CustomToolNamespace>
       <LastGenOutput>Settings.Designer.vb</LastGenOutput>
     </None>
-    <None Include="PcapEventBridge\PcapEventBridge.csproj" />
+    <ProjectReference Include="PcapEventBridge\PcapEventBridge.csproj" />
     <None Include="PYTHON_ERROR_DIAGNOSTICS.md" />
     <None Include="START_HERE_PTP_CONFIGURATION.md" />
     <None Include="summary.03.10.26.md" />
@@ -2712,7 +2711,6 @@
     <Content Include="NCOMdecoder\NCOMdecoder.dll" />
     <Content Include="NCOMdecoder\ncom_simple.c" />
     <Content Include="NCOMdecoder\test_ncom.c" />
-    <Content Include="PcapEventBridge\PcapEventBridge.cs" />
     <Content Include="testicon_256px.ico" />
   </ItemGroup>
   <ItemGroup>
