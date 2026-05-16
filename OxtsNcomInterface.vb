@@ -8,8 +8,6 @@ Imports System.Net.NetworkInformation
 ''' Prioritizes checksum verification over packet loss monitoring per NCOM specification.
 ''' </summary>
 Public Class OxtsNcomInterface
-    Implements ITimeSyncProvider
-
     Private _udpClient As UdpClient
     Private _listenerThread As Thread
     Private _isRunning As Boolean = False
@@ -593,6 +591,11 @@ Public Class OxtsNcomInterface
         End If
     End Sub
 
+    Public Function GetSynchronizedTimestamp() As DateTime
+        If Not LastGpsTime.HasValue Then Return DateTime.UtcNow
+        Return DateTime.UtcNow.Add(TimeOffset)
+    End Function
+
     Public Function GetCurrentPosition() As OxtsPosition
         SyncLock Me
             If _latestPosition.HasValue Then
@@ -671,49 +674,9 @@ Public Class OxtsNcomInterface
         HandleUserMessageLogging("GMRC", $"Last PTP Update: {If(LastPtpStatusTime.HasValue, LastPtpStatusTime.Value.ToString("HH:mm:ss.fff"), "N/A")}")
     End Sub
 
-    Public Function IsPtpSynchronized() As Boolean Implements ITimeSyncProvider.IsPtpSynchronized
+    Public Function IsPtpSynchronized() As Boolean
         Return PtpStatus = OxtsStatusChannelDecoder.PtpStatusEnum.Locked OrElse
                PtpStatus = OxtsStatusChannelDecoder.PtpStatusEnum.Master
-    End Function
-
-    Public ReadOnly Property ProviderName As String Implements ITimeSyncProvider.ProviderName
-        Get
-            Return "OXTS"
-        End Get
-    End Property
-
-    Public ReadOnly Property LastUpdateUtc As DateTime? Implements ITimeSyncProvider.LastUpdateUtc
-        Get
-            Return LastPacketTime
-        End Get
-    End Property
-
-    Public Sub Start() Implements ITimeSyncProvider.Start
-        OxtsStartListening()
-    End Sub
-
-    Public Sub [Stop]() Implements ITimeSyncProvider.Stop
-        OxtsStopListening()
-    End Sub
-
-    Public Function IsSynchronized() As Boolean Implements ITimeSyncProvider.IsSynchronized
-        Return IsRealtime()
-    End Function
-
-    Public Function GetSynchronizedTimestamp() As DateTime Implements ITimeSyncProvider.GetSynchronizedTimestamp
-        If Not LastGpsTime.HasValue Then Return DateTime.UtcNow
-        Return DateTime.UtcNow.Add(TimeOffset)
-    End Function
-
-    Public Function GetPtpStatusText() As String Implements ITimeSyncProvider.GetPtpStatusText
-        Return $"PTP: {OxtsStatusChannelDecoder.GetPtpStatusDescription(PtpStatus)}"
-    End Function
-
-    Public Function GetNtpStatusText() As String Implements ITimeSyncProvider.GetNtpStatusText
-        If LastPacketTime.HasValue Then
-            Return $"NTP: OXTS source (packet age {(DateTime.UtcNow - LastPacketTime.Value).TotalSeconds:F1}s)"
-        End If
-        Return "NTP: OXTS source (no packets yet)"
     End Function
 
     Public Function GetPtpSyncQuality() As Integer

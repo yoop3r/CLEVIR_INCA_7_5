@@ -581,17 +581,6 @@ Public Class ConfigurationEditorForm
             Case "OxtsConfiguration.GpsLockTimeout" : Return "GPS lock wait timeout in milliseconds (default: 30000)"
             Case "OxtsConfiguration.WaitForLockOnStart" : Return "Wait for GPS lock before starting capture (True/False)"
 
-            ' Time Sync Provider Configuration
-            Case "TimeSyncConfiguration" : Return "Global time synchronization source selection"
-            Case "TimeSyncConfiguration.EnableTimeSync" : Return "Enable shared time synchronization provider (True/False)"
-            Case "TimeSyncConfiguration.Provider" : Return "Time sync source: OXTS or TimeMachine"
-            Case "TimeMachineConfiguration" : Return "TimeMachine Locator API settings"
-            Case "TimeMachineConfiguration.Enabled" : Return "Enable TimeMachine provider configuration (True/False)"
-            Case "TimeMachineConfiguration.DeviceIp" : Return "TimeMachine device IP or broadcast"
-            Case "TimeMachineConfiguration.Port" : Return "TimeMachine Locator UDP port (default: 7372)"
-            Case "TimeMachineConfiguration.PollMs" : Return "Locator query poll interval in milliseconds"
-            Case "TimeMachineConfiguration.PtpAssumeLocked" : Return "Treat TimeMachine as PTP-locked when responses are fresh (True/False)"
-
             ' LiDAR Configuration
             Case "LidarCaptureEnabled" : Return "Enable LiDAR data capture (True/False)"
             Case "LidarAdapterGuid" : Return "Network adapter GUID for LiDAR (legacy)"

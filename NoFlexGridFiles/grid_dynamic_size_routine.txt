@@ -1,0 +1,131 @@
+Shared Sub FinalizeGridDisplays()
+    ' Called from ReadInSignalList:
+    ' Sets the final grid display properties for each display grid once
+    ' we know how many rows and columns are in each grid.
+
+    Try
+        HandleUserMessageLogging("GMRC", "FinalizeGridDisplays: Finalizing Displays...",,,,,, OnVehicleScreen.Label2)
+        OnVehicleScreen.Refresh()
+
+        ' Instead of For z = 0 To UBound(myDGs), we iterate over each grid in the List(Of GridDataClass)
+        For Each grid In myDGs
+            ' (Optional) If you have any guard checks:
+            If grid Is Nothing Then Continue For
+
+            ' Prepare DataArray and ColumnNames based on known row/col counts
+            ReDim grid.DataArray(grid.NumberOfRows - 2, grid.NumberOfColumns - 1)
+            ReDim grid.ColumnNames(grid.NumberOfColumns - 1)
+
+            ' Fill in DataArray with initial values
+            For x As Integer = 0 To grid.DataArray.GetUpperBound(0)
+                ' Example: copy the display name from (x+1,1) into the first column
+                grid.DataArray(x, 0) = grid.DisplayName(x + 1, 1)
+
+                ' Fill the rest of the cells with a placeholder
+                For y As Integer = 1 To grid.DataArray.GetUpperBound(1)
+                    grid.DataArray(x, y) = " "
+                Next
+            Next
+
+            ' Set the ColumnNames, e.g. "1", "2", "3", or custom names for "LCC" forms
+            For y As Integer = 1 To grid.DataArray.GetUpperBound(1)
+                If Mid(grid.Parent.Name, 1, 3) = "LCC" Then
+                    Select Case y
+                        Case 1 : grid.ColumnNames(y) = "K1P"
+                        Case 2 : grid.ColumnNames(y) = "K2P"
+                        Case 3 : grid.ColumnNames(y) = "K1R"
+                        Case 4 : grid.ColumnNames(y) = "K2R"
+                        Case Else : grid.ColumnNames(y) = $"Col{y}"
+                    End Select
+                Else
+                    grid.ColumnNames(y) = CStr(y)
+                End If
+            Next
+
+            ' The first column name is blank
+            grid.ColumnNames(0) = " "
+
+            ' Create a data source based on the new array
+            grid.DataSource = New MSHFlexGridReplace.Data.ArrayDataView(grid.DataArray, grid.ColumnNames)
+
+            ' Example: set basic style properties
+            grid.RowHeadersVisible = False
+            grid.RowTemplate.Height = grid.DefaultRowHeight
+            grid.DefaultCellStyle.BackColor = grid.DefaultCellBackColor(1, 1)
+            grid.DefaultCellStyle.ForeColor = grid.DefaultCellForeColor(1, 1)
+            grid.DefaultCellStyle.SelectionBackColor = grid.DefaultCellStyle.BackColor
+            grid.DefaultCellStyle.SelectionForeColor = grid.DefaultCellStyle.ForeColor
+
+            ' Get display names to use for dynamic column sizing
+            Dim displayNames As New Dictionary(Of Integer, String)
+            For x As Integer = 1 To grid.RowCount - 1
+                displayNames(x) = grid.DisplayName(x, 1)
+            Next
+
+            ' Handle column widths based on content
+            For y As Integer = 0 To grid.ColumnCount - 1
+                ' Set a minimum width based on existing logic
+                Dim baseWidth As Integer
+                If y = 0 Then
+                    ' For first column, use width based on display name length
+                    baseWidth = Math.Max(DEFAULT_COL_ONE_WIDTH, GetMaxTextWidth(displayNames.Values.ToArray(), 7))
+                Else
+                    baseWidth = DEFAULT_COL_WIDTH * GRID_COL_WIDTH_SIZING_MULTIPLIER
+                    If (grid.ColumnCount - 1) > 15 Then
+                        baseWidth = baseWidth * (15 / (grid.ColumnCount - 1))
+                    ElseIf (grid.ColumnCount - 1) < 5 Then
+                        baseWidth = baseWidth * 2
+                    End If
+                End If
+
+                ' Apply the calculated width with padding
+                grid.Columns(y).Width = baseWidth + 15
+            Next
+
+            ' Handle special case formatting for various grid types
+            For x As Integer = 1 To grid.RowCount - 1
+                For y As Integer = 1 To grid.ColumnCount - 1
+                    If grid.Parent.Name = "EOCM DTCs" Then
+                        grid.Columns(y).Width = DEFAULT_COL_WIDTH * GRID_COL_WIDTH_SIZING_MULTIPLIER * 5
+                    ElseIf grid.ColumnCount = 2 Then
+                        If grid.DisplayFormat(x, y) = "ENUM" Then
+                            grid.Columns(y).Width = DEFAULT_COL_WIDTH * GRID_COL_WIDTH_SIZING_MULTIPLIER * 4
+                        End If
+                    End If
+                Next
+            Next
+
+            ' If no custom GridSize is specified, auto-calculate
+            If String.IsNullOrEmpty(grid.GridSize) Then
+                grid.Width = (((grid.ColumnCount - 1) * grid.DefaultColumnWidth)) + _
+                         (grid.Columns(0).Width / GRID_COL_WIDTH_SIZING_MULTIPLIER) - _
+                         (grid.ColumnCount * grid.ColumnCount)
+
+                grid.Height = (grid.RowCount * grid.DefaultRowHeight) - _
+                          (grid.RowCount * grid.RowCount * GRID_HEIGHT_SIZING_MULTIPLIER)
+            Else
+                ' Parse out width/height from " WxH " format
+                Dim hIndex As Integer = InStr(grid.GridSize, "H")
+                grid.Width = Val(Mid(grid.GridSize, 2, hIndex - 2))
+                grid.Height = Val(Mid(grid.GridSize, hIndex + 1, Len(grid.GridSize)))
+            End If
+
+            ' Finalize any grid header or additional formatting
+            FinalizeGridHeader(grid)
+        Next
+
+    Catch ex As Exception
+        MsgBox("FinalizeGridDisplays: " & ex.Message)
+    End Try
+End Sub
+
+' Helper function to calculate the width needed for text
+Private Shared Function GetMaxTextWidth(texts As String(), charWidth As Integer) As Integer
+    Dim maxWidth As Integer = 0
+    For Each text As String In texts
+        If Not String.IsNullOrEmpty(text) Then
+            maxWidth = Math.Max(maxWidth, text.Length * charWidth)
+        End If
+    Next
+    Return maxWidth
+End Function

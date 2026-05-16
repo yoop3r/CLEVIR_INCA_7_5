@@ -3,11 +3,11 @@ Imports System.IO
 Imports System.Speech.Synthesis
 Imports System.Threading
 Imports System.Threading.Tasks
-Imports SharpPcap
-Imports SharpPcap.LibPcap
-Imports PacketDotNet
-Imports PacketDotNet.Utils
-Imports System.Net.NetworkInformation
+Imports PcapDotNet.Core
+Imports PcapDotNet.Packets
+Imports PcapDotNet.Packets.Ethernet
+Imports PcapDotNet.Packets.IpV4
+Imports PcapDotNet.Packets.Transport
 
 ''' <summary>
 ''' Maintains a log file of event markers with frame numbers for offline analysis
@@ -91,13 +91,11 @@ Public Class LidarDevice
     Public Property DeviceId As String = "LiDAR1" ' Friendly name for logging
     Public Property Enabled As Boolean = True  ' Default to True for backward compatibility
 
-    ' ✅ CHANGED: SharpPcap capture device types
     ' Instance-level capture state
-    Private _captureDevice As ICaptureDevice = Nothing
-    Private _dumpFile As CaptureFileWriterDevice = Nothing
+    Private _captureDevice As LivePacketDevice = Nothing
+    Private _communicator As PacketCommunicator = Nothing
+    Private _dumpFile As PacketDumpFile = Nothing
     Private _captureThread As Threading.Thread = Nothing
-
-    ' Statistics (unchanged)
     Private _isCapturing As Boolean = False
     Private _packetCount As Long = 0
     Private _totalBytes As Long = 0
@@ -114,8 +112,8 @@ Public Class LidarDevice
     Private ReadOnly _markerQueue As New Concurrent.ConcurrentQueue(Of EventMarker)
 
     ' Configuration constants
-    Private Const CaptureBufferSize As Integer = 16 * 1024 * 1024  ' 16MB - Npcap kernel ring buffer
-    Private Const ReadTimeoutMs As Integer = 1000    ' 1 second read timeout for capture device
+    Private Const CaptureBufferSize As Integer = 65536 ' 64KB buffer
+    Private Const CaptureTimeoutMs As Integer = 1000 ' 1 second timeout
     Public Const MarkerDestPort As UShort = 65000    ' Unique port for event markers
     Public Const MarkerSourcePort As UShort = 65001  ' Source port for markers
 
@@ -213,14 +211,10 @@ Public Class LidarDevice
     End Structure
 
     ' Add to LidarDevice class (around line 50)
-    Private _timeSyncProvider As ITimeSyncProvider ' Reference to shared time sync provider
+    Private _oxtsInterface As OxtsNcomInterface ' Reference to shared OXTS listener
 
     Public Sub SetOxtsInterface(oxts As OxtsNcomInterface)
-        _timeSyncProvider = oxts
-    End Sub
-
-    Public Sub SetTimeSyncProvider(provider As ITimeSyncProvider)
-        _timeSyncProvider = provider
+        _oxtsInterface = oxts
     End Sub
 
     ' ====================================================================
@@ -265,18 +259,18 @@ Public Class LidarDevice
         HandleUserMessageLogging("GMRC", $"Markers: {_markerCounter}")
         HandleUserMessageLogging("GMRC", $"Frames: {_frameCounter}")
 
-        If _timeSyncProvider IsNot Nothing Then
+        If _oxtsInterface IsNot Nothing Then
             HandleUserMessageLogging("GMRC", "")
-            HandleUserMessageLogging("GMRC", $"=== Time Sync Status ({_timeSyncProvider.ProviderName}) ===")
-            HandleUserMessageLogging("GMRC", _timeSyncProvider.GetPtpStatusText())
-            HandleUserMessageLogging("GMRC", _timeSyncProvider.GetNtpStatusText())
+            HandleUserMessageLogging("GMRC", "=== OXTS Status ===")
+            HandleUserMessageLogging("GMRC", $"GPS Lock: {_oxtsInterface.IsGpsLocked}")
+            HandleUserMessageLogging("GMRC", $"GPS Time Available: {_oxtsInterface.LastGpsTime.HasValue}")
 
-            If _timeSyncProvider.IsSynchronized() Then
-                Dim syncTime = _timeSyncProvider.GetSynchronizedTimestamp()
+            If _oxtsInterface.LastGpsTime.HasValue Then
+                Dim syncTime = _oxtsInterface.GetSynchronizedTimestamp()
                 HandleUserMessageLogging("GMRC", $"Synchronized Time: {syncTime:yyyy-MM-dd HH:mm:ss.fff}")
             End If
         Else
-            HandleUserMessageLogging("GMRC", "⚠️ Time sync provider not connected!")
+            HandleUserMessageLogging("GMRC", "⚠️ OXTS interface not connected!")
         End If
 
         HandleUserMessageLogging("GMRC", "=== Test Complete ===")
@@ -293,8 +287,8 @@ Public Class LidarDevice
 
         Dim message As String = "TEST MARKER"
 
-        If TypeOf _timeSyncProvider Is OxtsNcomInterface Then
-            Dim pos = DirectCast(_timeSyncProvider, OxtsNcomInterface).GetCurrentPosition()
+        If _oxtsInterface IsNot Nothing Then
+            Dim pos = _oxtsInterface.GetCurrentPosition()
             message &= $" | Lat:{pos.Latitude:F6} Lon:{pos.Longitude:F6} Alt:{pos.Altitude:F2}m"
         End If
 
@@ -311,15 +305,12 @@ Public Class LidarDevice
             Return False
         End If
 
-        ' Never alert for a device that has never received a packet (not started / disabled)
-        If Not LastPacketTimestamp.HasValue Then
-            Return False
-        End If
-
         ' Check for critical conditions
-        Dim timeSinceLastPacket = DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds
+        Dim timeSinceLastPacket = If(LastPacketTimestamp.HasValue,
+                                      DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds,
+                                      Double.MaxValue)
 
-        If timeSinceLastPacket > 15 Then ' Device stopped
+        If timeSinceLastPacket > 10 Then ' Device stopped
             Return True
         End If
 
@@ -360,9 +351,9 @@ Public Class LidarDevice
     Private Function GetAlertMessage() As String
         Dim timeSinceLastPacket = If(LastPacketTimestamp.HasValue,
                                       DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds,
-                                      -1.0)
+                                      Double.MaxValue)
 
-        If timeSinceLastPacket > 15 Then
+        If timeSinceLastPacket > 10 Then
             Return $"LiDAR {DeviceId} has stopped responding"
         End If
 
@@ -382,257 +373,106 @@ Public Class LidarDevice
     ''' </summary>
     ''' <param name="pcapFilename">Full path to output PCAP file</param>
     ''' <param name="sequence">Current recording sequence number</param>
-    ''' <summary>
-    ''' ✅ NEW VERSION: StartCapture using SharpPcap
-    ''' </summary>
     Public Sub StartCapture(pcapFilename As String, sequence As Integer)
         Dim logPrefix As String = $"[{DeviceId}] StartCapture"
 
         Try
+            ' Check if already capturing
             If _isCapturing Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Already active")
                 Return
             End If
 
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Initializing native Npcap capture...")
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Initializing capture to {Path.GetFileName(pcapFilename)}...")
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 1: Find Network Adapter (SharpPcap API)
-            ' ═══════════════════════════════════════════════════════════════════
+            ' Find the LiDAR network adapter
             If Not FindNetworkAdapter() Then
-                Throw New InvalidOperationException($"Network adapter not found for {DeviceId} (IP {LidarIpAddress})")
+                Throw New Exception("Network adapter not found. Check configuration.")
             End If
 
-            ' Ensure output directory exists
-            Dim outputDir = Path.GetDirectoryName(pcapFilename)
-            If Not String.IsNullOrEmpty(outputDir) AndAlso Not Directory.Exists(outputDir) Then
-                Directory.CreateDirectory(outputDir)
-            End If
+            ' Open device for packet capture (promiscuous mode)
+            _communicator = _captureDevice.Open(
+            CaptureBufferSize,
+            PacketDeviceOpenAttributes.Promiscuous,
+            CaptureTimeoutMs
+        )
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 2: Configure Device (SharpPcap 6.x uses DeviceConfiguration)
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim config As New DeviceConfiguration() With {
-                .Mode = DeviceModes.Promiscuous,
-                .ReadTimeout = ReadTimeoutMs,
-                .KernelBufferSize = CaptureBufferSize,
-                .Snaplen = 65535,
-                .Immediate = True
-            }
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Config set - KernelBuffer={CaptureBufferSize \ (1024 * 1024)}MB, SnapLen=65535, Immediate=True")
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 3: Open Device with Configuration
-            ' ═══════════════════════════════════════════════════════════════════
-            _captureDevice.Open(config)
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Device opened with optimized configuration")
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 4: Apply Optimized BPF Filter
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Filter by source IP only — avoids dropping packets if LiDAR sends
-            ' from an unexpected source port (e.g. ephemeral or firmware default)
-            Dim filter As String = $"udp and src host {LidarIpAddress} and greater 100"
-            _captureDevice.Filter = filter
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: BPF filter applied: {filter}")
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 5: Open Dump File
-            ' ═══════════════════════════════════════════════════════════════════
-            _dumpFile = New CaptureFileWriterDevice(pcapFilename, FileMode.Create)
-            _dumpFile.Open()
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 6: Create Event Logger
-            ' ═══════════════════════════════════════════════════════════════════
+            ' ✅ Create event logger FIRST (before filter/dump setup)
             Try
                 _eventLogger = New LidarEventLogger(pcapFilename)
-                HandleUserMessageLogging("GMRC", $"{logPrefix}: Event logger created")
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Event logger created for {Path.GetFileName(pcapFilename)}")
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"{logPrefix}: Event logger failed: {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Event logger creation failed: {ex.Message}")
+                ' Continue capture even if logger fails
             End Try
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 7: Reset Statistics
-            ' ═══════════════════════════════════════════════════════════════════
+            ' Set BPF filter to capture ONLY packets from this LiDAR's IP
+            Dim filter As String = $"udp and src host {LidarIpAddress}"
+            Using bpfFilter = _communicator.CreateFilter(filter)
+                _communicator.SetFilter(bpfFilter)
+            End Using
+
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Filter applied: {filter}")
+
+            ' Open PCAP dump file for writing
+            _dumpFile = _communicator.OpenDump(pcapFilename)
+
+            ' Reset statistics and marker queue
             _packetCount = 0
             _totalBytes = 0
             _markerCounter = 0
-            _frameCounter = 0
+            _frameCounter = 0  ' ← Reset frame counter here
             _droppedPackets = 0
             _checksumErrors = 0
             _outOfOrderPackets = 0
-            _hesaiSequenceInitialized = False
-
-            ' Drain any leftover markers from a previous capture
-            Dim discardedMarker As EventMarker
-            While _markerQueue.TryDequeue(discardedMarker)
-                ' Discard
+            _hesaiSequenceInitialized = False  ' Reset sequence tracking for new capture
+            While _markerQueue.TryDequeue(Nothing) ' Clear queue
             End While
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 8: Register Packet Handler and arm the capturing flag BEFORE
-            ' StartCapture() so OnPacketArrival never sees _isCapturing=False
-            ' ═══════════════════════════════════════════════════════════════════
+            ' Start background capture thread
             _isCapturing = True
-            AddHandler _captureDevice.OnPacketArrival, AddressOf OnPacketArrival
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 9: Start SharpPcap Capture (on main thread - confirms active before returning)
-            ' ═══════════════════════════════════════════════════════════════════
-            _captureDevice.StartCapture()
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 10: Start Marker Pump Thread
-            ' Handles marker injection and periodic stats - packet I/O is done by SharpPcap internally
-            ' ═══════════════════════════════════════════════════════════════════
-            _captureThread = New Thread(AddressOf CaptureLoop) With {
+            _captureThread = New Thread(AddressOf CapturePacketsLoop) With {
                 .IsBackground = True,
-                .Name = $"LidarMarkerPump_{DeviceId}",
-                .Priority = ThreadPriority.Normal
+                .Name = $"LidarCapture_{DeviceId}"
             }
             _captureThread.Start()
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 11: Success Logging & Marker Injection
-            ' ═══════════════════════════════════════════════════════════════════
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Capture started (native Npcap NDIS 6, seq {sequence:D2})")
+            ' Log success and inject initial marker
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Capture started successfully (seq {sequence:D2})")
             InjectEventMarker("START", $"Recording started - {DeviceId}", sequence)
 
-            StatusNotifier.Toast($"LiDAR {DeviceId} capture started (NDIS 6 LWF)", ToastKind.Info, "LiDAR", 3000, True)
-            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} started (NDIS 6)", True)
+            ' Write event to INCA
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} capture started (seq {sequence:D2})", True)
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 12: Optional Hesai SDK Registration (Validation-Only)
-            ' ═══════════════════════════════════════════════════════════════════
+            ' ════════════════════════════════════════════════════════════════
+            ' ✅ VALIDATION-ONLY MODE: Register with Hesai SDK for stats tracking
+            '    WITHOUT binding to UDP ports (PcapDotNet handles capture)
+            ' ════════════════════════════════════════════════════════════════
             If HesaiInterop.IsAvailable() AndAlso Not IsHesaiRegistered Then
                 Task.Run(Sub()
                              Try
+                                 ' ✅ ALWAYS use validation-only mode to avoid UDP port conflicts
+                                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Registering with Hesai SDK in VALIDATION-ONLY mode...")
+
                                  If HesaiInterop.RegisterDeviceValidationOnly(DeviceId, LidarIpAddress, CInt(LidarDataPort)) Then
                                      IsHesaiRegistered = True
-                                     HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Hesai SDK registered (validation-only)")
+                                     HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Registered with Hesai SDK (validation-only, no UDP bind)")
+                                 Else
+                                     HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Hesai SDK validation-only registration failed")
                                  End If
+
                              Catch hesaiEx As Exception
-                                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Hesai SDK error: {hesaiEx.Message}")
+                                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Hesai SDK registration error: {hesaiEx.Message}")
                              End Try
                          End Sub)
             End If
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
-            Try
-                If _captureDevice IsNot Nothing Then
-                    RemoveHandler _captureDevice.OnPacketArrival, AddressOf OnPacketArrival
-                End If
-            Catch
-                ' Ignore - handler may not have been added yet
-            End Try
             CleanupResources()
             _isCapturing = False
         End Try
     End Sub
-
-    ''' <summary>
-    ''' ✅ NEW: Event-driven packet handler (replaces polling loop)
-    ''' Called automatically by SharpPcap when packets arrive
-    ''' SharpPcap.PacketArrivalEventHandler signature: (sender As Object, e As PacketCapture)
-    ''' </summary>
-    Private Sub OnPacketArrival(sender As Object, e As Object)
-        Try
-            ' ✅ FIXED: Use reflection to access PacketCapture.GetPacket() (VB.NET can't use ref structs)
-            Dim getPacketMethod = e.GetType().GetMethod("GetPacket")
-            Dim rawPacket As RawCapture = DirectCast(getPacketMethod.Invoke(e, Nothing), RawCapture)
-
-            ' Parse packet using PacketDotNet
-            Dim packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
-
-            ' Always update health monitoring timestamp on every received packet
-            ' (must be outside dump-file guard to avoid false "STOPPED" alerts
-            '  during sequence rollovers or when capture is not actively writing)
-            LastPacketTimestamp = DateTime.Now
-
-            ' Write to PCAP dump file
-            If _dumpFile IsNot Nothing AndAlso _isCapturing Then
-                _dumpFile.Write(rawPacket)
-
-                ' Update counters (thread-safe)
-                Interlocked.Increment(_frameCounter)
-                Interlocked.Increment(_packetCount)
-                Interlocked.Add(_totalBytes, rawPacket.Data.Length)
-
-                ' ═══════════════════════════════════════════════════════════════
-                ' Parse Hesai packet for health monitoring (every 100th packet)
-                ' ═══════════════════════════════════════════════════════════════
-                If _packetCount Mod 100 = 0 Then
-                    Try
-                        UpdateStatisticsFromPacket(packet)
-                    Catch parseEx As Exception
-                        If _packetCount Mod 10000 = 0 Then
-                            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Parse error: {parseEx.Message}")
-                        End If
-                    End Try
-                End If
-            End If
-
-        Catch ex As Exception
-            ' Don't crash capture on single packet errors
-            If _packetCount Mod 10000 = 0 Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Packet handler error: {ex.Message}")
-            End If
-        End Try
-    End Sub
-
-    ''' <summary>
-    ''' ✅ NEW: Update statistics from parsed packet
-    ''' </summary>
-    Private Sub UpdateStatisticsFromPacket(packet As Packet)
-        Try
-            ' Extract UDP payload for Hesai packet parsing
-            Dim ethPacket = TryCast(packet, EthernetPacket)
-            If ethPacket Is Nothing Then Return
-
-            Dim ipPacket = TryCast(ethPacket.PayloadPacket, IPv4Packet)
-            If ipPacket Is Nothing Then Return
-
-            Dim udpPacket = TryCast(ipPacket.PayloadPacket, UdpPacket)
-            If udpPacket Is Nothing OrElse udpPacket.PayloadData Is Nothing Then Return
-
-            ' Parse Hesai packet structure
-            Dim info As HesaiPacketInfo = ParseHesaiPacket(udpPacket.PayloadData)
-
-            If info.IsValid Then
-                ' Store last packet info for health monitoring
-                _lastHesaiInfo = info
-
-                ' Check for sequence gaps (packet loss detection)
-                If _hesaiSequenceInitialized Then
-                    Dim expectedSeq As UInteger = _lastHesaiSequence + 100UI
-                    Dim gap As Long
-
-                    If info.UdpSequence >= expectedSeq Then
-                        gap = CLng(info.UdpSequence) - CLng(expectedSeq)
-                    Else
-                        ' Handle wrap-around at UInteger.MaxValue
-                        gap = (CLng(UInteger.MaxValue) - CLng(expectedSeq)) + CLng(info.UdpSequence) + 1
-                    End If
-
-                    ' Only count reasonable gaps (not sensor restarts)
-                    If gap > 0 AndAlso gap < 10000 Then
-                        Interlocked.Add(_droppedPackets, gap)
-                        Interlocked.Add(_outOfOrderPackets, 1)
-                    End If
-                Else
-                    _hesaiSequenceInitialized = True
-                End If
-
-                _lastHesaiSequence = info.UdpSequence
-            End If
-
-        Catch ex As Exception
-            ' Silent fail - don't log every parse error
-        End Try
-    End Sub
-
     ''' <summary>
     ''' Updates statistics from Hesai SDK (if available) or uses PcapDotNet fallback
     ''' Called periodically during capture (every 1000 packets)
@@ -673,61 +513,33 @@ Public Class LidarDevice
     End Sub
 
     ''' <summary>
-    ''' ✅ NEW: Stop capture using SharpPcap API
+    ''' Stops packet capture for this LiDAR device.
+    ''' ✅ NOTE: This does NOT unregister from Hesai SDK - SDK stays running between sequences.
+    ''' Use ShutdownDevice() to fully release the SDK when done with all recording.
     ''' </summary>
     Public Sub StopCapture()
-        Dim logPrefix As String = $"[{DeviceId}] StopCapture"
+        Dim logPrefix As String = $"DeviceID: [{DeviceId}] LiDARStopCapture"
+        Dim currentActiveSequence As String = GetCurrentActiveSequence()
+        Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
 
         Try
+            ' ✅ CHANGED: Do NOT unregister SDK here - keep it running between sequences
+            ' The SDK will continue to track packet loss statistics across sequences
+            ' Use ShutdownDevice() when you want to fully release the SDK
+
             If Not _isCapturing Then
-                HandleUserMessageLogging("GMRC", $"{logPrefix}: Not capturing")
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Not currently capturing")
                 Return
             End If
 
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping capture...")
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping capture (SDK stays registered for next sequence)...")
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Inject STOP marker before stopping
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim currentActiveSequence As String = GetCurrentActiveSequence()
-            Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
+            ' Inject stop marker before stopping
             InjectEventMarker("STOP", "Recording stopped", currentSeq)
+            Thread.Sleep(200) ' Give time for marker to be processed
 
-            Thread.Sleep(200) ' Allow marker to be processed
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Signal capture loop to stop
-            ' ═══════════════════════════════════════════════════════════════════
+            ' Signal capture thread to stop
             _isCapturing = False
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Stop SharpPcap capture (symmetric with StartCapture in StartCapture method)
-            ' ═══════════════════════════════════════════════════════════════════
-            If _captureDevice IsNot Nothing Then
-                _captureDevice.StopCapture()
-            End If
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Remove event handler (prevents memory leaks)
-            ' ═══════════════════════════════════════════════════════════════════
-            If _captureDevice IsNot Nothing Then
-                RemoveHandler _captureDevice.OnPacketArrival, AddressOf OnPacketArrival
-            End If
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Wait for marker pump thread to finish gracefully
-            ' ═══════════════════════════════════════════════════════════════════
-            If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
-                If Not _captureThread.Join(5000) Then
-                    HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Thread did not exit gracefully, forcing abort")
-                    _captureThread.Abort()
-                End If
-                _captureThread = Nothing
-            End If
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Close Resources
-            ' ═══════════════════════════════════════════════════════════════════
 
             ' Close event logger
             If _eventLogger IsNot Nothing Then
@@ -735,32 +547,38 @@ Public Class LidarDevice
                 _eventLogger = Nothing
             End If
 
-            ' Close dump file
-            If _dumpFile IsNot Nothing Then
-                _dumpFile.Close()
-                _dumpFile = Nothing
+            ' Close PCAP communicator
+            If _communicator IsNot Nothing Then
+                _communicator.Dispose()
+                _communicator = Nothing
             End If
 
-            ' Close capture device
-            If _captureDevice IsNot Nothing Then
-                _captureDevice.Close()
-                ' Don't set to Nothing - keep reference for next capture
+            ' Wait for capture thread to finish (with timeout)
+            If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
+                If Not _captureThread.Join(5000) Then
+                    ' Force abort if thread doesn't finish gracefully
+                    HandleUserMessageLogging("GMRC", $"{logPrefix}: Forcing thread abort...")
+                    _captureThread.Abort()
+                End If
+                _captureThread = Nothing
             End If
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Log Final Statistics
-            ' ═══════════════════════════════════════════════════════════════════
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Stopped - {_packetCount:N0} pkts, {_droppedPackets:N0} drops, {_markerCounter} markers")
+            ' Cleanup resources
+            CleanupResources()
 
-            StatusNotifier.Toast($"LiDAR {DeviceId} capture stopped", ToastKind.Info, "LiDAR", 3000, True)
-            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts", True)
+            ' Log statistics
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Captured {_packetCount:N0} packets, {_totalBytes:N0} bytes, {_markerCounter} markers")
+
+            ' Write event to INCA
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} LiDAR DeviceID: {DeviceId} stopped - {_packetCount:N0} pkts, {_markerCounter} markers", True)
+
+            ' Close event logger (duplicate call removed - already closed above)
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"LidarDevice.StopCapture ({DeviceId}): {ex.Message}")
         End Try
     End Sub
-
-
 
     ''' <summary>
     ''' ✅ NEW: Fully shuts down the device, including unregistering from Hesai SDK.
@@ -828,84 +646,132 @@ Public Class LidarDevice
     ' ====================================================================
 
     ''' <summary>
-    ''' Marker pump thread: drains the marker queue and updates periodic statistics.
-    ''' Packet I/O is handled entirely by SharpPcap's internal thread via OnPacketArrival.
+    ''' Background thread loop for packet capture
     ''' </summary>
-    Private Sub CaptureLoop()
+    Private Sub CapturePacketsLoop()
         Try
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread started")
-
-            Dim lastStatsUpdate As DateTime = DateTime.Now
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Capture thread started")
 
             While _isCapturing
-                ' ═══════════════════════════════════════════════════════════════
-                ' 1. Process Pending Event Markers
-                ' ═══════════════════════════════════════════════════════════════
-                Dim marker As EventMarker
-                While _markerQueue.TryDequeue(marker)
+                ' Check for pending event markers to inject
+                Dim marker As New EventMarker()
+                If _markerQueue.TryDequeue(marker) Then
                     InjectMarkerPacket(marker)
-                End While
-
-                ' ═══════════════════════════════════════════════════════════════
-                ' 2. Update Statistics from Device (every second)
-                ' ═══════════════════════════════════════════════════════════════
-                If DateTime.Now.Subtract(lastStatsUpdate).TotalSeconds >= 1.0 Then
-                    UpdateDeviceStatistics()
-                    lastStatsUpdate = DateTime.Now
                 End If
 
-                ' Sleep to avoid busy-waiting (marker queue is not high-frequency)
-                Thread.Sleep(100)  ' Check every 100ms
+                Dim result As PacketCommunicatorReceiveResult
+                Dim packet As Packet = Nothing
+
+                ' Attempt to receive a packet (blocks up to CaptureTimeoutMs)
+                result = _communicator.ReceivePacket(packet)
+
+                Select Case result
+                    Case PacketCommunicatorReceiveResult.Ok
+                        ' Successfully received a packet
+                        If _dumpFile IsNot Nothing Then
+                            _dumpFile.Dump(packet)
+
+                            Interlocked.Increment(_frameCounter)
+
+                            ' Update timestamp for health monitoring
+                            LastPacketTimestamp = DateTime.Now
+
+                            ' Update statistics
+                            Interlocked.Increment(_packetCount)
+                            Interlocked.Add(_totalBytes, packet.Length)
+
+                            ' ✅ NEW: Parse Hesai packet for sequence tracking (every 100th packet to reduce overhead)
+                            If _packetCount Mod 100 = 0 Then
+                                Try
+                                    Dim eth = packet.Ethernet
+                                    If eth IsNot Nothing AndAlso eth.IpV4 IsNot Nothing Then
+                                        Dim udp = eth.IpV4.Udp
+                                        If udp IsNot Nothing AndAlso udp.Payload.Length > 0 Then
+                                            Dim udpPayload As Byte() = udp.Payload.ToArray()
+                                            Dim info As HesaiPacketInfo = ParseHesaiPacket(udpPayload)
+
+                                            If info.IsValid Then
+                                                ' Store last packet info
+                                                _lastHesaiInfo = info
+
+                                                ' Check for sequence gaps (packet loss detection)
+                                                If _hesaiSequenceInitialized Then
+                                                    ' Calculate expected sequence (wraps at UInteger.MaxValue)
+                                                    Dim expectedSeq As UInteger = _lastHesaiSequence + 100UI
+
+                                                    ' Handle wrap-around
+                                                    Dim gap As Long
+                                                    If info.UdpSequence >= expectedSeq Then
+                                                        gap = CLng(info.UdpSequence) - CLng(expectedSeq)
+                                                    Else
+                                                        ' Wrapped around
+                                                        gap = (CLng(UInteger.MaxValue) - CLng(expectedSeq)) + CLng(info.UdpSequence) + 1
+                                                    End If
+
+                                                    ' Only count reasonable gaps (not sensor restarts)
+                                                    If gap > 0 AndAlso gap < 10000 Then
+                                                        Interlocked.Add(_droppedPackets, gap)
+                                                        Interlocked.Add(_outOfOrderPackets, 1)
+                                                    End If
+                                                Else
+                                                    _hesaiSequenceInitialized = True
+                                                End If
+
+                                                _lastHesaiSequence = info.UdpSequence
+                                            End If
+                                        End If
+                                    End If
+                                Catch parseEx As Exception
+                                    ' Don't crash capture on parse errors
+                                    If _packetCount Mod 10000 = 0 Then
+                                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Packet parse error: {parseEx.Message}")
+                                    End If
+                                End Try
+                            End If
+
+                            ' Update stats every 1000 packets
+                            If _packetCount Mod 1000 = 0 Then
+                                UpdateStatistics()
+                            End If
+                        End If
+
+                    Case PacketCommunicatorReceiveResult.Timeout
+                        ' Timeout is normal, continue waiting
+                        Continue While
+
+                    Case PacketCommunicatorReceiveResult.Eof
+                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Unexpected EOF")
+                        Exit While
+
+                    Case Else
+                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Error receiving packet: {result}")
+                        ' Increment dropped packet counter on errors
+                        Interlocked.Increment(_droppedPackets)
+                        Exit While
+                End Select
             End While
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread exiting normally")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Capture thread exiting normally")
 
         Catch ex As ThreadAbortException
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Thread aborted")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Thread aborted")
+
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Capture loop error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR CapturePacketsLoop exception: {ex.Message}")
+
+        Finally
+            ' Ensure dump file is closed
+            If _dumpFile IsNot Nothing Then
+                Try
+                    _dumpFile.Dispose()
+                Catch
+                    ' Ignore disposal errors
+                End Try
+                _dumpFile = Nothing
+            End If
         End Try
     End Sub
 
-    ''' <summary>
-    ''' ✅ NEW: Update statistics from SharpPcap device (NDIS 6 provides accurate stats)
-    ''' </summary>
-    Private Sub UpdateDeviceStatistics()
-        Try
-            ' PRIORITY 1: Get stats from native Npcap driver (kernel-level buffer drops)
-            ' Use a monotonic update — only advance the counter, never reset it.
-            ' stats.DroppedPackets is typically 0 with a 16 MB kernel buffer; an Exchange
-            ' with 0 would silently wipe accumulated Hesai sequence-gap drops.
-            If TypeOf _captureDevice Is LibPcapLiveDevice Then
-                Dim liveDevice = DirectCast(_captureDevice, LibPcapLiveDevice)
-                Dim npcapDrops = CLng(liveDevice.Statistics.DroppedPackets)
-                If npcapDrops > Interlocked.Read(_droppedPackets) Then
-                    Interlocked.Exchange(_droppedPackets, npcapDrops)
-                End If
-            End If
-
-            ' PRIORITY 2: Hesai SDK stats — same monotonic rule for out-of-order counter.
-            ' Hesai SDK out_of_order_packets is cumulative from SDK registration; an Exchange
-            ' with a stale/lower value would wipe gaps already counted by UpdateStatisticsFromPacket.
-            If HesaiInterop.IsAvailable() Then
-                Dim hesaiStats = HesaiInterop.GetDeviceStats(DeviceId)
-                If hesaiStats.packets_received > 0 Then
-                    Interlocked.Exchange(_checksumErrors, CLng(hesaiStats.checksum_errors))
-
-                    Dim sdkOoo = CLng(hesaiStats.out_of_order_packets)
-                    If sdkOoo > Interlocked.Read(_outOfOrderPackets) Then
-                        Interlocked.Exchange(_outOfOrderPackets, sdkOoo)
-                    End If
-                End If
-            End If
-
-        Catch ex As Exception
-            ' Don't crash capture on stats update failures
-            If _packetCount Mod 10000 = 0 Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Stats update error: {ex.Message}")
-            End If
-        End Try
-    End Sub
 
     ''' <summary>
     ''' Checks if a packet is an event marker
@@ -916,16 +782,12 @@ Public Class LidarDevice
         End If
 
         Try
-            ' ✅ FIXED: Use TryCast instead of GetEncapsulated
-            Dim eth = TryCast(packet, EthernetPacket)
-            If eth IsNot Nothing Then
-                Dim ipv4 = TryCast(eth.PayloadPacket, IPv4Packet)
-                If ipv4 IsNot Nothing Then
-                    Dim udp = TryCast(ipv4.PayloadPacket, UdpPacket)
-                    If udp IsNot Nothing Then
-                        Return udp.DestinationPort = MarkerDestPort AndAlso
-                               udp.SourcePort = MarkerSourcePort
-                    End If
+            Dim eth = packet.Ethernet
+            If eth IsNot Nothing AndAlso eth.IpV4 IsNot Nothing Then
+                Dim udp = eth.IpV4.Udp
+                If udp IsNot Nothing Then
+                    Return udp.DestinationPort = MarkerDestPort AndAlso
+                           udp.SourcePort = MarkerSourcePort
                 End If
             End If
         Catch
@@ -939,16 +801,9 @@ Public Class LidarDevice
     ''' </summary>
     Private Function ExtractMarkerData(packet As Packet) As String
         Try
-            ' ✅ FIXED: Use TryCast and navigate through packet layers
-            Dim eth = TryCast(packet, EthernetPacket)
-            If eth IsNot Nothing Then
-                Dim ipv4 = TryCast(eth.PayloadPacket, IPv4Packet)
-                If ipv4 IsNot Nothing Then
-                    Dim udp = TryCast(ipv4.PayloadPacket, UdpPacket)
-                    If udp IsNot Nothing AndAlso udp.PayloadData IsNot Nothing AndAlso udp.PayloadData.Length > 0 Then
-                        Return System.Text.Encoding.UTF8.GetString(udp.PayloadData)
-                    End If
-                End If
+            Dim udp = packet.Ethernet.IpV4.Udp
+            If udp IsNot Nothing AndAlso udp.Payload.Length > 0 Then
+                Return System.Text.Encoding.UTF8.GetString(udp.Payload.ToArray())
             End If
         Catch
             ' Ignore parsing errors
@@ -957,202 +812,180 @@ Public Class LidarDevice
     End Function
 
     ''' <summary>
-    ''' ✅ NEW: Inject marker packet using PacketDotNet
+    ''' Injects a synthetic marker packet into the PCAP stream
     ''' </summary>
     Private Sub InjectMarkerPacket(marker As EventMarker)
         Try
-            If _dumpFile Is Nothing OrElse Not _isCapturing Then Return
+            If _dumpFile Is Nothing Then Return
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Use GPS-synchronized timestamp if available
-            ' ═══════════════════════════════════════════════════════════════════
+            ' Use GPS time if available, otherwise system time
             Dim timestamp As DateTime = marker.Timestamp
-            If _timeSyncProvider IsNot Nothing AndAlso _timeSyncProvider.IsSynchronized() Then
-                timestamp = _timeSyncProvider.GetSynchronizedTimestamp()
+            If _oxtsInterface IsNot Nothing AndAlso _oxtsInterface.LastGpsTime.HasValue Then
+                timestamp = _oxtsInterface.GetSynchronizedTimestamp()
             End If
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Build Marker Payload (pipe-delimited format)
-            ' ═══════════════════════════════════════════════════════════════════
+            ' Build marker payload (pipe-delimited format)
             Dim payload As String = $"{marker.EventType}|{marker.Message}|{marker.SequenceNumber:D2}|GPS:{timestamp:yyyy-MM-dd HH:mm:ss.fff}"
-            Dim payloadBytes = System.Text.Encoding.UTF8.GetBytes(payload)
+            Dim payloadBytes() As Byte = System.Text.Encoding.UTF8.GetBytes(payload)
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Build Ethernet Frame using PacketDotNet
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim srcMac = PhysicalAddress.Parse("02-00-00-00-00-01")
-            Dim dstMac = PhysicalAddress.Parse("02-00-00-00-00-02")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Injecting marker payload: {payload}")
 
-            Dim ethPacket As New EthernetPacket(srcMac, dstMac, EthernetType.IPv4)
+            ' Create synthetic packet layers
+            Dim srcMac As MacAddress = New MacAddress("02:00:00:00:00:01")
+            Dim dstMac As MacAddress = New MacAddress("02:00:00:00:00:02")
+            Dim srcIp As IpV4Address = New IpV4Address("192.168.40.200")
+            Dim dstIp As IpV4Address = New IpV4Address("192.168.40.255")
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Build IP Packet
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim srcIp = Net.IPAddress.Parse("192.168.40.200")
-            Dim dstIp = Net.IPAddress.Parse("192.168.40.255")  ' Broadcast
+            Dim ethernetLayer As New EthernetLayer With {
+                .Source = srcMac,
+                .Destination = dstMac,
+                .EtherType = EthernetType.IpV4
+            }
 
-            Dim ipPacket As New IPv4Packet(srcIp, dstIp) With {
-            .TimeToLive = 128,
-            .Protocol = ProtocolType.Udp
-        }
+            Dim ipV4Layer As New IpV4Layer With {
+                .Source = srcIp,
+                .CurrentDestination = dstIp,
+                .Ttl = 128
+            }
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Build UDP Packet
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim udpPacket As New UdpPacket(MarkerSourcePort, MarkerDestPort) With {
-            .PayloadData = payloadBytes
-        }
+            Dim udpLayer As New UdpLayer With {
+                .SourcePort = MarkerSourcePort,
+                .DestinationPort = MarkerDestPort
+            }
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Link Packet Layers
-            ' ═══════════════════════════════════════════════════════════════════
-            ipPacket.PayloadPacket = udpPacket
-            ethPacket.PayloadPacket = ipPacket
+            Dim payloadLayer As New PayloadLayer With {
+                .Data = New Datagram(payloadBytes)
+            }
 
-            ' Update checksums (critical for valid PCAP)
-            udpPacket.UpdateUdpChecksum()
-            ipPacket.UpdateIPChecksum()
+            ' Build and write marker packet to PCAP
+            Dim builder As New PacketBuilder(ethernetLayer, ipV4Layer, udpLayer, payloadLayer)
+            Dim markerPacket As Packet = builder.Build(timestamp) ' Use GPS timestamp here
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Write to PCAP Dump File
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim posixTime As New PosixTimeval(timestamp)
-            Dim rawPacket As New RawCapture(LinkLayers.Ethernet, posixTime, ethPacket.Bytes)
+            _dumpFile.Dump(markerPacket)
 
-            _dumpFile.Write(rawPacket)
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Update Counters & Log to Sidecar File
-            ' ═══════════════════════════════════════════════════════════════════
+            ' Increment frame counter for the injected marker packet
             Interlocked.Increment(_frameCounter)
+
+            ' Directly log to sidecar .txt file (don't wait to read it back from network)
             _eventLogger?.LogEvent(_frameCounter, timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Marker injected: Frame {_frameCounter} - {marker.EventType}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Marker logged: Frame {_frameCounter} - {marker.EventType}: {marker.Message}")
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectMarkerPacket error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectMarkerPacket failed: {ex.Message}")
         End Try
     End Sub
 
     ''' <summary>
-    ''' ✅ NEW: Find network adapter using SharpPcap API
+    ''' Finds the network adapter for this LiDAR device
     ''' Priority: 1) GUID match, 2) IP subnet match, 3) First IPv4 adapter
     ''' </summary>
     Private Function FindNetworkAdapter() As Boolean
         Try
-            ' ═══════════════════════════════════════════════════════════════════
-            ' Get all capture devices from SharpPcap
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim devices = CaptureDeviceList.Instance
+            Dim allDevices As IList(Of LivePacketDevice)
+            Try
+                allDevices = LivePacketDevice.AllLocalMachine
+            Catch driverEx As Exception
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Failed to access network adapters. Ensure Npcap is installed. Error: {driverEx.Message}")
+                Return False
+            End Try
 
-            If devices.Count = 0 Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] No devices found. Install Npcap.")
+            If allDevices.Count = 0 Then
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] No network adapters found")
                 Return False
             End If
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Found {devices.Count} network device(s)")
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' PRIORITY 1: Match by Network Adapter GUID
-            ' ═══════════════════════════════════════════════════════════════════
+            ' PRIORITY 1: Try to find adapter by GUID if specified
             If Not String.IsNullOrWhiteSpace(LidarAdapterGuid) Then
-                Dim guidToMatch = LidarAdapterGuid.Replace("{", "").Replace("}", "").ToUpper()
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Searching for GUID: {guidToMatch}")
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Searching for adapter with GUID: {LidarAdapterGuid}")
 
-                For Each device As ICaptureDevice In devices
+                ' Remove braces from config GUID for comparison
+                Dim guidToMatch As String = LidarAdapterGuid.Replace("{", "").Replace("}", "").ToUpper()
+
+                For Each device In allDevices
+                    HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Checking: {device.Name}")
+
+                    ' Check if device name contains the GUID (with or without braces)
                     If device.Name.ToUpper().Contains(guidToMatch) Then
                         _captureDevice = device
-                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Selected by GUID: {device.Description}")
+                        HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Selected by GUID: {device.Description}")
                         Return True
                     End If
                 Next
 
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] GUID not found, trying subnet match...")
+                HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] GUID not found, trying IP-based detection")
             End If
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' PRIORITY 2: Match by IP Subnet (e.g., "10.5.55.x")
-            ' ═══════════════════════════════════════════════════════════════════
-            Dim subnet = LidarIpAddress.Substring(0, LidarIpAddress.LastIndexOf("."c))
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Searching for subnet: {subnet}.x")
+            ' PRIORITY 2: Find adapter on same subnet as LiDAR
+            Dim lidarSubnet As String = LidarIpAddress.Substring(0, LidarIpAddress.LastIndexOf("."c))
 
-            For Each device As ICaptureDevice In devices
-                If TypeOf device Is LibPcapLiveDevice Then
-                    Dim liveDevice = DirectCast(device, LibPcapLiveDevice)
-
-                    For Each addr In liveDevice.Addresses
-                        If addr.Addr IsNot Nothing Then
-                            Dim addrStr = addr.Addr.ToString()
-
-                            ' Check if adapter IP is on same subnet as LiDAR
-                            If addrStr.StartsWith(subnet & ".") AndAlso
-                           Not addrStr.Contains(":") Then  ' Exclude IPv6
-                                _captureDevice = device
-                                HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Selected by subnet: {device.Description} ({addrStr})")
-                                Return True
-                            End If
+            For Each device In allDevices
+                For Each address In device.Addresses
+                    If address.Address IsNot Nothing Then
+                        Dim addrStr As String = address.Address.ToString()
+                        If addrStr.StartsWith(lidarSubnet & ".") AndAlso
+                           Not addrStr.Contains(":") AndAlso
+                           addrStr <> LidarIpAddress Then
+                            _captureDevice = device
+                            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Selected by subnet: {device.Description} ({addrStr})")
+                            Return True
                         End If
-                    Next
-                End If
+                    End If
+                Next
             Next
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' PRIORITY 3: Fallback to First IPv4 Adapter
-            ' ═══════════════════════════════════════════════════════════════════
-            For Each device As ICaptureDevice In devices
-                If TypeOf device Is LibPcapLiveDevice Then
-                    Dim liveDevice = DirectCast(device, LibPcapLiveDevice)
-
-                    For Each addr In liveDevice.Addresses
-                        If addr.Addr IsNot Nothing Then
-                            Dim addrStr = addr.Addr.ToString()
-
-                            If Not addrStr.Contains(":") Then  ' IPv4 only
-                                _captureDevice = device
-                                HandleUserMessageLogging("GMRC", $"[{DeviceId}] ⚠️ Using fallback adapter: {device.Description} ({addrStr})")
-                                Return True
-                            End If
+            ' PRIORITY 3: Use first adapter with IPv4
+            For Each device In allDevices
+                For Each address In device.Addresses
+                    If address.Address IsNot Nothing Then
+                        Dim addrStr As String = address.Address.ToString()
+                        If Not addrStr.Contains(":") Then
+                            _captureDevice = device
+                            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] Using fallback: {device.Description} ({addrStr})")
+                            Return True
                         End If
-                    Next
-                End If
+                    End If
+                Next
             Next
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ❌ No suitable adapter found")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] No suitable adapter found")
             Return False
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] FindNetworkAdapter error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] FindNetworkAdapter: {ex.Message}")
             Return False
         End Try
     End Function
 
     ''' <summary>
-    ''' ✅ UPDATED: Cleanup resources (called internally and from Dispose)
+    ''' Cleans up all capture resources
     ''' </summary>
     Private Sub CleanupResources()
         Try
             ' Close dump file
             If _dumpFile IsNot Nothing Then
                 Try
-                    _dumpFile.Close()
+                    _dumpFile.Dispose()
                 Catch
                     ' Ignore disposal errors
                 End Try
                 _dumpFile = Nothing
             End If
 
-            ' Close capture device
-            If _captureDevice IsNot Nothing Then
+            ' Close communicator
+            If _communicator IsNot Nothing Then
                 Try
-                    _captureDevice.Close()
+                    _communicator.Dispose()
                 Catch
                     ' Ignore disposal errors
                 End Try
-                ' Don't set to Nothing - may reuse for next capture
+                _communicator = Nothing
             End If
 
+            _captureDevice = Nothing
+
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] CleanupResources: {ex.Message}")
         End Try
     End Sub
 

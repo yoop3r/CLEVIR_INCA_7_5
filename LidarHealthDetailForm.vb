@@ -136,148 +136,54 @@ Public Class LidarHealthDetailForm
     ''' ✅ REFACTORED: Updates OXTS status panel with integrity metrics
     ''' </summary>
     Private Sub UpdateOxtsStatus()
-        If _mainForm Is Nothing OrElse _mainForm.MyTimeSyncProvider Is Nothing Then
+        If _mainForm Is Nothing OrElse _mainForm.MyOxtsInterface Is Nothing Then
             Return
         End If
 
-        Dim timeProvider = _mainForm.MyTimeSyncProvider
-        Dim isOxts As Boolean = TypeOf timeProvider Is OxtsNcomInterface
-        Dim oxtsIf = If(isOxts, DirectCast(timeProvider, OxtsNcomInterface), Nothing)
+        Dim oxtsIf = _mainForm.MyOxtsInterface
 
         ' Update PTP Status
         Dim lblPtp = TryCast(Me.Controls.Find("Label_PtpStatus", True).FirstOrDefault(), Label)
         If lblPtp IsNot Nothing Then
-            lblPtp.Text = timeProvider.GetPtpStatusText()
-            lblPtp.ForeColor = If(timeProvider.IsPtpSynchronized(), Color.Green, Color.Red)
+            lblPtp.Text = $"PTP: {OxtsStatusChannelDecoder.GetPtpStatusDescription(oxtsIf.PtpStatus)}"
+            lblPtp.ForeColor = If(oxtsIf.IsPtpSynchronized(), Color.Green, Color.Red)
         End If
 
-        ' Update GPS/sync status
+        ' Update GPS Lock
         Dim lblGps = TryCast(Me.Controls.Find("Label_GpsLock", True).FirstOrDefault(), Label)
         If lblGps IsNot Nothing Then
-            If isOxts Then
-                Dim lockStatus = If(oxtsIf.IsGpsLocked, "LOCKED", "NO LOCK")
-                lblGps.Text = $"GPS: {lockStatus}"
-                lblGps.ForeColor = If(oxtsIf.IsGpsLocked, Color.Green, Color.Red)
-            Else
-                lblGps.Text = $"Source: {timeProvider.ProviderName}"
-                lblGps.ForeColor = If(timeProvider.IsSynchronized(), Color.Green, Color.Red)
-            End If
+            Dim lockStatus = If(oxtsIf.IsGpsLocked, "LOCKED", "NO LOCK")
+            lblGps.Text = $"GPS: {lockStatus}"
+            lblGps.ForeColor = If(oxtsIf.IsGpsLocked, Color.Green, Color.Red)
         End If
 
-        ' Status detail
+        ' ✅ REPLACED: Packet Loss → Data Integrity
         Dim lblIntegrity = TryCast(Me.Controls.Find("Label_PacketLoss", True).FirstOrDefault(), Label)
         If lblIntegrity IsNot Nothing Then
-            If isOxts Then
-                Dim integrityPercent = oxtsIf.PacketIntegrityPercent
-                Dim corruptionPercent = oxtsIf.PacketCorruptionPercent
+            Dim integrityPercent = oxtsIf.PacketIntegrityPercent
+            Dim corruptionPercent = oxtsIf.PacketCorruptionPercent
 
-                lblIntegrity.Text = $"Integrity: {integrityPercent:F1}% (Corrupt: {corruptionPercent:F2}%)"
+            lblIntegrity.Text = $"Integrity: {integrityPercent:F1}% (Corrupt: {corruptionPercent:F2}%)"
 
-                ' Color code based on corruption severity
-                If corruptionPercent >= 5.0 Then
-                    lblIntegrity.ForeColor = Color.Red      ' Critical corruption
-                ElseIf corruptionPercent >= 1.0 Then
-                    lblIntegrity.ForeColor = Color.Orange   ' Warning
-                ElseIf integrityPercent >= 99.0 Then
-                    lblIntegrity.ForeColor = Color.Green    ' Excellent
-                Else
-                    lblIntegrity.ForeColor = Color.DarkGreen ' Good
-                End If
+            ' Color code based on corruption severity
+            If corruptionPercent >= 5.0 Then
+                lblIntegrity.ForeColor = Color.Red      ' Critical corruption
+            ElseIf corruptionPercent >= 1.0 Then
+                lblIntegrity.ForeColor = Color.Orange   ' Warning
+            ElseIf integrityPercent >= 99.0 Then
+                lblIntegrity.ForeColor = Color.Green    ' Excellent
             Else
-                lblIntegrity.Text = BuildCompactNtpStatusText(timeProvider.GetNtpStatusText())
-                lblIntegrity.ForeColor = If(timeProvider.IsSynchronized(), Color.DarkGreen, Color.Red)
+                lblIntegrity.ForeColor = Color.DarkGreen ' Good
             End If
         End If
 
-        ' Show packet/time source counts
+        ' ✅ NEW: Show packet counts
         Dim lblPackets = TryCast(Me.Controls.Find("Label_PacketCount", True).FirstOrDefault(), Label)
         If lblPackets IsNot Nothing Then
-            If isOxts Then
-                lblPackets.Text = $"NCOM: {oxtsIf.ValidPacketsReceived:N0} valid / {oxtsIf.TotalPacketsReceived:N0} total"
-                lblPackets.ForeColor = Color.Black
-                lblPackets.Visible = True
-            Else
-                lblPackets.Text = String.Empty
-                lblPackets.ForeColor = Color.Black
-                lblPackets.Visible = False
-            End If
-        End If
-
-        LayoutTimeStatusLabels()
-    End Sub
-
-    Private Sub LayoutTimeStatusLabels()
-        Dim lblPtp = TryCast(Me.Controls.Find("Label_PtpStatus", True).FirstOrDefault(), Label)
-        Dim lblGps = TryCast(Me.Controls.Find("Label_GpsLock", True).FirstOrDefault(), Label)
-        Dim lblIntegrity = TryCast(Me.Controls.Find("Label_PacketLoss", True).FirstOrDefault(), Label)
-        Dim lblPackets = TryCast(Me.Controls.Find("Label_PacketCount", True).FirstOrDefault(), Label)
-
-        If lblPtp Is Nothing OrElse lblGps Is Nothing OrElse lblIntegrity Is Nothing OrElse lblPackets Is Nothing Then
-            Return
-        End If
-
-        Const startX As Integer = 6
-        Const topY As Integer = 16
-        Const spacing As Integer = 12
-
-        lblPtp.AutoSize = True
-        lblGps.AutoSize = True
-        lblIntegrity.AutoSize = True
-        lblPackets.AutoSize = True
-
-        lblPtp.Location = New Point(startX, topY)
-        lblGps.Location = New Point(lblPtp.Right + spacing, topY)
-        lblIntegrity.Location = New Point(lblGps.Right + spacing, topY)
-
-        If lblPackets.Visible Then
-            lblPackets.Location = New Point(lblIntegrity.Right + spacing, topY)
+            lblPackets.Text = $"NCOM: {oxtsIf.ValidPacketsReceived:N0} valid / {oxtsIf.TotalPacketsReceived:N0} total"
+            lblPackets.ForeColor = Color.Black
         End If
     End Sub
-
-    Private Shared Function BuildCompactNtpStatusText(fullStatus As String) As String
-        If String.IsNullOrWhiteSpace(fullStatus) Then
-            Return "NTP: n/a"
-        End If
-
-        Dim parts As String() = fullStatus.Split("|"c)
-        If parts.Length = 0 Then
-            Return fullStatus
-        End If
-
-        Dim statePart As String = parts(0).Trim()
-        Dim syncPart As String = String.Empty
-        Dim utcPart As String = String.Empty
-        Dim locPart As String = String.Empty
-        Dim agePart As String = String.Empty
-
-        For i As Integer = 1 To parts.Length - 1
-            Dim p As String = parts(i).Trim()
-            If p.StartsWith("SyncCount", StringComparison.OrdinalIgnoreCase) Then
-                syncPart = p.Replace("SyncCount", "Sync")
-            ElseIf p.StartsWith("UTC=", StringComparison.OrdinalIgnoreCase) Then
-                utcPart = p
-            ElseIf p.StartsWith("Loc=", StringComparison.OrdinalIgnoreCase) Then
-                locPart = p
-            ElseIf p.StartsWith("Age=", StringComparison.OrdinalIgnoreCase) Then
-                agePart = p
-            End If
-        Next
-
-        If Not String.IsNullOrEmpty(syncPart) Then
-            Return $"{statePart} | {syncPart}"
-        End If
-
-        Dim extraParts As New List(Of String)
-        If Not String.IsNullOrEmpty(utcPart) Then extraParts.Add(utcPart)
-        If Not String.IsNullOrEmpty(locPart) Then extraParts.Add(locPart)
-        If Not String.IsNullOrEmpty(agePart) Then extraParts.Add(agePart)
-
-        If extraParts.Count = 0 Then
-            Return statePart
-        End If
-
-        Return $"{statePart} | {String.Join(" | ", extraParts)}"
-    End Function
 
     ''' <summary>
     ''' Sets up auto-refresh timer (updates every 2 seconds)
@@ -435,16 +341,12 @@ Public Class LidarHealthDetailForm
             Return
         End If
 
-        If _mainForm.MyTimeSyncProvider Is Nothing Then
-            StatusNotifier.Warn("Time sync provider not initialized", "Test")
+        If _mainForm.MyOxtsInterface Is Nothing Then
+            StatusNotifier.Warn("OXTS not initialized", "Test")
             Return
         End If
 
-        If TypeOf _mainForm.MyTimeSyncProvider Is OxtsNcomInterface Then
-            DirectCast(_mainForm.MyTimeSyncProvider, OxtsNcomInterface).TestOxtsIntegration()
-        Else
-            StatusNotifier.Toast(_mainForm.MyTimeSyncProvider.GetPtpStatusText(), "Time Sync", durationMs:=2000, ensureMainOnTop:=False)
-        End If
+        _mainForm.MyOxtsInterface.TestOxtsIntegration()
         LoadDeviceData()
         StatusNotifier.Toast("OXTS test complete - check diagnostics", "Test", durationMs:=2000, ensureMainOnTop:=False)
     End Sub
@@ -466,13 +368,8 @@ Public Class LidarHealthDetailForm
     Private Sub TestOxtsLidarIntegration_Click(sender As Object, e As EventArgs) Handles Button_TestIntegration.Click
         HandleUserMessageLogging("GMRC", "=== FULL INTEGRATION TEST ===")
 
-        If _mainForm IsNot Nothing AndAlso _mainForm.MyTimeSyncProvider IsNot Nothing Then
-            If TypeOf _mainForm.MyTimeSyncProvider Is OxtsNcomInterface Then
-                DirectCast(_mainForm.MyTimeSyncProvider, OxtsNcomInterface).TestOxtsIntegration()
-            Else
-                HandleUserMessageLogging("GMRC", _mainForm.MyTimeSyncProvider.GetPtpStatusText())
-                HandleUserMessageLogging("GMRC", _mainForm.MyTimeSyncProvider.GetNtpStatusText())
-            End If
+        If _mainForm IsNot Nothing AndAlso _mainForm.MyOxtsInterface IsNot Nothing Then
+            _mainForm.MyOxtsInterface.TestOxtsIntegration()
         Else
             HandleUserMessageLogging("GMRC", "⚠️ OXTS not initialized")
         End If
@@ -582,21 +479,17 @@ Public Class LidarHealthDetailForm
 
             ' Get basic counters
             PacketCount = device.PacketCount
-            ChecksumErrors = device.ChecksumErrors     ' Bug fix: was hardcoded 0
+            ChecksumErrors = 0  ' Not tracked by parser yet
             OutOfOrderPackets = device.OutOfOrderPackets
 
-            ' droppedPackets = total missed packets (sum of sequence gap sizes from Npcap/Hesai SDK)
-            ' OutOfOrderPackets = number of gap EVENTS detected (one per discontinuity, not per packet)
-            ' These are different units — adding them produces a meaningless mixed-unit sum.
-            ' CorruptedPackets should reflect only the missed packet count.
+            ' ✅ NEW: Use DroppedPackets from Hesai sequence gap detection
             Dim droppedPackets As Long = device.DroppedPackets
-            CorruptedPackets = droppedPackets   ' Bug fix: was droppedPackets + OutOfOrderPackets
+            CorruptedPackets = droppedPackets + OutOfOrderPackets
 
-            ' Calculate integrity — requires a meaningful sample before the ratio is reliable.
-            ' With fewer than 100 packets the percentage swings wildly and triggers false alerts.
+            ' ✅ Calculate integrity from actual sequence gaps
             Dim totalExpected As Long = PacketCount + droppedPackets
             If totalExpected > 0 Then
-                IntegrityPercent = (CDbl(PacketCount) / CDbl(totalExpected)) * 100.0
+                IntegrityPercent = ((totalExpected - droppedPackets) / CDbl(totalExpected)) * 100.0
             Else
                 IntegrityPercent = 100.0
             End If
@@ -642,7 +535,7 @@ Public Class LidarHealthDetailForm
                 HealthStatus = DeviceHealthStatus.Critical
                 Status = "NO COMMS"
 
-            ElseIf device.LastPacketTimestamp.HasValue AndAlso (DateTime.Now - device.LastPacketTimestamp.Value).TotalSeconds > 15 Then
+            ElseIf device.LastPacketTimestamp.HasValue AndAlso (DateTime.Now - device.LastPacketTimestamp.Value).TotalSeconds > 5 Then
                 HealthStatus = DeviceHealthStatus.Critical
                 Status = "STOPPED"
 
@@ -656,8 +549,8 @@ Public Class LidarHealthDetailForm
                 HealthStatus = DeviceHealthStatus.Critical
                 Status = "FS: PRE-SHUTDOWN"
 
-            ElseIf IntegrityPercent < 90.0 AndAlso totalExpected >= 1000 Then
-                ' Critical packet loss (>10%) — gated on sample size to avoid false alarms on startup
+            ElseIf IntegrityPercent < 90.0 Then
+                ' Critical packet loss (>10%)
                 HealthStatus = DeviceHealthStatus.Critical
                 Status = "DATA LOSS"
 
@@ -666,8 +559,8 @@ Public Class LidarHealthDetailForm
                 HealthStatus = DeviceHealthStatus.Warning
                 Status = "FS: DEGRADED"
 
-            ElseIf IntegrityPercent < 95.0 AndAlso totalExpected >= 1000 Then
-                ' Warning on moderate packet loss (5-10%) — gated on sample size
+            ElseIf IntegrityPercent < 95.0 Then
+                ' Warning on moderate packet loss (5-10%)
                 HealthStatus = DeviceHealthStatus.Warning
                 Status = "INTEGRITY LOW"
 
