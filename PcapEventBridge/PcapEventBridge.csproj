@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<TargetFramework>net48</TargetFramework>
+	<AssemblyName>PcapEventBridge</AssemblyName>
+	<RootNamespace>PcapEventBridge</RootNamespace>
+	<Nullable>enable</Nullable>
+	<LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="SharpPcap" Version="6.3.1" />
+	<PackageReference Include="PacketDotNet" Version="1.4.9-pre53" />
+  </ItemGroup>
+
+</Project>
