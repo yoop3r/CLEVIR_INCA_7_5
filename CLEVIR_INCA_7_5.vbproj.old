@@ -787,6 +787,43 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="bin\x64\Debug\mic.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\mic 50.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\Saki-NuoveXT-Actions-folder-file-import[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-eject[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-backward[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-start[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-forward[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1].ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\x64\Debug\green vehicle ahead.png" />
+    <None Include="bin\x64\Debug\orange vehicle ahead.png" />
+    <None Include="bin\x64\Debug\red vehicle ahead.png" />
+    <None Include="bin\x64\Debug\mic 50 Red.jpg" />
+    <None Include="bin\x64\Debug\mic 50 Green.jpg" />
+    <None Include="bin\x64\Debug\Red Ped.jpg" />
+    <None Include="bin\x64\Debug\orange ped.jpg" />
+    <None Include="bin\x64\Debug\cropped image.jpg" />
+    <None Include="bin\x64\Debug\cropped image 60.jpg" />
+    <None Include="bin\x64\Debug\Mommo.Data.dll" />
     <None Include="NCOMdecoder\.README.csv" />
     <None Include="NCOMdecoder\.travis.yml" />
     <None Include="NCOMdecoder\.vs\NCOMdecoder.slnx\FileContentIndex\c92f43ab-52f7-4729-84c5-dafab14ffada.vsidx" />
@@ -813,8 +850,6 @@
     <None Include="NCOMdecoder\README.md" />
     <None Include="NCOMdecoder\rebuild_dll.bat" />
     <None Include="NCOMdecoder\test.py" />
-    <None Include="Resources\mic.jpg" />
-    <None Include="Resources\mic 50.jpg" />
     <None Include="Resources\mic 50 Red.jpg" />
     <None Include="Resources\mic 50 Green.jpg" />
     <None Include="Resources\cropped image 60.jpg" />
@@ -841,9 +876,7 @@
     <None Include="Resources\RedRightArrow.jpg" />
     <None Include="Resources\YellowLeftArrow.jpg" />
     <None Include="Resources\YellowRightArrow.jpg" />
-    <Content Include="SessionMetadata.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Content Include="bin\x64\Debug\SessionMetadata.xml" />
     <Content Include="CLEVIR_INCA_7_5.sln.DotSettings.user" />
     <Content Include="GM_ResidentClient_256px.ico" />
     <Content Include="lib\Interop\incacom.dll" />

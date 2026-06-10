@@ -1001,33 +1001,33 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
     Private Sub ProcessValidRecords(pairIndex As Integer,
                                     noOfRecords As Integer,
                                     incaData As IGM_INCA_Comm.INCAData,
-                                    ByRef deviceRasterPairData(,) As Double,
+                                    ByRef DeviceRasterPairData(,) As Double,
                                     ByRef saveDeviceRasterPairData(,) As Double,
                                     ByRef saveTimeStamp() As Double)
 
         For varIndex As Integer = 0 To myDeviceRasterPair(pairIndex).NumValidVars - 1
 
             ' Ensure array dimensions are large enough
-            If varIndex > UBound(deviceRasterPairData, 2) Then
-                ReDim Preserve deviceRasterPairData(UBound(myDeviceRasterPair), varIndex)
+            If varIndex > UBound(DeviceRasterPairData, 2) Then
+                ReDim Preserve DeviceRasterPairData(UBound(myDeviceRasterPair), varIndex)
                 ReDim Preserve saveDeviceRasterPairData(UBound(myDeviceRasterPair), varIndex)
             End If
 
             ' If the latest time is non-zero, update data from the newest record
             If incaData.myTime(noOfRecords - 1) <> 0 Then
-                deviceRasterPairData(pairIndex, varIndex) =
+                DeviceRasterPairData(pairIndex, varIndex) =
                     incaData.myData((varIndex * noOfRecords) + (noOfRecords - 1))
                 saveDeviceRasterPairData(pairIndex, varIndex) =
-                    deviceRasterPairData(pairIndex, varIndex)
+                    DeviceRasterPairData(pairIndex, varIndex)
                 saveTimeStamp(pairIndex) = incaData.myTime(noOfRecords - 1)
             Else
                 ' Otherwise, keep the last known good value
-                deviceRasterPairData(pairIndex, varIndex) =
+                DeviceRasterPairData(pairIndex, varIndex) =
                     saveDeviceRasterPairData(pairIndex, varIndex)
             End If
 
             ' Copy to the matching signal objects
-            UpdateSignalData(pairIndex, varIndex, deviceRasterPairData, incaData.myTime(noOfRecords - 1))
+            UpdateSignalData(pairIndex, varIndex, DeviceRasterPairData, incaData.myTime(noOfRecords - 1))
         Next
     End Sub
 
@@ -1038,19 +1038,19 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
     ''' </summary>
     Private Sub ProcessNoRecords(pairIndex As Integer,
                              ByRef recordCounter() As Integer,
-                             ByRef deviceRasterPairData(,) As Double,
+                             ByRef DeviceRasterPairData(,) As Double,
                              ByRef saveDeviceRasterPairData(,) As Double,
                              ByRef saveTimeStamp() As Double)
 
-        For varIndex As Integer = 0 To UBound(deviceRasterPairData, 2)
+        For varIndex As Integer = 0 To UBound(DeviceRasterPairData, 2)
             ' Ensure array dimensions are large enough
-            If varIndex > UBound(deviceRasterPairData, 2) Then
-                ReDim Preserve deviceRasterPairData(UBound(myDeviceRasterPair), varIndex)
+            If varIndex > UBound(DeviceRasterPairData, 2) Then
+                ReDim Preserve DeviceRasterPairData(UBound(myDeviceRasterPair), varIndex)
                 ReDim Preserve saveDeviceRasterPairData(UBound(myDeviceRasterPair), varIndex)
             End If
 
             ' Revert to saved data
-            deviceRasterPairData(pairIndex, varIndex) = saveDeviceRasterPairData(pairIndex, varIndex)
+            DeviceRasterPairData(pairIndex, varIndex) = saveDeviceRasterPairData(pairIndex, varIndex)
 
             ' If counter has exceeded threshold, reset to zero
             If recordCounter(pairIndex) > CounterValue Then
@@ -1058,7 +1058,7 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
             End If
 
             ' Copy to the matching signals
-            UpdateSignalData(pairIndex, varIndex, deviceRasterPairData, saveTimeStamp(pairIndex))
+            UpdateSignalData(pairIndex, varIndex, DeviceRasterPairData, saveTimeStamp(pairIndex))
         Next
 
         ' Reset counter if exceeded
@@ -1074,7 +1074,7 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
     ''' </summary>
     Private Sub UpdateSignalData(pairIndex As Integer,
                                  varIndex As Integer,
-                                 ByRef deviceRasterPairData(,) As Double,
+                                 ByRef DeviceRasterPairData(,) As Double,
                                  currentTimeStamp As Double)
 
         For z As Integer = 0 To UBound(myDeviceRasterSignals)
@@ -1082,9 +1082,9 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                 If (myDeviceRasterSignals(z).DeviceRasterPairNum = pairIndex) AndAlso
                    (myDeviceRasterSignals(z).DeviceRasterPairVarNum = varIndex) Then
 
-                    myDeviceRasterSignals(z).Value = deviceRasterPairData(pairIndex, varIndex)
-                    mySignalData(z) = deviceRasterPairData(pairIndex, varIndex)
-                    mySignalDataWithTime(z).SignalData = deviceRasterPairData(pairIndex, varIndex)
+                    myDeviceRasterSignals(z).Value = DeviceRasterPairData(pairIndex, varIndex)
+                    mySignalData(z) = DeviceRasterPairData(pairIndex, varIndex)
+                    mySignalDataWithTime(z).SignalData = DeviceRasterPairData(pairIndex, varIndex)
                     mySignalDataWithTime(z).TimeStamp = currentTimeStamp
 
                     Exit For

@@ -9,7 +9,7 @@ Imports System.Runtime.InteropServices
 ' Review the values of the assembly attributes
 
 <Assembly: AssemblyTitle("CLEVIR_INCA_7_5")>
-<Assembly: AssemblyDescription("")>
+<Assembly: AssemblyDescription("Controller Logging Enhanced Vehicle Incident Recorder")>
 <Assembly: AssemblyCompany("GM")>
 <Assembly: AssemblyProduct("CLEVIR_INCA_7_5")>
 <Assembly: AssemblyCopyright("Copyright © GM 2025")>

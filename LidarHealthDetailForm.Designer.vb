@@ -146,7 +146,7 @@ Partial Class LidarHealthDetailForm
         Me.Label_PacketLoss.Name = "Label_PacketLoss"
         Me.Label_PacketLoss.Size = New System.Drawing.Size(168, 13)
         Me.Label_PacketLoss.TabIndex = 2
-        Me.Label_PacketLoss.Text = "Integrity: 0% (Corrupt: 0%)"
+        Me.Label_PacketLoss.Text = "Integrity: 100% (Corrupt: 0%)"
         '
         'Label_GpsLock
         '

@@ -1310,13 +1310,19 @@ Public Class InitForm
         Finally
             HandleUserMessageLogging("GMRC", "CLEVIR Exited from Init Form.")
 
-            ' ✅ ALWAYS close INCA properly regardless of mode
+            ' Run CloseINCA on a background thread with a 5-second timeout.
+            ' CloseINCA makes blocking COM calls (UnlockTool / CloseTool) that can
+            ' hang indefinitely if INCA is unresponsive; we must not block the UI thread.
             If MyIncaInterface IsNot Nothing Then
-                MyIncaInterface.CloseINCA()
+                Dim closeTask As System.Threading.Tasks.Task =
+                    System.Threading.Tasks.Task.Run(Sub() MyIncaInterface.CloseINCA())
+                If Not closeTask.Wait(TimeSpan.FromSeconds(5)) Then
+                    HandleUserMessageLogging("GMRC", "CloseINCA timed out after 5 s — forcing exit.")
+                End If
             End If
 
             Close()
-            End
+            Environment.Exit(0)
         End Try
     End Sub
 

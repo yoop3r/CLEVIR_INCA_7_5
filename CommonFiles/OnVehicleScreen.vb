@@ -22,6 +22,7 @@ Public Class OnVehicleScreen
     Private Const LIDAR_WARNING_LOSS_THRESHOLD As Double = 5.0  ' % packet loss for warning
     Private Const LIDAR_CRITICAL_LOSS_THRESHOLD As Double = 20.0  ' % packet loss for critical
     Private Const LIDAR_TIMEOUT_SECONDS As Integer = 5  ' Seconds without packets = device stopped
+    Private Const LIDAR_STARTUP_GRACE_SECONDS As Integer = 8  ' Grace period after capture start before "no data" is treated as Critical
 
     ' Boolean flag to track the state of the action
     'Private isListBoxVisible As Boolean = False
@@ -80,8 +81,12 @@ Public Class OnVehicleScreen
             For Each lidar In LidarDevices
                 ' Check if device has NEVER received packets (comms never established)
                 If Not lidar.LastPacketTimestamp.HasValue AndAlso lidar.PacketCount = 0 Then
-                    ' Device initialized but never received data = CRITICAL
-                    stoppedDevices += 1
+                    ' Suppress false-critical during startup grace period
+                    Dim inGrace As Boolean = lidar.CaptureStartedAt.HasValue AndAlso
+                        (DateTime.Now - lidar.CaptureStartedAt.Value).TotalSeconds <= LIDAR_STARTUP_GRACE_SECONDS
+                    If Not inGrace Then
+                        stoppedDevices += 1
+                    End If
                     Continue For
                 End If
 

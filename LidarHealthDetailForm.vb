@@ -334,15 +334,18 @@ Public Class LidarHealthDetailForm
                     checksumCell.Style.ForeColor = Color.White
                 End If
 
-                ' Red highlight if integrity below 95%
+                ' Red highlight if integrity below 95% — only when capture has started
                 Dim integrity = CDbl(integrityCell.Value)
-                If integrity < 95.0 Then
-                    integrityCell.Style.BackColor = Color.Orange
-                    integrityCell.Style.ForeColor = Color.Black
-                End If
-                If integrity < 90.0 Then
-                    integrityCell.Style.BackColor = Color.Red
-                    integrityCell.Style.ForeColor = Color.White
+                Dim packetsSeen As Long = rows(i).PacketCount + rows(i).CorruptedPackets
+                If packetsSeen > 0 Then
+                    If integrity < 95.0 Then
+                        integrityCell.Style.BackColor = Color.Orange
+                        integrityCell.Style.ForeColor = Color.Black
+                    End If
+                    If integrity < 90.0 Then
+                        integrityCell.Style.BackColor = Color.Red
+                        integrityCell.Style.ForeColor = Color.White
+                    End If
                 End If
             Next
 
@@ -594,11 +597,12 @@ Public Class LidarHealthDetailForm
 
             ' Calculate integrity — requires a meaningful sample before the ratio is reliable.
             ' With fewer than 100 packets the percentage swings wildly and triggers false alerts.
+            ' Report 0% (not 100%) when no packets have been received yet — 100% would be misleading.
             Dim totalExpected As Long = PacketCount + droppedPackets
             If totalExpected > 0 Then
                 IntegrityPercent = (CDbl(PacketCount) / CDbl(totalExpected)) * 100.0
             Else
-                IntegrityPercent = 100.0
+                IntegrityPercent = 0.0
             End If
 
             TotalMB = device.TotalBytes / 1024.0 / 1024.0
@@ -638,9 +642,17 @@ Public Class LidarHealthDetailForm
             End If
 
             ' ✅ REFACTORED: Health determination with integrity thresholds
+            Const STARTUP_GRACE_SECONDS As Integer = 8  ' Suppress NO COMMS during capture establishment
             If Not device.LastPacketTimestamp.HasValue AndAlso device.PacketCount = 0 Then
-                HealthStatus = DeviceHealthStatus.Critical
-                Status = "NO COMMS"
+                Dim inGrace As Boolean = device.CaptureStartedAt.HasValue AndAlso
+                    (DateTime.Now - device.CaptureStartedAt.Value).TotalSeconds <= STARTUP_GRACE_SECONDS
+                If inGrace Then
+                    HealthStatus = DeviceHealthStatus.Warning
+                    Status = "STARTING..."
+                Else
+                    HealthStatus = DeviceHealthStatus.Critical
+                    Status = "NO COMMS"
+                End If
 
             ElseIf device.LastPacketTimestamp.HasValue AndAlso (DateTime.Now - device.LastPacketTimestamp.Value).TotalSeconds > 15 Then
                 HealthStatus = DeviceHealthStatus.Critical

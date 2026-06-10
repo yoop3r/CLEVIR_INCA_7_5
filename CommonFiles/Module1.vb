@@ -417,6 +417,10 @@ Public Module Module1
     ' Global flag indicating if any LiDAR device is currently capturing
     Public LidarCaptureStarted As Boolean = False
 
+    ' Active SharedNicCapture instances (one per unique adapter GUID that hosts
+    ' more than one LiDAR device).  Keyed by upper-case adapter GUID.
+    Public SharedNicCaptures As New Dictionary(Of String, SharedNicCapture)(StringComparer.OrdinalIgnoreCase)
+
     ' ════════════════════════════════════════════════════════════
     ' Background Compression Task Tracking
     ' ════════════════════════════════════════════════════════════
@@ -430,17 +434,64 @@ Public Module Module1
     Public SaveGroupName As String = ""
     Public SaveProcedureName As String = ""
 
-    ' Predefined dropdown values (configurable via external file in future)
-    Public ReadOnly PredefinedGroups As String() = {
-                                                       "ADAS", "Infotainment", "Powertrain", "Chassis", "Body",
-                                                       "Validation", "Integration", "System Test", "Other"
-                                                   }
+    ' Predefined dropdown values — loaded from SessionMetadata.xml; hardcoded values are fallback defaults.
+    Public PredefinedGroups As String() = {
+                                              "Front Impact",
+                                              "Path/Route Following",
+                                              "Comms & Diagnostics",
+                                              "Advanced Integration",
+                                              "Robustness",
+                                              "Rear/Lateral Impact",
+                                              "Fusion",
+                                              "Driver Monitoring",
+                                              "Speed /Traffic Control",
+                                              "Other"
+                                          }
 
-    Public ReadOnly PredefinedProcedures As String() = {
-                                                           "Feature Validation", "Regression Testing", "Performance Testing",
-                                                           "Safety Testing", "Durability Testing", "Customer Scenario",
-                                                           "Diagnostic Testing", "System Integration", "Other"
-                                                       }
+    Public PredefinedProcedures As String() = {
+                                                  "Development",
+                                                  "Validation",
+                                                  "Ride Trip",
+                                                  "Other"
+                                              }
+
+    ''' <summary>
+    ''' Loads session metadata defaults and predefined dropdown values from SessionMetadata.xml.
+    ''' Falls back silently to hardcoded defaults if the file is missing or malformed.
+    ''' </summary>
+    Public Function LoadSessionMetadataConfig(filePath As String) As Boolean
+        Try
+            If Not File.Exists(filePath) Then
+                HandleUserMessageLogging("Module1", $"LoadSessionMetadataConfig: File not found at {filePath} - using defaults")
+                Return False
+            End If
+
+            Dim doc As XDocument = XDocument.Load(filePath)
+
+            ' Load default session field values (empty string = no pre-population)
+            Dim defaults = doc.<SessionMetadata>.<Defaults>.FirstOrDefault()
+            If defaults IsNot Nothing Then
+                SaveEmailAddress = If(defaults.<EmailAddress>.FirstOrDefault()?.Value, "")
+                SaveGroupName = If(defaults.<GroupName>.FirstOrDefault()?.Value, "")
+                SaveProcedureName = If(defaults.<ProcedureName>.FirstOrDefault()?.Value, "")
+            End If
+
+            ' Load predefined groups — only replace if the file contains at least one entry
+            Dim groups = doc...<Group>.Select(Function(x) x.Value).Where(Function(v) Not String.IsNullOrWhiteSpace(v)).ToArray()
+            If groups.Length > 0 Then PredefinedGroups = groups
+
+            ' Load predefined procedures — same guard
+            Dim procs = doc...<Procedure>.Select(Function(x) x.Value).Where(Function(v) Not String.IsNullOrWhiteSpace(v)).ToArray()
+            If procs.Length > 0 Then PredefinedProcedures = procs
+
+            HandleUserMessageLogging("Module1", $"LoadSessionMetadataConfig: Loaded {groups.Length} groups, {procs.Length} procedures from {filePath}")
+            Return True
+
+        Catch ex As Exception
+            HandleUserMessageLogging("Module1", $"LoadSessionMetadataConfig: {ex.Message} - using defaults")
+            Return False
+        End Try
+    End Function
 
     ''' <summary>
     ''' Fully shuts down all LiDAR devices, including unregistering from Hesai SDK.

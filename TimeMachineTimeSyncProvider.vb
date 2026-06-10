@@ -138,7 +138,10 @@ Public Class TimeMachineTimeSyncProvider
 
     Private Sub QueryAndUpdate()
         Using client As New UdpClient()
-            client.Client.ReceiveTimeout = Math.Max(200, ReceiveTimeoutMs)
+            ' Do NOT set ReceiveTimeout — that causes SocketException on every poll when no
+            ' device responds, flooding the VS debug output with first-chance exceptions.
+            ' Instead we poll Available in a short sleep loop and return quietly on timeout.
+            client.Client.ReceiveTimeout = 0
 
             Dim targetIp As IPAddress = IPAddress.Broadcast
             If Not String.IsNullOrWhiteSpace(DeviceIpAddress) AndAlso
@@ -153,10 +156,19 @@ Public Class TimeMachineTimeSyncProvider
             Dim ep As New IPEndPoint(targetIp, Port)
             client.Send(LocatorQuery, LocatorQuery.Length, ep)
 
-            Dim remoteEp As New IPEndPoint(IPAddress.Any, 0)
-            Dim response As Byte() = client.Receive(remoteEp)
-
-            ParseLocatorResponse(response)
+            ' Poll for a response without blocking — avoids SocketException on timeout.
+            Dim deadline As DateTime = DateTime.UtcNow.AddMilliseconds(Math.Max(200, ReceiveTimeoutMs))
+            While DateTime.UtcNow < deadline
+                If Not _running Then Return
+                If client.Available > 0 Then
+                    Dim remoteEp As New IPEndPoint(IPAddress.Any, 0)
+                    Dim response As Byte() = client.Receive(remoteEp)
+                    ParseLocatorResponse(response)
+                    Return
+                End If
+                Thread.Sleep(20)
+            End While
+            ' No response within timeout — silently return; no exception thrown.
         End Using
     End Sub
 

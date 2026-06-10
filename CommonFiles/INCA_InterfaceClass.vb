@@ -955,7 +955,7 @@ Public Class INCA_InterfaceClass
                     measureelementnames = Await BrowseMeasureElementsInDeviceIdxAsync("Ve*", DeviceIndex)
                     If measureelementnames IsNot Nothing Then
                         For x = 0 To UBound(measureelementnames)
-                            Dim entry As INCA_Variables
+                            Dim entry As INCA_Variables = Nothing
                             entry.variablename = measureelementnames(x)
                             If InStr(entry.variablename, "[x]") > 0 Then entry.variablename &= "_[0]"
                             varList.Add(entry)
@@ -993,7 +993,7 @@ Public Class INCA_InterfaceClass
                         End If
 
                         For x = 0 To UBound(measureelementnames)
-                            Dim v As INCA_Variables
+                            Dim v As INCA_Variables = Nothing
                             v.variablename = measureelementnames(x)
                             v.defaultrastername = GetDefaultRasterForMeasureElementInDevice(DeviceName, v.variablename)
                             varList.Add(v)
@@ -1014,7 +1014,7 @@ Public Class INCA_InterfaceClass
                                 tempRaster.variables = currentVars.ToArray()
                                 rasterList(foundIndex) = tempRaster
                             Else
-                                Dim newRaster As INCA_Rasters
+                                Dim newRaster As INCA_Rasters = Nothing
                                 newRaster.rastername = v.defaultrastername
                                 newRaster.variables = New String() {v.variablename}
                                 rasterList.Add(newRaster)

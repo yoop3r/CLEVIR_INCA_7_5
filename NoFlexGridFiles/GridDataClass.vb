@@ -3042,7 +3042,6 @@ Public Class GridDataClass
     Shared Sub AutoSizeFormsToContent()
 
         Const FORM_PADDING As Integer = 5   ' pixels around the outermost grid edge
-        Const EXIT_BTN_H As Integer = 60     ' reserved height at the top for the EXIT button
 
         Try
             For formIdx As Integer = 0 To GmResidentClient.MyDFs.Count - 1
@@ -3061,8 +3060,9 @@ Public Class GridDataClass
                 Dim maxBottom As Integer = 0
 
                 For Each grid As GridDataClass In formGrids
+                    Dim currentGrid = grid  ' Capture to avoid closure issue with iteration variable
                     ' Right edge of the grid body.
-                    Dim right As Integer = grid.Left + grid.Width
+                    Dim right As Integer = currentGrid.Left + currentGrid.Width
 
                     ' Bottom edge: grid body bottom.
                     Dim bottom As Integer = grid.Top + grid.Height

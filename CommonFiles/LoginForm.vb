@@ -127,14 +127,14 @@ Public Class LoginForm
             ' ═══════════════════════════════════════════════════════════════════
             Dim missingFields As New List(Of String)()
 
-            ' Validate Group field
+            ' Validate ADAS Group field
             If String.IsNullOrWhiteSpace(ComboBox_Group.Text) Then
-                missingFields.Add("Group")
+                missingFields.Add("ADAS Group")
             End If
 
-            ' Validate Procedure field
+            ' Validate Test Type field
             If String.IsNullOrWhiteSpace(ComboBox_Procedure.Text) Then
-                missingFields.Add("Procedure")
+                missingFields.Add("Test Type")
             End If
 
             ' Validate Email field
@@ -155,9 +155,9 @@ Public Class LoginForm
                 HandleUserMessageLogging("GMRC", $"LoginForm: LOGIN blocked - missing required fields: {fieldList}")
 
                 ' Highlight first missing field for user convenience
-                If missingFields.Contains("Group") Then
+                If missingFields.Contains("ADAS Group") Then
                     ComboBox_Group.Focus()
-                ElseIf missingFields.Contains("Procedure") Then
+                ElseIf missingFields.Contains("Test Type") Then
                     ComboBox_Procedure.Focus()
                 ElseIf missingFields.Contains("Email") Then
                     TextBox_Email.Focus()
@@ -193,7 +193,7 @@ Public Class LoginForm
                 End If
 
                 HandleUserMessageLogging("LoginForm",
-                    $"Session metadata captured - Driver: [{SaveLoginID}], Group: [{SaveGroupName}], Procedure: [{SaveProcedureName}], Email: [{SaveEmailAddress}]")
+                    $"Session metadata captured - Driver: [{SaveLoginID}], ADAS Group: [{SaveGroupName}], Test Type: [{SaveProcedureName}], Email: [{SaveEmailAddress}]")
 
             Catch ex As Exception
                 ' Don't block login on metadata errors

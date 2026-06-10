@@ -95,7 +95,7 @@ Partial Class LoginForm
         Me.RadioButton4.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold)
         Me.RadioButton4.Location = New System.Drawing.Point(16, 130)
         Me.RadioButton4.Name = "RadioButton4"
-        Me.RadioButton4.Size = New System.Drawing.Size(339, 32)
+        Me.RadioButton4.Size = New System.Drawing.Size(235, 23)
         Me.RadioButton4.TabIndex = 3
         Me.RadioButton4.TabStop = True
         Me.RadioButton4.Text = "CREATE NEW FROM BLANK EXP"
@@ -107,7 +107,7 @@ Partial Class LoginForm
         Me.RadioButton3.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.RadioButton3.Location = New System.Drawing.Point(16, 95)
         Me.RadioButton3.Name = "RadioButton3"
-        Me.RadioButton3.Size = New System.Drawing.Size(135, 32)
+        Me.RadioButton3.Size = New System.Drawing.Size(97, 23)
         Me.RadioButton3.TabIndex = 2
         Me.RadioButton3.TabStop = True
         Me.RadioButton3.Text = "GO/NOGO"
@@ -119,7 +119,7 @@ Partial Class LoginForm
         Me.RadioButton2.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.RadioButton2.Location = New System.Drawing.Point(15, 60)
         Me.RadioButton2.Name = "RadioButton2"
-        Me.RadioButton2.Size = New System.Drawing.Size(126, 32)
+        Me.RadioButton2.Size = New System.Drawing.Size(91, 23)
         Me.RadioButton2.TabIndex = 1
         Me.RadioButton2.TabStop = True
         Me.RadioButton2.Text = "DISPLAYS"
@@ -131,7 +131,7 @@ Partial Class LoginForm
         Me.RadioButton1.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.RadioButton1.Location = New System.Drawing.Point(15, 25)
         Me.RadioButton1.Name = "RadioButton1"
-        Me.RadioButton1.Size = New System.Drawing.Size(81, 32)
+        Me.RadioButton1.Size = New System.Drawing.Size(58, 23)
         Me.RadioButton1.TabIndex = 0
         Me.RadioButton1.TabStop = True
         Me.RadioButton1.Text = "FULL"
@@ -143,7 +143,7 @@ Partial Class LoginForm
         Me.CheckBox1.Font = New System.Drawing.Font("Segoe UI", 11.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.CheckBox1.Location = New System.Drawing.Point(205, 185)
         Me.CheckBox1.Name = "CheckBox1"
-        Me.CheckBox1.Size = New System.Drawing.Size(319, 34)
+        Me.CheckBox1.Size = New System.Drawing.Size(216, 24)
         Me.CheckBox1.TabIndex = 13
         Me.CheckBox1.Text = "Save Calibration Snapshots"
         Me.CheckBox1.UseVisualStyleBackColor = True
@@ -154,7 +154,7 @@ Partial Class LoginForm
         Me.CheckBox3.Font = New System.Drawing.Font("Segoe UI", 11.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.CheckBox3.Location = New System.Drawing.Point(205, 218)
         Me.CheckBox3.Name = "CheckBox3"
-        Me.CheckBox3.Size = New System.Drawing.Size(300, 34)
+        Me.CheckBox3.Size = New System.Drawing.Size(204, 24)
         Me.CheckBox3.TabIndex = 16
         Me.CheckBox3.Text = "Enable CANalyzer Record"
         Me.CheckBox3.UseVisualStyleBackColor = True
@@ -169,7 +169,7 @@ Partial Class LoginForm
         Me.CheckBox_LidarCapture.Font = New System.Drawing.Font("Segoe UI", 11.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.CheckBox_LidarCapture.Location = New System.Drawing.Point(205, 251)
         Me.CheckBox_LidarCapture.Name = "CheckBox_LidarCapture"
-        Me.CheckBox_LidarCapture.Size = New System.Drawing.Size(265, 34)
+        Me.CheckBox_LidarCapture.Size = New System.Drawing.Size(181, 24)
         Me.CheckBox_LidarCapture.TabIndex = 10
         Me.CheckBox_LidarCapture.Text = "Enable LiDAR Capture"
         Me.CheckBox_LidarCapture.UseVisualStyleBackColor = True
@@ -196,17 +196,17 @@ Partial Class LoginForm
         Me.Label_Group.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold)
         Me.Label_Group.Location = New System.Drawing.Point(10, 30)
         Me.Label_Group.Name = "Label_Group"
-        Me.Label_Group.Size = New System.Drawing.Size(75, 28)
+        Me.Label_Group.Size = New System.Drawing.Size(97, 19)
         Me.Label_Group.TabIndex = 0
-        Me.Label_Group.Text = "Group:"
+        Me.Label_Group.Text = "ADAS Group:"
         '
         'ComboBox_Group
         '
         Me.ComboBox_Group.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.ComboBox_Group.FormattingEnabled = True
-        Me.ComboBox_Group.Location = New System.Drawing.Point(100, 27)
+        Me.ComboBox_Group.Location = New System.Drawing.Point(110, 27)
         Me.ComboBox_Group.Name = "ComboBox_Group"
-        Me.ComboBox_Group.Size = New System.Drawing.Size(280, 33)
+        Me.ComboBox_Group.Size = New System.Drawing.Size(280, 23)
         Me.ComboBox_Group.TabIndex = 21
         '
         'Label_Procedure
@@ -215,17 +215,17 @@ Partial Class LoginForm
         Me.Label_Procedure.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold)
         Me.Label_Procedure.Location = New System.Drawing.Point(10, 65)
         Me.Label_Procedure.Name = "Label_Procedure"
-        Me.Label_Procedure.Size = New System.Drawing.Size(113, 28)
+        Me.Label_Procedure.Size = New System.Drawing.Size(75, 19)
         Me.Label_Procedure.TabIndex = 2
-        Me.Label_Procedure.Text = "Procedure:"
+        Me.Label_Procedure.Text = "Test Type:"
         '
         'ComboBox_Procedure
         '
         Me.ComboBox_Procedure.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.ComboBox_Procedure.FormattingEnabled = True
-        Me.ComboBox_Procedure.Location = New System.Drawing.Point(100, 62)
+        Me.ComboBox_Procedure.Location = New System.Drawing.Point(110, 62)
         Me.ComboBox_Procedure.Name = "ComboBox_Procedure"
-        Me.ComboBox_Procedure.Size = New System.Drawing.Size(280, 33)
+        Me.ComboBox_Procedure.Size = New System.Drawing.Size(280, 23)
         Me.ComboBox_Procedure.TabIndex = 22
         '
         'Label_Email
@@ -234,16 +234,16 @@ Partial Class LoginForm
         Me.Label_Email.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold)
         Me.Label_Email.Location = New System.Drawing.Point(10, 100)
         Me.Label_Email.Name = "Label_Email"
-        Me.Label_Email.Size = New System.Drawing.Size(69, 28)
+        Me.Label_Email.Size = New System.Drawing.Size(49, 19)
         Me.Label_Email.TabIndex = 4
         Me.Label_Email.Text = "Email:"
         '
         'TextBox_Email
         '
         Me.TextBox_Email.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.TextBox_Email.Location = New System.Drawing.Point(100, 97)
+        Me.TextBox_Email.Location = New System.Drawing.Point(111, 97)
         Me.TextBox_Email.Name = "TextBox_Email"
-        Me.TextBox_Email.Size = New System.Drawing.Size(280, 31)
+        Me.TextBox_Email.Size = New System.Drawing.Size(280, 23)
         Me.TextBox_Email.TabIndex = 23
         '
         'LoginForm

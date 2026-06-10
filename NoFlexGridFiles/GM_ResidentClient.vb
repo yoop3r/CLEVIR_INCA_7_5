@@ -510,7 +510,6 @@ Public Class GmResidentClient
 
         ' Local working variables
         Dim uflags As Long = 0
-        Dim saveBackColor As Color
         Dim selectedOption As ExitOption = ExitOption.CancelExit
 
         Try
@@ -911,7 +910,7 @@ Public Class GmResidentClient
         ' CHECK 2: Background Compression Tasks (New Async System)
         ' ════════════════════════════════════════════════════════════
         Dim activeTasks As List(Of Task)
-        SyncLock CompressionTasksLock -
+        SyncLock CompressionTasksLock
             activeTasks = ActiveCompressionTasks _
             .Where(Function(t) Not t.IsCompleted) _
             .ToList()
@@ -1456,9 +1455,9 @@ Public Class GmResidentClient
         ' ════════════════════════════════════════════════════════════════════════
         If needsBootDelay Then
             Try
-                If showToasts Then
-                    'StatusNotifier.Toast($"Waiting {initialWaitTime}s for camera boot...", "CAMERA", durationMs:=2000, ensureMainOnTop:=False)
-                End If
+                'If showToasts Then
+                'StatusNotifier.Toast($"Waiting {initialWaitTime}s for camera boot...", "CAMERA", durationMs:=2000, ensureMainOnTop:=False)
+                'End If
 
                 HandleUserMessageLogging("GMRC", $"CheckForCameras: Waiting {initialWaitTime}s for camera boot...")
 
@@ -1728,10 +1727,12 @@ Public Class GmResidentClient
                             LidarCaptureEnabled = True
                             HandleUserMessageLogging("GMRC",
                 $"Initialize: LiDAR capture ENABLED ({LidarDevices.Count} device(s) configured, {testDevices.Count} adapter(s) detected)")
+                            StatusNotifier.Toast($"Initialize: LiDAR capture ENABLED ({LidarDevices.Count} device(s) configured, {testDevices.Count} adapter(s) detected)", durationMs:=2000, ensureMainOnTop:=False)
                         Else
                             LidarCaptureEnabled = False
                             HandleUserMessageLogging("GMRC",
                 "Initialize: LiDAR capture requested but no valid devices found - DISABLED")
+                            StatusNotifier.Toast($"Initialize: LiDAR capture requested but no valid devices found - DISABLED", durationMs:=2000, ensureMainOnTop:=False)
                         End If
                     Else
                         ' User disabled LIDAR in config - respect that choice
@@ -1739,6 +1740,8 @@ Public Class GmResidentClient
                         ' ✅ REMOVED: LidarDevices.Clear()  
                         ' Keep devices in config even when capture is disabled
                         HandleUserMessageLogging("GMRC", "Initialize: LiDAR capture DISABLED by configuration")
+                        StatusNotifier.Toast($"Initialize: LiDAR capture DISABLED by configuration", durationMs:=2000, ensureMainOnTop:=False)
+
                     End If
                 Else
                     ' No network adapters available
@@ -1747,8 +1750,11 @@ Public Class GmResidentClient
 
                     If userWantsLidar Then
                         HandleUserMessageLogging("GMRC", "Initialize: LiDAR requested in config but no network adapters found - DISABLED")
+                        StatusNotifier.Toast($"Initialize: LiDAR requested in config but no network adapters found - DISABLED", durationMs:=2000, ensureMainOnTop:=False)
                     Else
                         HandleUserMessageLogging("GMRC", "Initialize: No network adapters found for LiDAR capture")
+                        StatusNotifier.Toast($"Initialize: No network adapters found for LiDAR capture", durationMs:=2000, ensureMainOnTop:=False)
+
                     End If
                 End If
 
@@ -1756,6 +1762,7 @@ Public Class GmResidentClient
                 LidarCaptureEnabled = False
                 LidarDevices.Clear()
                 HandleUserMessageLogging("GMRC", $"Initialize: LiDAR initialization failed - {ex.Message}")
+                StatusNotifier.Toast($"Initialize: LiDAR initialization failed - {ex.Message}", durationMs:=2000, ensureMainOnTop:=False)
             End Try
 
             ' ════════════════════════════════════════════════════════════
@@ -1814,6 +1821,7 @@ Public Class GmResidentClient
 
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC", $"Failed to initialize time sync provider: {ex.Message}")
+                    StatusNotifier.Toast($"Failed to initialize time sync provider: {ex.Message}", durationMs:=2000, ensureMainOnTop:=False)
                     MyTimeSyncProvider = Nothing
                     MyOxtsInterface = Nothing
                     OxtsEnabled = False
@@ -1853,6 +1861,7 @@ Public Class GmResidentClient
                 ' Only log/exit if NOT exiting already
                 If Not exitInProgress Then
                     HandleUserMessageLogging("GMRC", "ReadInSignalList returned False. Terminating...", DisplayMsgBox,)
+                    StatusNotifier.Toast("Initialize: Failed to read signal list - terminating", durationMs:=2000, ensureMainOnTop:=False)
                     InitForm.Close()
                     Close()
                     End
@@ -3066,6 +3075,11 @@ Public Class GmResidentClient
             End Select
 
             HandleUserMessageLogging("GMRC", "ReadConfiguration: Configuration loaded successfully")
+
+            ' Load session metadata dropdowns from SessionMetadata.xml (non-fatal if absent)
+            Dim sessionMetaPath As String = Path.Combine(My.Application.Info.DirectoryPath, "SessionMetadata.xml")
+            LoadSessionMetadataConfig(sessionMetaPath)
+
             Return True
 
         Catch ex As Exception
@@ -5834,15 +5848,31 @@ Public Class GmResidentClient
             If Not isCalcDev AndAlso isRed(x) Then
                 HandleUserMessageLogging("GMRC", $"Cannot Communicate with {device.myName} at Initialization...")
                 If Not Debugger.IsAttached Then
-                    OnVehicleScreen.TopMost = True
-                    If MsgBox($"Cannot Communicate with {device.myName}, Continue Initialization?", vbYesNo) = vbNo Then
+                    Dim dlgResult As DialogResult
+                    Using topmostOwner As New Form() With {
+                        .TopMost = True,
+                        .Size = New System.Drawing.Size(1, 1),
+                        .StartPosition = FormStartPosition.CenterScreen,
+                        .ShowInTaskbar = False,
+                        .FormBorderStyle = FormBorderStyle.None,
+                        .Opacity = 0
+                    }
+                        topmostOwner.Show()
+                        dlgResult = MessageBox.Show(
+                            topmostOwner,
+                            $"Cannot Communicate with {device.myName}, Continue Initialization?",
+                            "Device Communication Warning",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning)
+                    End Using
+                    If dlgResult = DialogResult.No Then
                         HandleUserMessageLogging("GMRC", "User chose not to continue with initialization.")
-                        'Exit Sub
+                        MyDevicesStatus = False
                         ExitApp("Complete")
+                        Return
                     Else
                         HandleUserMessageLogging("GMRC", "User chose to continue with initialization.")
                     End If
-                    OnVehicleScreen.TopMost = False
                 End If
             End If
             ' Count camera devices
@@ -6383,7 +6413,6 @@ Public Class GmResidentClient
         ' This routine handles the case where communication to processors or video cameras has been lost.
         ' Allows user to reinitialize CLEVIR and INCA.
 
-        Dim returnStr As String
         Dim operatorMessage As String = ""
         Dim button1Text As String = ""
         Dim button2Text As String = ""
@@ -7058,7 +7087,6 @@ Public Class GmResidentClient
         Static MyCanAlyzerRcrdSaveTime As DateTime
 
         ' Local working variables
-        Dim tempstr As String
         Dim durationMinutes As Integer
 
         ' Start the dedicated UI update task if it's not already running.
@@ -10191,6 +10219,7 @@ Public Class GmResidentClient
             End If
 
         End Try
+        ' All code paths lead here; implicit return of Nothing (no return type declared)
     End Function
 
 
@@ -10776,21 +10805,31 @@ Public Class GmResidentClient
     Private Sub HandleUpdateGonogoException(ByVal ex As Exception)
         ' Centralized exception handling for UpdateGonogoLabelColor
         If _continueExecution = False Then
-            OnVehicleScreen.TopMost = True
+            Dim result As DialogResult
+            Using topmostOwner As New Form() With {
+                .TopMost = True,
+                .Size = New System.Drawing.Size(1, 1),
+                .StartPosition = FormStartPosition.CenterScreen,
+                .ShowInTaskbar = False,
+                .FormBorderStyle = FormBorderStyle.None,
+                .Opacity = 0
+            }
+                topmostOwner.Show()
+                result = MessageBox.Show(
+                    topmostOwner,
+                    $"UpdateGONOGOLabelColor: {ex.Message}",
+                    "Update GONOGO Error",
+                    MessageBoxButtons.RetryCancel,
+                    MessageBoxIcon.Warning)
+            End Using
 
-            Dim result As MsgBoxResult = MsgBox(
-            $"UpdateGONOGOLabelColor: {ex.Message}",
-            vbRetryCancel)
-
-            If result = vbRetry Then
+            If result = DialogResult.Retry Then
                 _continueExecution = True
                 HandleUserMessageLogging("GMRC", $"UpdateGONOGOLabelColor: {ex.Message}")
             Else
                 HandleUserMessageLogging("GMRC", $"UpdateGONOGOLabelColor: {ex.Message} - User selected cancel.")
                 ExitApp("Complete")
             End If
-
-            OnVehicleScreen.TopMost = False
         End If
     End Sub
 
@@ -10839,8 +10878,24 @@ Public Class GmResidentClient
         Catch ex As Exception
 
             If _continueExecution = False Then
-                OnVehicleScreen.TopMost = True
-                If MsgBox("UpdateGridColor: " & ex.Message, vbRetryCancel) = vbRetry Then
+                Dim result As DialogResult
+                Using topmostOwner As New Form() With {
+                    .TopMost = True,
+                    .Size = New System.Drawing.Size(1, 1),
+                    .StartPosition = FormStartPosition.CenterScreen,
+                    .ShowInTaskbar = False,
+                    .FormBorderStyle = FormBorderStyle.None,
+                    .Opacity = 0
+                }
+                    topmostOwner.Show()
+                    result = MessageBox.Show(
+                        topmostOwner,
+                        "UpdateGridColor: " & ex.Message,
+                        "Grid Update Error",
+                        MessageBoxButtons.RetryCancel,
+                        MessageBoxIcon.Warning)
+                End Using
+                If result = DialogResult.Retry Then
                     _continueExecution = True
                     HandleUserMessageLogging("GMRC", "UpdateGridColor: " & ex.Message)
                 Else
@@ -10848,7 +10903,6 @@ Public Class GmResidentClient
                     ExitApp("Complete")
                 End If
             End If
-            OnVehicleScreen.TopMost = False
         End Try
 
     End Sub
@@ -11329,7 +11383,24 @@ Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", userMessage, DisplayMsgBox)
 
             If INCACommCheckWarningTime = RepeatWarningTimeInSeconds Then
-                If MsgBox("Disable internal INCA Comm checking for this drive?", vbYesNo) = vbYes Then
+                Dim commCheckResult As DialogResult
+                Using topmostOwner As New Form() With {
+                    .TopMost = True,
+                    .Size = New System.Drawing.Size(1, 1),
+                    .StartPosition = FormStartPosition.CenterScreen,
+                    .ShowInTaskbar = False,
+                    .FormBorderStyle = FormBorderStyle.None,
+                    .Opacity = 0
+                }
+                    topmostOwner.Show()
+                    commCheckResult = MessageBox.Show(
+                        topmostOwner,
+                        "Disable internal INCA Comm checking for this drive?",
+                        "INCA Comm Check",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning)
+                End Using
+                If commCheckResult = DialogResult.Yes Then
                     INCACommIgnoreEvents = True
                     INCACommCheckStopWatch = Nothing
                     HandleUserMessageLogging("GMRC", "User Chose to disable INCA Comm checking.")
@@ -11552,13 +11623,25 @@ Public Class GmResidentClient
         _switchToMain = True
 
         If (_healthCounter >= 10 Or _MyDeviceStatus = False Or (_MyCpuStaleData = True And _inMeasureMode = True)) Then
-            ' Make the form TopMost before showing the modal dialog
-            Dim killerForm As Form = TryCast(TryCast(sender, Control).FindForm(), Form)
-            If killerForm IsNot Nothing Then
-                killerForm.TopMost = True
-            End If
+            Dim killResult As DialogResult
+            Using topmostOwner As New Form() With {
+                .TopMost = True,
+                .Size = New System.Drawing.Size(1, 1),
+                .StartPosition = FormStartPosition.CenterScreen,
+                .ShowInTaskbar = False,
+                .FormBorderStyle = FormBorderStyle.None,
+                .Opacity = 0
+            }
+                topmostOwner.Show()
+                killResult = MessageBox.Show(
+                    topmostOwner,
+                    "Kill INCA Processes?",
+                    "Kill INCA",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning)
+            End Using
 
-            If MsgBox("Kill INCA Processes?", vbYesNo) = vbYes Then
+            If killResult = DialogResult.Yes Then
                 _killInca = True
                 _killProcesses = True
             Else
@@ -11567,19 +11650,30 @@ Public Class GmResidentClient
                 'we are not in debug mode.  Here, is a way to trigger a processor comm fault in the design env.
                 'For testing purposes...
                 If Debugger.IsAttached Then
-                    If MsgBox("Trigger Comm Failure in Debug Mode?", vbYesNo) = vbYes Then
+                    Dim commResult As DialogResult
+                    Using topmostOwner As New Form() With {
+                        .TopMost = True,
+                        .Size = New System.Drawing.Size(1, 1),
+                        .StartPosition = FormStartPosition.CenterScreen,
+                        .ShowInTaskbar = False,
+                        .FormBorderStyle = FormBorderStyle.None,
+                        .Opacity = 0
+                    }
+                        topmostOwner.Show()
+                        commResult = MessageBox.Show(
+                            topmostOwner,
+                            "Trigger Comm Failure in Debug Mode?",
+                            "Debug Mode",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question)
+                    End Using
+                    If commResult = DialogResult.Yes Then
                         TriggerCommFailureInDebugMode = True
                         OverrideCommFailureInDebugMode = False
                     Else
                         OverrideCommFailureInDebugMode = True
                     End If
-
                 End If
-            End If
-
-            ' Revert TopMost status after the dialog is closed
-            If killerForm IsNot Nothing Then
-                killerForm.TopMost = False
             End If
         End If
 

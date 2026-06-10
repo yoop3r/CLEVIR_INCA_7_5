@@ -101,6 +101,7 @@ Public Class LidarDevice
 
     ' Statistics (unchanged)
     Private _isCapturing As Boolean = False
+    Private _captureStartedAt As Long = 0  ' Ticks; set when capture starts, used for startup grace period
     Private _packetCount As Long = 0
     Private _totalBytes As Long = 0
     Private _markerCounter As Long = 0
@@ -127,6 +128,10 @@ Public Class LidarDevice
 
     Private _frameCounter As Long = 0  ' Tracks PCAP frame number
     Private _eventLogger As LidarEventLogger
+
+    ' ✅ DIAGNOSTIC: Counters for root-cause analysis of STOPPED anomaly
+    Private _gateDeniedCount As Long = 0   ' Packets arriving when write gate is closed
+    Private _handlerErrorCount As Long = 0 ' Exceptions thrown inside OnPacketArrived
 
     ' ✅ NEW: Store Hesai config for lazy registration
     Public Property HesaiConfig As HesaiInterop.HesaiDeviceConfig
@@ -192,7 +197,29 @@ Public Class LidarDevice
         End Get
     End Property
 
+    ' Volatile backing field ensures the health-check thread always reads the latest value
+    ' written by the SharpPcap capture thread without needing a full lock.
+    Private _lastPacketTimestamp As Long = 0  ' Ticks; 0 = never received
+
     Public Property LastPacketTimestamp As DateTime?
+        Get
+            Dim ticks As Long = Interlocked.Read(_lastPacketTimestamp)
+            If ticks = 0 Then Return Nothing
+            Return New DateTime(ticks, DateTimeKind.Local)
+        End Get
+        Set(value As DateTime?)
+            Interlocked.Exchange(_lastPacketTimestamp, If(value.HasValue, value.Value.Ticks, 0L))
+        End Set
+    End Property
+
+    ''' <summary>The UTC time at which this device last started capturing (Nothing if never started).</summary>
+    Public ReadOnly Property CaptureStartedAt As DateTime?
+        Get
+            Dim ticks As Long = Interlocked.Read(_captureStartedAt)
+            If ticks = 0 Then Return Nothing
+            Return New DateTime(ticks, DateTimeKind.Local)
+        End Get
+    End Property
 
     ''' <summary>
     ''' ✅ NEW: Last parsed Hesai packet info (for health monitoring)
@@ -238,6 +265,9 @@ Public Class LidarDevice
         Me.LidarDataPort = dataPort
         Me.LidarImuPort = imuPort
         Me.DeviceId = deviceId
+
+        ' Initialize the event bridge for packet capture
+        _eventBridge = New PcapEventBridge.PcapEventBridge()
     End Sub
 
     ' ====================================================================
@@ -322,6 +352,15 @@ Public Class LidarDevice
         Dim timeSinceLastPacket = DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds
 
         If timeSinceLastPacket > 15 Then ' Device stopped
+            HandleUserMessageLogging("GMRC",
+                $"[{DeviceId}] DIAG: 🔴 ALERT TRIGGER — stopped responding, " &
+                $"last_pkt={timeSinceLastPacket:F1}s ago, " &
+                $"pkts={PacketCount:N0}, dropped={DroppedPackets:N0}, " &
+                $"isCapturing={_isCapturing}, " &
+                $"dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
+                $"gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
+                $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
+                $"ts={DateTime.Now:HH:mm:ss.fff}")
             Return True
         End If
 
@@ -463,9 +502,12 @@ Public Class LidarDevice
             _checksumErrors = 0
             _outOfOrderPackets = 0
             _hesaiSequenceInitialized = False
+            _gateDeniedCount = 0
+            _handlerErrorCount = 0
+            LastPacketTimestamp = Nothing  ' Reset so alerts don't fire with stale timestamp from prior sequence
 
             ' Drain any leftover markers from a previous capture
-            Dim discardedMarker As EventMarker
+            Dim discardedMarker As EventMarker = Nothing
             While _markerQueue.TryDequeue(discardedMarker)
                 ' Discard
             End While
@@ -474,9 +516,15 @@ Public Class LidarDevice
             ' STEP 8: Register Packet Handler via VB.NET Bridge (eliminates VB.NET ref struct limitation)
             ' ═══════════════════════════════════════════════════════════════════
             _isCapturing = True
-            _eventBridge = New PcapEventBridge.PcapEventBridge()
+            Interlocked.Exchange(_captureStartedAt, DateTime.Now.Ticks)
             AddHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
             _eventBridge.Subscribe(_captureDevice)
+
+            ' ═══════════════════════════════════════════════════════════════════
+            ' DIAGNOSTIC: Subscribe to SharpPcap's OnCaptureStopped to detect
+            ' silent internal halts (driver error, device reset, etc.)
+            ' ═══════════════════════════════════════════════════════════════════
+            AddHandler _captureDevice.OnCaptureStopped, AddressOf OnCaptureStopped
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 9: Start SharpPcap Capture (on main thread - confirms active before returning)
@@ -545,13 +593,13 @@ Public Class LidarDevice
             ' ✅ NATIVE: Access RawCapture directly from strongly-typed EventArgs
             Dim rawPacket As RawCapture = e.Packet
 
+            ' Update health timestamp FIRST — before any parsing that can throw.
+            ' This ensures a PacketDotNet parse failure never makes the device appear
+            ' silent to the health monitor (root cause of false "stopped responding" alerts).
+            LastPacketTimestamp = DateTime.Now
+
             ' Parse packet using PacketDotNet
             Dim packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
-
-            ' Always update health monitoring timestamp on every received packet
-            ' (must be outside dump-file guard to avoid false "STOPPED" alerts
-            '  during sequence rollovers or when capture is not actively writing)
-            LastPacketTimestamp = DateTime.Now
 
             ' Write to PCAP dump file
             If _dumpFile IsNot Nothing AndAlso _isCapturing Then
@@ -574,14 +622,40 @@ Public Class LidarDevice
                         End If
                     End Try
                 End If
+            Else
+                ' ⚠️ DIAGNOSTIC: Packet received but write gate is closed — log every 50th occurrence
+                Dim gateDrops = Interlocked.Increment(_gateDeniedCount)
+                If gateDrops = 1 OrElse gateDrops Mod 50 = 0 Then
+                    HandleUserMessageLogging("GMRC",
+                        $"[{DeviceId}] DIAG: Packet gate closed (drop #{gateDrops}) — " &
+                        $"_isCapturing={_isCapturing}, dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
+                        $"pkts_so_far={_packetCount:N0}, ts={DateTime.Now:HH:mm:ss.fff}")
+                End If
             End If
 
         Catch ex As Exception
             ' Don't crash capture on single packet errors
-            If _packetCount Mod 10000 = 0 Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Packet handler error: {ex.Message}")
+            Dim handlerErrors = Interlocked.Increment(_handlerErrorCount)
+            If handlerErrors = 1 OrElse handlerErrors Mod 100 = 0 Then
+                HandleUserMessageLogging("GMRC",
+                    $"[{DeviceId}] DIAG: Packet handler error #{handlerErrors}: {ex.GetType().Name}: {ex.Message} " &
+                    $"(pkts={_packetCount:N0}, ts={DateTime.Now:HH:mm:ss.fff})")
             End If
         End Try
+    End Sub
+
+    ''' <summary>
+    ''' DIAGNOSTIC: Fires when SharpPcap's internal capture thread stops — normal shutdown or error.
+    ''' This is the primary signal for silent driver-level halts.
+    ''' </summary>
+    Private Sub OnCaptureStopped(sender As Object, e As CaptureStoppedEventStatus)
+        HandleUserMessageLogging("GMRC",
+            $"[{DeviceId}] DIAG: ⚠️ SharpPcap OnCaptureStopped fired — " &
+            $"status={e}, isCapturing={_isCapturing}, " &
+            $"pkts={_packetCount:N0}, gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
+            $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
+            $"lastPkt={(If(LastPacketTimestamp.HasValue, $"{DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds:F1}s ago", "never"))}, " &
+            $"ts={DateTime.Now:HH:mm:ss.fff}")
     End Sub
 
     ''' <summary>
@@ -718,6 +792,11 @@ Public Class LidarDevice
                 _eventBridge = Nothing
             End If
 
+            ' Remove diagnostic OnCaptureStopped handler
+            If _captureDevice IsNot Nothing Then
+                RemoveHandler _captureDevice.OnCaptureStopped, AddressOf OnCaptureStopped
+            End If
+
             ' ═══════════════════════════════════════════════════════════════════
             ' Wait for marker pump thread to finish gracefully
             ' ═══════════════════════════════════════════════════════════════════
@@ -765,6 +844,187 @@ Public Class LidarDevice
     End Sub
 
 
+
+    ' ====================================================================
+    ' Shared-NIC capture support (multiple LiDARs on the same adapter)
+    ' ====================================================================
+
+    ''' <summary>
+    ''' Opens the PCAP dump file and starts the marker-pump thread for this device
+    ''' when capture is managed externally by a SharedNicCapture instance.
+    ''' The NIC handle is NOT opened here — SharedNicCapture owns it.
+    ''' </summary>
+    Public Sub StartCaptureShared(pcapFilename As String, sequence As Integer)
+        Dim logPrefix As String = $"[{DeviceId}] StartCaptureShared"
+
+        Try
+            If _isCapturing Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Already active")
+                Return
+            End If
+
+            ' Ensure output directory exists
+            Dim outputDir = Path.GetDirectoryName(pcapFilename)
+            If Not String.IsNullOrEmpty(outputDir) AndAlso Not Directory.Exists(outputDir) Then
+                Directory.CreateDirectory(outputDir)
+            End If
+
+            ' Open dump file
+            _dumpFile = New CaptureFileWriterDevice(pcapFilename, FileMode.Create)
+            _dumpFile.Open()
+
+            ' Create event logger
+            Try
+                _eventLogger = New LidarEventLogger(pcapFilename)
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Event logger failed: {ex.Message}")
+            End Try
+
+            ' Reset statistics
+            _packetCount = 0
+            _totalBytes = 0
+            _markerCounter = 0
+            _frameCounter = 0
+            _droppedPackets = 0
+            _checksumErrors = 0
+            _outOfOrderPackets = 0
+            _hesaiSequenceInitialized = False
+            _gateDeniedCount = 0
+            _handlerErrorCount = 0
+            LastPacketTimestamp = Nothing  ' Reset so alerts don't fire with stale timestamp from prior sequence
+
+            ' ✅ CRITICAL: Drain any stale markers from prior sequence before starting new capture
+            ' This ensures markers from the old sequence don't leak into the new PCAP file
+            Dim discardedMarker As EventMarker = Nothing
+            Dim drainedCount As Integer = 0
+            While _markerQueue.TryDequeue(discardedMarker)
+                drainedCount += 1
+            End While
+            If drainedCount > 0 Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Drained {drainedCount} stale marker(s) from prior sequence")
+            End If
+
+            _isCapturing = True
+            Interlocked.Exchange(_captureStartedAt, DateTime.Now.Ticks)
+
+            ' Start marker-pump thread
+            _captureThread = New Thread(AddressOf CaptureLoop) With {
+                .IsBackground = True,
+                .Name = $"LidarMarkerPump_{DeviceId}",
+                .Priority = ThreadPriority.Normal
+            }
+            _captureThread.Start()
+
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Dump file open, marker pump started (shared NIC, seq {sequence:D2})")
+            InjectEventMarker("START", $"Recording started - {DeviceId}", sequence)
+
+            StatusNotifier.Toast($"LiDAR {DeviceId} capture started (shared NIC)", ToastKind.Info, "LiDAR", 3000, True)
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} started (shared NIC)", True)
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
+            CleanupResources()
+            _isCapturing = False
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' Writes a raw packet (already dispatched by the SharedNicCapture fan-out) to
+    ''' this device's dump file and updates health/statistics counters.
+    ''' </summary>
+    Public Sub DispatchPacket(rawPacket As RawCapture)
+        Try
+            ' Update health timestamp first — before any parse that could throw
+            LastPacketTimestamp = DateTime.Now
+
+            If _dumpFile IsNot Nothing AndAlso _isCapturing Then
+                _dumpFile.Write(rawPacket)
+
+                Interlocked.Increment(_frameCounter)
+                Interlocked.Increment(_packetCount)
+                Interlocked.Add(_totalBytes, rawPacket.Data.Length)
+
+                ' Parse for statistics every 100th packet
+                If _packetCount Mod 100 = 0 Then
+                    Try
+                        Dim parsed = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
+                        UpdateStatisticsFromPacket(parsed)
+                    Catch
+                        ' Silent — timestamp already updated above
+                    End Try
+                End If
+            Else
+                Dim gateDrops = Interlocked.Increment(_gateDeniedCount)
+                If gateDrops = 1 OrElse gateDrops Mod 50 = 0 Then
+                    HandleUserMessageLogging("GMRC",
+                        $"[{DeviceId}] DIAG: Packet gate closed (drop #{gateDrops}) — " &
+                        $"_isCapturing={_isCapturing}, dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
+                        $"pkts_so_far={_packetCount:N0}, ts={DateTime.Now:HH:mm:ss.fff}")
+                End If
+            End If
+
+        Catch ex As Exception
+            Dim handlerErrors = Interlocked.Increment(_handlerErrorCount)
+            If handlerErrors = 1 OrElse handlerErrors Mod 100 = 0 Then
+                HandleUserMessageLogging("GMRC",
+                    $"[{DeviceId}] DIAG: DispatchPacket error #{handlerErrors}: {ex.GetType().Name}: {ex.Message}")
+            End If
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' Stops the marker-pump thread and closes the dump file for this device
+    ''' when capture is managed externally by a SharedNicCapture instance.
+    ''' The NIC handle is NOT closed here — SharedNicCapture owns it.
+    ''' </summary>
+    Public Sub StopCaptureShared()
+        Dim logPrefix As String = $"[{DeviceId}] StopCaptureShared"
+
+        Try
+            If Not _isCapturing Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Not capturing")
+                Return
+            End If
+
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping...")
+
+            Dim currentSeq As Integer = GetSequenceNumberFromFileName(GetCurrentActiveSequence())
+            InjectEventMarker("STOP", "Recording stopped", currentSeq)
+            Thread.Sleep(200)
+
+            _isCapturing = False
+
+            ' Wait for marker-pump thread
+            If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
+                If Not _captureThread.Join(5000) Then
+                    HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Thread did not exit, forcing abort")
+                    _captureThread.Abort()
+                End If
+                _captureThread = Nothing
+            End If
+
+            ' Close event logger
+            If _eventLogger IsNot Nothing Then
+                _eventLogger.Close()
+                _eventLogger = Nothing
+            End If
+
+            ' Close dump file
+            If _dumpFile IsNot Nothing Then
+                _dumpFile.Close()
+                _dumpFile = Nothing
+            End If
+
+            HandleUserMessageLogging("GMRC",
+                $"{logPrefix}: ✅ Stopped — {_packetCount:N0} pkts, {_droppedPackets:N0} drops, {_markerCounter} markers")
+
+            StatusNotifier.Toast($"LiDAR {DeviceId} capture stopped", ToastKind.Info, "LiDAR", 3000, True)
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped — {_packetCount:N0} pkts", True)
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Error: {ex.Message}")
+        End Try
+    End Sub
 
     ''' <summary>
     ''' ✅ NEW: Fully shuts down the device, including unregistering from Hesai SDK.
@@ -840,12 +1100,15 @@ Public Class LidarDevice
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread started")
 
             Dim lastStatsUpdate As DateTime = DateTime.Now
+            Dim lastWatchdogCheck As DateTime = DateTime.Now
+            Dim lastWatchdogPacketCount As Long = 0
+            Dim starvationWarned As Boolean = False
 
             While _isCapturing
                 ' ═══════════════════════════════════════════════════════════════
                 ' 1. Process Pending Event Markers
                 ' ═══════════════════════════════════════════════════════════════
-                Dim marker As EventMarker
+                Dim marker As EventMarker = Nothing
                 While _markerQueue.TryDequeue(marker)
                     InjectMarkerPacket(marker)
                 End While
@@ -858,16 +1121,52 @@ Public Class LidarDevice
                     lastStatsUpdate = DateTime.Now
                 End If
 
+                ' ═══════════════════════════════════════════════════════════════
+                ' 3. DIAGNOSTIC: Packet starvation watchdog (every 10s)
+                '    Fires if SharpPcap's internal thread has stopped delivering packets
+                ' ═══════════════════════════════════════════════════════════════
+                If DateTime.Now.Subtract(lastWatchdogCheck).TotalSeconds >= 10.0 Then
+                    Dim currentPktCount = Interlocked.Read(_packetCount)
+                    Dim pktsDelta = currentPktCount - lastWatchdogPacketCount
+
+                    If pktsDelta = 0 AndAlso _packetCount > 0 Then
+                        ' No new packets in the last 10 seconds
+                        Dim timeSinceLast = If(LastPacketTimestamp.HasValue,
+                            DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds,
+                            Double.MaxValue)
+
+                        HandleUserMessageLogging("GMRC",
+                            $"[{DeviceId}] DIAG: ⚠️ STARVATION — 0 packets in last 10s " &
+                            $"(total={currentPktCount:N0}, last_pkt={timeSinceLast:F1}s ago, " &
+                            $"isCapturing={_isCapturing}, " &
+                            $"dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
+                            $"gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
+                            $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
+                            $"ts={DateTime.Now:HH:mm:ss.fff})")
+                        starvationWarned = True
+                    ElseIf starvationWarned AndAlso pktsDelta > 0 Then
+                        HandleUserMessageLogging("GMRC",
+                            $"[{DeviceId}] DIAG: ✅ RECOVERED — {pktsDelta:N0} pkts in last 10s " &
+                            $"(total={currentPktCount:N0}, ts={DateTime.Now:HH:mm:ss.fff})")
+                        starvationWarned = False
+                    End If
+
+                    lastWatchdogPacketCount = currentPktCount
+                    lastWatchdogCheck = DateTime.Now
+                End If
+
                 ' Sleep to avoid busy-waiting (marker queue is not high-frequency)
                 Thread.Sleep(100)  ' Check every 100ms
             End While
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread exiting normally")
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread exiting normally (pkts={_packetCount:N0})")
 
         Catch ex As ThreadAbortException
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Thread aborted")
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] DIAG: Marker pump thread ABORTED (pkts={_packetCount:N0})")
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Capture loop error: {ex.Message}")
+            HandleUserMessageLogging("GMRC",
+                $"[{DeviceId}] DIAG: ⚠️ Capture loop CRASHED: {ex.GetType().Name}: {ex.Message} " &
+                $"(pkts={_packetCount:N0}, isCapturing={_isCapturing}, ts={DateTime.Now:HH:mm:ss.fff})")
         End Try
     End Sub
 

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SessionMetadata>
+
+  <!-- Default values pre-populated at startup (leave empty for no default) -->
+  <Defaults>
+	<EmailAddress></EmailAddress>
+	<GroupName></GroupName>
+	<ProcedureName></ProcedureName>
+  </Defaults>
+
+  <!-- Dropdown choices presented in the session metadata UI -->
+  <PredefinedGroups>
+	<Group>Front Impact</Group>
+	<Group>Path/Route Following</Group>
+	<Group>Comms &amp; Diagnostics</Group>
+	<Group>Advanced Integration</Group>
+	<Group>Robustness</Group>
+	<Group>Rear/Lateral Impact</Group>
+	<Group>Fusion</Group>
+	<Group>Driver Monitoring</Group>
+	<Group>Speed /Traffic Control</Group>
+	<Group>Other</Group>
+  </PredefinedGroups>
+
+  <PredefinedProcedures>
+	<Procedure>Development</Procedure>
+	<Procedure>Validation</Procedure>
+	<Procedure>Ride Trip</Procedure>
+	<Procedure>Other</Procedure>
+  </PredefinedProcedures>
+
+</SessionMetadata>

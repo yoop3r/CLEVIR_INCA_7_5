@@ -1,6 +1,7 @@
 
 Option Strict Off
 Imports System.IO
+Imports System.Linq
 Imports System.Threading
 Imports SharpPcap
 Imports SharpPcap.LibPcap
@@ -22,7 +23,10 @@ Module LidarPcapCapture
     End Sub
 
     ''' <summary>
-    ''' Starts capture for all configured LiDAR devices
+    ''' Starts capture for all configured LiDAR devices.
+    ''' Devices that share the same adapter GUID are routed through a single
+    ''' SharedNicCapture instance to avoid fighting over the same Npcap handle.
+    ''' Devices with a unique GUID each get their own handle (legacy path).
     ''' </summary>
     Private Sub StartLidarCaptureMulti()
         Try
@@ -32,55 +36,92 @@ Module LidarPcapCapture
                 Return
             End If
 
-            ' Get current sequence information
+            ' ----------------------------------------------------------------
+            ' Build sequence / filename components
+            ' ----------------------------------------------------------------
             Dim currentActiveSequence As String = GetCurrentActiveSequence()
             Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
-            Dim baseFileName As String = Path.GetFileNameWithoutExtension(currentActiveSequence)
-
-            ' Use Regex to remove ONLY the trailing sequence number
             Dim baseName As String = System.Text.RegularExpressions.Regex.Replace(
-                baseFileName,
-                "_\d{2}$",  ' Match "_##" at end of string only
-                ""
-            )
+                Path.GetFileNameWithoutExtension(currentActiveSequence), "_\d{2}$", "")
+
+            ' ----------------------------------------------------------------
+            ' Group devices by normalised adapter GUID
+            ' ----------------------------------------------------------------
+            Dim groups = LidarDevices.
+                GroupBy(Function(d) d.LidarAdapterGuid.Replace("{", "").Replace("}", "").ToUpper()).
+                ToList()
 
             Dim successCount As Integer = 0
 
-            ' Start each device
-            For i As Integer = 0 To LidarDevices.Count - 1
-                Dim device = LidarDevices(i)
-                Try
-                    ' Build device-specific filename
+            For Each grp In groups
+                Dim guidKey As String = grp.Key
+                Dim groupDevices = grp.ToList()
+
+                If groupDevices.Count = 1 Then
+                    ' --------------------------------------------------------
+                    ' SOLO path — unique NIC, use existing per-device capture
+                    ' --------------------------------------------------------
+                    Dim device = groupDevices(0)
+                    Dim idx = LidarDevices.IndexOf(device)
                     Dim pcapFilename As String = Path.Combine(FinalPathToSaveData,
-                    $"{baseName}_{currentSeq:D2}_LiDAR{i + 1}.pcap")
-
-                    device.StartCapture(pcapFilename, currentSeq)
-
-                    ' Verify the device actually started
-                    If device.IsCapturing Then
-                        successCount += 1
+                        $"{baseName}_{currentSeq:D2}_LiDAR{idx + 1}.pcap")
+                    Try
+                        device.StartCapture(pcapFilename, currentSeq)
+                        If device.IsCapturing Then
+                            successCount += 1
+                            HandleUserMessageLogging("GMRC",
+                                $"StartLidarCaptureMulti: Started {device.DeviceId} (solo NIC)")
+                        Else
+                            HandleUserMessageLogging("GMRC",
+                                $"StartLidarCaptureMulti: {device.DeviceId} IsCapturing=False after start")
+                        End If
+                    Catch ex As Exception
                         HandleUserMessageLogging("GMRC",
-                        $"StartLidarCaptureMulti: Started {device.DeviceId} - {device.LidarIpAddress}")
-                    Else
-                        HandleUserMessageLogging("GMRC",
-                        $"StartLidarCaptureMulti: {device.DeviceId} StartCapture returned but IsCapturing=False")
-                    End If
+                            $"StartLidarCaptureMulti: Failed {device.DeviceId} — {ex.Message}")
+                    End Try
 
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC",
-                    $"StartLidarCaptureMulti: Failed to start {device.DeviceId} - {ex.Message}")
-                End Try
+                Else
+                    ' --------------------------------------------------------
+                    ' SHARED path — multiple devices on the same NIC
+                    ' --------------------------------------------------------
+                    Dim filenames As New List(Of String)
+                    For Each device In groupDevices
+                        Dim idx = LidarDevices.IndexOf(device)
+                        filenames.Add(Path.Combine(FinalPathToSaveData,
+                            $"{baseName}_{currentSeq:D2}_LiDAR{idx + 1}.pcap"))
+                    Next
+
+                    Try
+                        Dim sharedNic As New SharedNicCapture(guidKey, groupDevices)
+                        sharedNic.StartCapture(filenames, currentSeq)
+
+                        ' Count devices that started
+                        Dim started As Integer = groupDevices.Where(Function(d) d.IsCapturing).Count()
+                        If started > 0 Then
+                            SharedNicCaptures(guidKey) = sharedNic
+                            successCount += started
+                            HandleUserMessageLogging("GMRC",
+                                $"StartLidarCaptureMulti: SharedNicCapture started for GUID {guidKey} " &
+                                $"({started}/{groupDevices.Count} devices)")
+                        Else
+                            HandleUserMessageLogging("GMRC",
+                                $"StartLidarCaptureMulti: SharedNicCapture for GUID {guidKey} — no devices started")
+                        End If
+                    Catch ex As Exception
+                        HandleUserMessageLogging("GMRC",
+                            $"StartLidarCaptureMulti: SharedNicCapture failed for GUID {guidKey} — {ex.Message}")
+                    End Try
+                End If
             Next
 
-            ' Only set global flag if at least one device started successfully
             If successCount > 0 Then
                 LidarCaptureStarted = True
                 HandleUserMessageLogging("GMRC",
-                $"StartLidarCaptureMulti: {successCount} of {LidarDevices.Count} device(s) started successfully")
+                    $"StartLidarCaptureMulti: {successCount}/{LidarDevices.Count} device(s) started")
             Else
                 LidarCaptureStarted = False
                 HandleUserMessageLogging("GMRC",
-                $"StartLidarCaptureMulti: FAILED - No devices started (0/{LidarDevices.Count})")
+                    $"StartLidarCaptureMulti: FAILED — no devices started")
             End If
 
         Catch ex As Exception
@@ -108,22 +149,42 @@ Module LidarPcapCapture
     End Sub
 
     ''' <summary>
-    ''' Stops capture for all LiDAR devices
+    ''' Stops capture for all LiDAR devices.
+    ''' Shared-NIC groups are stopped via their SharedNicCapture instance;
+    ''' solo devices are stopped directly.
     ''' </summary>
     Private Sub StopLidarCaptureMulti()
         Try
             If LidarDevices.Count = 0 Then Return
 
+            ' ----------------------------------------------------------------
+            ' Stop shared captures (covers all devices in each group)
+            ' ----------------------------------------------------------------
+            For Each kvp In SharedNicCaptures.ToList()
+                Try
+                    kvp.Value.StopCapture()
+                    HandleUserMessageLogging("GMRC",
+                        $"StopLidarCaptureMulti: SharedNicCapture stopped (GUID {kvp.Key})")
+                Catch ex As Exception
+                    HandleUserMessageLogging("GMRC",
+                        $"StopLidarCaptureMulti: SharedNicCapture stop error (GUID {kvp.Key}): {ex.Message}")
+                End Try
+            Next
+            SharedNicCaptures.Clear()
+
+            ' ----------------------------------------------------------------
+            ' Stop any solo devices still capturing
+            ' ----------------------------------------------------------------
             For Each device In LidarDevices
                 Try
                     If device.IsCapturing Then
                         device.StopCapture()
                         HandleUserMessageLogging("GMRC",
-                                                 $"StopLidarCaptureMulti: Stopped {device.DeviceId}")
+                            $"StopLidarCaptureMulti: Stopped {device.DeviceId}")
                     End If
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC",
-                                             $"StopLidarCaptureMulti: Error stopping {device.DeviceId} - {ex.Message}")
+                        $"StopLidarCaptureMulti: Error stopping {device.DeviceId} — {ex.Message}")
                 End Try
             Next
 
@@ -135,17 +196,70 @@ Module LidarPcapCapture
     End Sub
 
     ''' <summary>
-    ''' Restarts capture for new sequence (file rotation)
+    ''' Restarts capture for a new sequence (file rotation).
+    ''' For shared-NIC groups the NIC handle is kept alive; only the dump files
+    ''' are rotated via RotateSequence.  Solo devices stop/start as before.
     ''' </summary>
     Public Sub RestartLidarCaptureForNewSequence()
         Try
             If Not LidarCaptureEnabled Then Return
 
-            HandleUserMessageLogging("GMRC", "RestartLidarCaptureForNewSequence: Restarting all devices...")
+            Dim currentActiveSequence As String = GetCurrentActiveSequence()
+            Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
+            Dim baseName As String = System.Text.RegularExpressions.Regex.Replace(
+                Path.GetFileNameWithoutExtension(currentActiveSequence), "_\d{2}$", "")
 
-            StopLidarCaptureMulti()
-            Threading.Thread.Sleep(500)
-            StartLidarCaptureMulti()
+            HandleUserMessageLogging("GMRC",
+                $"RestartLidarCaptureForNewSequence: Rotating to sequence {currentSeq:D2}...")
+
+            ' ----------------------------------------------------------------
+            ' Shared-NIC groups: rotate dump files without dropping the NIC handle
+            ' ----------------------------------------------------------------
+            For Each kvp In SharedNicCaptures
+                Dim rotGuidKey = kvp.Key
+                Dim sharedNic = kvp.Value
+
+                ' Rebuild filename list for this group
+                Dim groupFilenames As New List(Of String)
+                For Each device In LidarDevices
+                    If device.LidarAdapterGuid.Replace("{", "").Replace("}", "").ToUpper() = rotGuidKey Then
+                        Dim idx = LidarDevices.IndexOf(device)
+                        groupFilenames.Add(Path.Combine(FinalPathToSaveData,
+                            $"{baseName}_{currentSeq:D2}_LiDAR{idx + 1}.pcap"))
+                    End If
+                Next
+
+                Try
+                    sharedNic.RotateSequence(groupFilenames, currentSeq)
+                    HandleUserMessageLogging("GMRC",
+                        $"RestartLidarCaptureForNewSequence: SharedNicCapture rotated (GUID {rotGuidKey})")
+                Catch ex As Exception
+                    HandleUserMessageLogging("GMRC",
+                        $"RestartLidarCaptureForNewSequence: Rotate error (GUID {rotGuidKey}): {ex.Message}")
+                End Try
+            Next
+
+            ' ----------------------------------------------------------------
+            ' Solo devices: full stop → start cycle
+            ' ----------------------------------------------------------------
+            For Each device In LidarDevices
+                Dim guidKey = device.LidarAdapterGuid.Replace("{", "").Replace("}", "").ToUpper()
+                If SharedNicCaptures.ContainsKey(guidKey) Then Continue For  ' Already handled above
+
+                Dim idx = LidarDevices.IndexOf(device)
+                Dim pcapFilename As String = Path.Combine(FinalPathToSaveData,
+                    $"{baseName}_{currentSeq:D2}_LiDAR{idx + 1}.pcap")
+                Try
+                    If device.IsCapturing Then device.StopCapture()
+                    Threading.Thread.Sleep(200)
+                    device.StartCapture(pcapFilename, currentSeq)
+                    HandleUserMessageLogging("GMRC",
+                        $"RestartLidarCaptureForNewSequence: Restarted {device.DeviceId} (solo NIC)")
+                Catch ex As Exception
+                    HandleUserMessageLogging("GMRC",
+                        $"RestartLidarCaptureForNewSequence: Error restarting {device.DeviceId} — {ex.Message}")
+                End Try
+            Next
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"RestartLidarCaptureForNewSequence: {ex.Message}")

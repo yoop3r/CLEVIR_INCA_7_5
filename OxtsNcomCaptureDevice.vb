@@ -4,6 +4,7 @@ Imports System.Threading
 Imports System.Runtime
 Imports SharpPcap
 Imports SharpPcap.LibPcap
+Imports PcapEventBridge
 Imports PacketDotNet
 Imports System.Net.NetworkInformation
 
@@ -53,6 +54,9 @@ Public Class OxtsNcomCaptureDevice
     End Structure
 
     Private ReadOnly _markerQueue As New Concurrent.ConcurrentQueue(Of EventMarker)
+
+    ' Bridge shim: routes SharpPcap's ref-struct event to a normal EventHandler VB.NET can consume
+    Private ReadOnly _pcapBridge As New PcapEventBridge.PcapEventBridge()
 
     ' ====================================================================
     ' Public Properties
@@ -173,14 +177,16 @@ Public Class OxtsNcomCaptureDevice
             _frameCounter = 0
             _droppedPackets = 0
 
-            Dim discardedMarker As EventMarker
+            Dim discardedMarker As EventMarker = Nothing
             While _markerQueue.TryDequeue(discardedMarker)
             End While
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 8: Register Packet Handler (Event-Driven)
             ' ═══════════════════════════════════════════════════════════════════
-            AddHandler _captureDevice.OnPacketArrival, AddressOf OnPacketArrival
+            ' Subscribe via C# bridge shim (VB.NET cannot reference PacketCapture, a ref struct)
+            _pcapBridge.Subscribe(_captureDevice)
+            AddHandler _pcapBridge.PacketArrived, AddressOf OnPacketArrival
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 9: Start SharpPcap Capture
@@ -251,13 +257,12 @@ Public Class OxtsNcomCaptureDevice
             End If
 
             ' Remove event handler
-            If _captureDevice IsNot Nothing Then
-                Try
-                    RemoveHandler _captureDevice.OnPacketArrival, AddressOf OnPacketArrival
-                Catch
-                    ' Handler may not be registered
-                End Try
-            End If
+            Try
+                RemoveHandler _pcapBridge.PacketArrived, AddressOf OnPacketArrival
+                _pcapBridge.Unsubscribe()
+            Catch
+                ' Handler may not be registered
+            End Try
 
             ' Close resources
             CleanupResources()
@@ -301,11 +306,9 @@ Public Class OxtsNcomCaptureDevice
     ''' <summary>
     ''' ✅ NEW: Event-driven packet handler (SharpPcap native)
     ''' </summary>
-    Private Sub OnPacketArrival(sender As Object, e As Object)
+    Private Sub OnPacketArrival(sender As Object, e As PacketArrivedEventArgs)
         Try
-            ' Use reflection to access PacketCapture.GetPacket() (VB.NET can't use ref structs)
-            Dim getPacketMethod = e.GetType().GetMethod("GetPacket")
-            Dim rawPacket As RawCapture = DirectCast(getPacketMethod.Invoke(e, Nothing), RawCapture)
+            Dim rawPacket As RawCapture = e.Packet
 
             ' Write to PCAP dump file
             If _dumpFile IsNot Nothing AndAlso _isCapturing Then
@@ -337,7 +340,7 @@ Public Class OxtsNcomCaptureDevice
 
             While _isCapturing
                 ' Process Pending Event Markers
-                Dim marker As EventMarker
+                Dim marker As EventMarker = Nothing
                 While _markerQueue.TryDequeue(marker)
                     InjectMarkerPacket(marker)
                 End While
