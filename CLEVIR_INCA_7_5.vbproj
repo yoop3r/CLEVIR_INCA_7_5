@@ -227,32 +227,17 @@
     <Import Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.designer.vb">
-      <Link>AnnotationInterfaceConfigure.designer.vb</Link>
+    <Compile Include="CommonFiles\AnnotationInterfaceConfigure.designer.vb">
       <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
     </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.vb">
-      <Link>AnnotationInterfaceConfigure.vb</Link>
+    <Compile Include="CommonFiles\AnnotationInterfaceConfigure.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\CommonINCAFunctions.vb">
-      <Link>CommonINCAFunctions.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\CommonWirelessFunctions.vb">
-      <Link>CommonWirelessFunctions.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\EncryptDecrypt.vb">
-      <Link>EncryptDecrypt.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\GenericAnyCLEVIRToolSuiteApp.vb">
-      <Link>GenericAnyCLEVIRToolSuiteApp.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\ImportSoftwareAndCalsFunctions.vb">
-      <Link>ImportSoftwareAndCalsFunctions.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\ZipStuff.vb">
-      <Link>ZipStuff.vb</Link>
-    </Compile>
+    <Compile Include="CommonFiles\CommonINCAFunctions.vb" />
+    <Compile Include="CommonFiles\CommonWirelessFunctions.vb" />
+    <Compile Include="CommonFiles\EncryptDecrypt.vb" />
+    <Compile Include="CommonFiles\GenericAnyCLEVIRToolSuiteApp.vb" />
+    <Compile Include="CommonFiles\ImportSoftwareAndCalsFunctions.vb" />
     <Compile Include="ApplicationEvents.vb" />
     <Compile Include="CommonFiles\ArrayDataView.vb">
     </Compile>
@@ -266,6 +251,7 @@
     <Compile Include="CommonFiles\InitProgressSplash.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="CommonFiles\ZipStuff.vb" />
     <Compile Include="NoFlexGridFiles\GM_ResidentClient.designer.vb">
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
     </Compile>
@@ -281,12 +267,10 @@
     <Compile Include="NoFlexGridFiles\GridDataClass.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="..\..\OscilloscopeDisplay\oscilloscope.designer.vb">
-      <Link>oscilloscope.designer.vb</Link>
+    <Compile Include="OscilloscopeDisplay\oscilloscope.designer.vb">
       <DependentUpon>oscilloscope.vb</DependentUpon>
     </Compile>
-    <Compile Include="..\..\OscilloscopeDisplay\oscilloscope.vb">
-      <Link>oscilloscope.vb</Link>
+    <Compile Include="OscilloscopeDisplay\oscilloscope.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="CommonFiles\AddRecordOnlySignals.designer.vb">
@@ -576,8 +560,7 @@
     <Compile Include="TimeMachineTimeSyncProvider.vb" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.resx">
-      <Link>AnnotationInterfaceConfigure.resx</Link>
+    <EmbeddedResource Include="CommonFiles\AnnotationInterfaceConfigure.resx">
       <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -594,8 +577,7 @@
     <EmbeddedResource Include="NoFlexGridFiles\GridDataClass.resx">
       <DependentUpon>GridDataClass.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\..\OscilloscopeDisplay\oscilloscope.resx">
-      <Link>oscilloscope.resx</Link>
+    <EmbeddedResource Include="OscilloscopeDisplay\oscilloscope.resx">
       <DependentUpon>oscilloscope.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CommonFiles\AddRecordOnlySignals.resx">

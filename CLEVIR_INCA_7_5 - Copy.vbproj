@@ -227,32 +227,17 @@
     <Import Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.designer.vb">
-      <Link>AnnotationInterfaceConfigure.designer.vb</Link>
+    <Compile Include="CommonFiles\AnnotationInterfaceConfigure.Designer.vb">
       <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
     </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.vb">
-      <Link>AnnotationInterfaceConfigure.vb</Link>
+    <Compile Include="CommonFiles\AnnotationInterfaceConfigure.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\CommonINCAFunctions.vb">
-      <Link>CommonINCAFunctions.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\CommonWirelessFunctions.vb">
-      <Link>CommonWirelessFunctions.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\EncryptDecrypt.vb">
-      <Link>EncryptDecrypt.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\GenericAnyCLEVIRToolSuiteApp.vb">
-      <Link>GenericAnyCLEVIRToolSuiteApp.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\ImportSoftwareAndCalsFunctions.vb">
-      <Link>ImportSoftwareAndCalsFunctions.vb</Link>
-    </Compile>
-    <Compile Include="..\..\GlobalCommonFiles\ZipStuff.vb">
-      <Link>ZipStuff.vb</Link>
-    </Compile>
+    <Compile Include="CommonFiles\CommonINCAFunctions.vb" />
+    <Compile Include="CommonFiles\CommonWirelessFunctions.vb" />
+    <Compile Include="CommonFiles\EncryptDecrypt.vb" />
+    <Compile Include="CommonFiles\GenericAnyCLEVIRToolSuiteApp.vb" />
+    <Compile Include="CommonFiles\ImportSoftwareAndCalsFunctions.vb" />
     <Compile Include="ApplicationEvents.vb" />
     <Compile Include="CommonFiles\ArrayDataView.vb">
     </Compile>
@@ -266,6 +251,7 @@
     <Compile Include="CommonFiles\InitProgressSplash.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="CommonFiles\ZipStuff.vb" />
     <Compile Include="NoFlexGridFiles\GM_ResidentClient.designer.vb">
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
     </Compile>
@@ -281,12 +267,10 @@
     <Compile Include="NoFlexGridFiles\GridDataClass.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="..\..\OscilloscopeDisplay\oscilloscope.designer.vb">
-      <Link>oscilloscope.designer.vb</Link>
+    <Compile Include="OscilloscopeDisplay\oscilloscope.designer.vb">
       <DependentUpon>oscilloscope.vb</DependentUpon>
     </Compile>
-    <Compile Include="..\..\OscilloscopeDisplay\oscilloscope.vb">
-      <Link>oscilloscope.vb</Link>
+    <Compile Include="OscilloscopeDisplay\oscilloscope.vb">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="CommonFiles\AddRecordOnlySignals.designer.vb">
@@ -576,8 +560,7 @@
     <Compile Include="TimeMachineTimeSyncProvider.vb" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\GlobalCommonFiles\AnnotationInterfaceConfigure.resx">
-      <Link>AnnotationInterfaceConfigure.resx</Link>
+    <EmbeddedResource Include="CommonFiles\AnnotationInterfaceConfigure.resx">
       <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -594,8 +577,7 @@
     <EmbeddedResource Include="NoFlexGridFiles\GridDataClass.resx">
       <DependentUpon>GridDataClass.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\..\OscilloscopeDisplay\oscilloscope.resx">
-      <Link>oscilloscope.resx</Link>
+    <EmbeddedResource Include="OscilloscopeDisplay\oscilloscope.resx">
       <DependentUpon>oscilloscope.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CommonFiles\AddRecordOnlySignals.resx">
@@ -787,43 +769,6 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="bin\x64\Debug\mic.jpg" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\mic 50.jpg" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\Saki-NuoveXT-Actions-folder-file-import[1].ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-eject[1].ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-backward[1].ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-stop[1].ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-start[1].ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-skip-forward[1].ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\Oxygen-Icons.org-Oxygen-Actions-media-playback-pause[1].ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bin\x64\Debug\green vehicle ahead.png" />
-    <None Include="bin\x64\Debug\orange vehicle ahead.png" />
-    <None Include="bin\x64\Debug\red vehicle ahead.png" />
-    <None Include="bin\x64\Debug\mic 50 Red.jpg" />
-    <None Include="bin\x64\Debug\mic 50 Green.jpg" />
-    <None Include="bin\x64\Debug\Red Ped.jpg" />
-    <None Include="bin\x64\Debug\orange ped.jpg" />
-    <None Include="bin\x64\Debug\cropped image.jpg" />
-    <None Include="bin\x64\Debug\cropped image 60.jpg" />
-    <None Include="bin\x64\Debug\Mommo.Data.dll" />
     <None Include="NCOMdecoder\.README.csv" />
     <None Include="NCOMdecoder\.travis.yml" />
     <None Include="NCOMdecoder\.vs\NCOMdecoder.slnx\FileContentIndex\c92f43ab-52f7-4729-84c5-dafab14ffada.vsidx" />
@@ -850,6 +795,8 @@
     <None Include="NCOMdecoder\README.md" />
     <None Include="NCOMdecoder\rebuild_dll.bat" />
     <None Include="NCOMdecoder\test.py" />
+    <None Include="Resources\mic.jpg" />
+    <None Include="Resources\mic 50.jpg" />
     <None Include="Resources\mic 50 Red.jpg" />
     <None Include="Resources\mic 50 Green.jpg" />
     <None Include="Resources\cropped image 60.jpg" />
@@ -876,7 +823,9 @@
     <None Include="Resources\RedRightArrow.jpg" />
     <None Include="Resources\YellowLeftArrow.jpg" />
     <None Include="Resources\YellowRightArrow.jpg" />
-    <Content Include="bin\x64\Debug\SessionMetadata.xml" />
+    <Content Include="SessionMetadata.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="CLEVIR_INCA_7_5.sln.DotSettings.user" />
     <Content Include="GM_ResidentClient_256px.ico" />
     <Content Include="lib\Interop\incacom.dll" />

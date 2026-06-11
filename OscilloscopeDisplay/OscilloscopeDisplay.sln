@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27004.2008
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "OscilloscopeDisplay", "OscilloscopeDisplay.vbproj", "{9538C9F7-178D-44D8-B657-63633E1BB6CD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9538C9F7-178D-44D8-B657-63633E1BB6CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9538C9F7-178D-44D8-B657-63633E1BB6CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9538C9F7-178D-44D8-B657-63633E1BB6CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9538C9F7-178D-44D8-B657-63633E1BB6CD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9BCA29CA-28F6-4D4B-A421-27FC1E4912D0}
+	EndGlobalSection
+EndGlobal
