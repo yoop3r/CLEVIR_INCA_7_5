@@ -828,9 +828,15 @@
     </Content>
     <Content Include="CLEVIR_INCA_7_5.sln.DotSettings.user" />
     <Content Include="GM_ResidentClient_256px.ico" />
-    <Content Include="lib\Interop\incacom.dll" />
-    <Content Include="lib\Interop\Interop.Scripting.dll" />
-    <Content Include="lib\Interop\RCI2dotNet.dll" />
+    <Content Include="lib\Interop\incacom.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="lib\Interop\Interop.Scripting.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="lib\Interop\RCI2dotNet.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="NCOMdecoder\.gitignore" />
     <Content Include="NCOMdecoder\byte_finder.c" />
     <Content Include="NCOMdecoder\example\NcomToCsv.c" />
