@@ -67,6 +67,7 @@ End Class
 Public Structure HesaiPacketInfo
     Public IsValid As Boolean
     Public UdpSequence As UInteger
+    Public TailTimestampUs As UInteger  ' Microseconds-within-second from PTP-synced sensor clock (0–999,999)
     Public OperationalState As Byte  ' 0=High Res, 1=Shutdown, 2=Standard, 3=Energy Saving
     Public ReturnMode As Byte
     Public MotorSpeed As UShort      ' RPM
@@ -117,7 +118,7 @@ Public Class LidarDevice
     Private ReadOnly _markerQueue As New Concurrent.ConcurrentQueue(Of EventMarker)
 
     ' Configuration constants
-    Private Const CaptureBufferSize As Integer = 16 * 1024 * 1024  ' 16MB - Npcap kernel ring buffer
+    Private Const CaptureBufferSize As Integer = 16 * 1024 * 1024  ' 16MB — Npcap kernel ring buffer (64MB caused silent fallback to 1MB on this system)
     Private Const ReadTimeoutMs As Integer = 1000    ' 1 second read timeout for capture device
     Public Const MarkerDestPort As UShort = 65000    ' Unique port for event markers
     Public Const MarkerSourcePort As UShort = 65001  ' Source port for markers
@@ -220,6 +221,12 @@ Public Class LidarDevice
             Return New DateTime(ticks, DateTimeKind.Local)
         End Get
     End Property
+
+    ''' <summary>
+    ''' Full path to the most recently started (or rotated) PCAP output file for this device.
+    ''' Set each time capture starts or rotates to a new sequence; empty until first capture.
+    ''' </summary>
+    Public Property LastCaptureFilePath As String = String.Empty
 
     ''' <summary>
     ''' ✅ NEW: Last parsed Hesai packet info (for health monitoring)
@@ -449,7 +456,13 @@ Public Class LidarDevice
             End If
 
             ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 2: Configure Device (SharpPcap 6.x uses DeviceConfiguration)
+            ' STEP 2: Configure Device — build config only, do NOT open NIC yet.
+            ' The NIC is opened as the very last action (Step 9) so that when
+            ' Npcap starts delivering buffered packets, _dumpFile is already open
+            ' and ready to accept writes immediately.  Opening the NIC early
+            ' causes the ring buffer to fill during Steps 3–8; when Npcap's
+            ' drain thread starts it floods _dumpFile faster than the C stdio
+            ' layer can flush, overflowing the ring and causing the startup gap.
             ' ═══════════════════════════════════════════════════════════════════
             Dim config As New DeviceConfiguration() With {
                 .Mode = DeviceModes.Promiscuous,
@@ -461,19 +474,40 @@ Public Class LidarDevice
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Config set - KernelBuffer={CaptureBufferSize \ (1024 * 1024)}MB, SnapLen=65535, Immediate=True")
 
             ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 3: Open Device with Configuration
-            ' ═══════════════════════════════════════════════════════════════════
-            _captureDevice.Open(config)
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: Device opened with optimized configuration")
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 4: Apply Optimized BPF Filter
+            ' STEP 3: Apply Optimized BPF Filter (filter string — NIC not open yet)
             ' ═══════════════════════════════════════════════════════════════════
             ' Filter by source IP only — avoids dropping packets if LiDAR sends
             ' from an unexpected source port (e.g. ephemeral or firmware default)
             Dim filter As String = $"udp and src host {LidarIpAddress} and greater 100"
-            _captureDevice.Filter = filter
-            HandleUserMessageLogging("GMRC", $"{logPrefix}: BPF filter applied: {filter}")
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: BPF filter ready: {filter}")
+
+            ' ═══════════════════════════════════════════════════════════════════
+            ' STEP 4: Pre-warm Output File
+            ' Write a valid LibPcap global header (24 bytes) so that Windows
+            ' Defender classifies the file as a known PCAP type before
+            ' CaptureFileWriterDevice opens it.
+            ' CaptureFileWriterDevice(FileMode.Create) overwrites cleanly.
+            ' ═══════════════════════════════════════════════════════════════════
+            Try
+                ' LibPcap global header — magic, ver 2.4, GMT offset 0, accuracy 0,
+                ' snaplen 65535, link-type 1 (Ethernet) — all little-endian
+                Dim pcapHeader As Byte() = {
+                    &HD4, &HC3, &HB2, &HA1,  ' magic 0xA1B2C3D4 LE
+                    &H2, &H0,               ' major version 2
+                    &H4, &H0,               ' minor version 4
+                    &H0, &H0, &H0, &H0,   ' GMT offset
+                    &H0, &H0, &H0, &H0,   ' timestamp accuracy
+                    &HFF, &HFF, &H0, &H0,   ' snaplen 65535
+                    &H1, &H0, &H0, &H0    ' link type 1 = Ethernet
+                }
+                Using prewarm As New FileStream(pcapFilename, FileMode.Create, FileAccess.Write, FileShare.None)
+                    prewarm.Write(pcapHeader, 0, pcapHeader.Length)
+                    prewarm.Flush()
+                End Using
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Output file pre-warmed with PCAP header")
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Pre-warm skipped — {ex.Message}")
+            End Try
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 5: Open Dump File
@@ -513,34 +547,35 @@ Public Class LidarDevice
             End While
 
             ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 8: Register Packet Handler via VB.NET Bridge (eliminates VB.NET ref struct limitation)
+            ' STEP 8: Start Marker Pump Thread (running before NIC opens so it
+            ' is ready to accept the START marker injected in Step 11)
             ' ═══════════════════════════════════════════════════════════════════
             _isCapturing = True
             Interlocked.Exchange(_captureStartedAt, DateTime.Now.Ticks)
-            AddHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
-            _eventBridge.Subscribe(_captureDevice)
 
-            ' ═══════════════════════════════════════════════════════════════════
-            ' DIAGNOSTIC: Subscribe to SharpPcap's OnCaptureStopped to detect
-            ' silent internal halts (driver error, device reset, etc.)
-            ' ═══════════════════════════════════════════════════════════════════
-            AddHandler _captureDevice.OnCaptureStopped, AddressOf OnCaptureStopped
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 9: Start SharpPcap Capture (on main thread - confirms active before returning)
-            ' ═══════════════════════════════════════════════════════════════════
-            _captureDevice.StartCapture()
-
-            ' ═══════════════════════════════════════════════════════════════════
-            ' STEP 10: Start Marker Pump Thread
-            ' Handles marker injection and periodic stats - packet I/O is done by SharpPcap internally
-            ' ═══════════════════════════════════════════════════════════════════
             _captureThread = New Thread(AddressOf CaptureLoop) With {
                 .IsBackground = True,
                 .Name = $"LidarMarkerPump_{DeviceId}",
                 .Priority = ThreadPriority.Normal
             }
             _captureThread.Start()
+
+            ' ═══════════════════════════════════════════════════════════════════
+            ' STEP 9: Register Packet Handler
+            ' ═══════════════════════════════════════════════════════════════════
+            AddHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
+            _eventBridge.Subscribe(_captureDevice)
+            AddHandler _captureDevice.OnCaptureStopped, AddressOf OnCaptureStopped
+
+            ' ═══════════════════════════════════════════════════════════════════
+            ' STEP 10: Open NIC and Start Capture — LAST action.
+            ' _dumpFile is already open so the first packet delivered by Npcap's
+            ' drain thread is written immediately with no setup latency.
+            ' ═══════════════════════════════════════════════════════════════════
+            _captureDevice.Open(config)
+            _captureDevice.Filter = filter
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: NIC opened, BPF filter applied: {filter}")
+            _captureDevice.StartCapture()
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 11: Success Logging & Marker Injection
@@ -598,9 +633,6 @@ Public Class LidarDevice
             ' silent to the health monitor (root cause of false "stopped responding" alerts).
             LastPacketTimestamp = DateTime.Now
 
-            ' Parse packet using PacketDotNet
-            Dim packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
-
             ' Write to PCAP dump file
             If _dumpFile IsNot Nothing AndAlso _isCapturing Then
                 _dumpFile.Write(rawPacket)
@@ -612,9 +644,13 @@ Public Class LidarDevice
 
                 ' ═══════════════════════════════════════════════════════════════
                 ' Parse Hesai packet for health monitoring (every 100th packet)
+                ' Parsing is deferred to here — raw write and counters above need
+                ' no parsed representation, so we avoid ~99% of PacketDotNet
+                ' allocations and the GC pressure they would place on this thread.
                 ' ═══════════════════════════════════════════════════════════════
                 If _packetCount Mod 100 = 0 Then
                     Try
+                        Dim packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
                         UpdateStatisticsFromPacket(packet)
                     Catch parseEx As Exception
                         If _packetCount Mod 10000 = 0 Then
@@ -623,14 +659,7 @@ Public Class LidarDevice
                     End Try
                 End If
             Else
-                ' ⚠️ DIAGNOSTIC: Packet received but write gate is closed — log every 50th occurrence
-                Dim gateDrops = Interlocked.Increment(_gateDeniedCount)
-                If gateDrops = 1 OrElse gateDrops Mod 50 = 0 Then
-                    HandleUserMessageLogging("GMRC",
-                        $"[{DeviceId}] DIAG: Packet gate closed (drop #{gateDrops}) — " &
-                        $"_isCapturing={_isCapturing}, dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
-                        $"pkts_so_far={_packetCount:N0}, ts={DateTime.Now:HH:mm:ss.fff}")
-                End If
+                Interlocked.Increment(_gateDeniedCount)
             End If
 
         Catch ex As Exception
@@ -674,7 +703,7 @@ Public Class LidarDevice
             If udpPacket Is Nothing OrElse udpPacket.PayloadData Is Nothing Then Return
 
             ' Parse Hesai packet structure
-            Dim info As HesaiPacketInfo = ParseHesaiPacket(udpPacket.PayloadData)
+            Dim info As HesaiPacketInfo = ParseHesaiPacket(udpPacket.PayloadData, DeviceId)
 
             If info.IsValid Then
                 ' Store last packet info for health monitoring
@@ -954,13 +983,7 @@ Public Class LidarDevice
                     End Try
                 End If
             Else
-                Dim gateDrops = Interlocked.Increment(_gateDeniedCount)
-                If gateDrops = 1 OrElse gateDrops Mod 50 = 0 Then
-                    HandleUserMessageLogging("GMRC",
-                        $"[{DeviceId}] DIAG: Packet gate closed (drop #{gateDrops}) — " &
-                        $"_isCapturing={_isCapturing}, dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
-                        $"pkts_so_far={_packetCount:N0}, ts={DateTime.Now:HH:mm:ss.fff}")
-                End If
+                Interlocked.Increment(_gateDeniedCount)
             End If
 
         Catch ex As Exception
@@ -1467,7 +1490,7 @@ Public Class LidarDevice
     ''' ✅ NEW: Parse Hesai AT128 UDP packet for health monitoring
     ''' Based on Hesai AT128 User Manual packet structure
     ''' </summary>
-    Private Function ParseHesaiPacket(udpPayload As Byte()) As HesaiPacketInfo
+    Public Shared Function ParseHesaiPacket(udpPayload As Byte(), Optional label As String = "PCAP") As HesaiPacketInfo
         Dim info As New HesaiPacketInfo With {.IsValid = False}
 
         Try
@@ -1528,8 +1551,15 @@ Public Class LidarDevice
             info.MotorSpeed = BitConverter.ToUInt16(udpPayload, tailDataOffset)
             tailDataOffset += 2
 
-            ' Skip Date & Time (6 bytes) + Timestamp (4 bytes) + Factory Info (1 byte)
-            tailDataOffset += 11
+            ' Skip Date section (6 bytes: year, month, day, hour, minute, second)
+            tailDataOffset += 6
+
+            ' Tail Timestamp — microseconds-within-second from PTP-synced sensor clock (0–999,999)
+            info.TailTimestampUs = BitConverter.ToUInt32(udpPayload, tailDataOffset)
+            tailDataOffset += 4
+
+            ' Skip Factory Info (1 byte)
+            tailDataOffset += 1
 
             ' UDP Sequence (4 bytes, little-endian)
             If udpPayload.Length < tailDataOffset + 4 Then Return info
@@ -1539,7 +1569,7 @@ Public Class LidarDevice
 
         Catch ex As Exception
             ' Parsing failed - return invalid
-            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] ParseHesaiPacket error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"[{label}] ParseHesaiPacket error: {ex.Message}")
         End Try
 
         Return info

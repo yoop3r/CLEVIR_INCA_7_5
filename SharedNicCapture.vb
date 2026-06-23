@@ -110,7 +110,13 @@ Public Class SharedNicCapture
                                 ")"
 
             ' ----------------------------------------------------------------
-            ' 3. Open NIC handle
+            ' 3. Build NIC configuration — do NOT open yet.
+            '    The NIC is opened as the very last action so that when Npcap
+            '    starts delivering buffered packets, all dump files are already
+            '    open and ready to accept writes immediately.  Opening the NIC
+            '    early causes the ring buffer to fill during per-device setup;
+            '    when StartCapture() fires it floods _dumpFile faster than the
+            '    C stdio layer can flush, overflowing the ring → startup gap.
             ' ----------------------------------------------------------------
             Dim config As New DeviceConfiguration() With {
                 .Mode = DeviceModes.Promiscuous,
@@ -119,14 +125,35 @@ Public Class SharedNicCapture
                 .Snaplen = 65535,
                 .Immediate = True
             }
-            _captureDevice.Open(config)
-            _captureDevice.Filter = bpf
-
-            HandleUserMessageLogging("GMRC",
-                $"[SharedNIC:{_adapterGuid}] NIC opened — BPF: {bpf}")
 
             ' ----------------------------------------------------------------
-            ' 4. Start per-device dump files and marker pumps
+            ' 4. Pre-warm each output file with a valid LibPcap global header.
+            '    This ensures NTFS clusters are allocated and the file is
+            '    classified by AV before any sensor data arrives.
+            ' ----------------------------------------------------------------
+            Dim pcapHeader As Byte() = {
+                &HD4, &HC3, &HB2, &HA1,
+                &H2, &H0, &H4, &H0,
+                &H0, &H0, &H0, &H0,
+                &H0, &H0, &H0, &H0,
+                &HFF, &HFF, &H0, &H0,
+                &H1, &H0, &H0, &H0
+            }
+            For i As Integer = 0 To _devices.Count - 1
+                Dim fname = If(i < pcapFilenames.Count, pcapFilenames(i), $"LiDAR_{i + 1}_seq{sequence:D2}.pcap")
+                Try
+                    Using prewarm As New FileStream(fname, FileMode.Create, FileAccess.Write, FileShare.None)
+                        prewarm.Write(pcapHeader, 0, pcapHeader.Length)
+                        prewarm.Flush()
+                    End Using
+                Catch
+                    ' Non-fatal — capture continues without pre-warm
+                End Try
+            Next
+
+            ' ----------------------------------------------------------------
+            ' 5. Open per-device dump files and marker pumps.
+            '    All dump files are ready before the NIC handle is opened.
             ' ----------------------------------------------------------------
             For i As Integer = 0 To _devices.Count - 1
                 Dim filename = If(i < pcapFilenames.Count, pcapFilenames(i), $"LiDAR_{i + 1}_seq{sequence:D2}.pcap")
@@ -134,20 +161,25 @@ Public Class SharedNicCapture
             Next
 
             ' ----------------------------------------------------------------
-            ' 5. Subscribe to packet events via C# bridge (avoids VB ref-struct issue)
+            ' 6. Subscribe to packet events via C# bridge
             ' ----------------------------------------------------------------
             _eventBridge = New PcapEventBridge.PcapEventBridge()
             AddHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
-            _eventBridge.Subscribe(_captureDevice)
-
             AddHandler _captureDevice.OnCaptureStopped, AddressOf OnCaptureStopped
 
             ' ----------------------------------------------------------------
-            ' 6. Start capture
+            ' 7. Open NIC, apply filter, and start capture — LAST actions.
+            '    All dump files are open so the first packet is written
+            '    immediately with no setup latency.
             ' ----------------------------------------------------------------
+            _captureDevice.Open(config)
+            _captureDevice.Filter = bpf
+            _eventBridge.Subscribe(_captureDevice)
             _captureDevice.StartCapture()
             _isCapturing = True
 
+            HandleUserMessageLogging("GMRC",
+                $"[SharedNIC:{_adapterGuid}] NIC opened, BPF: {bpf}")
             HandleUserMessageLogging("GMRC",
                 $"[SharedNIC:{_adapterGuid}] Capture started for {_devices.Count} device(s): " &
                 String.Join(", ", _devices.Select(Function(d) d.DeviceId)))
@@ -219,8 +251,7 @@ Public Class SharedNicCapture
                 $"[SharedNIC:{_adapterGuid}] Rotating to sequence {sequence:D2}...")
 
             ' ================================================================
-            ' STEP 1: Pause packet dispatch (stop the event handler temporarily)
-            ' This prevents packets from being written to the OLD dump file during rotation
+            ' STEP 1: Pause packet dispatch
             ' ================================================================
             RemoveHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
             HandleUserMessageLogging("GMRC",
@@ -245,8 +276,28 @@ Public Class SharedNicCapture
             Next
 
             ' ================================================================
-            ' STEP 3: Open new files and restart devices
+            ' STEP 3: Pre-warm new output files, then open dump files.
+            '         All files ready BEFORE handler is re-attached.
             ' ================================================================
+            Dim pcapHeader As Byte() = {
+                &HD4, &HC3, &HB2, &HA1,
+                &H2, &H0, &H4, &H0,
+                &H0, &H0, &H0, &H0,
+                &H0, &H0, &H0, &H0,
+                &HFF, &HFF, &H0, &H0,
+                &H1, &H0, &H0, &H0
+            }
+            For i As Integer = 0 To _devices.Count - 1
+                Dim fname = If(i < pcapFilenames.Count, pcapFilenames(i), $"LiDAR_{i + 1}_seq{sequence:D2}.pcap")
+                Try
+                    Using prewarm As New FileStream(fname, FileMode.Create, FileAccess.Write, FileShare.None)
+                        prewarm.Write(pcapHeader, 0, pcapHeader.Length)
+                        prewarm.Flush()
+                    End Using
+                Catch
+                End Try
+            Next
+
             For i As Integer = 0 To _devices.Count - 1
                 Dim d = _devices(i)
                 Dim filename = If(i < pcapFilenames.Count, pcapFilenames(i), $"LiDAR_{i + 1}_seq{sequence:D2}.pcap")
@@ -261,7 +312,7 @@ Public Class SharedNicCapture
             Next
 
             ' ================================================================
-            ' STEP 4: Resume packet dispatch
+            ' STEP 4: Resume packet dispatch — dump files already open
             ' ================================================================
             AddHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
             HandleUserMessageLogging("GMRC",

@@ -6167,12 +6167,19 @@ Public Class GmResidentClient
                                     ' Reset each cell to default safely via UpdateGridColor
                                     UpdateGridColor(i, x, y, GridUpdateActions.FromLow)
                                 Else
-                                    ' Apply whatever CurrentBack/ForeColor is, but marshal to UI safely
+                                    ' Marshal style writes to the UI thread — DataGridView is not thread-safe.
                                     Dim gi = i, gx = x, gy = y
-
-                                    myDGs(gi).Rows(gx - 1).Cells(gy).Style.BackColor = myDGs(gi).CurrentBackColor(gx, gy)
-                                    myDGs(gi).Rows(gx - 1).Cells(gy).Style.ForeColor = myDGs(gi).CurrentForeColor(gx, gy)
-
+                                    Dim backC As Color = myDGs(gi).CurrentBackColor(gx, gy)
+                                    Dim foreC As Color = myDGs(gi).CurrentForeColor(gx, gy)
+                                    If myDGs(gi).InvokeRequired Then
+                                        myDGs(gi).Invoke(Sub()
+                                                             myDGs(gi).Rows(gx - 1).Cells(gy).Style.BackColor = backC
+                                                             myDGs(gi).Rows(gx - 1).Cells(gy).Style.ForeColor = foreC
+                                                         End Sub)
+                                    Else
+                                        myDGs(gi).Rows(gx - 1).Cells(gy).Style.BackColor = backC
+                                        myDGs(gi).Rows(gx - 1).Cells(gy).Style.ForeColor = foreC
+                                    End If
                                 End If
 
 

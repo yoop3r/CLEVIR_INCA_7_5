@@ -38,6 +38,7 @@ Partial Class LidarHealthDetailForm
         Me.Button_TestIntegration = New System.Windows.Forms.Button()
         Me.Button_DiagnoseOxts = New System.Windows.Forms.Button()
         Me.Button_ResetOxtsStats = New System.Windows.Forms.Button()
+        Me.Button_InspectPcap = New System.Windows.Forms.Button()
         Me.Panel_TestActions = New System.Windows.Forms.Panel()
         CType(Me.DataGridView1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.GroupBox_OxtsStatus.SuspendLayout()
@@ -70,9 +71,9 @@ Partial Class LidarHealthDetailForm
         'Button_Refresh
         '
         Me.Button_Refresh.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Button_Refresh.Location = New System.Drawing.Point(554, 5)
+        Me.Button_Refresh.Location = New System.Drawing.Point(589, 5)
         Me.Button_Refresh.Name = "Button_Refresh"
-        Me.Button_Refresh.Size = New System.Drawing.Size(90, 30)
+        Me.Button_Refresh.Size = New System.Drawing.Size(83, 30)
         Me.Button_Refresh.TabIndex = 2
         Me.Button_Refresh.Text = "Refresh"
         Me.Button_Refresh.UseVisualStyleBackColor = True
@@ -80,9 +81,9 @@ Partial Class LidarHealthDetailForm
         'Button_Close
         '
         Me.Button_Close.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Button_Close.Location = New System.Drawing.Point(746, 5)
+        Me.Button_Close.Location = New System.Drawing.Point(757, 5)
         Me.Button_Close.Name = "Button_Close"
-        Me.Button_Close.Size = New System.Drawing.Size(90, 30)
+        Me.Button_Close.Size = New System.Drawing.Size(81, 30)
         Me.Button_Close.TabIndex = 3
         Me.Button_Close.Text = "Close"
         Me.Button_Close.UseVisualStyleBackColor = True
@@ -90,9 +91,9 @@ Partial Class LidarHealthDetailForm
         'Button_Export
         '
         Me.Button_Export.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.Button_Export.Location = New System.Drawing.Point(650, 5)
+        Me.Button_Export.Location = New System.Drawing.Point(676, 5)
         Me.Button_Export.Name = "Button_Export"
-        Me.Button_Export.Size = New System.Drawing.Size(90, 30)
+        Me.Button_Export.Size = New System.Drawing.Size(77, 30)
         Me.Button_Export.TabIndex = 4
         Me.Button_Export.Text = "Export CSV"
         Me.Button_Export.UseVisualStyleBackColor = True
@@ -215,10 +216,22 @@ Partial Class LidarHealthDetailForm
         Me.Button_ResetOxtsStats.Text = "🔄 Reset"
         Me.Button_ResetOxtsStats.UseVisualStyleBackColor = True
         '
+        'Button_InspectPcap
+        '
+        Me.Button_InspectPcap.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.Button_InspectPcap.Enabled = False
+        Me.Button_InspectPcap.Location = New System.Drawing.Point(495, 5)
+        Me.Button_InspectPcap.Name = "Button_InspectPcap"
+        Me.Button_InspectPcap.Size = New System.Drawing.Size(90, 30)
+        Me.Button_InspectPcap.TabIndex = 10
+        Me.Button_InspectPcap.Text = "🔍 Inspect PCAP"
+        Me.Button_InspectPcap.UseVisualStyleBackColor = True
+        '
         'Panel_TestActions
         '
         Me.Panel_TestActions.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.Panel_TestActions.Controls.Add(Me.Button_ResetOxtsStats)
+        Me.Panel_TestActions.Controls.Add(Me.Button_InspectPcap)
         Me.Panel_TestActions.Controls.Add(Me.Button_DiagnoseOxts)
         Me.Panel_TestActions.Controls.Add(Me.Button_TestIntegration)
         Me.Panel_TestActions.Controls.Add(Me.Button_TestLidar)
@@ -267,6 +280,7 @@ Partial Class LidarHealthDetailForm
     Friend WithEvents Button_TestIntegration As System.Windows.Forms.Button
     Friend WithEvents Button_DiagnoseOxts As System.Windows.Forms.Button
     Friend WithEvents Button_ResetOxtsStats As System.Windows.Forms.Button
+    Friend WithEvents Button_InspectPcap As System.Windows.Forms.Button
     Friend WithEvents Panel_TestActions As System.Windows.Forms.Panel
     Friend WithEvents GroupBox_OxtsStatus As System.Windows.Forms.GroupBox
     Friend WithEvents Label_PtpStatus As System.Windows.Forms.Label

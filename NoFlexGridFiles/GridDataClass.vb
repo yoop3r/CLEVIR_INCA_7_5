@@ -4,6 +4,47 @@ Option Strict Off
 Imports System.ComponentModel
 Imports System.Threading.Tasks
 
+''' <summary>
+''' Holds all per-cell configuration and runtime state for a single cell in a GridDataClass.
+''' Replaces the ~20 parallel Private _Xxx(,) backing arrays that previously lived as separate
+''' fields on GridDataClass. Callers use the same public Property accessors as before.
+''' </summary>
+Friend Structure GridCellModel
+    ' --- Signal binding ---
+    Public VariableName As String
+    Public DisplayName As String
+    Public DeviceName As String
+    Public Raster As String
+    Public SignalIndex As Integer
+    Public VariableIndex As Integer
+    Public Registered As Boolean
+
+    ' --- Threshold configuration ---
+    Public HighThresh As Double
+    Public LowThresh As Double
+    Public EqualTo As String
+    Public CheckForDataChange As Boolean
+    Public AlsoAssociatedWith As String
+    Public DisplayFormat As String
+
+    ' --- Default (idle) colours ---
+    Public DefaultBackColor As Color
+    Public DefaultForeColor As Color
+
+    ' --- Threshold alert colours ---
+    Public HighThreshBackColor As Color
+    Public HighThreshForeColor As Color
+    Public LowThreshBackColor As Color
+    Public LowThreshForeColor As Color
+
+    ' --- Runtime state ---
+    Public CurrentBackColor As Color
+    Public CurrentForeColor As Color
+    Public SaveLastValue As Double
+    Public DataFrozen As Boolean
+    Public DataFrozenCounter As Integer
+End Structure
+
 <TypeConverter(GetType(ExpandableObjectConverter))>
 Public Class GridDataClass
 
@@ -67,10 +108,13 @@ Public Class GridDataClass
 
     Private _Registered(,) As Boolean
 
-    Private _CheckForDataChange(,) As Boolean
-    Private _SaveLastValue(,) As Double
-    Private _DataFrozen(,) As Boolean
-    Private _DataFrozenCounter(,) As Integer
+    ' --- Per-cell state consolidated into a single GridCellModel array ---
+    ' Replaces the ~20 parallel Private _Xxx(,) arrays that previously existed.
+    ' All public Property accessors below delegate to _cells(row, col).FieldName.
+    Private _cells(,) As GridCellModel
+
+    ' _SaveFormattedString and the individual scalar fields below are NOT per-cell
+    ' signal metadata so they remain as separate declarations.
     Private _VariableName(,) As String
     Private _DisplayName(,) As String
     Private _VariableIndex(,) As Integer
@@ -2025,6 +2069,18 @@ Public Class GridDataClass
     ''' </summary>
     Public Property GridHeaderForeColor As Color = Color.White
 
+    ''' <summary>
+    ''' Ensures _cells is allocated and wide enough to hold (row, col).
+    ''' Mirrors the ReDim Preserve pattern used by the other per-cell backing arrays.
+    ''' </summary>
+    Private Sub EnsureCellsAllocated(ByVal row As Integer, ByVal col As Integer)
+        If _cells Is Nothing Then
+            ReDim _cells(MaxNumRowsPerGrid, col)
+        ElseIf col > UBound(_cells, 2) Then
+            ReDim Preserve _cells(MaxNumRowsPerGrid, col)
+        End If
+    End Sub
+
     Property AlsoAssociatedWith(ByVal row As Integer, ByVal col As Integer) As String
         Get
             Return _AlsoAssociatedWith(row, col)
@@ -2085,21 +2141,13 @@ Public Class GridDataClass
     Property DataFrozen(ByVal row As Integer, ByVal col As Integer) As Boolean
 
         Get
-            Return _DataFrozen(row, col)
+            EnsureCellsAllocated(row, col)
+            Return _cells(row, col).DataFrozen
         End Get
 
         Set(ByVal value As Boolean)
-            If _DataFrozen IsNot Nothing Then
-                If col >= UBound(_DataFrozen, 2) Then
-                    ReDim Preserve _DataFrozen(MaxNumRowsPerGrid, col)
-                End If
-            Else
-                ReDim Preserve _DataFrozen(MaxNumRowsPerGrid, col)
-            End If
-
-
-            _DataFrozen(row, col) = value
-
+            EnsureCellsAllocated(row, col)
+            _cells(row, col).DataFrozen = value
         End Set
 
     End Property
@@ -2150,21 +2198,13 @@ Public Class GridDataClass
     Property SaveLastValue(ByVal row As Integer, ByVal col As Integer) As Double
 
         Get
-            Return _SaveLastValue(row, col)
+            EnsureCellsAllocated(row, col)
+            Return _cells(row, col).SaveLastValue
         End Get
 
         Set(ByVal value As Double)
-            If _SaveLastValue IsNot Nothing Then
-                If col >= UBound(_SaveLastValue, 2) Then
-                    ReDim Preserve _SaveLastValue(MaxNumRowsPerGrid, col)
-                End If
-            Else
-                ReDim Preserve _SaveLastValue(MaxNumRowsPerGrid, col)
-            End If
-
-
-            _SaveLastValue(row, col) = value
-
+            EnsureCellsAllocated(row, col)
+            _cells(row, col).SaveLastValue = value
         End Set
 
     End Property
@@ -2475,22 +2515,14 @@ Public Class GridDataClass
     Property DataFrozenCounter(ByVal row As Integer, ByVal col As Integer) As Integer
 
         Get
-            Return _DataFrozenCounter(row, col)
+            EnsureCellsAllocated(row, col)
+            Return _cells(row, col).DataFrozenCounter
         End Get
 
         Set(ByVal value As Integer)
-            If _DataFrozenCounter IsNot Nothing Then
-                If col >= UBound(_DataFrozenCounter, 2) Then
-                    ReDim Preserve _DataFrozenCounter(MaxNumRowsPerGrid, col)
-                End If
-            Else
-                ReDim Preserve _DataFrozenCounter(MaxNumRowsPerGrid, col)
-            End If
-
-            _DataFrozenCounter(row, col) = value
-
+            EnsureCellsAllocated(row, col)
+            _cells(row, col).DataFrozenCounter = value
         End Set
-
 
     End Property
 
@@ -2539,21 +2571,13 @@ Public Class GridDataClass
     Property CheckForDataChange(ByVal row As Integer, ByVal col As Integer) As Boolean
 
         Get
-            Return _CheckForDataChange(row, col)
+            EnsureCellsAllocated(row, col)
+            Return _cells(row, col).CheckForDataChange
         End Get
 
         Set(ByVal value As Boolean)
-            If _CheckForDataChange IsNot Nothing Then
-                If col >= UBound(_CheckForDataChange, 2) Then
-                    ReDim Preserve _CheckForDataChange(MaxNumRowsPerGrid, col)
-                End If
-            Else
-                ReDim Preserve _CheckForDataChange(MaxNumRowsPerGrid, col)
-            End If
-
-
-            _CheckForDataChange(row, col) = value
-
+            EnsureCellsAllocated(row, col)
+            _cells(row, col).CheckForDataChange = value
         End Set
 
     End Property
@@ -3805,7 +3829,11 @@ Public Class GridDataClass
     End Sub
 
     Private Sub GridDataClass_HandleCreated(ByVal sender As Object, ByVal e As EventArgs) Handles Me.HandleCreated
-
+        ' Enable double-buffering on DataGridView (property is Protected, so use reflection).
+        ' This eliminates the flicker visible during live data updates.
+        Dim pi = GetType(DataGridView).GetProperty("DoubleBuffered",
+                     Reflection.BindingFlags.Instance Or Reflection.BindingFlags.NonPublic)
+        If pi IsNot Nothing Then pi.SetValue(Me, True, Nothing)
     End Sub
 
     Private Sub GridDataClass_CellMouseDown(ByVal sender As Object, ByVal e As DataGridViewCellMouseEventArgs) Handles Me.CellMouseDown
@@ -4053,11 +4081,7 @@ Public Class GridDataClass
 
     Private Sub GridDataClass_CellFormatting(sender As Object, e As DataGridViewCellFormattingEventArgs) Handles Me.CellFormatting
 
-        'Dim mytempstr As String
-        'Dim mytempval As Double
-
         Dim myPropertyIndex_X As Integer
-        Dim tooltiptext As String
 
         Static inhere As Boolean
 
@@ -4071,173 +4095,26 @@ Public Class GridDataClass
 
         myPropertyIndex_X = e.RowIndex + 1
 
-        'If Me.VariableName(myPropertyIndex_X, e.ColumnIndex) = "PPSMd" Then
-        'MsgBox(Me.VariableName(myPropertyIndex_X, e.ColumnIndex))
-        'End If
-
+        ' Skip empty/placeholder cells early.
         If Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString = " " Or Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString = "-" Then
             inhere = False
             Exit Sub
         End If
 
+        ' ── Tooltip assignment only ────────────────────────────────────────────────
+        ' Threshold/colour logic has been moved to MyBackgroundTasks (UpdateGridColor)
+        ' where it runs once per data update rather than on every paint cycle.
+
         If DisplayFormat(myPropertyIndex_X, e.ColumnIndex) IsNot Nothing Then
-
             If e.ColumnIndex > 0 Then
-
                 If DisplayFormat(myPropertyIndex_X, e.ColumnIndex) = "ENUM" Then
-
-                    tooltiptext = Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString
-
-                    Rows(e.RowIndex).Cells(e.ColumnIndex).ToolTipText = tooltiptext
-
+                    Rows(e.RowIndex).Cells(e.ColumnIndex).ToolTipText =
+                        Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString
                 End If
-
-                'Else
-                '   tooltiptext = Me.VariableName(myPropertyIndex_X, e.ColumnIndex)
-
-                '   Me.Rows(e.RowIndex).Cells(e.ColumnIndex).ToolTipText = tooltiptext
-
             End If
-
         ElseIf e.ColumnIndex = 0 Then
-            tooltiptext = VariableName(myPropertyIndex_X, e.ColumnIndex + 1)
-            Rows(e.RowIndex).Cells(e.ColumnIndex).ToolTipText = tooltiptext
-        End If
-
-        If SignalIndex(myPropertyIndex_X, e.ColumnIndex) >= 0 And
-                                               Len(VariableName(myPropertyIndex_X, e.ColumnIndex)) > 0 And Registered(myPropertyIndex_X, e.ColumnIndex) = True And VariableName(myPropertyIndex_X, e.ColumnIndex) <> "undefined" Then
-
-            'WhereAmI = "Update Grid Colors"
-
-            If DataFrozen(myPropertyIndex_X, e.ColumnIndex) = False Then
-
-                'WhereAmI = "HighThresh Check"
-                'If mytempval > Me.HighThresh(e.RowIndex, e.ColumnIndex) And Len(Me.EqualTo(e.RowIndex, e.ColumnIndex)) = 0 Then
-                If Val(Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString) > HighThresh(myPropertyIndex_X, e.ColumnIndex) And Len(EqualTo(myPropertyIndex_X, e.ColumnIndex)) = 0 Then
-
-                    If (CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) <> HighThreshBackColor(myPropertyIndex_X, e.ColumnIndex)) Then
-
-                        If InStr(AlsoAssociatedWith(myPropertyIndex_X, e.ColumnIndex), "GO/NOGO") > 0 Then
-                            CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Threshold Value: " & HighThresh(myPropertyIndex_X, e.ColumnIndex), 1)
-                        Else
-                            CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Threshold Value: " & HighThresh(myPropertyIndex_X, e.ColumnIndex), 2)
-                        End If
-
-                        CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = HighThreshBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        CurrentForeColor(myPropertyIndex_X, e.ColumnIndex) = HighThreshForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.BackColor = HighThreshBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.ForeColor = HighThreshForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                    End If
-
-                    'If InStr(Me.AlsoAssociatedWith(myPropertyIndex_X, e.ColumnIndex), "GO/NOGO") > 0 Then
-                    'GoNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
-                    'UpdateGONOGOLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
-                    'End If
-
-                End If
-                'WhereAmI = "LowThresh Check"
-                If Val(Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString) < LowThresh(myPropertyIndex_X, e.ColumnIndex) And Len(EqualTo(myPropertyIndex_X, e.ColumnIndex)) = 0 Then
-
-                    If (CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) <> LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)) Then
-
-                        If InStr(AlsoAssociatedWith(myPropertyIndex_X, e.ColumnIndex), "GO/NOGO") > 0 Then
-                            CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Threshold Value: " & LowThresh(myPropertyIndex_X, e.ColumnIndex), 1)
-                        Else
-                            CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Threshold Value: " & LowThresh(myPropertyIndex_X, e.ColumnIndex), 2)
-                        End If
-
-                        CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        CurrentForeColor(myPropertyIndex_X, e.ColumnIndex) = LowThreshForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.BackColor = LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.ForeColor = LowThreshForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                    End If
-
-                    'If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                    'GoNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
-                    'UpdateGONOGOLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
-                    'End If
-
-                End If
-                'WhereAmI = "Reset Check HIGH"
-                If Val(Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString) <= HighThresh(myPropertyIndex_X, e.ColumnIndex) And Val(Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString) >= LowThresh(myPropertyIndex_X, e.ColumnIndex) And Len(EqualTo(myPropertyIndex_X, e.ColumnIndex)) = 0 Then
-                    If (CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = HighThreshBackColor(myPropertyIndex_X, e.ColumnIndex)) Then
-                        CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Threshold Value: " & HighThresh(myPropertyIndex_X, e.ColumnIndex), 2)
-
-                        CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = DefaultCellBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        CurrentForeColor(myPropertyIndex_X, e.ColumnIndex) = DefaultCellForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.BackColor = DefaultCellBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.ForeColor = DefaultCellForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                    End If
-
-                    'GridUpdateAction = GridUpdateActions.FROM_HIGH
-                    'UpdateGridColor(z, x, y, GridUpdateAction)
-
-                End If
-                'WhereAmI = "Reset Check LOW"
-                If Val(Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString) >= LowThresh(myPropertyIndex_X, e.ColumnIndex) And Val(Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString) <= HighThresh(myPropertyIndex_X, e.ColumnIndex) And Len(EqualTo(myPropertyIndex_X, e.ColumnIndex)) = 0 Then
-                    If (CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)) Then
-                        CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Threshold Value: " & LowThresh(myPropertyIndex_X, e.ColumnIndex), 2)
-
-                        CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = DefaultCellBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        CurrentForeColor(myPropertyIndex_X, e.ColumnIndex) = DefaultCellForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.BackColor = DefaultCellBackColor(myPropertyIndex_X, e.ColumnIndex)
-                        Rows(e.RowIndex).Cells(e.ColumnIndex).Style.ForeColor = DefaultCellForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-
-                    End If
-
-                End If
-                'WhereAmI = "Equal To Check"
-                If Len(EqualTo(myPropertyIndex_X, e.ColumnIndex)) > 0 Then
-                    If Val(Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString) = Val(EqualTo(myPropertyIndex_X, e.ColumnIndex)) Then
-                        If (CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) <> LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)) Then
-
-                            If InStr(AlsoAssociatedWith(myPropertyIndex_X, e.ColumnIndex), "GO/NOGO") > 0 Then
-                                CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Equals " & Val(EqualTo(myPropertyIndex_X, e.ColumnIndex)), 1)
-                            Else
-                                CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Equals " & Val(EqualTo(myPropertyIndex_X, e.ColumnIndex)), 2)
-                            End If
-
-                            CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)
-                            CurrentForeColor(myPropertyIndex_X, e.ColumnIndex) = LowThreshForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                            Rows(e.RowIndex).Cells(e.ColumnIndex).Style.BackColor = LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)
-                            Rows(e.RowIndex).Cells(e.ColumnIndex).Style.ForeColor = LowThreshForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                        End If
-
-                        'If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                        'GoNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
-                        'UpdateGONOGOLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
-                        'End If
-
-                    Else
-                        If (CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = LowThreshBackColor(myPropertyIndex_X, e.ColumnIndex)) Then
-
-                            CopyToLog(DeviceName(myPropertyIndex_X, e.ColumnIndex) & " - " & VariableName(myPropertyIndex_X, e.ColumnIndex) & " - Current Value: " & Rows(e.RowIndex).Cells(e.ColumnIndex).FormattedValue.ToString & " Not Equal To " & Val(EqualTo(myPropertyIndex_X, e.ColumnIndex)), 2)
-
-                            CurrentBackColor(myPropertyIndex_X, e.ColumnIndex) = DefaultCellBackColor(myPropertyIndex_X, e.ColumnIndex)
-                            CurrentForeColor(myPropertyIndex_X, e.ColumnIndex) = DefaultCellForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                            Rows(e.RowIndex).Cells(e.ColumnIndex).Style.BackColor = DefaultCellBackColor(myPropertyIndex_X, e.ColumnIndex)
-                            Rows(e.RowIndex).Cells(e.ColumnIndex).Style.ForeColor = DefaultCellForeColor(myPropertyIndex_X, e.ColumnIndex)
-
-                        End If
-
-                    End If
-                End If
-
-            End If
-
-            'Else
-            '    mytempstr = "UnRgstrd"
+            Rows(e.RowIndex).Cells(e.ColumnIndex).ToolTipText =
+                VariableName(myPropertyIndex_X, e.ColumnIndex + 1)
         End If
 
         inhere = False

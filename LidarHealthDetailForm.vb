@@ -1,4 +1,5 @@
 ﻿Option Strict On
+Imports System.IO
 Imports System.Windows.Forms
 Imports System.Drawing
 Imports System.Threading.Tasks
@@ -351,6 +352,9 @@ Public Class LidarHealthDetailForm
 
             Label_Summary.Text = $"Total: {_devices.Count} | ✅ Healthy: {healthyCount} | ⚠️ Warning: {warningCount} | ❌ Critical: {criticalCount}"
 
+            ' Enable Inspect PCAP whenever capture is stopped — user can browse to any file
+            Button_InspectPcap.Enabled = Not LidarCaptureStarted
+
         Catch ex As Exception
             MessageBox.Show($"Error loading device data: {ex.Message}", "Load Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
@@ -555,6 +559,59 @@ Public Class LidarHealthDetailForm
                  End Function)
 
         StatusNotifier.Toast("OXTS integrity counters reset. Check again in 5 seconds.", "Reset", durationMs:=2000, ensureMainOnTop:=False)
+    End Sub
+
+    ''' <summary>
+    ''' Opens a multi-select file dialog so the user can choose any .pcap file(s) to inspect —
+    ''' not only the last recorded. The dialog is pre-seeded to the most recent capture directory
+    ''' when one is known, otherwise falls back to My Documents.
+    ''' Runs ProcessLidarPcapFile off the UI thread to keep the form responsive.
+    ''' </summary>
+    Private Sub Button_InspectPcap_Click(sender As Object, e As EventArgs) Handles Button_InspectPcap.Click
+        If LidarCaptureStarted Then
+            StatusNotifier.Warn("Cannot inspect PCAP while capture is active", "Inspect PCAP")
+            Return
+        End If
+
+        ' Seed the dialog to the most recently recorded directory (or Documents as fallback)
+        Dim initialDir As String = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+        If _devices IsNot Nothing Then
+            For Each d In _devices
+                If Not String.IsNullOrEmpty(d.LastCaptureFilePath) AndAlso File.Exists(d.LastCaptureFilePath) Then
+                    initialDir = Path.GetDirectoryName(d.LastCaptureFilePath)
+                    Exit For
+                End If
+            Next
+        End If
+
+        Using dlg As New OpenFileDialog With {
+            .Title = "Select PCAP File(s) to Inspect",
+            .Filter = "PCAP Files (*.pcap)|*.pcap|All Files (*.*)|*.*",
+            .FilterIndex = 1,
+            .InitialDirectory = initialDir,
+            .Multiselect = True,
+            .CheckFileExists = True
+        }
+            If dlg.ShowDialog(Me) <> DialogResult.OK OrElse dlg.FileNames.Length = 0 Then Return
+
+            Dim selectedFiles As String() = dlg.FileNames
+
+            Button_InspectPcap.Enabled = False
+            Button_InspectPcap.Text = "⏳ Inspecting..."
+
+            Task.Run(Sub()
+                         For Each path In selectedFiles
+                             ProcessLidarPcapFile(path)
+                         Next
+                         Me.Invoke(Sub()
+                                       Button_InspectPcap.Text = "🔍 Inspect PCAP"
+                                       Button_InspectPcap.Enabled = Not LidarCaptureStarted
+                                   End Sub)
+                     End Sub)
+
+            StatusNotifier.Toast($"Inspecting {selectedFiles.Length} PCAP file(s) — check diagnostics window",
+                                 "Inspect PCAP", durationMs:=3000, ensureMainOnTop:=False)
+        End Using
     End Sub
 
     Private Enum DeviceHealthStatus

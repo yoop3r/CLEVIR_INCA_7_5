@@ -807,12 +807,11 @@ Public Class OnVehicleScreen
                 Return
             End If
 
-            If LidarCaptureStarted AndAlso LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 Then
-                ' ✅ FIXED: Pass GmResidentClient reference for OXTS integration
+            If LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 Then
                 Dim detailForm As New LidarHealthDetailForm(LidarDevices, GmResidentClient)
                 detailForm.ShowDialog(Me)
             Else
-                MessageBox.Show("LiDAR capture is not currently active.", "LiDAR Status", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                MessageBox.Show("No LiDAR devices configured.", "LiDAR Status", MessageBoxButtons.OK, MessageBoxIcon.Information)
             End If
         Catch ex As Exception
             HandleUserMessageLogging("OVS", $"Label_LidarStatus_Click: {ex.Message}")

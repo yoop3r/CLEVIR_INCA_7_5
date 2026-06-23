@@ -4288,8 +4288,12 @@ Implements IGM_INCA_Comm.InitINCA
                     Return "SetRecordingFileName returned FALSE"
                 End If
 
-                ' Save experiment to persist settings
-                SaveExperiment()
+                ' SaveExperiment() intentionally omitted here.
+                ' The recording filename is held in INCA's in-memory experiment state and takes effect
+                ' immediately for the current session without being persisted to disk.
+                ' Saving the experiment at every START RECORD adds 10-15 seconds of gap between recordings
+                ' and is unnecessary because the experiment definition remains static across all recording
+                ' sessions. SaveExperiment is called once at startup and on FULL signal registration only.
 
             Catch ex As Exception
                 HandleUserMessageLogging("COMM", $"SetupDataLogging: ❌ Exception setting filename: {ex.Message}")

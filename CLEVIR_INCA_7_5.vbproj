@@ -795,6 +795,20 @@
     <None Include="NCOMdecoder\README.md" />
     <None Include="NCOMdecoder\rebuild_dll.bat" />
     <None Include="NCOMdecoder\test.py" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEven.01A66469.Up2Date" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.AssemblyInfoInputs.cache" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.assets.cache" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.csproj.AssemblyReference.cache" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.csproj.BuildWithSkipAnalyzers" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.csproj.CoreCompileInputs.cache" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.GeneratedMSBuildEditorConfig.editorconfig" />
+    <None Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.sourcelink.json" />
+    <None Include="PcapEventBridge\obj\PcapEventBridge.csproj.nuget.dgspec.json" />
+    <None Include="PcapEventBridge\obj\PcapEventBridge.csproj.nuget.g.props" />
+    <None Include="PcapEventBridge\obj\PcapEventBridge.csproj.nuget.g.targets" />
+    <None Include="PcapEventBridge\obj\project.assets.json" />
+    <None Include="PcapEventBridge\obj\project.nuget.cache" />
+    <None Include="PcapEventBridge\PcapEventBridge.csproj" />
     <None Include="Resources\mic.jpg" />
     <None Include="Resources\mic 50.jpg" />
     <None Include="Resources\mic 50 Red.jpg" />
@@ -823,6 +837,21 @@
     <None Include="Resources\RedRightArrow.jpg" />
     <None Include="Resources\YellowLeftArrow.jpg" />
     <None Include="Resources\YellowRightArrow.jpg" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\PacketDotNet.dll" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\PcapEventBridge.dll" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\PcapEventBridge.pdb" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\SharpPcap.dll" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\System.Buffers.dll" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\System.Memory.dll" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\System.Numerics.Vectors.dll" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\System.Runtime.CompilerServices.Unsafe.dll" />
+    <Content Include="PcapEventBridge\bin\Debug\net48\System.Text.Encoding.CodePages.dll" />
+    <Content Include="PcapEventBridge\obj\Debug\net48\.NETFramework,Version=v4.8.AssemblyAttributes.cs" />
+    <Content Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.AssemblyInfo.cs" />
+    <Content Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.csproj.FileListAbsolute.txt" />
+    <Content Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.dll" />
+    <Content Include="PcapEventBridge\obj\Debug\net48\PcapEventBridge.pdb" />
+    <Content Include="PcapEventBridge\PcapEventBridge.cs" />
     <Content Include="SessionMetadata.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
