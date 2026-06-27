@@ -3,7 +3,6 @@ Imports System.Text
 Imports System.Xml
 
 Public Class ConfigurationEditorForm
-    Private _currentDrvNumber As Integer = -1 ' ✅ Default to config.xml
     Private _configData As New Dictionary(Of String, String)
     Private _isDirty As Boolean = False
     Private _xmlDoc As XmlDocument
@@ -11,7 +10,7 @@ Public Class ConfigurationEditorForm
     Private Sub ConfigurationEditorForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Try
             InitializeUI()
-            LoadConfiguration(-1) ' ✅ Always start with config.xml
+            LoadConfiguration()
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"ConfigEditor Load: {ex.Message}")
@@ -67,20 +66,7 @@ Public Class ConfigurationEditorForm
         AddHandler btnEditLidar.Click, AddressOf ButtonEditLidar_Click
         Me.Controls.Add(btnEditLidar)
 
-        ' ✅ NEW: Generate Driver Files Button
-        Dim btnGenerateDrivers As New Button With {
-            .Text = "Generate Driver Files...",
-            .Location = New Point(290, yPos),
-            .Size = New Size(160, 30),
-            .BackColor = Color.LightGoldenrodYellow,
-            .Font = New Font(Me.Font, FontStyle.Bold)
-        }
-        AddHandler btnGenerateDrivers.Click, AddressOf ButtonGenerateDrivers_Click
-        Me.Controls.Add(btnGenerateDrivers)
-
-        ' ═══════════════════════════════════════════════════════════════
         ' Search controls at bottom
-        ' ═══════════════════════════════════════════════════════════════
         Dim lblSearch As New Label With {
         .Text = "Search:",
         .Location = New Point(200, Me.ClientSize.Height - 44),
@@ -134,15 +120,15 @@ Public Class ConfigurationEditorForm
         ' Reset to Defaults Button
         Dim btnReset As New Button With {
                 .Text = "Reset to Defaults",
-                .Location = New Point(460, yPos),
+                .Location = New Point(290, yPos),
                 .Size = New Size(130, 30),
                 .BackColor = Color.LightCoral
                 }
         AddHandler btnReset.Click, Sub()
                                        If MessageBox.Show("Reset all values to defaults?", "Confirm",
                                MessageBoxButtons.YesNo) = DialogResult.Yes Then
-                                           ' Load default config.xml from resources or template
-                                           LoadConfiguration(-1)
+                                           ' Reload config.xml
+                                           LoadConfiguration()
                                        End If
                                    End Sub
         Me.Controls.Add(btnReset)
@@ -169,156 +155,6 @@ Public Class ConfigurationEditorForm
         Next
         json.AppendLine("}")
         File.WriteAllText("config_export.json", json.ToString())
-    End Sub
-
-    ''' <summary>
-    ''' ✅ NEW: Generate driver-specific configuration files
-    ''' </summary>
-    Private Sub ButtonGenerateDrivers_Click(sender As Object, e As EventArgs)
-        Try
-            ' Check if config.xml has unsaved changes
-            If _isDirty Then
-                Dim result = MessageBox.Show(
-                    "You have unsaved changes to config.xml." & vbCrLf & vbCrLf &
-                    "Save changes before generating driver files?",
-                    "Save Changes?",
-                    MessageBoxButtons.YesNoCancel,
-                    MessageBoxIcon.Question)
-
-                Select Case result
-                    Case DialogResult.Yes
-                        ' Save config.xml first
-                        BackupConfigFile(-1)
-                        SaveConfiguration(-1)
-                    Case DialogResult.Cancel
-                        Return
-                    Case DialogResult.No
-                        ' Continue without saving
-                End Select
-            End If
-
-            ' ═══════════════════════════════════════════════════════════════
-            ' ✅ Show dialog to ask how many driver files to generate
-            ' ═══════════════════════════════════════════════════════════════
-            Using inputForm As New Form()
-                inputForm.Text = "Generate Driver Configuration Files"
-                inputForm.Size = New Size(400, 200)
-                inputForm.StartPosition = FormStartPosition.CenterParent
-                inputForm.FormBorderStyle = FormBorderStyle.FixedDialog
-                inputForm.MaximizeBox = False
-                inputForm.MinimizeBox = False
-
-                Dim lblPrompt As New Label With {
-                    .Text = "How many driver configuration files to generate?" & vbCrLf &
-                            "(e.g., 5 will create DRVR00.xml through DRVR04.xml)",
-                    .Location = New Point(20, 20),
-                    .Size = New Size(350, 40),
-                    .AutoSize = False
-                }
-
-                Dim numericUpDown As New NumericUpDown With {
-                    .Location = New Point(20, 70),
-                    .Size = New Size(100, 25),
-                    .Minimum = 1,
-                    .Maximum = 20,
-                    .Value = 6 ' Default to 6 (DRVR00-DRVR05)
-                }
-
-                Dim btnOK As New Button With {
-                    .Text = "Generate",
-                    .Location = New Point(200, 120),
-                    .DialogResult = DialogResult.OK
-                }
-
-                Dim btnCancel As New Button With {
-                    .Text = "Cancel",
-                    .Location = New Point(280, 120),
-                    .DialogResult = DialogResult.Cancel
-                }
-
-                inputForm.Controls.AddRange({lblPrompt, numericUpDown, btnOK, btnCancel})
-                inputForm.AcceptButton = btnOK
-                inputForm.CancelButton = btnCancel
-
-                If inputForm.ShowDialog() = DialogResult.OK Then
-                    Dim numDrivers As Integer = CInt(numericUpDown.Value)
-                    GenerateDriverConfigFiles(numDrivers)
-                End If
-            End Using
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"GenerateDrivers failed: {ex.Message}")
-            MessageBox.Show($"Failed to generate driver files: {ex.Message}",
-                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
-        End Try
-    End Sub
-
-    ''' <summary>
-    ''' ✅ Generate N driver configuration files from config.xml
-    ''' </summary>
-    Private Sub GenerateDriverConfigFiles(numDrivers As Integer)
-        Try
-            Dim appDir As String = My.Application.Info.DirectoryPath
-            Dim configPath As String = Path.Combine(appDir, "config.xml")
-
-            If Not File.Exists(configPath) Then
-                MessageBox.Show("config.xml not found. Cannot generate driver files.",
-                                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
-                Return
-            End If
-
-            ' Load master config.xml
-            Dim masterDoc As New XmlDocument()
-            masterDoc.Load(configPath)
-
-            Dim generatedFiles As New List(Of String)
-
-            ' Generate DRVR00.xml through DRVR(N-1).xml
-            For i As Integer = 0 To numDrivers - 1
-                Dim driverFileName As String = $"DRVR{i:D2}.xml"
-                Dim driverPath As String = Path.Combine(appDir, driverFileName)
-
-                ' Backup existing file if it exists
-                If File.Exists(driverPath) Then
-                    Dim timestamp As String = DateTime.Now.ToString("yyyyMMdd_HHmmss")
-                    Dim backupPath As String = driverPath.Replace(".xml", $"_backup_{timestamp}.xml")
-                    File.Copy(driverPath, backupPath, True)
-                    HandleUserMessageLogging("GMRC", $"Backed up existing {driverFileName} to {Path.GetFileName(backupPath)}")
-                End If
-
-                ' Clone the XML document
-                Dim driverDoc As New XmlDocument()
-                driverDoc.LoadXml(masterDoc.OuterXml)
-
-                ' ✅ Optional: Customize driver-specific settings here
-                ' Example: Set a driver-specific ID or comment
-                Dim comment As XmlComment = driverDoc.CreateComment($" Driver {i:D2} Configuration - Generated from config.xml on {DateTime.Now:yyyy-MM-dd HH:mm:ss} ")
-                driverDoc.DocumentElement.PrependChild(comment)
-
-                ' Save with formatting
-                Using writer As New XmlTextWriter(driverPath, System.Text.Encoding.UTF8)
-                    writer.Formatting = Formatting.Indented
-                    writer.Indentation = 1
-                    writer.IndentChar = ControlChars.Tab
-                    driverDoc.Save(writer)
-                End Using
-
-                generatedFiles.Add(driverFileName)
-                HandleUserMessageLogging("GMRC", $"Generated {driverFileName}")
-            Next
-
-            ' Show success message
-            MessageBox.Show(
-                $"Successfully generated {numDrivers} driver configuration file(s):" & vbCrLf & vbCrLf &
-                String.Join(vbCrLf, generatedFiles),
-                "Success",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information)
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"GenerateDriverConfigFiles: {ex.Message}")
-            Throw
-        End Try
     End Sub
 
     Private Sub ButtonToggleOxts_Click(sender As Object, e As EventArgs)
@@ -360,7 +196,7 @@ Public Class ConfigurationEditorForm
                 If lidarEditor.ShowDialog() = DialogResult.OK Then
                     _isDirty = True
                     ' Refresh display of config.xml
-                    LoadConfiguration(-1)
+                    LoadConfiguration()
                 End If
             End Using
 
@@ -371,13 +207,12 @@ Public Class ConfigurationEditorForm
         End Try
     End Sub
 
-    Private Sub LoadConfiguration(drvNumber As Integer)
+    Private Sub LoadConfiguration()
         Try
-            _currentDrvNumber = drvNumber
             _configData.Clear()
             DataGridViewParams.Rows.Clear()
 
-            Dim configPath As String = GetDRVConfigPath(drvNumber)
+            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
 
             HandleUserMessageLogging("GMRC", $"ConfigEditor: Loading {configPath}")
 
@@ -480,17 +315,6 @@ Public Class ConfigurationEditorForm
                 Return False
         End Select
     End Function
-
-    Private Function GetDRVConfigPath(drvNumber As Integer) As String
-        Dim appDir As String = My.Application.Info.DirectoryPath
-
-        If drvNumber = -1 Then
-            Return Path.Combine(appDir, "config.xml")
-        Else
-            Return Path.Combine(appDir, $"DRVR{drvNumber:D2}.xml")
-        End If
-    End Function
-
 
     Private Sub ValidateAndColorRow(rowIndex As Integer, paramName As String, value As String)
         Dim validationResult = ValidateParameter(paramName, value)
@@ -638,8 +462,8 @@ Public Class ConfigurationEditorForm
                 End If
             Next
 
-            BackupConfigFile(-1) ' Always save config.xml
-            SaveConfiguration(-1)
+            BackupConfigFile()
+            SaveConfiguration()
 
             MessageBox.Show($"Configuration saved to config.xml successfully!", "Success",
                             MessageBoxButtons.OK, MessageBoxIcon.Information)
@@ -651,8 +475,8 @@ Public Class ConfigurationEditorForm
         End Try
     End Sub
 
-    Private Sub SaveConfiguration(drvNumber As Integer)
-        Dim configPath As String = GetDRVConfigPath(drvNumber)
+    Private Sub SaveConfiguration()
+        Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
 
         ' ✅ Update existing XML document with edited values
         For i As Integer = 0 To DataGridViewParams.Rows.Count - 1
@@ -703,9 +527,9 @@ Public Class ConfigurationEditorForm
         Return currentNode
     End Function
 
-    Private Sub BackupConfigFile(drvNumber As Integer)
+    Private Sub BackupConfigFile()
         Try
-            Dim configPath As String = GetDRVConfigPath(drvNumber)
+            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
             If File.Exists(configPath) Then
                 Dim timestamp As String = DateTime.Now.ToString("yyyyMMdd_HHmmss")
                 Dim backupPath As String = configPath.Replace(".xml", $"_backup_{timestamp}.xml")
@@ -715,23 +539,6 @@ Public Class ConfigurationEditorForm
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"Backup failed: {ex.Message}")
         End Try
-    End Sub
-
-    Private Sub ComboBoxDRV_SelectedIndexChanged(sender As Object, e As EventArgs) Handles ComboBoxDRV.SelectedIndexChanged
-        If _isDirty Then
-            If MessageBox.Show("You have unsaved changes. Discard them?", "Confirm",
-                               MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then
-                ComboBoxDRV.SelectedIndex = If(_currentDrvNumber = -1, 0, _currentDrvNumber + 1)
-                Return
-            End If
-        End If
-
-        Dim selectedIndex As Integer = ComboBoxDRV.SelectedIndex
-        If selectedIndex = 0 Then
-            LoadConfiguration(-1) ' config.xml
-        Else
-            LoadConfiguration(selectedIndex - 1) ' DRVR00-DRVR05
-        End If
     End Sub
 
     Private Sub DataGridViewParams_CellValueChanged(sender As Object, e As DataGridViewCellEventArgs) Handles DataGridViewParams.CellValueChanged

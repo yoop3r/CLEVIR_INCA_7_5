@@ -22,28 +22,15 @@ Partial Class ConfigurationEditorForm
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
-        Me.ComboBoxDRV = New System.Windows.Forms.ComboBox()
         Me.DataGridViewParams = New System.Windows.Forms.DataGridView()
         Me.ColumnParameter = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColumnValue = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColumnDescription = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ButtonSave = New System.Windows.Forms.Button()
-        Me.ButtonApplyToAll = New System.Windows.Forms.Button()
         Me.ButtonCancel = New System.Windows.Forms.Button()
         Me.LabelStatus = New System.Windows.Forms.Label()
-        Me.LabelDRV = New System.Windows.Forms.Label()
         CType(Me.DataGridViewParams, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
-        '
-        'ComboBoxDRV
-        '
-        Me.ComboBoxDRV.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList
-        Me.ComboBoxDRV.FormattingEnabled = True
-        Me.ComboBoxDRV.Location = New System.Drawing.Point(1269, 22)
-        Me.ComboBoxDRV.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
-        Me.ComboBoxDRV.Name = "ComboBoxDRV"
-        Me.ComboBoxDRV.Size = New System.Drawing.Size(148, 28)
-        Me.ComboBoxDRV.TabIndex = 1
         '
         'DataGridViewParams
         '
@@ -91,17 +78,6 @@ Partial Class ConfigurationEditorForm
         Me.ButtonSave.Text = "💾 Save"
         Me.ButtonSave.UseVisualStyleBackColor = True
         '
-        'ButtonApplyToAll
-        '
-        Me.ButtonApplyToAll.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.ButtonApplyToAll.Location = New System.Drawing.Point(1227, 785)
-        Me.ButtonApplyToAll.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
-        Me.ButtonApplyToAll.Name = "ButtonApplyToAll"
-        Me.ButtonApplyToAll.Size = New System.Drawing.Size(210, 54)
-        Me.ButtonApplyToAll.TabIndex = 5
-        Me.ButtonApplyToAll.Text = "📋 Apply to All DRVs"
-        Me.ButtonApplyToAll.UseVisualStyleBackColor = True
-        '
         'ButtonCancel
         '
         Me.ButtonCancel.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
@@ -125,16 +101,6 @@ Partial Class ConfigurationEditorForm
         Me.LabelStatus.TabIndex = 6
         Me.LabelStatus.Text = "Ready"
         '
-        'LabelDRV
-        '
-        Me.LabelDRV.AutoSize = True
-        Me.LabelDRV.Location = New System.Drawing.Point(1124, 25)
-        Me.LabelDRV.Margin = New System.Windows.Forms.Padding(4, 0, 4, 0)
-        Me.LabelDRV.Name = "LabelDRV"
-        Me.LabelDRV.Size = New System.Drawing.Size(126, 20)
-        Me.LabelDRV.TabIndex = 0
-        Me.LabelDRV.Text = "Select DRV File:"
-        '
         'ConfigurationEditorForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(9.0!, 20.0!)
@@ -142,12 +108,9 @@ Partial Class ConfigurationEditorForm
         Me.CancelButton = Me.ButtonCancel
         Me.ClientSize = New System.Drawing.Size(1458, 863)
         Me.Controls.Add(Me.LabelStatus)
-        Me.Controls.Add(Me.ButtonApplyToAll)
         Me.Controls.Add(Me.ButtonSave)
         Me.Controls.Add(Me.ButtonCancel)
         Me.Controls.Add(Me.DataGridViewParams)
-        Me.Controls.Add(Me.ComboBoxDRV)
-        Me.Controls.Add(Me.LabelDRV)
         Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         Me.Margin = New System.Windows.Forms.Padding(4, 5, 4, 5)
         Me.MaximizeBox = False
@@ -161,13 +124,10 @@ Partial Class ConfigurationEditorForm
 
     End Sub
 
-    Friend WithEvents ComboBoxDRV As ComboBox
     Friend WithEvents DataGridViewParams As DataGridView
     Friend WithEvents ButtonSave As Button
-    Friend WithEvents ButtonApplyToAll As Button
     Friend WithEvents ButtonCancel As Button
     Friend WithEvents LabelStatus As Label
-    Friend WithEvents LabelDRV As Label
     Friend WithEvents ColumnParameter As DataGridViewTextBoxColumn
     Friend WithEvents ColumnValue As DataGridViewTextBoxColumn
     Friend WithEvents ColumnDescription As DataGridViewTextBoxColumn

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -20,14 +20,11 @@
     <ApplicationManifest>My Project\app.manifest</ApplicationManifest>
     <ApplicationIcon>GM_ResidentClient_256px.ico</ApplicationIcon>
     <IsWebBootstrapper>false</IsWebBootstrapper>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
+    <FileUpgradeFlags></FileUpgradeFlags>
+    <UpgradeBackupLocation></UpgradeBackupLocation>
     <OldToolsVersion>3.5</OldToolsVersion>
     <TargetFrameworkProfile />
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
+    <NuGetPackageImportStamp></NuGetPackageImportStamp>
     <!-- ClickOnce publishing disabled: requireAdministrator elevation is incompatible with ClickOnce. Deploy via installer or xcopy. -->
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
@@ -235,16 +232,14 @@
     </Compile>
     <Compile Include="CommonINCAFunctions.vb" />
     <Compile Include="CommonWirelessFunctions.vb" />
+    <Compile Include="ConfigurationEditorForm.Designer.vb" />
     <Compile Include="EncryptDecrypt.vb" />
     <Compile Include="GenericAnyCLEVIRToolSuiteApp.vb" />
     <Compile Include="ImportSoftwareAndCalsFunctions.vb" />
     <Compile Include="ApplicationEvents.vb" />
-    <Compile Include="ArrayDataView.vb">
-    </Compile>
-    <Compile Include="ArrayPropertyDescriptor.vb">
-    </Compile>
-    <Compile Include="ArrayRowView.vb">
-    </Compile>
+    <Compile Include="ArrayDataView.vb"></Compile>
+    <Compile Include="ArrayPropertyDescriptor.vb"></Compile>
+    <Compile Include="ArrayRowView.vb"></Compile>
     <Compile Include="InitProgressSplash.Designer.vb">
       <DependentUpon>InitProgressSplash.vb</DependentUpon>
     </Compile>
@@ -279,8 +274,7 @@
     <Compile Include="AddRecordOnlySignals.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CANalyzerStuff.vb">
-    </Compile>
+    <Compile Include="CANalyzerStuff.vb"></Compile>
     <Compile Include="CLEVIRCalibrationInterface.designer.vb">
       <DependentUpon>CLEVIRCalibrationInterface.vb</DependentUpon>
     </Compile>
@@ -344,10 +338,8 @@
     <Compile Include="FusionStatusDisplay.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GM_INCA_Comm.vb">
-    </Compile>
-    <Compile Include="INCA_InterfaceClass.vb">
-    </Compile>
+    <Compile Include="GM_INCA_Comm.vb"></Compile>
+    <Compile Include="INCA_InterfaceClass.vb"></Compile>
     <Compile Include="InitForm.designer.vb">
       <DependentUpon>InitForm.vb</DependentUpon>
     </Compile>
@@ -378,8 +370,7 @@
     <Compile Include="LoginForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Module1.vb">
-    </Compile>
+    <Compile Include="Module1.vb"></Compile>
     <Compile Include="OnVehicleScreen.designer.vb">
       <DependentUpon>OnVehicleScreen.vb</DependentUpon>
     </Compile>
@@ -464,16 +455,14 @@
     <Compile Include="VehicleConfigurationsEditor.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="VehicleSpyStuff.vb">
-    </Compile>
+    <Compile Include="VehicleSpyStuff.vb"></Compile>
     <Compile Include="VehicleStatDashboard.designer.vb">
       <DependentUpon>VehicleStatDashboard.vb</DependentUpon>
     </Compile>
     <Compile Include="VehicleStatDashboard.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="VoiceRecognitionClass.vb">
-    </Compile>
+    <Compile Include="VoiceRecognitionClass.vb"></Compile>
     <Compile Include="NewGridCreation.designer.vb">
       <DependentUpon>NewGridCreation.vb</DependentUpon>
     </Compile>

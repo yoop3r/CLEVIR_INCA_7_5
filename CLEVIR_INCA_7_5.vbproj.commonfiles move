@@ -227,44 +227,45 @@
     <Import Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AnnotationInterfaceConfigure.designer.vb">
+    <Compile Include="CommonFiles\AnnotationInterfaceConfigure.designer.vb">
       <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
     </Compile>
-    <Compile Include="AnnotationInterfaceConfigure.vb">
+    <Compile Include="CommonFiles\AnnotationInterfaceConfigure.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CommonINCAFunctions.vb" />
-    <Compile Include="CommonWirelessFunctions.vb" />
-    <Compile Include="EncryptDecrypt.vb" />
-    <Compile Include="GenericAnyCLEVIRToolSuiteApp.vb" />
-    <Compile Include="ImportSoftwareAndCalsFunctions.vb" />
+    <Compile Include="CommonFiles\CommonINCAFunctions.vb" />
+    <Compile Include="CommonFiles\CommonWirelessFunctions.vb" />
+    <Compile Include="CommonFiles\ConfigurationEditorForm.Designer.vb" />
+    <Compile Include="CommonFiles\EncryptDecrypt.vb" />
+    <Compile Include="CommonFiles\GenericAnyCLEVIRToolSuiteApp.vb" />
+    <Compile Include="CommonFiles\ImportSoftwareAndCalsFunctions.vb" />
     <Compile Include="ApplicationEvents.vb" />
-    <Compile Include="ArrayDataView.vb">
+    <Compile Include="CommonFiles\ArrayDataView.vb">
     </Compile>
-    <Compile Include="ArrayPropertyDescriptor.vb">
+    <Compile Include="CommonFiles\ArrayPropertyDescriptor.vb">
     </Compile>
-    <Compile Include="ArrayRowView.vb">
+    <Compile Include="CommonFiles\ArrayRowView.vb">
     </Compile>
-    <Compile Include="InitProgressSplash.Designer.vb">
+    <Compile Include="CommonFiles\InitProgressSplash.Designer.vb">
       <DependentUpon>InitProgressSplash.vb</DependentUpon>
     </Compile>
-    <Compile Include="InitProgressSplash.vb">
+    <Compile Include="CommonFiles\InitProgressSplash.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ZipStuff.vb" />
-    <Compile Include="GM_ResidentClient.designer.vb">
+    <Compile Include="CommonFiles\ZipStuff.vb" />
+    <Compile Include="NoFlexGridFiles\GM_ResidentClient.designer.vb">
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
     </Compile>
-    <Compile Include="GM_ResidentClient.vb">
+    <Compile Include="NoFlexGridFiles\GM_ResidentClient.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GridCellPropConfig.designer.vb">
+    <Compile Include="NoFlexGridFiles\GridCellPropConfig.designer.vb">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
     </Compile>
-    <Compile Include="GridCellPropConfig.vb">
+    <Compile Include="NoFlexGridFiles\GridCellPropConfig.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GridDataClass.vb">
+    <Compile Include="NoFlexGridFiles\GridDataClass.vb">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="OscilloscopeDisplay\oscilloscope.designer.vb">
@@ -273,214 +274,214 @@
     <Compile Include="OscilloscopeDisplay\oscilloscope.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="AddRecordOnlySignals.designer.vb">
+    <Compile Include="CommonFiles\AddRecordOnlySignals.designer.vb">
       <DependentUpon>AddRecordOnlySignals.vb</DependentUpon>
     </Compile>
-    <Compile Include="AddRecordOnlySignals.vb">
+    <Compile Include="CommonFiles\AddRecordOnlySignals.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CANalyzerStuff.vb">
+    <Compile Include="CommonFiles\CANalyzerStuff.vb">
     </Compile>
-    <Compile Include="CLEVIRCalibrationInterface.designer.vb">
+    <Compile Include="CommonFiles\CLEVIRCalibrationInterface.designer.vb">
       <DependentUpon>CLEVIRCalibrationInterface.vb</DependentUpon>
     </Compile>
-    <Compile Include="CLEVIRCalibrationInterface.vb">
+    <Compile Include="CommonFiles\CLEVIRCalibrationInterface.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CopilotStatusDisplay.designer.vb">
+    <Compile Include="CommonFiles\CopilotStatusDisplay.designer.vb">
       <DependentUpon>CopilotStatusDisplay.vb</DependentUpon>
     </Compile>
-    <Compile Include="CopilotStatusDisplay.vb">
+    <Compile Include="CommonFiles\CopilotStatusDisplay.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Cusmsgbox.designer.vb">
+    <Compile Include="CommonFiles\Cusmsgbox.designer.vb">
       <DependentUpon>Cusmsgbox.vb</DependentUpon>
     </Compile>
-    <Compile Include="Cusmsgbox.vb">
+    <Compile Include="CommonFiles\Cusmsgbox.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="CustomAnnotation.designer.vb">
+    <Compile Include="CommonFiles\CustomAnnotation.designer.vb">
       <DependentUpon>CustomAnnotation.vb</DependentUpon>
     </Compile>
-    <Compile Include="CustomAnnotation.vb">
+    <Compile Include="CommonFiles\CustomAnnotation.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="DefaultConfiguration.designer.vb">
+    <Compile Include="CommonFiles\DefaultConfiguration.designer.vb">
       <DependentUpon>DefaultConfiguration.vb</DependentUpon>
     </Compile>
-    <Compile Include="DefaultConfiguration.vb">
+    <Compile Include="CommonFiles\DefaultConfiguration.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="DeviceStatus.designer.vb">
+    <Compile Include="CommonFiles\DeviceStatus.designer.vb">
       <DependentUpon>DeviceStatus.vb</DependentUpon>
     </Compile>
-    <Compile Include="DeviceStatus.vb">
+    <Compile Include="CommonFiles\DeviceStatus.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="DisplayLogFile.designer.vb">
+    <Compile Include="CommonFiles\DisplayLogFile.designer.vb">
       <DependentUpon>DisplayLogFile.vb</DependentUpon>
     </Compile>
-    <Compile Include="DisplayLogFile.vb">
+    <Compile Include="CommonFiles\DisplayLogFile.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ExitAppForm.designer.vb">
+    <Compile Include="CommonFiles\ExitAppForm.designer.vb">
       <DependentUpon>ExitAppForm.vb</DependentUpon>
     </Compile>
-    <Compile Include="ExitAppForm.vb">
+    <Compile Include="CommonFiles\ExitAppForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FlashingStatus.designer.vb">
+    <Compile Include="CommonFiles\FlashingStatus.designer.vb">
       <DependentUpon>FlashingStatus.vb</DependentUpon>
     </Compile>
-    <Compile Include="FlashingStatus.vb">
+    <Compile Include="CommonFiles\FlashingStatus.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FormDataClass.vb">
+    <Compile Include="CommonFiles\FormDataClass.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FusionStatusDisplay.designer.vb">
+    <Compile Include="CommonFiles\FusionStatusDisplay.designer.vb">
       <DependentUpon>FusionStatusDisplay.vb</DependentUpon>
     </Compile>
-    <Compile Include="FusionStatusDisplay.vb">
+    <Compile Include="CommonFiles\FusionStatusDisplay.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GM_INCA_Comm.vb">
+    <Compile Include="CommonFiles\GM_INCA_Comm.vb">
     </Compile>
-    <Compile Include="INCA_InterfaceClass.vb">
+    <Compile Include="CommonFiles\INCA_InterfaceClass.vb">
     </Compile>
-    <Compile Include="InitForm.designer.vb">
+    <Compile Include="CommonFiles\InitForm.designer.vb">
       <DependentUpon>InitForm.vb</DependentUpon>
     </Compile>
-    <Compile Include="InitForm.vb">
+    <Compile Include="CommonFiles\InitForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="LKAForm.designer.vb">
+    <Compile Include="CommonFiles\LKAForm.designer.vb">
       <DependentUpon>LKAForm.vb</DependentUpon>
     </Compile>
-    <Compile Include="LKAForm.vb">
+    <Compile Include="CommonFiles\LKAForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="LMFR_Status_Display_Global_A.designer.vb">
+    <Compile Include="CommonFiles\LMFR_Status_Display_Global_A.designer.vb">
       <DependentUpon>LMFR_Status_Display_Global_A.vb</DependentUpon>
     </Compile>
-    <Compile Include="LMFR_Status_Display_Global_A.vb">
+    <Compile Include="CommonFiles\LMFR_Status_Display_Global_A.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="LMFR_Status_Screen_HC.designer.vb">
+    <Compile Include="CommonFiles\LMFR_Status_Screen_HC.designer.vb">
       <DependentUpon>LMFR_Status_Screen_HC.vb</DependentUpon>
     </Compile>
-    <Compile Include="LMFR_Status_Screen_HC.vb">
+    <Compile Include="CommonFiles\LMFR_Status_Screen_HC.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="LoginForm.designer.vb">
+    <Compile Include="CommonFiles\LoginForm.designer.vb">
       <DependentUpon>LoginForm.vb</DependentUpon>
     </Compile>
-    <Compile Include="LoginForm.vb">
+    <Compile Include="CommonFiles\LoginForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Module1.vb">
+    <Compile Include="CommonFiles\Module1.vb">
     </Compile>
-    <Compile Include="OnVehicleScreen.designer.vb">
+    <Compile Include="CommonFiles\OnVehicleScreen.designer.vb">
       <DependentUpon>OnVehicleScreen.vb</DependentUpon>
     </Compile>
-    <Compile Include="OnVehicleScreen.vb">
+    <Compile Include="CommonFiles\OnVehicleScreen.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="OperationHistory.designer.vb">
+    <Compile Include="CommonFiles\OperationHistory.designer.vb">
       <DependentUpon>OperationHistory.vb</DependentUpon>
     </Compile>
-    <Compile Include="OperationHistory.vb">
+    <Compile Include="CommonFiles\OperationHistory.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="PedestrianStatusDisplay.designer.vb">
+    <Compile Include="CommonFiles\PedestrianStatusDisplay.designer.vb">
       <DependentUpon>PedestrianStatusDisplay.vb</DependentUpon>
     </Compile>
-    <Compile Include="PedestrianStatusDisplay.vb">
+    <Compile Include="CommonFiles\PedestrianStatusDisplay.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="RecordPlayback.designer.vb">
+    <Compile Include="CommonFiles\RecordPlayback.designer.vb">
       <DependentUpon>RecordPlayback.vb</DependentUpon>
     </Compile>
-    <Compile Include="RecordPlayback.vb">
+    <Compile Include="CommonFiles\RecordPlayback.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="SelectDisplays.designer.vb">
+    <Compile Include="CommonFiles\SelectDisplays.designer.vb">
       <DependentUpon>SelectDisplays.vb</DependentUpon>
     </Compile>
-    <Compile Include="SelectDisplays.vb">
+    <Compile Include="CommonFiles\SelectDisplays.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="SelectExperiment.designer.vb">
+    <Compile Include="CommonFiles\SelectExperiment.designer.vb">
       <DependentUpon>SelectExperiment.vb</DependentUpon>
     </Compile>
-    <Compile Include="SelectExperiment.vb">
+    <Compile Include="CommonFiles\SelectExperiment.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="SoftwareVersionSelect.designer.vb">
+    <Compile Include="CommonFiles\SoftwareVersionSelect.designer.vb">
       <DependentUpon>SoftwareVersionSelect.vb</DependentUpon>
     </Compile>
-    <Compile Include="SoftwareVersionSelect.vb">
+    <Compile Include="CommonFiles\SoftwareVersionSelect.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="TargetStatusDisplay.designer.vb">
+    <Compile Include="CommonFiles\TargetStatusDisplay.designer.vb">
       <DependentUpon>TargetStatusDisplay.vb</DependentUpon>
     </Compile>
-    <Compile Include="TargetStatusDisplay.vb">
+    <Compile Include="CommonFiles\TargetStatusDisplay.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="TDGraphicsContainerClass.vb">
+    <Compile Include="CommonFiles\TDGraphicsContainerClass.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="TD_TargetObjectsClass.vb">
+    <Compile Include="CommonFiles\TD_TargetObjectsClass.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="TestDescriptionForm.designer.vb">
+    <Compile Include="CommonFiles\TestDescriptionForm.designer.vb">
       <DependentUpon>TestDescriptionForm.vb</DependentUpon>
     </Compile>
-    <Compile Include="TestDescriptionForm.vb">
+    <Compile Include="CommonFiles\TestDescriptionForm.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="TopDownViewConfiguration.designer.vb">
+    <Compile Include="CommonFiles\TopDownViewConfiguration.designer.vb">
       <DependentUpon>TopDownViewConfiguration.vb</DependentUpon>
     </Compile>
-    <Compile Include="TopDownViewConfiguration.vb">
+    <Compile Include="CommonFiles\TopDownViewConfiguration.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="UploadDataScreen.designer.vb">
+    <Compile Include="CommonFiles\UploadDataScreen.designer.vb">
       <DependentUpon>UploadDataScreen.vb</DependentUpon>
     </Compile>
-    <Compile Include="UploadDataScreen.vb">
+    <Compile Include="CommonFiles\UploadDataScreen.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="UserStatusInfo.designer.vb">
+    <Compile Include="CommonFiles\UserStatusInfo.designer.vb">
       <DependentUpon>UserStatusInfo.vb</DependentUpon>
     </Compile>
-    <Compile Include="UserStatusInfo.vb">
+    <Compile Include="CommonFiles\UserStatusInfo.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="VehicleConfigurationsEditor.designer.vb">
+    <Compile Include="CommonFiles\VehicleConfigurationsEditor.designer.vb">
       <DependentUpon>VehicleConfigurationsEditor.vb</DependentUpon>
     </Compile>
-    <Compile Include="VehicleConfigurationsEditor.vb">
+    <Compile Include="CommonFiles\VehicleConfigurationsEditor.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="VehicleSpyStuff.vb">
+    <Compile Include="CommonFiles\VehicleSpyStuff.vb">
     </Compile>
-    <Compile Include="VehicleStatDashboard.designer.vb">
+    <Compile Include="CommonFiles\VehicleStatDashboard.designer.vb">
       <DependentUpon>VehicleStatDashboard.vb</DependentUpon>
     </Compile>
-    <Compile Include="VehicleStatDashboard.vb">
+    <Compile Include="CommonFiles\VehicleStatDashboard.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="VoiceRecognitionClass.vb">
+    <Compile Include="CommonFiles\VoiceRecognitionClass.vb">
     </Compile>
-    <Compile Include="NewGridCreation.designer.vb">
+    <Compile Include="NoFlexGridFiles\NewGridCreation.designer.vb">
       <DependentUpon>NewGridCreation.vb</DependentUpon>
     </Compile>
-    <Compile Include="NewGridCreation.vb">
+    <Compile Include="NoFlexGridFiles\NewGridCreation.vb">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="DataDictionarySingleton.vb" />
+    <Compile Include="CommonFiles\DataDictionarySingleton.vb" />
     <Compile Include="AboutBox1.Designer.vb">
       <DependentUpon>AboutBox1.vb</DependentUpon>
     </Compile>
@@ -560,152 +561,152 @@
     <Compile Include="TimeMachineTimeSyncProvider.vb" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="AnnotationInterfaceConfigure.resx">
+    <EmbeddedResource Include="CommonFiles\AnnotationInterfaceConfigure.resx">
       <DependentUpon>AnnotationInterfaceConfigure.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="InitProgressSplash.resx">
+    <EmbeddedResource Include="CommonFiles\InitProgressSplash.resx">
       <DependentUpon>InitProgressSplash.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="GM_ResidentClient.resx">
+    <EmbeddedResource Include="NoFlexGridFiles\GM_ResidentClient.resx">
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="GridCellPropConfig.resx">
+    <EmbeddedResource Include="NoFlexGridFiles\GridCellPropConfig.resx">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="GridDataClass.resx">
+    <EmbeddedResource Include="NoFlexGridFiles\GridDataClass.resx">
       <DependentUpon>GridDataClass.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="OscilloscopeDisplay\oscilloscope.resx">
       <DependentUpon>oscilloscope.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="AddRecordOnlySignals.resx">
+    <EmbeddedResource Include="CommonFiles\AddRecordOnlySignals.resx">
       <DependentUpon>AddRecordOnlySignals.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="CLEVIRCalibrationInterface.resx">
+    <EmbeddedResource Include="CommonFiles\CLEVIRCalibrationInterface.resx">
       <DependentUpon>CLEVIRCalibrationInterface.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="CopilotStatusDisplay.resx">
+    <EmbeddedResource Include="CommonFiles\CopilotStatusDisplay.resx">
       <DependentUpon>CopilotStatusDisplay.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Cusmsgbox.resx">
+    <EmbeddedResource Include="CommonFiles\Cusmsgbox.resx">
       <DependentUpon>Cusmsgbox.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="CustomAnnotation.resx">
+    <EmbeddedResource Include="CommonFiles\CustomAnnotation.resx">
       <DependentUpon>CustomAnnotation.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="DefaultConfiguration.resx">
+    <EmbeddedResource Include="CommonFiles\DefaultConfiguration.resx">
       <DependentUpon>DefaultConfiguration.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="DeviceStatus.resx">
+    <EmbeddedResource Include="CommonFiles\DeviceStatus.resx">
       <DependentUpon>DeviceStatus.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="DisplayLogFile.resx">
+    <EmbeddedResource Include="CommonFiles\DisplayLogFile.resx">
       <DependentUpon>DisplayLogFile.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ExitAppForm.resx">
+    <EmbeddedResource Include="CommonFiles\ExitAppForm.resx">
       <DependentUpon>ExitAppForm.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="FlashingStatus.resx">
+    <EmbeddedResource Include="CommonFiles\FlashingStatus.resx">
       <DependentUpon>FlashingStatus.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="FormDataClass.resx">
+    <EmbeddedResource Include="CommonFiles\FormDataClass.resx">
       <DependentUpon>FormDataClass.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="FusionStatusDisplay.resx">
+    <EmbeddedResource Include="CommonFiles\FusionStatusDisplay.resx">
       <DependentUpon>FusionStatusDisplay.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="InitForm.resx">
+    <EmbeddedResource Include="CommonFiles\InitForm.resx">
       <DependentUpon>InitForm.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="LKAForm.resx">
+    <EmbeddedResource Include="CommonFiles\LKAForm.resx">
       <DependentUpon>LKAForm.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="LMFR_Status_Display_Global_A.resx">
+    <EmbeddedResource Include="CommonFiles\LMFR_Status_Display_Global_A.resx">
       <DependentUpon>LMFR_Status_Display_Global_A.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="LMFR_Status_Screen_HC.resx">
+    <EmbeddedResource Include="CommonFiles\LMFR_Status_Screen_HC.resx">
       <DependentUpon>LMFR_Status_Screen_HC.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="LoginForm.resx">
+    <EmbeddedResource Include="CommonFiles\LoginForm.resx">
       <DependentUpon>LoginForm.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="OnVehicleScreen.resx">
+    <EmbeddedResource Include="CommonFiles\OnVehicleScreen.resx">
       <DependentUpon>OnVehicleScreen.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="OperationHistory.resx">
+    <EmbeddedResource Include="CommonFiles\OperationHistory.resx">
       <DependentUpon>OperationHistory.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="PedestrianStatusDisplay.resx">
+    <EmbeddedResource Include="CommonFiles\PedestrianStatusDisplay.resx">
       <DependentUpon>PedestrianStatusDisplay.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="RecordPlayback.resx">
+    <EmbeddedResource Include="CommonFiles\RecordPlayback.resx">
       <DependentUpon>RecordPlayback.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="SelectDisplays.resx">
+    <EmbeddedResource Include="CommonFiles\SelectDisplays.resx">
       <DependentUpon>SelectDisplays.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="SelectExperiment.resx">
+    <EmbeddedResource Include="CommonFiles\SelectExperiment.resx">
       <DependentUpon>SelectExperiment.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="SoftwareVersionSelect.resx">
+    <EmbeddedResource Include="CommonFiles\SoftwareVersionSelect.resx">
       <DependentUpon>SoftwareVersionSelect.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="TargetStatusDisplay.resx">
+    <EmbeddedResource Include="CommonFiles\TargetStatusDisplay.resx">
       <DependentUpon>TargetStatusDisplay.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="TDGraphicsContainerClass.resx">
+    <EmbeddedResource Include="CommonFiles\TDGraphicsContainerClass.resx">
       <DependentUpon>TDGraphicsContainerClass.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="TD_TargetObjectsClass.resx">
+    <EmbeddedResource Include="CommonFiles\TD_TargetObjectsClass.resx">
       <DependentUpon>TD_TargetObjectsClass.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="TestDescriptionForm.resx">
+    <EmbeddedResource Include="CommonFiles\TestDescriptionForm.resx">
       <DependentUpon>TestDescriptionForm.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="TopDownViewConfiguration.resx">
+    <EmbeddedResource Include="CommonFiles\TopDownViewConfiguration.resx">
       <DependentUpon>TopDownViewConfiguration.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="UploadDataScreen.resx">
+    <EmbeddedResource Include="CommonFiles\UploadDataScreen.resx">
       <DependentUpon>UploadDataScreen.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="UserStatusInfo.resx">
+    <EmbeddedResource Include="CommonFiles\UserStatusInfo.resx">
       <DependentUpon>UserStatusInfo.vb</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="VehicleConfigurationsEditor.resx">
+    <EmbeddedResource Include="CommonFiles\VehicleConfigurationsEditor.resx">
       <DependentUpon>VehicleConfigurationsEditor.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="VehicleStatDashboard.resx">
+    <EmbeddedResource Include="CommonFiles\VehicleStatDashboard.resx">
       <DependentUpon>VehicleStatDashboard.vb</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="NewGridCreation.resx">
+    <EmbeddedResource Include="NoFlexGridFiles\NewGridCreation.resx">
       <DependentUpon>NewGridCreation.vb</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="AboutBox1.resx">
