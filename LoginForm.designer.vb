@@ -20,15 +20,7 @@ Partial Class LoginForm
         Me.components = New System.ComponentModel.Container()
         Me.Label4 = New System.Windows.Forms.Label()
         Me.Button43 = New System.Windows.Forms.Button()
-        Me.GroupBox1 = New System.Windows.Forms.GroupBox()
-        Me.RadioButton4 = New System.Windows.Forms.RadioButton()
-        Me.RadioButton3 = New System.Windows.Forms.RadioButton()
-        Me.RadioButton2 = New System.Windows.Forms.RadioButton()
-        Me.RadioButton1 = New System.Windows.Forms.RadioButton()
-        Me.CheckBox1 = New System.Windows.Forms.CheckBox()
-        Me.CheckBox3 = New System.Windows.Forms.CheckBox()
         Me.ToolTip1 = New System.Windows.Forms.ToolTip(Me.components)
-        Me.CheckBox_LidarCapture = New System.Windows.Forms.CheckBox()
         Me.GroupBox_SessionMetadata = New System.Windows.Forms.GroupBox()
         Me.Label_Group = New System.Windows.Forms.Label()
         Me.ComboBox_Group = New System.Windows.Forms.ComboBox()
@@ -36,7 +28,6 @@ Partial Class LoginForm
         Me.ComboBox_Procedure = New System.Windows.Forms.ComboBox()
         Me.Label_Email = New System.Windows.Forms.Label()
         Me.TextBox_Email = New System.Windows.Forms.TextBox()
-        Me.GroupBox1.SuspendLayout()
         Me.GroupBox_SessionMetadata.SuspendLayout()
         Me.SuspendLayout()
         '
@@ -63,105 +54,9 @@ Partial Class LoginForm
         Me.Button43.Text = "EXIT"
         Me.Button43.UseVisualStyleBackColor = True
         '
-        'GroupBox1
-        '
-        Me.GroupBox1.Controls.Add(Me.RadioButton4)
-        Me.GroupBox1.Controls.Add(Me.RadioButton3)
-        Me.GroupBox1.Controls.Add(Me.RadioButton2)
-        Me.GroupBox1.Controls.Add(Me.RadioButton1)
-        Me.GroupBox1.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.GroupBox1.Location = New System.Drawing.Point(12, 15)
-        Me.GroupBox1.Name = "GroupBox1"
-        Me.GroupBox1.Size = New System.Drawing.Size(334, 158)
-        Me.GroupBox1.TabIndex = 12
-        Me.GroupBox1.TabStop = False
-        Me.GroupBox1.Text = "Signal Registration Mode"
-        '
-        'RadioButton4
-        '
-        Me.RadioButton4.AutoSize = True
-        Me.RadioButton4.Enabled = False
-        Me.RadioButton4.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold)
-        Me.RadioButton4.Location = New System.Drawing.Point(16, 130)
-        Me.RadioButton4.Name = "RadioButton4"
-        Me.RadioButton4.Size = New System.Drawing.Size(339, 32)
-        Me.RadioButton4.TabIndex = 3
-        Me.RadioButton4.TabStop = True
-        Me.RadioButton4.Text = "CREATE NEW FROM BLANK EXP"
-        Me.RadioButton4.UseVisualStyleBackColor = True
-        '
-        'RadioButton3
-        '
-        Me.RadioButton3.AutoSize = True
-        Me.RadioButton3.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.RadioButton3.Location = New System.Drawing.Point(16, 95)
-        Me.RadioButton3.Name = "RadioButton3"
-        Me.RadioButton3.Size = New System.Drawing.Size(135, 32)
-        Me.RadioButton3.TabIndex = 2
-        Me.RadioButton3.TabStop = True
-        Me.RadioButton3.Text = "GO/NOGO"
-        Me.RadioButton3.UseVisualStyleBackColor = True
-        '
-        'RadioButton2
-        '
-        Me.RadioButton2.AutoSize = True
-        Me.RadioButton2.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.RadioButton2.Location = New System.Drawing.Point(15, 60)
-        Me.RadioButton2.Name = "RadioButton2"
-        Me.RadioButton2.Size = New System.Drawing.Size(126, 32)
-        Me.RadioButton2.TabIndex = 1
-        Me.RadioButton2.TabStop = True
-        Me.RadioButton2.Text = "DISPLAYS"
-        Me.RadioButton2.UseVisualStyleBackColor = True
-        '
-        'RadioButton1
-        '
-        Me.RadioButton1.AutoSize = True
-        Me.RadioButton1.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.RadioButton1.Location = New System.Drawing.Point(15, 25)
-        Me.RadioButton1.Name = "RadioButton1"
-        Me.RadioButton1.Size = New System.Drawing.Size(81, 32)
-        Me.RadioButton1.TabIndex = 0
-        Me.RadioButton1.TabStop = True
-        Me.RadioButton1.Text = "FULL"
-        Me.RadioButton1.UseVisualStyleBackColor = True
-        '
-        'CheckBox1
-        '
-        Me.CheckBox1.AutoSize = True
-        Me.CheckBox1.Font = New System.Drawing.Font("Segoe UI", 11.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.CheckBox1.Location = New System.Drawing.Point(27, 185)
-        Me.CheckBox1.Name = "CheckBox1"
-        Me.CheckBox1.Size = New System.Drawing.Size(319, 34)
-        Me.CheckBox1.TabIndex = 13
-        Me.CheckBox1.Text = "Save Calibration Snapshots"
-        Me.CheckBox1.UseVisualStyleBackColor = True
-        '
-        'CheckBox3
-        '
-        Me.CheckBox3.AutoSize = True
-        Me.CheckBox3.Font = New System.Drawing.Font("Segoe UI", 11.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.CheckBox3.Location = New System.Drawing.Point(27, 218)
-        Me.CheckBox3.Name = "CheckBox3"
-        Me.CheckBox3.Size = New System.Drawing.Size(300, 34)
-        Me.CheckBox3.TabIndex = 16
-        Me.CheckBox3.Text = "Enable CANalyzer Record"
-        Me.CheckBox3.UseVisualStyleBackColor = True
-        '
         'ToolTip1
         '
         AddHandler Me.ToolTip1.Popup, AddressOf Me.ToolTip1_Popup
-        '
-        'CheckBox_LidarCapture
-        '
-        Me.CheckBox_LidarCapture.AutoSize = True
-        Me.CheckBox_LidarCapture.Font = New System.Drawing.Font("Segoe UI", 11.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.CheckBox_LidarCapture.Location = New System.Drawing.Point(27, 251)
-        Me.CheckBox_LidarCapture.Name = "CheckBox_LidarCapture"
-        Me.CheckBox_LidarCapture.Size = New System.Drawing.Size(265, 34)
-        Me.CheckBox_LidarCapture.TabIndex = 10
-        Me.CheckBox_LidarCapture.Text = "Enable LiDAR Capture"
-        Me.CheckBox_LidarCapture.UseVisualStyleBackColor = True
         '
         'GroupBox_SessionMetadata
         '
@@ -172,7 +67,7 @@ Partial Class LoginForm
         Me.GroupBox_SessionMetadata.Controls.Add(Me.Label_Email)
         Me.GroupBox_SessionMetadata.Controls.Add(Me.TextBox_Email)
         Me.GroupBox_SessionMetadata.Font = New System.Drawing.Font("Segoe UI", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.GroupBox_SessionMetadata.Location = New System.Drawing.Point(12, 295)
+        Me.GroupBox_SessionMetadata.Location = New System.Drawing.Point(12, 331)
         Me.GroupBox_SessionMetadata.Name = "GroupBox_SessionMetadata"
         Me.GroupBox_SessionMetadata.Size = New System.Drawing.Size(442, 140)
         Me.GroupBox_SessionMetadata.TabIndex = 20
@@ -242,20 +137,13 @@ Partial Class LoginForm
         Me.BackColor = System.Drawing.Color.LightGray
         Me.ClientSize = New System.Drawing.Size(470, 529)
         Me.Controls.Add(Me.GroupBox_SessionMetadata)
-        Me.Controls.Add(Me.CheckBox3)
-        Me.Controls.Add(Me.CheckBox_LidarCapture)
-        Me.Controls.Add(Me.CheckBox1)
-        Me.Controls.Add(Me.GroupBox1)
         Me.Controls.Add(Me.Button43)
         Me.Controls.Add(Me.Label4)
         Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow
         Me.KeyPreview = True
         Me.Name = "LoginForm"
         Me.Padding = New System.Windows.Forms.Padding(3)
-        Me.ShowInTaskbar = False
         Me.Text = "User Login"
-        Me.GroupBox1.ResumeLayout(False)
-        Me.GroupBox1.PerformLayout()
         Me.GroupBox_SessionMetadata.ResumeLayout(False)
         Me.GroupBox_SessionMetadata.PerformLayout()
         Me.ResumeLayout(False)
@@ -264,15 +152,7 @@ Partial Class LoginForm
     End Sub
     Friend WithEvents Label4 As System.Windows.Forms.Label
     Friend WithEvents Button43 As System.Windows.Forms.Button
-    Friend WithEvents GroupBox1 As System.Windows.Forms.GroupBox
-    Friend WithEvents RadioButton1 As System.Windows.Forms.RadioButton
-    Friend WithEvents RadioButton3 As System.Windows.Forms.RadioButton
-    Friend WithEvents RadioButton2 As System.Windows.Forms.RadioButton
-    Friend WithEvents CheckBox1 As System.Windows.Forms.CheckBox
-    Friend WithEvents RadioButton4 As System.Windows.Forms.RadioButton
-    Friend WithEvents CheckBox3 As System.Windows.Forms.CheckBox
     Friend WithEvents ToolTip1 As ToolTip
-    Friend WithEvents CheckBox_LidarCapture As System.Windows.Forms.CheckBox
     Friend WithEvents GroupBox_SessionMetadata As System.Windows.Forms.GroupBox
     Friend WithEvents Label_Group As System.Windows.Forms.Label
     Friend WithEvents ComboBox_Group As System.Windows.Forms.ComboBox

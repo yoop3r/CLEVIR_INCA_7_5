@@ -55,6 +55,24 @@ Public Class CameraConfig
     End Sub
 End Class
 
+''' <summary>
+''' Holds all vehicle-specific configuration values read from the &lt;Vehicles&gt; section of config.xml.
+''' Replaces the column-indexed row from VehicleConfigurationsNF.csv.
+''' </summary>
+Public Class VehicleConfig
+    Public Property VehicleNumber As String = ""
+    ''' <summary>Up to 6 processor names
+    Public Property Processors As String() = {"NA", "NA", "NA", "NA", "NA", "NA"}
+    ''' <summary>Up to 9 camera positions (e.g. "FRONT,REAR,NA,NA,NA,NA,NA,NA,NA")</summary>
+    Public Property CameraPositions As String() = {"NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"}
+    ''' <summary>4 CAN-monitor IDs corresponding to CSV columns 17-20 (e.g. "886,886,886,886")</summary>
+    Public Property CanMonitors As String() = {"", "", "", ""}
+    Public Property DataUploadPath As String = ""
+    Public Property CLEVIRFilesPath As String = "Current"
+    Public Property ZipMF4Files As Boolean = True
+    Public Property ConfigName As String = ""
+End Class
+
 Public Module Module1
 
     'This is the code module which contains global variable definitions, routines and functions that are shared by multiple forms or are not specific to any particular
@@ -127,7 +145,7 @@ Public Module Module1
     Public SelectedTestName As String       'Set in SetupDataLogging based on vehiclenumber, date, time, etc.  Used for naming the various recorded files
     Public SaveSelectedTestName As String   'Set in SetupDataLogging.  Used in conjunction with SelectedTestName
     Public SaveLoginID As String = ""            'Set as part of login process, either from LoginForm or in SetupDataLogging
-    Public VehicleNumber As String          'Holds the vehiclenumber read from the vehicleconfig.txt file.  Used when setting up file names for record files etc.
+    Public VehicleNumber As String          'Holds the vehicle number read from <SelectedVehicleNumber> in config.xml.  Used when setting up file names for record files etc.
     Public ANNOFileName As String           'Set in SetupDataLogging, holds the annotation file name for the current recording session.  Used when saving data to this file, etc.
     Public CanTemplateExperimentName As String     'Set in ReadVehicleConfigsFile and is based on ProjectName derived from information in vehicleconfugurations.csv - Used when creating a new experiment 
     Private MessageLogLevel As Integer        'Set in ReadDebugFile - used as a debug message filter, the lower the MessageLogLevel,the more messages are written to the GM_ResidentClient.log file.
@@ -196,7 +214,6 @@ Public Module Module1
     Public ReadNewDataFile As Boolean
 
     Public EnableAltRecReStartAfterRecordStop As Boolean
-    Public SaveCalSnapshotEnabled As Boolean
     Public AlternateRecordEnabled As Boolean
     Public AlternateRecordConfig As String
 
@@ -223,7 +240,6 @@ Public Module Module1
 
     Public UploadDataOnExit As Boolean
     Public AudioToTextConversion As Boolean
-    Public SaveCalSnapshotEnabledChanged As Boolean
     Public CLEVIRFlavor As String 'DEVELOPMENT, DATALOGGING, or DATALOGGINGWITHUPLOAD
     Public InSession As Boolean
     Public DebugMode As Boolean
@@ -1952,6 +1968,35 @@ Public Module Module1
         Dim blueBoxID As String = ""
         ReadVehicleConfigsFile = False
         Try
+            ' ── XML-first path ─────────────────────────────────────────
+            ' If config.xml contains a <Vehicles> section use it directly.
+            ' If not, fall through to the legacy CSV path below.
+            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+            If File.Exists(configPath) Then
+                Dim xmlDoc As New XmlDocument()
+                xmlDoc.Load(configPath)
+                Dim xmlVehicles As List(Of VehicleConfig) = ReadVehiclesFromXml(xmlDoc)
+                If xmlVehicles IsNot Nothing AndAlso xmlVehicles.Count > 0 Then
+                    Dim xmlMatch As VehicleConfig = xmlVehicles.FirstOrDefault(
+                        Function(v) String.Equals(v.VehicleNumber, VehicleNumber, StringComparison.OrdinalIgnoreCase))
+
+                    If xmlMatch IsNot Nothing Then
+                        If Not ApplyVehicleConfig(xmlMatch) Then Return False
+                        ' Backup config.xml so the save-file convention still works
+                        File.Copy(configPath,
+                                  Path.Combine(My.Application.Info.DirectoryPath, "config_vehicle_SAVE.xml"),
+                                  overwrite:=True)
+                        HandleUserMessageLogging("GMRC",
+                            $"ReadVehicleConfigsFile: Vehicle {VehicleNumber} loaded from config.xml Vehicles section.")
+                        defaultReturnValue = True
+                        Return True
+                    End If
+                    ' Vehicle not found in XML list (or VehicleNumber is UNDEFINED) — fall through to CSV
+                    HandleUserMessageLogging("GMRC",
+                        $"ReadVehicleConfigsFile: Vehicle '{VehicleNumber}' not found in config.xml <Vehicles> — falling back to CSV.")
+                End If
+            End If
+            ' ── Legacy CSV path ────────────────────────────────────────
             ' Ensure we have the correct CSV format and shift column indices if using the older format
             If Not HandleVehicleConfigurationsFile(filename) Then
                 Return False
@@ -2075,6 +2120,209 @@ Public Module Module1
         ZIP_MF4_FILES -= 2
         CONFIG_NAME -= 2
     End Sub
+
+    '-----------------------------------------------------------
+    '   SELECTED VEHICLE NUMBER — config.xml persistence
+    '   Replaces the legacy vehicleconfig.txt single-value file.
+    '   The value is stored as <SelectedVehicleNumber> at the root
+    '   of config.xml, alongside <CurrentVehicleUsage>.
+    '-----------------------------------------------------------
+
+    ''' <summary>
+    ''' Reads the &lt;SelectedVehicleNumber&gt; element from config.xml.
+    ''' Returns "UNDEFINED" when the file or element is absent.
+    ''' </summary>
+    Public Function ReadSelectedVehicleNumber() As String
+        Try
+            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+            If Not File.Exists(configPath) Then Return "UNDEFINED"
+            Dim xmlDoc As New XmlDocument()
+            xmlDoc.Load(configPath)
+            Dim node As XmlNode = xmlDoc.SelectSingleNode("/Configuration/SelectedVehicleNumber")
+            Dim value As String = node?.InnerText?.Trim()
+            If String.IsNullOrEmpty(value) OrElse
+               String.Equals(value, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
+                Return "UNDEFINED"
+            End If
+            Return value
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"ReadSelectedVehicleNumber: {ex.Message}")
+            Return "UNDEFINED"
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' Persists <paramref name="vehicleNumber"/> to the &lt;SelectedVehicleNumber&gt;
+    ''' element in config.xml, creating the element if it does not yet exist.
+    ''' </summary>
+    Public Sub SaveSelectedVehicleNumber(vehicleNumber As String)
+        If String.IsNullOrWhiteSpace(vehicleNumber) Then Return
+        Try
+            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+            If Not File.Exists(configPath) Then
+                HandleUserMessageLogging("GMRC", "SaveSelectedVehicleNumber: config.xml not found — cannot persist vehicle number.")
+                Return
+            End If
+            Dim xmlDoc As New XmlDocument()
+            xmlDoc.Load(configPath)
+            Dim node As XmlNode = xmlDoc.SelectSingleNode("/Configuration/SelectedVehicleNumber")
+            If node Is Nothing Then
+                ' Create the element after <CurrentVehicleUsage> if present, otherwise append to root
+                node = xmlDoc.CreateElement("SelectedVehicleNumber")
+                Dim refNode As XmlNode = xmlDoc.SelectSingleNode("/Configuration/CurrentVehicleUsage")
+                If refNode IsNot Nothing Then
+                    xmlDoc.DocumentElement.InsertAfter(node, refNode)
+                Else
+                    xmlDoc.DocumentElement.AppendChild(node)
+                End If
+            End If
+            node.InnerText = vehicleNumber
+            xmlDoc.Save(configPath)
+            HandleUserMessageLogging("GMRC", $"SaveSelectedVehicleNumber: Saved '{vehicleNumber}' to config.xml.")
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"SaveSelectedVehicleNumber: {ex.Message}", DisplayMsgBox)
+        End Try
+    End Sub
+
+    '-----------------------------------------------------------
+    '   XML VEHICLE CONFIG: READ AND APPLY
+    '-----------------------------------------------------------
+
+    ''' <summary>
+    ''' Reads all &lt;Vehicle&gt; elements from the Vehicles section of config.xml.
+    ''' Returns Nothing when the section is absent (CSV path used instead).
+    ''' </summary>
+    Public Function ReadVehiclesFromXml(xmlDoc As XmlDocument) As List(Of VehicleConfig)
+        If xmlDoc Is Nothing Then Return Nothing
+        Dim vehiclesNode As XmlNode = xmlDoc.SelectSingleNode("//Vehicles")
+        If vehiclesNode Is Nothing Then Return Nothing
+
+        Dim list As New List(Of VehicleConfig)()
+        For Each node As XmlNode In vehiclesNode.SelectNodes("Vehicle")
+            Dim v As New VehicleConfig()
+            v.VehicleNumber = node.SelectSingleNode("VehicleNumber")?.InnerText?.Trim()
+
+            Dim procText As String = node.SelectSingleNode("Processors")?.InnerText
+            If Not String.IsNullOrWhiteSpace(procText) Then
+                v.Processors = procText.Split(","c)
+            End If
+
+            Dim camText As String = node.SelectSingleNode("CameraPositions")?.InnerText
+            If Not String.IsNullOrWhiteSpace(camText) Then
+                v.CameraPositions = camText.Split(","c)
+            End If
+
+            Dim canText As String = node.SelectSingleNode("CanMonitors")?.InnerText
+            If Not String.IsNullOrWhiteSpace(canText) Then
+                v.CanMonitors = canText.Split(","c)
+            End If
+
+            v.DataUploadPath = node.SelectSingleNode("DataUploadPath")?.InnerText?.Trim() & ""
+            v.CLEVIRFilesPath = node.SelectSingleNode("CLEVIRFilesPath")?.InnerText?.Trim() & ""
+            Dim zipStr As String = node.SelectSingleNode("ZipMF4Files")?.InnerText?.Trim() & ""
+            v.ZipMF4Files = String.Equals(zipStr, "True", StringComparison.OrdinalIgnoreCase)
+            v.ConfigName = node.SelectSingleNode("ConfigName")?.InnerText?.Trim() & ""
+            list.Add(v)
+        Next
+        Return list
+    End Function
+
+    ''' <summary>
+    ''' Applies a VehicleConfig object to the same module-level globals that ProcessVehicleRow sets,
+    ''' then calls ConfigureWorkspaceAndTemplate.  Returns False on invalid processor type.
+    ''' </summary>
+    Private Function ApplyVehicleConfig(v As VehicleConfig) As Boolean
+        NumberOfCamerasInVehicle = 0
+        NumControllers = 0
+        FCMConfigName = ""
+        ReDim CameraNames(8)
+        ActiveCameras.Clear()
+
+        ' 1. Project name from first processor
+        If v.Processors Is Nothing OrElse v.Processors.Length = 0 Then Return False
+        If Not DetermineProjectName(v.Processors(0).Trim()) Then
+            HandleUserMessageLogging("GMRC",
+                $"ApplyVehicleConfig: Invalid Processor '{v.Processors(0)}' for vehicle {v.VehicleNumber}. Exiting...",
+                DisplayMsgBox)
+            Return False
+        End If
+
+        ' 2. Count non-NA processors
+        For Each proc As String In v.Processors
+            If Not proc.Trim().ToUpper().Contains("NA") Then NumControllers += 1
+        Next
+
+        ' 3. Camera positions → ActiveCameras
+        Dim foundFront As Boolean = False
+        Dim acpCanConfig As String = ""
+        For i As Integer = 0 To v.CameraPositions.Length - 1
+            If i > 8 Then Exit For
+            Dim pos As String = v.CameraPositions(i).Trim()
+            CameraNames(i) = pos
+            If Not pos.Equals("NA", StringComparison.OrdinalIgnoreCase) Then
+                If pos.ToUpper() = "FRONT" Then foundFront = True
+                NumberOfCamerasInVehicle += 1
+                If ConfiguredCameras.ContainsKey(pos) Then
+                    ActiveCameras.Add(ConfiguredCameras(pos))
+                Else
+                    HandleUserMessageLogging("GMRC",
+                        $"WARNING: Camera position '{pos}' not found in config.xml camera mappings",
+                        DisplayMsgBox)
+                End If
+            End If
+        Next
+
+        ' 4. CAN monitors — index 1 is BLUEBOX_DESIGNATION (mirrors column 18 in CSV)
+        Dim blueBoxID As String = ""
+        If v.CanMonitors IsNot Nothing Then
+            For i As Integer = 0 To Math.Min(v.CanMonitors.Length - 1, BlueBoxInfo.Length - 1)
+                BlueBoxInfo(i) = v.CanMonitors(i).Trim()
+                If ProjectName.ToUpper().Contains("ACP4") AndAlso
+                   BlueBoxInfo(i).ToUpper().Contains("RTK") Then
+                    acpCanConfig = "_RTK"
+                End If
+            Next
+            If v.CanMonitors.Length > 1 Then
+                blueBoxID = DetermineBlueBoxID(v.CanMonitors(1).Trim(), acpCanConfig)
+            End If
+        End If
+
+        ' 5. DataUploadPath
+        DataUploadPath = If(v.DataUploadPath.Length > 0, "\" & v.DataUploadPath, "")
+
+        ' 6. CLEVIRFilesPath
+        CLEVIRFilesPath = v.CLEVIRFilesPath
+
+        ' 7. ZipTheMF4Files (may be overridden by CurrentVehicleUsage / UsingFlashDrive)
+        ZipTheMF4Files = v.ZipMF4Files
+        Select Case CurrentVehicleUsage.ToUpper()
+            Case "DEVELOPMENT" : ZipTheMF4Files = True
+            Case "VALIDATION" : ZipTheMF4Files = False
+        End Select
+        If UsingFlashDrive Then
+            CurrentVehicleUsage = "DEVELOPMENT"
+            ZipTheMF4Files = True
+        End If
+
+        ' 8. FCMConfigName
+        FCMConfigName = v.ConfigName
+
+        ' 9. Workspace template
+        If Not ConfigureWorkspaceAndTemplate(
+                Path.Combine(My.Application.Info.DirectoryPath, "config.xml"),
+                acpCanConfig, blueBoxID) Then
+            Return False
+        End If
+
+        WorkspaceNameSuffix = INCAWorkspaceTemplateName & NumberOfCamerasInVehicle & "C"
+        GSaveIncaWorkspaceTemplateName = INCAWorkspaceTemplateName
+        GSaveWorkspaceNameSuffix = WorkspaceNameSuffix
+
+        HandleUserMessageLogging("GMRC",
+            $"ApplyVehicleConfig: Vehicle {v.VehicleNumber} loaded from config.xml — " &
+            $"{ActiveCameras.Count} camera(s), template={INCAWorkspaceTemplateName}")
+        Return True
+    End Function
 
     '-----------------------------------------------------------
     '   PROCESS A MATCHING VEHICLE ROW

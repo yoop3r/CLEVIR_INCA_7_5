@@ -42,8 +42,9 @@ Public Class LidarDeviceEditorForm
             Dim ipAddress As String = lidarNode.SelectSingleNode("IpAddress")?.InnerText
             Dim dataPort As String = lidarNode.SelectSingleNode("DataPort")?.InnerText
             Dim imuPort As String = lidarNode.SelectSingleNode("ImuPort")?.InnerText
+            Dim orientation As String = lidarNode.SelectSingleNode("Orientation")?.InnerText?.Trim()
 
-            DataGridViewLidar.Rows.Add(id, enabled, adapterGuid, ipAddress, dataPort, imuPort)
+            DataGridViewLidar.Rows.Add(id, enabled, adapterGuid, ipAddress, dataPort, imuPort, orientation)
         Next
     End Sub
 
@@ -80,6 +81,10 @@ Public Class LidarDeviceEditorForm
                 Dim imuPortNode As XmlElement = _xmlDoc.CreateElement("ImuPort")
                 imuPortNode.InnerText = row.Cells(5).Value?.ToString()
                 lidarNode.AppendChild(imuPortNode)
+
+                Dim orientationNode As XmlElement = _xmlDoc.CreateElement("Orientation")
+                orientationNode.InnerText = If(row.Cells(6).Value?.ToString(), "")
+                lidarNode.AppendChild(orientationNode)
 
                 lidarDevicesNode.AppendChild(lidarNode)
             Next

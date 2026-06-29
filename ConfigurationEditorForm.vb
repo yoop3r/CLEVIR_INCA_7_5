@@ -66,6 +66,27 @@ Public Class ConfigurationEditorForm
         AddHandler btnEditLidar.Click, AddressOf ButtonEditLidar_Click
         Me.Controls.Add(btnEditLidar)
 
+        ' Edit Vehicles Button
+        Dim btnEditVehicles As New Button With {
+            .Text = "Edit Vehicles",
+            .Location = New Point(290, yPos),
+            .Size = New Size(120, 30),
+            .BackColor = Color.LightSalmon
+        }
+        AddHandler btnEditVehicles.Click, AddressOf ButtonEditVehicles_Click
+        Me.Controls.Add(btnEditVehicles)
+
+        ' Signal Registration Mode Button
+        Dim btnSignalReg As New Button With {
+            .Name = "btnSignalReg",
+            .Text = "Signal Reg Mode",
+            .Location = New Point(420, yPos),
+            .Size = New Size(140, 30),
+            .BackColor = Color.LightYellow
+        }
+        AddHandler btnSignalReg.Click, AddressOf ButtonSignalRegMode_Click
+        Me.Controls.Add(btnSignalReg)
+
         ' Search controls at bottom
         Dim lblSearch As New Label With {
         .Text = "Search:",
@@ -120,7 +141,7 @@ Public Class ConfigurationEditorForm
         ' Reset to Defaults Button
         Dim btnReset As New Button With {
                 .Text = "Reset to Defaults",
-                .Location = New Point(290, yPos),
+                .Location = New Point(440, yPos),
                 .Size = New Size(130, 30),
                 .BackColor = Color.LightCoral
                 }
@@ -136,7 +157,7 @@ Public Class ConfigurationEditorForm
         ' ✅ NEW: Status label showing current file
         Dim lblCurrentFile As New Label With {
             .Text = "Editing: config.xml",
-            .Location = New Point(460, yPos + 5),
+            .Location = New Point(590, yPos + 5),
             .Size = New Size(400, 20),
             .Font = New Font(Me.Font, FontStyle.Bold),
             .ForeColor = Color.DarkBlue
@@ -155,6 +176,102 @@ Public Class ConfigurationEditorForm
         Next
         json.AppendLine("}")
         File.WriteAllText("config_export.json", json.ToString())
+    End Sub
+
+    Private Sub ButtonSignalRegMode_Click(sender As Object, e As EventArgs)
+        Try
+            ' Build a lightweight selection dialog at runtime
+            Dim dlg As New Form() With {
+                .Text = "Signal Registration Mode",
+                .Size = New Size(370, 240),
+                .StartPosition = FormStartPosition.CenterParent,
+                .FormBorderStyle = FormBorderStyle.FixedDialog,
+                .MaximizeBox = False,
+                .MinimizeBox = False,
+                .TopMost = True
+            }
+
+            Dim lbl As New Label() With {
+                .Text = "Select Signal Registration Mode:",
+                .Location = New Point(12, 12),
+                .Size = New Size(330, 20),
+                .Font = New Font(dlg.Font, FontStyle.Bold)
+            }
+
+            Dim showNewFull As Boolean = Not (PATAC OrElse CurrentVehicleUsage = "VALIDATION")
+
+            Dim rb1 As New RadioButton() With {.Text = "FULL", .Location = New Point(20, 38), .Size = New Size(310, 24), .Checked = (SignalRegistrationMode = "FULL")}
+            Dim rb2 As New RadioButton() With {.Text = "DISPLAYS", .Location = New Point(20, 66), .Size = New Size(310, 24), .Checked = (SignalRegistrationMode = "DISPLAYS")}
+            Dim rb3 As New RadioButton() With {.Text = "GO/NOGO", .Location = New Point(20, 94), .Size = New Size(310, 24), .Checked = (SignalRegistrationMode = "GO/NOGO")}
+            Dim rb4 As New RadioButton() With {
+                .Text = "Create New Experiment (Admin only)",
+                .Location = New Point(20, 122),
+                .Size = New Size(310, 24),
+                .Checked = (SignalRegistrationMode = "NEW FULL"),
+                .Enabled = ClevirAdministrator,
+                .Visible = showNewFull
+            }
+
+            Dim btnOK As New Button() With {.Text = "OK", .DialogResult = DialogResult.OK, .Location = New Point(95, 165), .Size = New Size(80, 28)}
+            Dim btnCancelDlg As New Button() With {.Text = "Cancel", .DialogResult = DialogResult.Cancel, .Location = New Point(185, 165), .Size = New Size(80, 28)}
+
+            dlg.Controls.AddRange(New Control() {lbl, rb1, rb2, rb3, rb4, btnOK, btnCancelDlg})
+            dlg.AcceptButton = btnOK
+            dlg.CancelButton = btnCancelDlg
+
+            If dlg.ShowDialog(Me) <> DialogResult.OK Then Return
+
+            Dim selectedMode As String = SignalRegistrationMode
+
+            If rb1.Checked Then
+                ' Warn non-admins about FULL registration performance impact
+                If Not ClevirAdministrator Then
+                    Dim warn = "FULL signal registration will take a LONG time. " &
+                               "This is typically not necessary when running CLEVIR in a vehicle. " &
+                               "Are you sure?"
+                    If MsgBox(warn, CType(vbYesNo + vbQuestion, MsgBoxStyle), "FULL Signal Registration") <> vbYes Then
+                        selectedMode = If(SaveSignalRegistrationMode = "FULL", "DISPLAYS", SaveSignalRegistrationMode)
+                    Else
+                        selectedMode = "FULL"
+                    End If
+                Else
+                    selectedMode = "FULL"
+                End If
+            ElseIf rb2.Checked Then
+                selectedMode = "DISPLAYS"
+            ElseIf rb3.Checked Then
+                selectedMode = "GO/NOGO"
+            ElseIf rb4.Checked Then
+                selectedMode = "NEW FULL"
+            End If
+
+            SignalRegistrationMode = selectedMode
+            SaveSignalRegistrationMode = selectedMode
+
+            ' Persist to in-memory XML document so ButtonSave will write it
+            If _xmlDoc IsNot Nothing Then
+                Dim node As XmlNode = FindNodeByPath(_xmlDoc.DocumentElement, "SignalRegistrationMode")
+                If node IsNot Nothing Then
+                    node.InnerText = selectedMode
+                    ' Keep DataGridView in sync
+                    For Each row As DataGridViewRow In DataGridViewParams.Rows
+                        If row.Cells(0).Value?.ToString() = "SignalRegistrationMode" Then
+                            row.Cells(1).Value = selectedMode
+                            Exit For
+                        End If
+                    Next
+                    _isDirty = True
+                End If
+            End If
+
+            HandleUserMessageLogging("GMRC", $"ConfigEditor: Signal Registration Mode set to '{selectedMode}'")
+            LabelStatus.Text = $"Signal Registration Mode: {selectedMode}"
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"ButtonSignalRegMode_Click: {ex.Message}")
+            MessageBox.Show($"Failed to set Signal Registration Mode: {ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
     End Sub
 
     Private Sub ButtonToggleOxts_Click(sender As Object, e As EventArgs)
@@ -203,6 +320,30 @@ Public Class ConfigurationEditorForm
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"EditLidar failed: {ex.Message}")
             MessageBox.Show($"Failed to edit LiDAR devices: {ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Private Sub ButtonEditVehicles_Click(sender As Object, e As EventArgs)
+        Try
+            If _xmlDoc Is Nothing Then
+                MessageBox.Show("Please load a configuration file first.", "No Configuration",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
+            End If
+            Using vehicleEditor As New VehicleEditorForm(_xmlDoc)
+                vehicleEditor.StartPosition = FormStartPosition.CenterParent
+                vehicleEditor.TopMost = True
+                vehicleEditor.BringToFront()
+                If vehicleEditor.ShowDialog() = DialogResult.OK Then
+                    _isDirty = True
+                    ' Refresh the parameter grid to reflect any structural changes
+                    LoadConfiguration()
+                End If
+            End Using
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"EditVehicles failed: {ex.Message}")
+            MessageBox.Show($"Failed to edit vehicles: {ex.Message}", "Error",
                             MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
@@ -304,6 +445,10 @@ Public Class ConfigurationEditorForm
         Select Case node.Name
             Case "LidarDevices"
                 ' ✅ Skip LidarDevices entirely (handled by dedicated editor button)
+                Return True
+
+            Case "Vehicles"
+                ' ✅ Skip Vehicles entirely (handled by dedicated VehicleEditorForm button)
                 Return True
 
             Case "Compression", "OxtsConfiguration"
@@ -434,6 +579,17 @@ Public Class ConfigurationEditorForm
 
             ' Hardware
             Case "MaxCameras" : Return "Maximum number of cameras supported"
+
+            ' Vehicles
+            Case "Vehicles" : Return "Fleet vehicle configurations (edit via Edit Vehicles button)"
+            Case "VehicleNumber" : Return "Unique vehicle identifier (e.g. 6SME5384)"
+            Case "Processors" : Return "Comma-separated processor list (e.g. ACP3_MCU,NA,NA,NA,NA,NA)"
+            Case "CameraPositions" : Return "Comma-separated camera position names (e.g. FRONT,REAR,NA,...)"
+            Case "CanMonitors" : Return "Comma-separated CAN monitor IDs (e.g. 886,886,886,886)"
+            Case "DataUploadPath" : Return "Upload sub-path on network drive (e.g. ACP3\VehicleData\)"
+            Case "CLEVIRFilesPath" : Return "Network path to CLEVIR signal/workspace files (e.g. Current\ACP3)"
+            Case "ZipMF4Files" : Return "Zip MF4 files after recording (True/False)"
+            Case "ConfigName" : Return "Workspace config name (e.g. ACP3_1P1C)"
 
             Case Else
                 Return ""

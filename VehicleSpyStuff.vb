@@ -322,7 +322,7 @@ Module VehicleSpyStuff
         HandleUserMessageLogging("GMRC", errorMessage,,, FlashMsg3Sec)
         OnVehicleScreen.Label3.BackColor = Color.Red
         If VSpySelectedConfigFileName = VSpyDefaultConfigFileName Then
-            LoginForm.CheckBox3.Checked = False
+            AlternateRecordEnabled = False
         End If
     End Sub
 
@@ -430,7 +430,7 @@ Module VehicleSpyStuff
         HandleUserMessageLogging("GMRC", errorMessage,,, FlashMsg3Sec)
         OnVehicleScreen.Label3.BackColor = Color.Red
         If VSpySelectedConfigFileName = VSpyDefaultConfigFileName Then
-            LoginForm.CheckBox3.Checked = False
+            AlternateRecordEnabled = False
         End If
     End Sub
 
@@ -877,8 +877,7 @@ Module VehicleSpyStuff
 
         ' Update UI to reflect failure.
         UserStatusInfo.Hide()
-        LoginForm.CheckBox3.Checked = False
-        LoginForm.CheckBox3.Visible = False
+        AlternateRecordEnabled = False
         OnVehicleScreen.Label3.Visible = False
 
         ' Clean up resources.

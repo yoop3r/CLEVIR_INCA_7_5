@@ -105,8 +105,38 @@ Public Class InitForm
         ' Populate the in-memory vehicle numbers list from the configuration file.
         VehicleNumbersList = New List(Of String)
 
-        Dim filename As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleConfigurationsNF.csv")
-        ReadVehicleConfigurationFile(filename)
+        ' ── XML-first path ──────────────────────────────────────────────────
+        Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+        Dim loadedFromXml As Boolean = False
+        If File.Exists(configPath) Then
+            Try
+                Dim xmlDoc As New System.Xml.XmlDocument()
+                xmlDoc.Load(configPath)
+                Dim xmlVehicles As List(Of VehicleConfig) = ReadVehiclesFromXml(xmlDoc)
+                If xmlVehicles IsNot Nothing Then
+                    For Each v As VehicleConfig In xmlVehicles
+                        If Not String.IsNullOrWhiteSpace(v.VehicleNumber) Then
+                            Dim projectName As String = GetProjectNameFromProcessor(
+                                If(v.Processors IsNot Nothing AndAlso v.Processors.Length > 0,
+                                   v.Processors(0).Trim(), ""))
+                            AddVehicleToList(v.VehicleNumber, projectName)
+                        End If
+                    Next
+                    loadedFromXml = True
+                    HandleUserMessageLogging("GMRC",
+                        $"PopulateVehicleNumbersList: loaded {xmlVehicles.Count} vehicle(s) from config.xml")
+                End If
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC",
+                    "PopulateVehicleNumbersList: XML read failed, falling back to CSV: " & ex.Message)
+            End Try
+        End If
+
+        ' ── Legacy CSV fallback ─────────────────────────────────────────────
+        If Not loadedFromXml Then
+            Dim filename As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleConfigurationsNF.csv")
+            ReadVehicleConfigurationFile(filename)
+        End If
 
         VehicleNumbersList.Add(" VEHICLE ID NOT IN LIST")
         VehicleNumbersList.Sort()
@@ -178,25 +208,18 @@ Public Class InitForm
 
 
     Private Function GetVehicleNumber() As String
-        ' Called from InitForm_Load and when Save Vehicle Number Change button is pressed:
-        ' Pulls the vehicle number out of the vehicleconfig.txt file.
-        Dim textline As String
-        Dim vehicleConfigPath As String = Path.Combine(My.Application.Info.DirectoryPath, "vehicleconfig.txt")
+        ' Called from InitForm_Load and when Save Vehicle Number Change button is pressed.
+        ' Reads the selected vehicle number from <SelectedVehicleNumber> in config.xml.
+        ' Falls back to "UNDEFINED" when the element is absent (first run, fresh install).
         If String.IsNullOrEmpty(VehicleNumber) Then
-            If File.Exists(vehicleConfigPath) Then
-                ' Use StreamReader to read the file
-                Using reader As New StreamReader(vehicleConfigPath)
-                    textline = reader.ReadLine()
-                    If Not String.IsNullOrEmpty(textline) Then
-                        VehicleNumber = textline.Substring(textline.IndexOf(Chr(9)) + 1)
-                    End If
-                End Using
-            Else
-                VehicleNumber = "UNDEFINED"
-            End If
+            VehicleNumber = ReadSelectedVehicleNumber()
         End If
         If UCase(VehicleNumber) = "6LDN4666" AndAlso Not ClevirAdministrator Then
             HandleUserMessageLogging("GMRC", "GetVehicleNumber: Vehicle number 6LDN4666 is not a valid number. You must select a valid vehicle number to continue.", DisplayMsgBox, )
+            Button1.Enabled = False
+        ElseIf String.IsNullOrEmpty(VehicleNumber) OrElse
+               String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
+            ' No vehicle selected yet — keep DRIVE disabled until user picks one
             Button1.Enabled = False
         Else
             Button1.Enabled = True
@@ -325,22 +348,11 @@ Public Class InitForm
     End Sub
 
     Public Sub SaveVehicleNumber(ByVal l_VehicleNumber As String)
-        'Saves the vehicle number to the vehicleconfig.txt file...
-        'Called from the Save and continue button on InitForm
-
+        ' Saves the selected vehicle number to <SelectedVehicleNumber> in config.xml.
+        ' Called from the Save and continue button on InitForm.
         If l_VehicleNumber <> " VEHICLE ID NOT IN LIST" Then
-            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "vehicleconfig.txt")
-
-            ' Use StreamWriter with a Using block to ensure proper resource disposal
-            Try
-                Using writer As New StreamWriter(configPath, False)
-                    writer.WriteLine("VehicleNumber" & Chr(9) & l_VehicleNumber)
-                End Using
-
-                HandleUserMessageLogging("GMRC", "SaveVehicleNumber: Vehicle Number changed from " & VehicleNumber & " to " & l_VehicleNumber)
-            Catch ex As Exception
-                HandleUserMessageLogging("GMRC", "SaveVehicleNumber: Error writing vehicle config file: " & ex.Message, DisplayMsgBox)
-            End Try
+            HandleUserMessageLogging("GMRC", "SaveVehicleNumber: Vehicle Number changed from " & VehicleNumber & " to " & l_VehicleNumber)
+            SaveSelectedVehicleNumber(l_VehicleNumber)
         End If
 
         VehicleNumber = l_VehicleNumber
@@ -758,9 +770,9 @@ Public Class InitForm
                 Return
             End If
 
-            ' ✅ For ALL other cases (DEVELOPMENT, VALIDATION), show InitForm
-            HandleUserMessageLogging("GMRC", "Showing InitForm for user interaction")
-            ShowInitFormInteractive($"Initialization complete. Mode: {CurrentVehicleUsage}")
+            ' For DEVELOPMENT/VALIDATION, auto-drive directly to LoginForm
+            HandleUserMessageLogging("GMRC", "Initialization complete - attempting auto-drive to LoginForm")
+            AutoDriveOrFallback()
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"ShowInitFormAfterInitialization: {ex.Message}", DisplayMsgBox)
@@ -793,6 +805,39 @@ Public Class InitForm
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"ShowInitFormInteractive: {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' Auto-calls Drive() after initialization completes, bypassing the InitForm button window.
+    ''' Falls back to showing InitForm interactively if Drive is not possible or fails.
+    ''' </summary>
+    Private Sub AutoDriveOrFallback()
+        Try
+            ' If DRIVE would be disabled (vehicle not configured or UNDEFINED), show InitForm instead
+            If Not Button1.Enabled Then
+                Dim reason As String = If(String.IsNullOrEmpty(VehicleNumber) OrElse
+                                          String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase),
+                                          "no vehicle number selected",
+                                          "vehicle not configured")
+                HandleUserMessageLogging("GMRC", $"AutoDrive: DRIVE disabled ({reason}) - showing InitForm")
+                ShowInitFormInteractive("Please select your vehicle number to continue.")
+                Return
+            End If
+
+            HandleUserMessageLogging("GMRC", "AutoDrive: Calling Drive() automatically...")
+            Drive()
+
+            ' If Drive() failed (INCA not ready, config issue), GmResidentClient will not be visible.
+            ' Fall back to the InitForm button window so the user can retry.
+            If Not GmResidentClient.Visible Then
+                HandleUserMessageLogging("GMRC", "AutoDrive: Drive() did not reach GmResidentClient - falling back to InitForm")
+                ShowInitFormInteractive("INCA not ready. Press DRIVE when INCA is running.")
+            End If
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"AutoDriveOrFallback: {ex.Message}", DisplayMsgBox)
+            ShowInitFormInteractive("Initialization error - please retry or check configuration.")
         End Try
     End Sub
 

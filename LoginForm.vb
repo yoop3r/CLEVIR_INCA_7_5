@@ -103,42 +103,6 @@ Public Class LoginForm
         End Try
     End Sub
 
-    Private Sub HandleFullSigRegSelected(Optional ByVal onLogin As Boolean = False)
-        'Warns user about FULL signal registration performance impact
-
-        Dim msgBoxText As String = "FULL signal registration will take a LONG time. This is typically not necessary when running CLEVIR in a vehicle. Are you sure you want to do a FULL signal registration?"
-
-        If ClevirAdministrator = False Then
-            If (SaveSignalRegistrationMode <> "FULL" And onLogin = False) Then
-                If MsgBox(msgBoxText, vbYesNo) = vbYes Then
-                    HandleUserMessageLogging("GMRC", "User answered YES to FULL signal registration...")
-                    SignalRegistrationMode = "FULL"
-                Else
-                    HandleUserMessageLogging("GMRC", "User answered NO to FULL signal registration...")
-                    SignalRegistrationMode = SaveSignalRegistrationMode
-                End If
-            ElseIf (SaveSignalRegistrationMode = "FULL" And onLogin = True) Then
-                If MsgBox(msgBoxText, vbYesNo) = vbYes Then
-                    HandleUserMessageLogging("GMRC", "User answered YES to FULL signal registration...")
-                    SignalRegistrationMode = "FULL"
-                Else
-                    HandleUserMessageLogging("GMRC", "User answered NO to FULL signal registration...")
-                    SignalRegistrationMode = "DISPLAYS"
-                End If
-            End If
-
-            Select Case SignalRegistrationMode
-                Case "DISPLAYS"
-                    RadioButton2.Checked = True
-                Case "GO/NOGO"
-                    RadioButton3.Checked = True
-            End Select
-        End If
-
-        SaveSignalRegistrationMode = SignalRegistrationMode
-        HandleUserMessageLogging("GMRC", "FULL Signal Registration Mode was selected. Final Signal Registration Mode is " & SaveSignalRegistrationMode)
-    End Sub
-
     Private Sub LoginForm_Activated(ByVal sender As Object, ByVal e As System.EventArgs) Handles Me.Activated
         OnLoginScreen = True
     End Sub
@@ -179,25 +143,8 @@ Public Class LoginForm
     End Sub
 
     Private Sub LoginForm_Load(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles MyBase.Load
-        If PATAC = True Or CurrentVehicleUsage = "VALIDATION" Then
-            Me.CheckBox1.Visible = False
-            RadioButton4.Visible = False
-        End If
-
-        If ClevirAdministrator = True Then
-            RadioButton4.Enabled = True
-        End If
-
-        ' ✅ Apply signal registration mode from config.xml (deferred initialization)
-        ApplySignalRegistrationModeFromConfig()
-
-        If ConfigureForNewSoftwareVersion = True Then
-            RadioButton4.Checked = True
-        End If
 
         _isInitializing = True
-        InitializeAlternateRecordingCheckbox()  ' ✅ ADD THIS
-        InitializeLidarCheckbox()
 
         ' ═══════════════════════════════════════════════════════════════════
         ' Populate Session Metadata Dropdowns
@@ -274,128 +221,65 @@ Public Class LoginForm
             HandleUserMessageLogging("LoginForm", $"Error creating LOGIN button: {ex.Message}")
         End Try
 
+        ' ═══════════════════════════════════════════════════════════════
+        ' Add ⚙️ Config Editor button below EXIT button
+        ' ═══════════════════════════════════════════════════════════════
+        Try
+            Dim configEditorButton As New Button With {
+                .Name = "ButtonConfigEditor",
+                .Text = "⚙️ Config",
+                .Size = New Size(Button43.Width, 37),
+                .Font = New System.Drawing.Font("Segoe UI", 9.0F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CByte(0)),
+                .Location = New Point(Button43.Left, Button43.Bottom + 8),
+                .UseVisualStyleBackColor = True,
+                .Cursor = Cursors.Hand
+            }
+            Me.Controls.Add(configEditorButton)
+            configEditorButton.BringToFront()
+            AddHandler configEditorButton.Click, AddressOf LoginForm_ConfigEditor_Click
+            HandleUserMessageLogging("GMRC", "LoginForm: Config Editor button created")
+        Catch ex As Exception
+            HandleUserMessageLogging("LoginForm", $"Error creating Config Editor button: {ex.Message}")
+        End Try
+
+        ' ═══════════════════════════════════════════════════════════════
+        ' System Configuration summary (read-only, populated from config.xml)
+        ' ═══════════════════════════════════════════════════════════════
+        Try
+            Dim cfgBox As New GroupBox With {
+                .Name = "GroupBox_ConfigSummary",
+                .Text = "System Configuration",
+                .Font = New System.Drawing.Font("Segoe UI", 9.0F, System.Drawing.FontStyle.Bold),
+                .Location = New Point(12, 143),
+                .Size = New Size(442, 180),
+                .BackColor = System.Drawing.Color.White
+            }
+            Dim tlp As New TableLayoutPanel With {
+                .Name = "Table_ConfigSummary",
+                .ColumnCount = 2,
+                .Dock = DockStyle.Fill,
+                .Padding = New Padding(6, 4, 6, 4),
+                .CellBorderStyle = TableLayoutPanelCellBorderStyle.None
+            }
+            tlp.ColumnStyles.Add(New ColumnStyle(SizeType.Absolute, 155))
+            tlp.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 100))
+            PopulateConfigTable(tlp)
+            cfgBox.Controls.Add(tlp)
+            Me.Controls.Add(cfgBox)
+            cfgBox.BringToFront()
+            HandleUserMessageLogging("GMRC", "LoginForm: Config summary panel created")
+        Catch ex As Exception
+            HandleUserMessageLogging("LoginForm", $"Error creating config summary: {ex.Message}")
+        End Try
+
+        ' Label4 is superseded by the config summary panel
+        Label4.Visible = False
+        Me.ClientSize = New Size(470, 496)
+
         ' ✅ IMPORTANT: Set _isInitializing to False AFTER all initialization
         _isInitializing = False
 
-        ' ═══════════════════════════════════════════════════════════════════
-        ' Update Label4 with current config info (MOVED FROM MODULE1)
-        ' ═══════════════════════════════════════════════════════════════════
-        Try
-            If Not String.IsNullOrEmpty(INCAVariableFile) AndAlso Not String.IsNullOrEmpty(INCAExperiment) Then
-                Label4.Text = $"{Path.GetFileName(INCAVariableFile)} / {INCAExperiment}"
-            Else
-                Label4.Text = "Config not yet verified"
-            End If
-        Catch ex As Exception
-            HandleUserMessageLogging("LoginForm", $"Error updating Label4: {ex.Message}")
-            Label4.Text = "Config info unavailable"
-        End Try
-
-        ' ═══════════════════════════════════════════════════════════════════
-        ' ✅ NOTE: CheckBox3 configuration now handled by InitializeAlternateRecordingCheckbox()
-        ' ═══════════════════════════════════════════════════════════════════
-
         HandleUserMessageLogging("GMRC", "LoginForm_Load: Initialization complete, form ready for user interaction")
-    End Sub
-
-    ''' <summary>
-    ''' ✅ ENHANCED: Initialize Alternate Recording checkbox with validation (mirrors LiDAR logic)
-    ''' </summary>
-    Private Sub InitializeAlternateRecordingCheckbox()
-        Try
-            ' Temporarily remove handler to prevent spurious events during initialization
-            RemoveHandler CheckBox3.CheckedChanged, AddressOf CheckBox3_CheckedChanged
-
-            ' ✅ NEW: Validate AlternateRecordingMode configuration
-            If String.IsNullOrEmpty(AlternateRecordingMode) OrElse AlternateRecordingMode = "None" Then
-                CheckBox3.Text = "Alternate Recording (Not Configured)"
-                CheckBox3.Checked = False
-                CheckBox3.Enabled = False
-                CheckBox3.Visible = False
-                HandleUserMessageLogging("GMRC", "LoginForm: Alternate Recording disabled - mode set to 'None' or empty")
-                AddHandler CheckBox3.CheckedChanged, AddressOf CheckBox3_CheckedChanged
-                Return
-            End If
-
-            ' ✅ NEW: Set descriptive text based on recording mode
-            Select Case AlternateRecordingMode
-                Case "CANalyzer"
-                    CheckBox3.Text = "Enable CANalyzer Recording"
-                    CheckBox3.Visible = True
-                    CheckBox3.Enabled = True
-                    CheckBox3.Checked = AlternateRecordEnabled
-                    HandleUserMessageLogging("GMRC", $"LoginForm: CANalyzer Recording checkbox initialized to {AlternateRecordEnabled} from config.xml")
-
-                Case "VehicleSpy"
-                    CheckBox3.Text = "Enable VehicleSpy Recording"
-                    CheckBox3.Visible = True
-                    CheckBox3.Enabled = True
-                    CheckBox3.Checked = AlternateRecordEnabled
-                    HandleUserMessageLogging("GMRC", $"LoginForm: VehicleSpy Recording checkbox initialized to {AlternateRecordEnabled} from config.xml")
-
-                Case Else
-                    ' ✅ NEW: Handle invalid/unknown modes
-                    CheckBox3.Text = $"Alternate Recording (Invalid Mode: {AlternateRecordingMode})"
-                    CheckBox3.Checked = False
-                    CheckBox3.Enabled = False
-                    CheckBox3.Visible = True ' Keep visible to show error
-                    HandleUserMessageLogging("GMRC", $"LoginForm: WARNING - Invalid AlternateRecordingMode '{AlternateRecordingMode}', disabling checkbox")
-            End Select
-
-            ' Re-attach handler
-            AddHandler CheckBox3.CheckedChanged, AddressOf CheckBox3_CheckedChanged
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"InitializeAlternateRecordingCheckbox: {ex.Message}")
-            Try
-                CheckBox3.Text = "Alternate Recording (Error)"
-                CheckBox3.Checked = False
-                CheckBox3.Enabled = False
-                AddHandler CheckBox3.CheckedChanged, AddressOf CheckBox3_CheckedChanged
-            Catch innerEx As Exception
-                HandleUserMessageLogging("GMRC", $"InitializeAlternateRecordingCheckbox: Critical failure: {innerEx.Message}")
-            End Try
-        End Try
-    End Sub
-
-    Private Sub InitializeLidarCheckbox()
-        Try
-            RemoveHandler CheckBox_LidarCapture.CheckedChanged, AddressOf CheckBox_LidarCapture_CheckedChanged
-
-            If LidarDevices Is Nothing Then
-                CheckBox_LidarCapture.Text = "LiDAR Capture (Configuration Error)"
-                CheckBox_LidarCapture.Checked = False
-                CheckBox_LidarCapture.Enabled = False
-                HandleUserMessageLogging("GMRC", "LoginForm: LidarDevices is Nothing - disabling checkbox")
-                AddHandler CheckBox_LidarCapture.CheckedChanged, AddressOf CheckBox_LidarCapture_CheckedChanged
-                Return
-            End If
-
-            If LidarDevices.Count > 0 Then
-                CheckBox_LidarCapture.Text = $"Enable LiDAR Capture ({LidarDevices.Count} device(s))"
-                CheckBox_LidarCapture.Enabled = True
-                CheckBox_LidarCapture.Checked = LidarCaptureEnabled
-                HandleUserMessageLogging("GMRC", $"LoginForm: LiDAR checkbox initialized to {LidarCaptureEnabled} from config.xml ({LidarDevices.Count} device(s) configured)")
-            Else
-                CheckBox_LidarCapture.Text = "LiDAR Capture (Not Configured)"
-                CheckBox_LidarCapture.Enabled = False
-                CheckBox_LidarCapture.Checked = False
-                HandleUserMessageLogging("GMRC", "LoginForm: LiDAR capture unavailable - no devices configured in collection")
-            End If
-
-            AddHandler CheckBox_LidarCapture.CheckedChanged, AddressOf CheckBox_LidarCapture_CheckedChanged
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"InitializeLidarCheckbox: {ex.Message}")
-            Try
-                CheckBox_LidarCapture.Text = "LiDAR Capture (Error)"
-                CheckBox_LidarCapture.Enabled = False
-                CheckBox_LidarCapture.Checked = False
-                AddHandler CheckBox_LidarCapture.CheckedChanged, AddressOf CheckBox_LidarCapture_CheckedChanged
-            Catch innerEx As Exception
-                HandleUserMessageLogging("GMRC", $"InitializeLidarCheckbox: Critical failure in error handler: {innerEx.Message}")
-            End Try
-        End Try
     End Sub
 
     Private Sub Button43_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles Button43.Click
@@ -420,35 +304,51 @@ Public Class LoginForm
         End Try
     End Sub
 
-    Private Sub RadioButton1_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles RadioButton1.CheckedChanged
-        'FULL Signal Registration Mode
-        If RadioButton1.Checked = True Then
-            HandleUserMessageLogging("GMRC", "FULL Selection made...")
-            If ClevirAdministrator = False Then
-                HandleFullSigRegSelected()
-            Else
-                SignalRegistrationMode = "FULL"
-                SaveSignalRegistrationMode = SignalRegistrationMode
+    Private Sub LoginForm_ConfigEditor_Click(sender As Object, e As EventArgs)
+        Try
+            HandleUserMessageLogging("GMRC", "LoginForm: Configuration Editor button pressed...")
+
+            Dim editor As New ConfigurationEditorForm()
+            If editor.ShowDialog(Me) = DialogResult.OK Then
+                If MsgBox("Configuration updated. Reload settings now?", vbYesNo + vbQuestion) = vbYes Then
+                    ReadConfigFile()
+
+                    ' ── Lightweight validation on the freshly reloaded globals ─────
+                    ' (VerifyConfigFiles is cached; this targets only what a user can
+                    '  change in the editor and checks it before INCA initialization.)
+                    Dim issues As New List(Of String)()
+                    If String.IsNullOrWhiteSpace(INCADatabase) Then
+                        issues.Add("INCA database path is empty")
+                    End If
+                    If String.IsNullOrWhiteSpace(INCAExperiment) Then
+                        issues.Add("INCA experiment is not set")
+                    End If
+                    If String.IsNullOrWhiteSpace(INCAVariableFile) OrElse Not File.Exists(INCAVariableFile) Then
+                        issues.Add($"Signal list file not found:{vbCrLf}  {INCAVariableFile}")
+                    End If
+
+                    ' Refresh the read-only config summary panel with reloaded values
+                    RefreshConfigSummary()
+
+                    If issues.Count > 0 Then
+                        Dim issueList As String = String.Join(vbCrLf & "  • ", issues)
+                        StatusNotifier.Warn(
+                            $"Configuration reloaded but the following issues were found:{vbCrLf}" &
+                            $"  • {issueList}{vbCrLf}{vbCrLf}" &
+                            "Please correct these before logging in.",
+                            "Configuration Warning")
+                        HandleUserMessageLogging("GMRC", $"LoginForm: Config reload issues: {String.Join("; ", issues)}")
+                    Else
+                        StatusNotifier.Toast(
+                            "Configuration updated. All changes take effect when INCA initializes after you log in.",
+                            "Config", durationMs:=4000, ensureMainOnTop:=False)
+                        HandleUserMessageLogging("GMRC", "LoginForm: Configuration reloaded - all files verified, changes take effect after login")
+                    End If
+                End If
             End If
-        End If
-    End Sub
-
-    Private Sub RadioButton2_CheckedChanged(ByVal sender As Object, ByVal e As System.EventArgs) Handles RadioButton2.CheckedChanged
-        'DISPLAYS Signal Registration Mode
-        If RadioButton2.Checked = True Then
-            HandleUserMessageLogging("GMRC", "DISPLAYS Selection made...")
-            SignalRegistrationMode = "DISPLAYS"
-            SaveSignalRegistrationMode = SignalRegistrationMode
-        End If
-    End Sub
-
-    Private Sub RadioButton3_CheckedChanged(ByVal sender As Object, ByVal e As System.EventArgs) Handles RadioButton3.CheckedChanged
-        'GO/NOGO Signal Registration Mode
-        If RadioButton3.Checked = True Then
-            HandleUserMessageLogging("GMRC", "GO/NOGO Selection made...")
-            SignalRegistrationMode = "GO/NOGO"
-            SaveSignalRegistrationMode = SignalRegistrationMode
-        End If
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"LoginForm ConfigEditor launch failed: {ex.Message}", DisplayMsgBox)
+        End Try
     End Sub
 
     ' ═══════════════════════════════════════════════════════════════════
@@ -483,43 +383,6 @@ Public Class LoginForm
         End Try
     End Function
 
-    Private Sub RadioButton4_CheckedChanged(ByVal sender As Object, ByVal e As System.EventArgs) Handles RadioButton4.CheckedChanged
-        'CREATE NEW FROM BLANK EXP (Admin only)
-        If RadioButton4.Checked = True Then
-            SignalRegistrationMode = "NEW FULL"
-        End If
-    End Sub
-
-    Private Sub CheckBox1_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles CheckBox1.CheckedChanged
-
-        If CheckBox1.Checked = True Then
-            HandleUserMessageLogging("GMRC", "Save Calibration Snapshots Selection made...")
-        End If
-    End Sub
-
-    Private Sub CheckBox3_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles CheckBox3.CheckedChanged
-        If CheckBox3.Checked = True Then
-
-            HandleUserMessageLogging("GMRC", "Enable Alternate Recording Mode Selection made...")
-        Else
-            HandleUserMessageLogging("GMRC", "Disable Alternate Recording Mode Selection made...")
-        End If
-
-    End Sub
-
-    Private Sub CheckBox_LidarCapture_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles CheckBox_LidarCapture.CheckedChanged
-        If CheckBox_LidarCapture.Checked = True Then
-            HandleUserMessageLogging("GMRC", "Enable Lidar Capture Selection made...")
-        Else
-            HandleUserMessageLogging("GMRC", "Disable Lidar Capture Selection made...")
-            If LidarCaptureStarted Then
-                StopLidarCapture()
-            End If
-        End If
-
-        LidarCaptureEnabled = CheckBox_LidarCapture.Checked
-    End Sub
-
     Private Sub LoginForm_Shown(ByVal sender As Object, ByVal e As System.EventArgs) Handles Me.Shown
         OnLoginScreen = True
         OnVehicleScreen.SendToBack()
@@ -541,48 +404,130 @@ Public Class LoginForm
         HandleUserMessageLogging("GMRC", $"LoginForm_VisibleChanged: Visible={Me.Visible}")
     End Sub
 
-    ''' <summary>
-    ''' ✅ NEW: Apply signal registration mode from configuration after form initialization
-    ''' This prevents premature form instantiation during config loading
-    ''' </summary>
-    Private Sub ApplySignalRegistrationModeFromConfig()
-        Try
-            ' Temporarily disable event handlers to prevent cascading events
-            _isInitializing = True
-
-            Select Case SignalRegistrationMode
-                Case "FULL"
-                    RadioButton1.Checked = True
-                    HandleUserMessageLogging("GMRC", "LoginForm: Applied FULL signal registration mode from config")
-                Case "DISPLAYS"
-                    RadioButton2.Checked = True
-                    HandleUserMessageLogging("GMRC", "LoginForm: Applied DISPLAYS signal registration mode from config")
-                Case "GO/NOGO"
-                    RadioButton3.Checked = True
-                    HandleUserMessageLogging("GMRC", "LoginForm: Applied GO/NOGO signal registration mode from config")
-                Case "NEW FULL"
-                    RadioButton4.Checked = True
-                    HandleUserMessageLogging("GMRC", "LoginForm: Applied NEW FULL signal registration mode from config")
-                Case Else
-                    ' Default to DISPLAYS if mode is invalid
-                    RadioButton2.Checked = True
-                    HandleUserMessageLogging("GMRC", $"LoginForm: Unknown mode '{SignalRegistrationMode}', defaulting to DISPLAYS")
-            End Select
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"ApplySignalRegistrationModeFromConfig: {ex.Message}")
-            ' Fail-safe: default to DISPLAYS
-            Try
-                RadioButton2.Checked = True
-            Catch
-                ' Suppress secondary errors
-            End Try
-        Finally
-            _isInitializing = False
-        End Try
-    End Sub
-
     Private Sub ToolTip1_Popup(sender As Object, e As PopupEventArgs)
 
     End Sub
+
+    ' ═══════════════════════════════════════════════════════════════
+    ' Config Summary Helpers
+    ' ═══════════════════════════════════════════════════════════════
+
+    ''' <summary>
+    ''' Clears and repopulates a two-column TableLayoutPanel with current config values.
+    ''' Col 0 (155px fixed) = label; Col 1 (fill) = value.
+    ''' </summary>
+    Private Sub PopulateConfigTable(tlp As TableLayoutPanel)
+        tlp.SuspendLayout()
+        tlp.Controls.Clear()
+        tlp.RowStyles.Clear()
+        tlp.RowCount = 0
+
+        Dim rowFont As New System.Drawing.Font("Segoe UI", 8.5F)
+        Dim rows As New List(Of KeyValuePair(Of String, String))()
+
+        ' Vehicle
+        Dim vn As String = If(String.IsNullOrWhiteSpace(VehicleNumber) OrElse
+                              String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase),
+                              "(not set)", VehicleNumber)
+        rows.Add(New KeyValuePair(Of String, String)("Vehicle:", vn))
+
+        ' Alternate Recorder
+        Dim recText As String = If(AlternateRecordEnabled,
+                                   If(String.IsNullOrWhiteSpace(AlternateRecordConfig), "(not set)", AlternateRecordConfig),
+                                   "None")
+        rows.Add(New KeyValuePair(Of String, String)("Alt. Recorder:", recText))
+
+        ' Data Collection Path
+        rows.Add(New KeyValuePair(Of String, String)("Data Collection Path:",
+                 If(String.IsNullOrWhiteSpace(BaseDataCollectionPath), "(not set)", BaseDataCollectionPath)))
+
+        ' Compression
+        Dim compTypes As New List(Of String)()
+        If CompressMF4 Then compTypes.Add("MF4")
+        If CompressPCAP Then compTypes.Add("PCAP")
+        If CompressASC Then compTypes.Add("ASC")
+        If CompressVSB Then compTypes.Add("VSB")
+        rows.Add(New KeyValuePair(Of String, String)("Compression:",
+                 If(compTypes.Count > 0, String.Join(", ", compTypes), "None")))
+
+        ' Camera(s)
+        Dim enabledCameras As New List(Of CameraConfig)(ConfiguredCameras.Values.Where(Function(c) c.Enabled))
+        If enabledCameras.Count = 0 Then
+            rows.Add(New KeyValuePair(Of String, String)("Camera(s):", "None configured"))
+        Else
+            Dim camParts As New List(Of String)()
+            For i As Integer = 0 To enabledCameras.Count - 1
+                camParts.Add($"{i + 1}:{enabledCameras(i).Position}")
+            Next
+            rows.Add(New KeyValuePair(Of String, String)("Camera(s):",
+                     $"{enabledCameras.Count}, {String.Join(", ", camParts)}"))
+        End If
+
+        ' LiDAR(s)
+        If Not LidarCaptureEnabled OrElse LidarDevices.Count = 0 Then
+            rows.Add(New KeyValuePair(Of String, String)("LiDAR(s):", "Not enabled"))
+        Else
+            Dim enabledLidars As New List(Of LidarDevice)(LidarDevices.Where(Function(d) d.Enabled))
+            If enabledLidars.Count = 0 Then
+                rows.Add(New KeyValuePair(Of String, String)("LiDAR(s):", "None enabled"))
+            Else
+                Dim lidarParts As New List(Of String)()
+                For i As Integer = 0 To enabledLidars.Count - 1
+                    Dim lbl As String = If(Not String.IsNullOrWhiteSpace(enabledLidars(i).Orientation),
+                                           enabledLidars(i).Orientation, enabledLidars(i).DeviceId)
+                    lidarParts.Add($"{i + 1}:{lbl}")
+                Next
+                rows.Add(New KeyValuePair(Of String, String)("LiDAR(s):",
+                         $"{enabledLidars.Count}, {String.Join(", ", lidarParts)}"))
+            End If
+        End If
+
+        ' Workspace
+        rows.Add(New KeyValuePair(Of String, String)("Workspace:",
+                 If(String.IsNullOrWhiteSpace(INCAWorkspace), "(not set)", INCAWorkspace)))
+
+        ' Experiment
+        rows.Add(New KeyValuePair(Of String, String)("Experiment:",
+                 If(String.IsNullOrWhiteSpace(INCAExperiment), "(not set)", INCAExperiment)))
+
+        ' Populate table rows
+        tlp.RowCount = rows.Count
+        For i As Integer = 0 To rows.Count - 1
+            tlp.RowStyles.Add(New RowStyle(SizeType.AutoSize))
+            Dim keyLbl As New Label With {
+                .Text = rows(i).Key,
+                .Font = rowFont,
+                .AutoSize = True,
+                .Anchor = AnchorStyles.Left Or AnchorStyles.Top,
+                .Margin = New Padding(0, 2, 4, 1)
+            }
+            Dim valLbl As New Label With {
+                .Text = rows(i).Value,
+                .Font = rowFont,
+                .AutoSize = True,
+                .Anchor = AnchorStyles.Left Or AnchorStyles.Top,
+                .Margin = New Padding(0, 2, 0, 1)
+            }
+            tlp.Controls.Add(keyLbl, 0, i)
+            tlp.Controls.Add(valLbl, 1, i)
+        Next
+
+        tlp.ResumeLayout()
+    End Sub
+
+    ''' <summary>
+    ''' Refreshes the config table in-place after a config reload.
+    ''' </summary>
+    Private Sub RefreshConfigSummary()
+        Try
+            Dim cfgBox = TryCast(Me.Controls("GroupBox_ConfigSummary"), GroupBox)
+            If cfgBox Is Nothing Then Return
+            Dim tlp = TryCast(cfgBox.Controls("Table_ConfigSummary"), TableLayoutPanel)
+            If tlp Is Nothing Then Return
+            PopulateConfigTable(tlp)
+        Catch ex As Exception
+            HandleUserMessageLogging("LoginForm", $"RefreshConfigSummary error: {ex.Message}")
+        End Try
+    End Sub
+
 End Class

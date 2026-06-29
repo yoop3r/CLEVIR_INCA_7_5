@@ -320,7 +320,7 @@ Public Class INCA_InterfaceClass
     Private Sub StopRecordingProcess()
         Try
             ' Stop alt-recorders if enabled
-            If LoginForm.CheckBox3.Checked Then
+            If AlternateRecordEnabled Then
                 If AlternateRecordingMode <> "VehicleSpy" Then
                     StopCanalyzer()
                 Else
@@ -330,11 +330,6 @@ Public Class INCA_InterfaceClass
 
             If LidarCaptureStarted Then
                 StopLidarCapture()
-            End If
-
-            ' Optional CAL snapshot
-            If LoginForm.CheckBox1.Checked Then
-                MyIncaInterface.SaveCalSnapShot("Working")
             End If
 
             ' ================================================================
@@ -439,12 +434,6 @@ Public Class INCA_InterfaceClass
 
         MyIncaInterface.StartMeasurement()
 
-        ' 4. Save calibration snapshots if enabled
-        If LoginForm.CheckBox1.Checked Then
-            MyIncaInterface.SaveCalSnapShot("Reference")
-            MyIncaInterface.SaveCalSnapShot("Working")
-        End If
-
         ' 5. Start the actual recording in INCA
         MyIncaInterface.StartRecording()
 
@@ -462,11 +451,6 @@ Public Class INCA_InterfaceClass
 
         ' 1. Reset session flags and UI elements
         ResetSessionState()
-
-        ' 2. Save calibration snapshot if enabled
-        If LoginForm.CheckBox1.Checked Then
-            MyIncaInterface.SaveCalSnapShot("Working")
-        End If
 
         ' 3. Stop the recording in INCA
         MyIncaInterface.StopRecording()
@@ -1264,22 +1248,17 @@ Public Class INCA_InterfaceClass
             ' Handle Alternate Recording (CANalyzer/VehicleSpy)
             ' ================================================================
             If AlternateRecordingMode <> "None" AndAlso AlternateRecordEnabled Then
-                If LoginForm.CheckBox3.Checked Then
-                    If AlternateRecordingMode <> "VehicleSpy" Then
-                        StartCanalyzer()
-                    Else
-                        StartVehicleSpy()
-                    End If
-                ElseIf OnVehicleScreen.Label3.Visible Then
-                    HandleUserMessageLogging("GMRC", "Please exit CLEVIR and restart to re-enable " & AlternateRecordingMode & " Recording.", , , FlashMsg3Sec)
-                    OnVehicleScreen.Label3.BackColor = Color.Red
+                If AlternateRecordingMode <> "VehicleSpy" Then
+                    StartCanalyzer()
+                Else
+                    StartVehicleSpy()
                 End If
             End If
 
             ' ════════════════════════════════════════════════════════════════
             ' LiDAR capture + optional time sync provider wiring
             ' ════════════════════════════════════════════════════════════════
-            If LidarCaptureEnabled AndAlso LoginForm.CheckBox_LidarCapture.Checked Then
+            If LidarCaptureEnabled Then
                 Try
                     HandleUserMessageLogging("GMRC", "StartRecording: Initializing LiDAR capture...")
 
@@ -1335,7 +1314,7 @@ Public Class INCA_InterfaceClass
             ' ════════════════════════════════════════════════════════════════
             ' ✅ NEW: Start OXTS NCOM PCAP Capture (parallel to LiDAR)
             ' ════════════════════════════════════════════════════════════════
-            If OxtsCaptureEnabled AndAlso LoginForm.CheckBox_LidarCapture.Checked Then
+            If OxtsCaptureEnabled Then
                 Try
                     HandleUserMessageLogging("GMRC", "StartRecording: Starting OXTS NCOM capture...")
                     StartOxtsCapture()

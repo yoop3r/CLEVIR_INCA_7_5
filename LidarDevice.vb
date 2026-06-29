@@ -91,6 +91,7 @@ Public Class LidarDevice
     Public Property LidarDataPort As UShort = 2311
     Public Property LidarImuPort As UShort = 8308
     Public Property DeviceId As String = "LiDAR1" ' Friendly name for logging
+    Public Property Orientation As String = ""     ' Physical mounting position e.g. FRONT, REAR
     Public Property Enabled As Boolean = True  ' Default to True for backward compatibility
 
     ' ✅ CHANGED: SharpPcap capture device types
@@ -266,12 +267,14 @@ Public Class LidarDevice
                    Optional ipAddress As String = "192.168.1.201",
                    Optional dataPort As UShort = 2368,
                    Optional imuPort As UShort = 8308,
-                   Optional deviceId As String = "LiDAR1")
+                   Optional deviceId As String = "LiDAR1",
+                   Optional orientation As String = "")
         Me.LidarAdapterGuid = adapterGuid
         Me.LidarIpAddress = ipAddress
         Me.LidarDataPort = dataPort
         Me.LidarImuPort = imuPort
         Me.DeviceId = deviceId
+        Me.Orientation = orientation
 
         ' Initialize the event bridge for packet capture
         _eventBridge = New PcapEventBridge.PcapEventBridge()

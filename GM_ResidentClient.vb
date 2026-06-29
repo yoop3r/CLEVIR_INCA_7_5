@@ -1697,7 +1697,6 @@ Public Class GmResidentClient
 
                 If testDevices IsNot Nothing AndAlso testDevices.Count > 0 Then
                     ' LiDAR hardware is available
-                    LoginForm.CheckBox_LidarCapture.Visible = True
 
                     ' Only initialize if user enabled LIDAR in config
                     If userWantsLidar Then
@@ -1753,7 +1752,6 @@ Public Class GmResidentClient
                 Else
                     ' No network adapters available
                     LidarCaptureEnabled = False
-                    LoginForm.CheckBox_LidarCapture.Visible = False
 
                     If userWantsLidar Then
                         HandleUserMessageLogging("GMRC", "Initialize: LiDAR requested in config but no network adapters found - DISABLED")
@@ -2042,8 +2040,6 @@ Public Class GmResidentClient
                 HandleUserMessageLogging("GMRC", "Initialize: Available Experiment Names Retrieved")
             End If
 
-            ' Make sure login screen's CheckBox1 matches SaveCalSnapshotEnabled
-            LoginForm.CheckBox1.Checked = SaveCalSnapshotEnabled
             If Not LoginIfRequired() Then
                 HandleUserMessageLogging("GMRC", "Initialize: LoginIfRequired returned False. Exiting...", DisplayMsgBox)
                 ExitApp("Complete")
@@ -2924,7 +2920,6 @@ Public Class GmResidentClient
             ' Boolean configs
             MuteVoiceRecordingMessages = ReadBooleanConfig(root, "MuteVoiceRecordingMessages", False)
             AudioToTextConversion = ReadBooleanConfig(root, "AudioToTextConversion", False)
-            SaveCalSnapshotEnabled = ReadBooleanConfig(root, "SaveCalSnapshotEnabled", False)
             SkipSubscriptionOnCacheHit = ReadBooleanConfig(root, "SkipSubscriptionOnCacheHit", False)
 
             ' ════════════════════════════════════════════════════════════
@@ -3202,17 +3197,19 @@ Public Class GmResidentClient
                     Dim ipAddress As String = lidarNode.SelectSingleNode("IpAddress")?.InnerText
                     Dim dataPortStr As String = lidarNode.SelectSingleNode("DataPort")?.InnerText
                     Dim imuPortStr As String = lidarNode.SelectSingleNode("ImuPort")?.InnerText
+                    Dim orientation As String = lidarNode.SelectSingleNode("Orientation")?.InnerText?.Trim()
 
                     Dim dataPort As UShort = If(UShort.TryParse(dataPortStr, dataPort), dataPort, 2368US)
                     Dim imuPort As UShort = If(UShort.TryParse(imuPortStr, imuPort), imuPort, 8308US)
 
                     ' ✅ Create device object
-                    Dim device As New LidarDevice(adapterGuid, ipAddress, dataPort, imuPort, deviceId) With {
+                    Dim device As New LidarDevice(adapterGuid, ipAddress, dataPort, imuPort, deviceId, orientation) With {
                     .Enabled = enabled
                 }
 
                     LidarDevices.Add(device)
-                    HandleUserMessageLogging("GMRC", $"✅ Loaded LiDAR: {deviceId} at {ipAddress}:{dataPort}")
+                    Dim orientLabel As String = If(String.IsNullOrWhiteSpace(orientation), "(no orientation)", orientation)
+                    HandleUserMessageLogging("GMRC", $"✅ Loaded LiDAR: {deviceId} [{orientLabel}] at {ipAddress}:{dataPort}")
 
                     ' ================================================================
                     ' ✅ NEW: Register with Hesai SDK (simple or extended config)
@@ -3510,7 +3507,6 @@ Public Class GmResidentClient
                 writer.WriteComment(" ================================================================ ")
 
                 writer.WriteElementString("CurrentVehicleUsage", CurrentVehicleUsage)
-                writer.WriteElementString("SaveCalSnapshotEnabled", SaveCalSnapshotEnabled.ToString())
                 writer.WriteElementString("APICommErrorMsgDelayTime", APICommErrorMsgDelayTime.ToString())
 
                 writer.WriteEndElement() ' Close root element
@@ -7246,7 +7242,7 @@ Public Class GmResidentClient
                         "It is possible that it was manually exited. To re-enable Vehicle Spy, " &
                         "you must exit and re-launch CLEVIR...",,, FlashMsg4Sec)
                         OnVehicleScreen.Label3.BackColor = Color.Red
-                        LoginForm.CheckBox3.Checked = False
+                        AlternateRecordEnabled = False
                         CheckVSpyMessageDisplayed = True
                     End If
                 End If
@@ -7269,7 +7265,7 @@ Public Class GmResidentClient
                         "It is possible that it was manually exited. To re-enable CANalyzer, " &
                         "you must exit and re-launch CLEVIR...",,, FlashMsg4Sec)
                         OnVehicleScreen.Label3.BackColor = Color.Red
-                        LoginForm.CheckBox3.Checked = False
+                        AlternateRecordEnabled = False
                         CheckCanAlyzerMessageDisplayed = True
                     End If
                 End If
@@ -12146,11 +12142,10 @@ Public Class GmResidentClient
 
     Private Sub ChangeVehicleNumberToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As EventArgs) Handles ChangeVehicleNumberToolStripMenuItem.Click
 
-        'Allows the user to change the vehicle number.  The initial vehicle number is set in the vehicleconfig.txt file.
-
-        'the assumtion here is that there will be a unique vehicle number for each
-        'computer on which the application will run, but we may need to change it if
-        'we move the computer to a different vehicle...
+        ' Allows the user to change the vehicle number.
+        ' The selected vehicle number is persisted to <SelectedVehicleNumber> in config.xml.
+        ' There will be a unique vehicle number for each computer on which the application
+        ' runs, but it may need to change when the computer moves to a different vehicle.
 
         Dim tmpVehicleNumber As String
 
@@ -12158,7 +12153,7 @@ Public Class GmResidentClient
 
         If Len(tmpVehicleNumber) >= 8 Then
             VehicleNumber = tmpVehicleNumber
-
+            SaveSelectedVehicleNumber(VehicleNumber)
             Text = "Vehicle " & VehicleNumber
 
         Else

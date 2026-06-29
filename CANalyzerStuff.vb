@@ -216,8 +216,7 @@ Module CaNalyzerStuff
 
                         HandleUserMessageLogging("GMRC", "ClearCodesWithCANalyzer: Clear Codes Canalyzer Measurement NOT Stopped within " & delayAfterStop \ 100 & " Seconds. Continuing without clearing codes...",,, FlashMsg3Sec)
 
-                        LoginForm.CheckBox3.Checked = False
-                        LoginForm.CheckBox3.Visible = False
+                        AlternateRecordEnabled = False
                         OnVehicleScreen.Label3.Visible = False
 
                         QuitCanalyzer()
@@ -233,8 +232,7 @@ Module CaNalyzerStuff
 
                     HandleUserMessageLogging("GMRC", "Clear Codes Canalyzer Measurement NOT Started within " & delayAfterStart \ 100 & " Seconds.  No code clear performed, Terminaing CANalyzer...",,, FlashMsg3Sec)
 
-                    LoginForm.CheckBox3.Checked = False
-                    LoginForm.CheckBox3.Visible = False
+                    AlternateRecordEnabled = False
                     OnVehicleScreen.Label3.Visible = False
                     QuitCanalyzer()
 
@@ -242,18 +240,13 @@ Module CaNalyzerStuff
 
             End If
 
-            LoginForm.TopMost = True
-
         Catch ex As Exception
 
             HandleUserMessageLogging("GMRC", "ClearCodesWithCANalyzer: " & ex.Message & " Continuing without clearing codes...",,, FlashMsg3Sec)
 
-            LoginForm.CheckBox3.Checked = False
-            LoginForm.CheckBox3.Visible = False
+            AlternateRecordEnabled = False
             OnVehicleScreen.Label3.Visible = False
             QuitCanalyzer()
-
-            LoginForm.TopMost = True
 
         Finally
             UserStatusInfo.Hide()
@@ -363,7 +356,7 @@ Module CaNalyzerStuff
             Catch finalEx As Exception
                 HandleUserMessageLogging("GMRC", $"StopCanalyzer: Final cleanup failed: {finalEx.Message}",,, FlashMsg3Sec)
                 OnVehicleScreen.Label3.BackColor = Color.Red
-                LoginForm.CheckBox3.Checked = False
+                AlternateRecordEnabled = False
 
                 ' Inform the user that CANalyzer could not be stopped and a restart may be required
                 MsgBox("CANalyzer could not be stopped cleanly and final cleanup failed. Restarting CLEVIR may be required to recover CANalyzer files.", MsgBoxStyle.OkOnly Or MsgBoxStyle.Exclamation, "CANalyzer Stop Failed - Manual Intervention Recommended")
@@ -512,8 +505,7 @@ Module CaNalyzerStuff
             ' Clean up UI and CANalyzer state
             UserStatusInfo.Hide()
             If launchCanalyzerReturnString <> "Success" Then
-                LoginForm.CheckBox3.Checked = False
-                LoginForm.CheckBox3.Visible = False
+                AlternateRecordEnabled = False
                 OnVehicleScreen.Label3.Visible = False
                 QuitCanalyzer()
             End If
@@ -583,14 +575,14 @@ Module CaNalyzerStuff
             If Not String.IsNullOrEmpty(logMessage) AndAlso logMessage <> "Success" Then
                 HandleUserMessageLogging("GMRC", logMessage,,, FlashMsg3Sec)
                 OnVehicleScreen.Label3.BackColor = Color.Red
-                LoginForm.CheckBox3.Checked = False
+                AlternateRecordEnabled = False
             End If
         Catch ex As Exception
             ' Handle exceptions
             logMessage = $"StartCanalyzer: {ex.Message} Unable to start CANalyzer measurement. No CANalyzer data will be available for this session."
             HandleUserMessageLogging("GMRC", logMessage,,, FlashMsg3Sec)
             OnVehicleScreen.Label3.BackColor = Color.Red
-            LoginForm.CheckBox3.Checked = False
+            AlternateRecordEnabled = False
         End Try
         Return
     End Sub

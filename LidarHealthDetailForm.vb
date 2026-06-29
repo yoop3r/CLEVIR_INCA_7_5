@@ -46,9 +46,9 @@ Public Class LidarHealthDetailForm
             ' Device identification
             DataGridView1.Columns.Add(New DataGridViewTextBoxColumn With {
                 .Name = "DeviceId",
-                .HeaderText = "Device ID",
+                .HeaderText = "LiDAR",
                 .DataPropertyName = "DeviceId",
-                .FillWeight = 12
+                .FillWeight = 14
             })
 
             DataGridView1.Columns.Add(New DataGridViewTextBoxColumn With {
@@ -626,6 +626,7 @@ Public Class LidarHealthDetailForm
     ''' </summary>
     Private Class DeviceHealthRow
         Public Property DeviceId As String
+        Public Property Orientation As String
         Public Property Status As String
         Public Property PacketCount As Long
         Public Property IntegrityPercent As Double
@@ -638,7 +639,11 @@ Public Class LidarHealthDetailForm
         Public Property OperationalInfo As String  ' ✅ NEW: Operational state + RPM
 
         Public Sub New(device As LidarDevice)
-            DeviceId = device.DeviceId
+            Orientation = device.Orientation
+            ' Show orientation as the primary label; fall back to numeric id
+            DeviceId = If(Not String.IsNullOrWhiteSpace(device.Orientation),
+                          device.Orientation,
+                          device.DeviceId)
 
             ' Get basic counters
             PacketCount = device.PacketCount

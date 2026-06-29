@@ -24,6 +24,7 @@ Partial Class LidarDeviceEditorForm
         Me.ColIPAddress = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColDataPort = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColIMUPort = New System.Windows.Forms.DataGridViewTextBoxColumn()
+        Me.ColOrientation = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ButtonSave = New System.Windows.Forms.Button()
         Me.ButtonCancel = New System.Windows.Forms.Button()
         CType(Me.DataGridViewLidar, System.ComponentModel.ISupportInitialize).BeginInit()
@@ -36,7 +37,7 @@ Partial Class LidarDeviceEditorForm
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.DataGridViewLidar.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
-        Me.DataGridViewLidar.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {Me.ColID, Me.ColEnabled, Me.ColAdapterGuid, Me.ColIPAddress, Me.ColDataPort, Me.ColIMUPort})
+        Me.DataGridViewLidar.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {Me.ColID, Me.ColEnabled, Me.ColAdapterGuid, Me.ColIPAddress, Me.ColDataPort, Me.ColIMUPort, Me.ColOrientation})
         Me.DataGridViewLidar.Location = New System.Drawing.Point(12, 12)
         Me.DataGridViewLidar.Name = "DataGridViewLidar"
         Me.DataGridViewLidar.Size = New System.Drawing.Size(676, 400)
@@ -78,6 +79,13 @@ Partial Class LidarDeviceEditorForm
         Me.ColIMUPort.HeaderText = "IMU Port"
         Me.ColIMUPort.Name = "ColIMUPort"
         Me.ColIMUPort.Width = 80
+        '
+        'ColOrientation
+        '
+        Me.ColOrientation.HeaderText = "Orientation"
+        Me.ColOrientation.Name = "ColOrientation"
+        Me.ColOrientation.ToolTipText = "Physical mounting position e.g. FRONT, REAR, LEFT, RIGHT"
+        Me.ColOrientation.Width = 90
         '
         'ButtonSave
         '
@@ -122,6 +130,7 @@ Partial Class LidarDeviceEditorForm
     Friend WithEvents ColIPAddress As DataGridViewTextBoxColumn
     Friend WithEvents ColDataPort As DataGridViewTextBoxColumn
     Friend WithEvents ColIMUPort As DataGridViewTextBoxColumn
+    Friend WithEvents ColOrientation As DataGridViewTextBoxColumn
     Friend WithEvents ButtonSave As Button
     Friend WithEvents ButtonCancel As Button
 End Class

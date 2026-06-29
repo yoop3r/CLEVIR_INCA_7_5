@@ -615,7 +615,7 @@ Public Class VehicleConfigurationsEditor
 
         InitForm.SaveVehicleNumber(TextBox1.Text)
 
-        HandleUserMessageLogging("GMRC", System.IO.Path.GetFileName(filename) & " file has been updated.  vehicleconfig.txt VehicleNumber has been changed to " & TextBox1.Text & ".", DisplayMsgBox)
+        HandleUserMessageLogging("GMRC", System.IO.Path.GetFileName(filename) & " file has been updated.  config.xml SelectedVehicleNumber has been changed to " & TextBox1.Text & ".", DisplayMsgBox)
 
         'CopyVehicleConfigToCLEVIRFolder(filename)
 
