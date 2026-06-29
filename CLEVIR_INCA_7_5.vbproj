@@ -233,6 +233,10 @@
     <Compile Include="AnnotationInterfaceConfigure.vb">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="CameraEditorForm.Designer.vb" />
+    <Compile Include="CameraEditorForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="CommonINCAFunctions.vb" />
     <Compile Include="CommonWirelessFunctions.vb" />
     <Compile Include="EncryptDecrypt.vb" />

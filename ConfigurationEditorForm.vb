@@ -76,11 +76,21 @@ Public Class ConfigurationEditorForm
         AddHandler btnEditVehicles.Click, AddressOf ButtonEditVehicles_Click
         Me.Controls.Add(btnEditVehicles)
 
+        ' Edit Cameras Button
+        Dim btnEditCameras As New Button With {
+            .Text = "Edit Cameras",
+            .Location = New Point(430, yPos),
+            .Size = New Size(120, 30),
+            .BackColor = Color.LightGoldenrodYellow
+        }
+        AddHandler btnEditCameras.Click, AddressOf ButtonEditCameras_Click
+        Me.Controls.Add(btnEditCameras)
+
         ' Signal Registration Mode Button
         Dim btnSignalReg As New Button With {
             .Name = "btnSignalReg",
             .Text = "Signal Reg Mode",
-            .Location = New Point(420, yPos),
+            .Location = New Point(560, yPos),
             .Size = New Size(140, 30),
             .BackColor = Color.LightYellow
         }
@@ -141,7 +151,7 @@ Public Class ConfigurationEditorForm
         ' Reset to Defaults Button
         Dim btnReset As New Button With {
                 .Text = "Reset to Defaults",
-                .Location = New Point(440, yPos),
+                .Location = New Point(710, yPos),
                 .Size = New Size(130, 30),
                 .BackColor = Color.LightCoral
                 }
@@ -348,6 +358,29 @@ Public Class ConfigurationEditorForm
         End Try
     End Sub
 
+    Private Sub ButtonEditCameras_Click(sender As Object, e As EventArgs)
+        Try
+            If _xmlDoc Is Nothing Then
+                MessageBox.Show("Please load a configuration file first.", "No Configuration",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
+            End If
+            Using cameraEditor As New CameraEditorForm(_xmlDoc)
+                cameraEditor.StartPosition = FormStartPosition.CenterParent
+                cameraEditor.TopMost = True
+                cameraEditor.BringToFront()
+                If cameraEditor.ShowDialog() = DialogResult.OK Then
+                    _isDirty = True
+                    LoadConfiguration()
+                End If
+            End Using
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"EditCameras failed: {ex.Message}")
+            MessageBox.Show($"Failed to edit cameras: {ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
     Private Sub LoadConfiguration()
         Try
             _configData.Clear()
@@ -449,6 +482,10 @@ Public Class ConfigurationEditorForm
 
             Case "Vehicles"
                 ' ✅ Skip Vehicles entirely (handled by dedicated VehicleEditorForm button)
+                Return True
+
+            Case "CameraConfiguration"
+                ' ✅ Skip CameraConfiguration entirely (handled by dedicated CameraEditorForm button)
                 Return True
 
             Case "Compression", "OxtsConfiguration"
@@ -567,6 +604,12 @@ Public Class ConfigurationEditorForm
             Case "LidarIpAddress" : Return "LiDAR device IP address (legacy)"
             Case "LidarDataPort" : Return "LiDAR data UDP port (legacy)"
             Case "LidarImuPort" : Return "LiDAR IMU UDP port (legacy)"
+
+            ' Camera Configuration
+            Case "CameraConfiguration" : Return "Camera device settings (edit via Edit Cameras button)"
+            Case "CameraConfiguration.MaxCameras" : Return "Auto-calculated count of enabled cameras"
+            Case "CameraConfiguration.InitialWaitTime" : Return "Seconds to wait before first camera ping on startup"
+            Case "CameraConfiguration.PingTimeout" : Return "Camera reachability ping timeout in milliseconds"
 
             ' Compression
             Case "Compression" : Return "File compression settings"
