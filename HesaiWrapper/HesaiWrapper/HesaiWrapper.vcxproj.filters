@@ -62,5 +62,26 @@
     <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Common\src\plat_utils.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcClient\src\tcp_client.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\ptc_parser.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\src\general_ptc_parser.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\src\ptc_1_0_parser.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\PtcParser\src\ptc_2_0_parser.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\HesaiLidar_SDK_2.0-master\libhesai\Source\src\source.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BUILD_WARNINGS.md" />
   </ItemGroup>
 </Project>
