@@ -166,14 +166,19 @@ Public Class OnVehicleScreen
         GmResidentClient.StopTestProcess = True
 
         GmResidentClient.Visible = True
+        GmResidentClient.WindowState = FormWindowState.Normal
+        GmResidentClient.StartPosition = FormStartPosition.CenterScreen
+        GmResidentClient.Location = New Point(
+            (Screen.PrimaryScreen.WorkingArea.Width - GmResidentClient.Width) \ 2,
+            (Screen.PrimaryScreen.WorkingArea.Height - GmResidentClient.Height) \ 2)
+        GmResidentClient.BringToFront()
+        GmResidentClient.Activate()
 
         If OperatingMode <> OperatingModes.ResOnVpc Then
-
             Top = GmResidentClient.Top + 60
             Left = GmResidentClient.Left
             Activate()
             BringToFront()
-
         End If
 
     End Sub
@@ -493,7 +498,8 @@ Public Class OnVehicleScreen
     End Sub
 
     Private Sub OnVehicleScreen_Shown(ByVal sender As Object, ByVal e As EventArgs) Handles Me.Shown
-
+        BringToFront()
+        Activate()
     End Sub
 
     Private Sub OnVehicleScreen_Load(ByVal sender As Object, ByVal e As EventArgs) Handles MyBase.Load

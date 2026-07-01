@@ -53,8 +53,8 @@ Public Class FormDataClass
         '
         Me.ClientSize = New System.Drawing.Size(579, 527)
         Me.Name = "FormDataClass"
-        Me.ShowInTaskbar = False
         Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen
+        Me.TopMost = True
         Me.ResumeLayout(False)
 
     End Sub

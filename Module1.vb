@@ -258,6 +258,12 @@ Public Module Module1
 
     Public AvailableExperimentNames As String()
     Public NumControllers As Integer = 0
+    ''' <summary>
+    ''' Non-NA processor tokens from the active vehicle config (e.g. {"ACP3_MCU", "HCS"}).
+    ''' Populated by ApplyVehicleConfig / ProcessVehicleRow; used by ProcessDevicesAfterOpen
+    ''' to skip expensive COM conformity calls on devices not belonging to this vehicle.
+    ''' </summary>
+    Public ActiveProcessorNames() As String
 
     Public TriggerCommFailureInDebugMode As Boolean
     Public OverrideCommFailureInDebugMode As Boolean
@@ -2247,10 +2253,15 @@ Public Module Module1
             Return False
         End If
 
-        ' 2. Count non-NA processors
+        ' 2. Count non-NA processors and record their names for device filtering
+        Dim activeProcs As New List(Of String)
         For Each proc As String In v.Processors
-            If Not proc.Trim().ToUpper().Contains("NA") Then NumControllers += 1
+            If Not String.IsNullOrWhiteSpace(proc) AndAlso Not proc.Trim().ToUpper().Contains("NA") Then
+                NumControllers += 1
+                activeProcs.Add(proc.Trim().ToUpper())
+            End If
         Next
+        ActiveProcessorNames = activeProcs.ToArray()
 
         ' 3. Camera positions → ActiveCameras
         Dim foundFront As Boolean = False
@@ -2346,6 +2357,9 @@ Public Module Module1
         ' ✅ Clear ActiveCameras for this vehicle
         ActiveCameras.Clear()
 
+        ' Accumulate active (non-NA) processor names for ProcessDevicesAfterOpen device filtering
+        Dim procNamesList As New List(Of String)
+
         ' Ensure lineItems is large enough to prevent index errors
         If lineItems.Length <= CONFIG_NAME Then
             HandleUserMessageLogging("GMRC", $"ReadVehicleConfigsFile: Skipped row due to insufficient columns for vehicle {lineItems(0)}.")
@@ -2368,10 +2382,13 @@ Public Module Module1
                 End If
             End If
 
-            ' 2) Count controllers
+            ' 2) Count controllers and collect active processor names
             If x >= PROC_START AndAlso x <= PROC_END Then
                 If Not lineItems(x).ToUpper().Contains("NA") Then
                     NumControllers += 1
+                    If Not String.IsNullOrWhiteSpace(lineItems(x)) Then
+                        procNamesList.Add(lineItems(x).Trim().ToUpper())
+                    End If
                 End If
             End If
 
@@ -2433,6 +2450,8 @@ Public Module Module1
         HandleUserMessageLogging("GMRC",
             $"Vehicle {lineItems(0)}: {ActiveCameras.Count} active camera(s) - " &
             String.Join(", ", ActiveCameras.Select(Function(c) $"{c.Position}:{c.IpAddress}")))
+
+        ActiveProcessorNames = procNamesList.ToArray()
 
         Return True
     End Function

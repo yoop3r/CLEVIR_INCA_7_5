@@ -62,6 +62,9 @@ Public Class OxtsNcomInterface
     Private _latestPosition As OxtsPosition?
     Private _latestPositionTime As DateTime = DateTime.MinValue
 
+    ' Last validated raw packet (captured for diagnostic use)
+    Private _lastRawPacket As Byte()
+
     ' ✅ NEW: Integrity-focused statistics (replacing packet loss tracking)
     Private _stats As New PacketStatistics()
 
@@ -429,6 +432,7 @@ Public Class OxtsNcomInterface
                 IsGpsLocked = (navStatus = 4) ' Status 4 = "Locked"
 
                 UpdateLatestPosition(navStatus)
+                _lastRawPacket = data
                 Return True
             End If
 
@@ -669,6 +673,14 @@ Public Class OxtsNcomInterface
         HandleUserMessageLogging("GMRC", $"Timing Source: {OxtsStatusChannelDecoder.GetTimingSourceDescription(PtpTimingSource)}")
         HandleUserMessageLogging("GMRC", $"System Uptime: {SystemUptime}")
         HandleUserMessageLogging("GMRC", $"Last PTP Update: {If(LastPtpStatusTime.HasValue, LastPtpStatusTime.Value.ToString("HH:mm:ss.fff"), "N/A")}")
+        HandleUserMessageLogging("GMRC", "")
+        HandleUserMessageLogging("GMRC", "=== Raw Packet Diagnostics ===")
+        If _lastRawPacket IsNot Nothing Then
+            NcomDiagnostics.DumpNcomPacket(_lastRawPacket)
+            NcomDiagnostics.VerifyNcomDecoding(_lastRawPacket)
+        Else
+            HandleUserMessageLogging("GMRC", "No packet captured yet — OXTS listener may not have received data")
+        End If
     End Sub
 
     Public Function IsPtpSynchronized() As Boolean Implements ITimeSyncProvider.IsPtpSynchronized

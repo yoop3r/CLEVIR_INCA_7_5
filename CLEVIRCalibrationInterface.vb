@@ -55,7 +55,7 @@ Public Class Form1
         measureValue = measureElement.GetValue
 
         If measureValue Is Nothing Then
-            MsgBox("Could not retrieve CalibrationValue from  " & myMeasVarName)
+            MsgBox("Could not retrieve MeasureValue from  " & myMeasVarName)
             Exit Function
         End If
 
@@ -455,6 +455,11 @@ Public Class Form1
             myListbox = ListBox3
             listboxType = "Measurement"
         End If
+
+        If myListbox Is Nothing Then Return
+
+        If (listboxType = "Measurement" AndAlso myMeasInfo Is Nothing) OrElse
+           (listboxType = "Calibration" AndAlso myCalInfo Is Nothing) Then Return
 
         myListbox.Items.Clear()
 

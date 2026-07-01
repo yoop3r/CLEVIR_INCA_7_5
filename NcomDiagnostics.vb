@@ -98,7 +98,8 @@ Public Module NcomDiagnostics
     Public Sub VerifyNcomDecoding(data As Byte())
         If data Is Nothing OrElse data.Length < 72 Then Return
 
-        Console.WriteLine("=== Manual Field Verification ===")
+        Dim sb As New StringBuilder()
+        sb.AppendLine("=== Manual Field Verification ===")
 
         ' Velocity North (bytes 16-18, signed 24-bit, scale 0.0001)
         Dim vn_raw As Integer = data(16) Or (data(17) << 8) Or (data(18) << 16)
@@ -106,20 +107,23 @@ Public Module NcomDiagnostics
             vn_raw = vn_raw Or &HFF000000 ' Sign extend
         End If
         Dim vn As Double = vn_raw * 0.0001
-        Console.WriteLine($"VN Raw: 0x{vn_raw:X6} = {vn_raw} ? {vn:F4} m/s")
+        sb.AppendLine($"VN Raw: 0x{vn_raw:X6} = {vn_raw} -> {vn:F4} m/s")
 
         ' Heading (bytes 39-40, unsigned 16-bit, scale 0.0001 rad)
         Dim hdg_raw As UShort = CUShort(data(39) Or (data(40) << 8))
         Dim hdg_rad As Double = hdg_raw * 0.0001
         Dim hdg_deg As Double = hdg_rad * (180.0 / Math.PI)
-        Console.WriteLine($"Heading Raw: 0x{hdg_raw:X4} = {hdg_raw} ? {hdg_rad:F4} rad ? {hdg_deg:F2}°")
+        sb.AppendLine($"Heading Raw: 0x{hdg_raw:X4} = {hdg_raw} -> {hdg_rad:F4} rad -> {hdg_deg:F2} deg")
 
         ' Yaw Rate (bytes 36-37, signed 16-bit, scale 0.00001 rad/s)
         Dim wz_raw As Short = CShort(data(36) Or (data(37) << 8))
         Dim wz As Double = wz_raw * 0.00001
-        Console.WriteLine($"Wz Raw: 0x{wz_raw:X4} = {wz_raw} ? {wz:F5} rad/s")
+        sb.AppendLine($"Wz Raw: 0x{wz_raw:X4} = {wz_raw} -> {wz:F5} rad/s")
 
-        Console.WriteLine()
+        Dim output As String = sb.ToString()
+        Console.WriteLine(output)
+        HandleUserMessageLogging("GMRC", output)
     End Sub
 
 End Module
+

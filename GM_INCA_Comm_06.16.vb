@@ -3,7 +3,6 @@ Option Strict Off
 Imports System
 Imports System.Diagnostics
 Imports System.IO
-Imports System.Collections.Generic
 Imports System.Runtime.InteropServices
 Imports System.Runtime.Remoting.Lifetime
 Imports System.Threading
@@ -374,42 +373,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
         _cachedActiveLabels = GetAllActiveMeasureLabels()
         _activeLabelsTimestamp = DateTime.Now
         Return _cachedActiveLabels
-    End Function
-
-    Private Function GetEnabledCameraPositionSet() As HashSet(Of String)
-        Dim enabled As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
-
-        If ConfiguredCameras Is Nothing OrElse ConfiguredCameras.Count = 0 Then
-            Return enabled
-        End If
-
-        For Each kvp In ConfiguredCameras
-            If kvp.Value IsNot Nothing AndAlso kvp.Value.Enabled Then
-                Dim pos As String = kvp.Key
-                If Not String.IsNullOrWhiteSpace(pos) Then
-                    enabled.Add(pos.Trim())
-                End If
-            End If
-        Next
-
-        Return enabled
-    End Function
-
-    Private Shared Function IsCameraTimecodeSignal(ByRef signal As IGM_INCA_Comm.DeviceRasterSignalStatus) As Boolean
-        If String.IsNullOrWhiteSpace(signal.SignalName) Then Return False
-        Return String.Equals(signal.SignalName.Trim(), "VIDEO_TIMECODE", StringComparison.OrdinalIgnoreCase)
-    End Function
-
-    Private Shared Function ResolveCameraPosition(signalDeviceName As String) As String
-        If String.IsNullOrWhiteSpace(signalDeviceName) Then Return String.Empty
-
-        Dim candidate As String = signalDeviceName.Trim()
-        Dim slashIdx As Integer = candidate.IndexOf("\"c)
-        If slashIdx > 0 Then
-            candidate = candidate.Substring(0, slashIdx)
-        End If
-
-        Return candidate.Trim()
     End Function
 
     Public Function SetLastRecordingFileName(ByVal fileName As String) As Boolean Implements IGM_INCA_Comm.SetLastRecordingFileName
@@ -2339,11 +2302,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
         Dim stopwatch As New Stopwatch()
         stopwatch.Start()
 
-        ' Per-phase timing: P0=RCI2init, P1=Cache, P2=BuildArray, P3=Dispatch, P4=ActiveLabels, P5=AddElements, P6=Finalize
-        Dim phaseWatch As New Stopwatch()
-        Dim phaseMs(6) As Long
-        phaseWatch.Start()
-
         Dim successCount As Integer = 0
         Dim failureCount As Integer = 0
         Dim skippedCount As Integer = 0
@@ -2353,39 +2311,11 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
         Dim isFullRegistration As Boolean = String.Equals(SignalRegistrationMode, "FULL", StringComparison.OrdinalIgnoreCase)
         Const PROGRESS_UPDATE_INTERVAL As Integer = 10 ' Update every 10 signals
 
-        ' Camera source-of-truth (config.xml CameraConfiguration/Cameras enabled=true)
-        ' IMPORTANT: Do NOT remove/compact signals here. Grid cells store SignalIndex values that
-        ' index into the FULL signal list (mySignals). The runtime data array (mySignalDataWithTime)
-        ' is built 1:1 from this incoming array, so dropping any signal shifts every later index and
-        ' causes "Index was outside the bounds of the array" in ProcessGrids plus mismatched GO/NOGO
-        ' values. We keep all signals so indices stay aligned; disabled-camera timecode signals simply
-        ' receive no live data (their value stays 0).
-        Dim enabledCameraPositions As HashSet(Of String) = GetEnabledCameraPositionSet()
-        Dim incomingSignals As IGM_INCA_Comm.DeviceRasterSignalStatus() = If(DeviceRasterSignals, Array.Empty(Of IGM_INCA_Comm.DeviceRasterSignalStatus)())
-
-        If incomingSignals.Length > 0 AndAlso enabledCameraPositions.Count > 0 Then
-            Dim mismatchedCameraCount As Integer = 0
-
-            For Each signal In incomingSignals
-                If IsCameraTimecodeSignal(signal) Then
-                    Dim cameraPos As String = ResolveCameraPosition(signal.DeviceName)
-                    If Not enabledCameraPositions.Contains(cameraPos) Then
-                        mismatchedCameraCount += 1
-                    End If
-                End If
-            Next
-
-            If mismatchedCameraCount > 0 Then
-                HandleUserMessageLogging("COMM", $"RegisterSignals: {mismatchedCameraCount} mismatched camera timecode signal(s) retained for index alignment (processing all {incomingSignals.Length} incoming; disabled-camera signals will have no live data).")
-            End If
-        End If
-
         Try
             ' Initialize rci2 if needed
             If rci2 Is Nothing Then
                 rci2 = New RCI2(Path.Combine(My.Application.Info.DirectoryPath, "incaRci2.dll"))
             End If
-            phaseMs(0) = phaseWatch.ElapsedMilliseconds : phaseWatch.Restart() ' P0: RCI2 init
 
             ' ============================================================
             ' ✅ Check persistent registration cache for fast startup
@@ -2430,16 +2360,13 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                             ' ✅ Check if all INCOMING signals are active in INCA
                             Dim allIncomingActive As Boolean = True
                             Dim missingCount As Integer = 0
-                            Dim missingSignals As New List(Of IGM_INCA_Comm.DeviceRasterSignalStatus)()
 
-                            For Each signal In incomingSignals
+                            For Each signal In DeviceRasterSignals
                                 If String.IsNullOrWhiteSpace(signal.SignalName) Then Continue For
-                                If Not signal.ForceRegister Then Continue For ' recording-only signals are never in INCA's measurement browser
 
                                 Dim lookupKey As String = $"{signal.DeviceName}|{signal.SignalName}"
                                 If Not activeSignalSet.Contains(lookupKey) Then
                                     missingCount += 1
-                                    missingSignals.Add(signal)
                                     If missingCount <= 5 Then
                                         HandleUserMessageLogging("COMM", $"RegisterSignals: Signal not active in INCA: {lookupKey}")
                                     End If
@@ -2447,111 +2374,87 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                                 End If
                             Next
 
-                            HandleUserMessageLogging("COMM", $"RegisterSignals: {missingCount} signals not active in INCA (of {incomingSignals.Length} incoming)")
-                            If Not allIncomingActive Then
-                                HandleUserMessageLogging("COMM", $"RegisterSignals: Partial cache miss - registering only {missingCount} missing signal(s)")
-                            End If
+                            HandleUserMessageLogging("COMM", $"RegisterSignals: {missingCount} signals not active in INCA (of {DeviceRasterSignals.Length} incoming)")
 
-                            ' ✅ CACHE VERIFIED: either full hit or partial miss handled below
-                            stopwatch.Stop()
-                            HandleUserMessageLogging("COMM", $"RegisterSignals: ✅ CACHE VERIFIED - {incomingSignals.Length - missingCount}/{incomingSignals.Length} already active in INCA ({stopwatch.ElapsedMilliseconds}ms)")
+                            If allIncomingActive Then
+                                ' ✅ CACHE HIT! All incoming signals are already registered in INCA
+                                stopwatch.Stop()
+                                HandleUserMessageLogging("COMM", $"RegisterSignals: ✅ CACHE HIT - All {DeviceRasterSignals.Length} signals already registered in INCA ({stopwatch.ElapsedMilliseconds}ms)")
 
-                            ' ✅ Update progress form to show cached registration mode
-                            progressForm?.ShowCachedRegistrationMode(incomingSignals.Length)
+                                ' ✅ Update progress form to show cached registration mode
+                                progressForm?.ShowCachedRegistrationMode(DeviceRasterSignals.Length)
 
-                            ' Setup INCA experiment dispatch (needed for data collection)
-                            If SetExperimentDispatch = False Then
-                                SetExperimentDispatch = rci2.IncaSetExperimentDispatch(myExpEnvView)
-                            End If
+                                ' Setup INCA experiment dispatch (needed for data collection)
+                                If SetExperimentDispatch = False Then
+                                    SetExperimentDispatch = rci2.IncaSetExperimentDispatch(myExpEnvView)
+                                End If
 
-                            ' SkipSubscriptionOnCacheHit controls whether IncaAddMeasureElement is called on
-                            ' a cache hit.  When True, we assume INCA retained the measurement group from the
-                            ' previous CLEVIR session (INCA still running) and skip the ~900 COM round-trips.
-                            ' If grids remain blank after enabling this, INCA did not retain the group and the
-                            ' flag must be set back to False in config.xml.
-                            Dim cachedResultList As New List(Of IGM_INCA_Comm.DeviceRasterSignalStatus)(incomingSignals.Length)
-                            Dim subscribeCount As Integer = 0
-                            ' Always subscribe ALL incomingSignals: IncaAddMeasureElement must be called each
-                            ' CLEVIR session to establish per-session dispatch, even for signals already present
-                            ' in INCA's measurement browser. Using only missingSignals left active display
-                            ' signals without a dispatch subscription and caused blank grids.
-                            Dim signalsToSubscribe() As IGM_INCA_Comm.DeviceRasterSignalStatus = incomingSignals
-                            Dim totalToSubscribe As Integer = Math.Max(signalsToSubscribe.Length, 1)
-                            Dim effectiveSkipSubscriptionOnCacheHit As Boolean = allIncomingActive AndAlso SkipSubscriptionOnCacheHit
+                                ' ✅ CRITICAL FIX: Must call IncaAddMeasureElement to subscribe signals for data collection
+                                ' Cache validation confirmed signals EXIST in INCA, but they may not be in the measurement group
+                                HandleUserMessageLogging("COMM", $"RegisterSignals (Cache): Adding {DeviceRasterSignals.Length} signals to measurement group...")
+                                Dim cachedResultList As New List(Of IGM_INCA_Comm.DeviceRasterSignalStatus)(DeviceRasterSignals.Length)
+                                Dim subscribeCount As Integer = 0
+                                Dim totalToSubscribe As Integer = DeviceRasterSignals.Length
 
-                            If effectiveSkipSubscriptionOnCacheHit Then
-                                ' ── BYPASS PATH ───────────────────────────────────────────────────
-                                ' GetAllActiveMeasureLabels already confirmed all signals are in INCA.
-                                ' Trust that INCA retained the measurement group; skip IncaAddMeasureElement.
-                                HandleUserMessageLogging("COMM", $"RegisterSignals (Cache): SkipSubscriptionOnCacheHit=True — skipping {incomingSignals.Length} IncaAddMeasureElement calls")
-                                For Each signal In incomingSignals
+                                For Each signal In DeviceRasterSignals
                                     If String.IsNullOrWhiteSpace(signal.SignalName) Then Continue For
-                                    If Not signal.ForceRegister Then Continue For ' skip recording-only signals
-                                    Dim validSignal = signal
-                                    validSignal.Status = "Valid"
-                                    subscribeCount += 1
-                                    cachedResultList.Add(validSignal)
-                                    If subscribeCount Mod 50 = 0 Then
-                                        progressForm?.UpdateCachedProgress(subscribeCount, totalToSubscribe)
-                                    End If
-                                Next
-                                HandleUserMessageLogging("COMM", $"RegisterSignals (Cache): Bypassed subscription for {subscribeCount} signals — grids will populate if INCA retained measurement group")
-                            Else
-                                ' ── SUBSCRIBE PATH (original behaviour) ───────────────────────────
-                                ' Call IncaAddMeasureElement for every signal to ensure it is in the
-                                ' active measurement group for this CLEVIR session.
-                                HandleUserMessageLogging("COMM", $"RegisterSignals (Cache): Adding {signalsToSubscribe.Length} signal(s) to measurement group...")
-                                For Each signal In signalsToSubscribe
-                                    If String.IsNullOrWhiteSpace(signal.SignalName) Then Continue For
-                                    If Not signal.ForceRegister Then Continue For ' skip recording-only signals; mirror normal-path behavior
+
                                     Dim validSignal = signal
                                     Try
+                                        ' Add signal to measurement group (fast - no validation needed since we verified it exists)
                                         rci2.IncaAddMeasureElement(signal.DeviceName, signal.RasterName, signal.SignalName, RCI2.A_MeasureDisplayMode.A_MEASURE_NO_DISPLAY)
                                         validSignal.Status = "Valid"
+                                        validSignal.ForceRegister = True
                                         subscribeCount += 1
                                     Catch ex As Exception
-                                        ' Signal may already be in measurement group; still mark as valid
+                                        ' Signal may already be in measurement group, still mark as valid
                                         validSignal.Status = "Valid"
+                                        validSignal.ForceRegister = True
                                         subscribeCount += 1
                                     End Try
                                     cachedResultList.Add(validSignal)
+
+                                    ' ✅ Update progress form every 50 signals
                                     If subscribeCount Mod 50 = 0 Then
                                         progressForm?.UpdateCachedProgress(subscribeCount, totalToSubscribe)
                                     End If
                                 Next
+
+                                ' Final progress update
+                                progressForm?.UpdateCachedProgress(subscribeCount, totalToSubscribe)
+
                                 HandleUserMessageLogging("COMM", $"RegisterSignals (Cache): Subscribed {subscribeCount} signals to measurement group")
-                            End If
 
-                            ' Final progress update
-                            progressForm?.UpdateCachedProgress(subscribeCount, totalToSubscribe)
+                                myDeviceRasterSignals = cachedResultList.ToArray()
+                                HandleUserMessageLogging("COMM", $"RegisterSignals: Built {myDeviceRasterSignals.Length} valid signals from cache")
 
-                            myDeviceRasterSignals = cachedResultList.ToArray()
-                            HandleUserMessageLogging("COMM", $"RegisterSignals: Built {myDeviceRasterSignals.Length} valid signals from cache")
+                                ' ✅ Setup device-raster pairs EXACTLY like normal registration
+                                ResetRecords()
+                                ReDim mySignalData(myDeviceRasterSignals.Length - 1)
+                                ReDim mySignalDataWithTime(myDeviceRasterSignals.Length - 1)
 
-                            ' ✅ Setup device-raster pairs EXACTLY like normal registration
-                            ResetRecords()
-                            ReDim mySignalData(myDeviceRasterSignals.Length - 1)
-                            ReDim mySignalDataWithTime(myDeviceRasterSignals.Length - 1)
-
-                            For i As Integer = 0 To myDeviceRasterSignals.Length - 1
-                                If myDeviceRasterSignals(i).Status = "Valid" AndAlso myDeviceRasterSignals(i).ForceRegister Then
-                                    myDeviceRasterSignals(i).DeviceRasterPairNum = HandleDeviceRasterPairs(
+                                For i As Integer = 0 To myDeviceRasterSignals.Length - 1
+                                    If myDeviceRasterSignals(i).Status = "Valid" AndAlso myDeviceRasterSignals(i).ForceRegister Then
+                                        myDeviceRasterSignals(i).DeviceRasterPairNum = HandleDeviceRasterPairs(
                                             myDeviceRasterSignals(i).DeviceName,
                                             myDeviceRasterSignals(i).RasterName)
-                                    myDeviceRasterSignals(i).DeviceRasterPairVarNum = myDeviceRasterPair(myDeviceRasterSignals(i).DeviceRasterPairNum).NumValidVars - 1
-                                End If
-                            Next
-
-                            ' Log device-raster pair summary (same as normal registration)
-                            If myDeviceRasterPair IsNot Nothing Then
-                                For i As Integer = 0 To UBound(myDeviceRasterPair)
-                                    HandleUserMessageLogging("COMM", $"RegisterSignals (Cache): DeviceRasterPair {i} - {myDeviceRasterPair(i).NumValidVars} vars - {myDeviceRasterPair(i).DeviceName}/{myDeviceRasterPair(i).RasterName}")
+                                        myDeviceRasterSignals(i).DeviceRasterPairVarNum = myDeviceRasterPair(myDeviceRasterSignals(i).DeviceRasterPairNum).NumValidVars - 1
+                                    End If
                                 Next
-                            Else
-                                HandleUserMessageLogging("COMM", "RegisterSignals (Cache): WARNING - myDeviceRasterPair is Nothing!")
-                            End If
 
-                            Return myDeviceRasterSignals
+                                ' Log device-raster pair summary (same as normal registration)
+                                If myDeviceRasterPair IsNot Nothing Then
+                                    For i As Integer = 0 To UBound(myDeviceRasterPair)
+                                        HandleUserMessageLogging("COMM", $"RegisterSignals (Cache): DeviceRasterPair {i} - {myDeviceRasterPair(i).NumValidVars} vars - {myDeviceRasterPair(i).DeviceName}/{myDeviceRasterPair(i).RasterName}")
+                                    Next
+                                Else
+                                    HandleUserMessageLogging("COMM", "RegisterSignals (Cache): WARNING - myDeviceRasterPair is Nothing!")
+                                End If
+
+                                Return myDeviceRasterSignals
+                            Else
+                                HandleUserMessageLogging("COMM", $"RegisterSignals: Cache miss - {missingCount} signals not active in INCA, proceeding with registration")
+                            End If
                         End If
                     End If
                 End If
@@ -2561,7 +2464,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                 ' Optionally invalidate the cache when FULL mode is used
                 ' SignalRegistrationCache.InvalidateCache(INCAVariableFile)
             End If
-            phaseMs(1) = phaseWatch.ElapsedMilliseconds : phaseWatch.Restart() ' P1: Cache check
 
             ' ============================================================
             ' STEP 1: Determine signals to process
@@ -2570,7 +2472,7 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
 
             If myDeviceRasterSignals Is Nothing OrElse isFullRegistration Then
                 ' Fresh start - process all incoming signals
-                signalsToProcessArray = incomingSignals
+                signalsToProcessArray = DeviceRasterSignals
                 HandleUserMessageLogging("COMM", $"RegisterSignals: Processing {signalsToProcessArray.Length} signals (FULL mode)")
             Else
                 ' ✅ Optimized existing signal handling (Optimization #5)
@@ -2589,7 +2491,7 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                 Dim addedCount As Integer = 0
 
                 ' Process incoming signals
-                For Each incomingSignal In incomingSignals
+                For Each incomingSignal In DeviceRasterSignals
                     Dim key As String = $"{incomingSignal.DeviceName}|{incomingSignal.RasterName}|{incomingSignal.SignalName}"
 
                     If existingMap.ContainsKey(key) Then
@@ -2646,7 +2548,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                     End If
                 End If
             End If
-            phaseMs(2) = phaseWatch.ElapsedMilliseconds : phaseWatch.Restart() ' P2: Build signalsToProcessArray
 
             ' ============================================================
             ' STEP 2: Setup INCA experiment dispatch
@@ -2663,7 +2564,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
             End If
 
             HandleUserMessageLogging("COMM", "RegisterSignals: Experiment Dispatch Set")
-            phaseMs(3) = phaseWatch.ElapsedMilliseconds : phaseWatch.Restart() ' P3: IncaSetExperimentDispatch
 
             ' ============================================================
             ' STEP 3: Build active labels cache (FULL mode only)
@@ -2691,7 +2591,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                     HandleUserMessageLogging("COMM", $"RegisterSignals: Cached {activeLabels.Length} active labels")
                 End If
             End If
-            phaseMs(4) = phaseWatch.ElapsedMilliseconds : phaseWatch.Restart() ' P4: GetCachedActiveMeasureLabels + map build
 
             ' ============================================================
             ' STEP 4: Reset data collection structures
@@ -2701,7 +2600,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
 
             Dim resultList As New List(Of IGM_INCA_Comm.DeviceRasterSignalStatus)(signalsToProcessArray.Length)
             Dim processedCount As Integer = 0
-            Dim lastLapSignalCount As Integer = 0 ' For per-100-signal lap timing
 
             ' ✅ Reduced UI update frequency (Optimization #3)
             'Const UI_UPDATE_INTERVAL As Integer = 50
@@ -2813,14 +2711,7 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                 If processedCount Mod PROGRESS_UPDATE_INTERVAL = 0 AndAlso progressForm IsNot Nothing Then
                     progressForm.UpdateProgress(successCount, failureCount, skippedCount)
                 End If
-
-                ' Per-100-signal lap: shows whether IPC cost is flat or accelerating
-                If successCount > 0 AndAlso successCount Mod 100 = 0 AndAlso successCount <> lastLapSignalCount Then
-                    lastLapSignalCount = successCount
-                    HandleUserMessageLogging("COMM", $"RegisterSignals P5-lap: {successCount} signals added in {phaseWatch.ElapsedMilliseconds}ms total")
-                End If
             Next
-            phaseMs(5) = phaseWatch.ElapsedMilliseconds : phaseWatch.Restart() ' P5: IncaAddMeasureElement loop
 
             progressForm?.UpdateProgress(successCount, failureCount, skippedCount)
 
@@ -2852,11 +2743,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
             For i As Integer = 0 To UBound(myDeviceRasterPair)
                 HandleUserMessageLogging("COMM", $"RegisterSignals: DeviceRasterPair {i} - {myDeviceRasterPair(i).NumValidVars} vars - {myDeviceRasterPair(i).DeviceName}/{myDeviceRasterPair(i).RasterName}")
             Next
-            phaseMs(6) = phaseWatch.ElapsedMilliseconds ' P6: HandleDeviceRasterPairs finalization
-
-            ' Consolidated per-phase timing summary
-            HandleUserMessageLogging("COMM", $"RegisterSignals PHASE TIMINGS (ms): P0(RCI2init)={phaseMs(0)} | P1(Cache)={phaseMs(1)} | P2(BuildArray)={phaseMs(2)} | P3(Dispatch)={phaseMs(3)} | P4(ActiveLabels)={phaseMs(4)} | P5(AddElements)={phaseMs(5)} | P6(Finalize)={phaseMs(6)} | TOTAL={stopwatch.ElapsedMilliseconds}")
-            HandleUserMessageLogging("COMM", $"RegisterSignals P5 breakdown: {successCount} added, {skippedCount} skipped, {failureCount} failed — avg {If(successCount > 0, phaseMs(5) / successCount, 0):F1}ms/signal")
 
             ' ✅ Save successful registration to persistent cache
             If Not PlaybackMode AndAlso myDeviceRasterSignals IsNot Nothing AndAlso myDeviceRasterSignals.Length > 0 Then
@@ -4014,208 +3900,163 @@ Implements IGM_INCA_Comm.InitINCA
     End Function
 
     ' Processes devices after the experiment has been opened and configured.
-    ' Returns True on success. Preserves original behavior: creates Master lists in debug, sets FlashParameters,
+    ' Returns True on success. Preserves original behavior: creates Master lists in debug, sets FlashParameters, 
     ' checks device conformity and builds ProjectDatabasePaths, Working/Reference dataset paths, etc.
     Private Function ProcessDevicesAfterOpen() As Boolean
         Try
             Dim SaveCalList As Boolean = False
             Dim SaveMeasValList As Boolean = False
+            Dim fnum As Integer = 0
+            Dim fnum2 As Integer = 0
+            Dim Calcnt As Integer = 0
+            Dim MeasCnt As Integer = 0
             Dim cnt As Integer = 0
             Dim returnstring As String = String.Empty
             Dim tempstr As String = String.Empty
-
-            ' Use List(Of T) during accumulation - avoids O(n²) ReDim Preserve copies over 30k+ entries
-            Dim calList As New List(Of CalInfo)
-            Dim measList As New List(Of MeasInfo)
-            Dim calLines As New List(Of String)
-            Dim measLines As New List(Of String)
 
             HandleUserMessageLogging("GMRC", "HandleWorkspace: Setting  myDevices = myIncaOnlineExperiment.GetAllDevices")
             Dim myDevices() As ExperimentDevice = myIncaOnlineExperiment.GetAllDevices
 
             ' Decide whether to create master lists (legacy, only do in Debug)
-            Dim calListPath As String = Path.Combine(My.Application.Info.DirectoryPath, "MasterCalList.txt")
-            Dim measListPath As String = Path.Combine(My.Application.Info.DirectoryPath, "MasterMeasVarList.txt")
-            If Not File.Exists(calListPath) Then
-                SaveCalList = True
-            ElseIf New FileInfo(calListPath).Length = 0 Then
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: MasterCalList.txt exists but is empty - will regenerate")
-                SaveCalList = True
-            End If
-            If Not File.Exists(measListPath) Then
-                SaveMeasValList = True
-            ElseIf New FileInfo(measListPath).Length = 0 Then
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: MasterMeasVarList.txt exists but is empty - will regenerate")
-                SaveMeasValList = True
-            End If
+            If Not File.Exists(Path.Combine(My.Application.Info.DirectoryPath, "MasterCalList.txt")) Then SaveCalList = True
+            If Not File.Exists(Path.Combine(My.Application.Info.DirectoryPath, "MasterMeasVarList.txt")) Then SaveMeasValList = True
 
             HandleUserMessageLogging("GMRC", "HandleWorkspace: Looping through all of myDevices...")
             For x As Integer = 0 To UBound(myDevices)
-                ' Check IsWorkbaseDevice first (cheap boolean) then GetName (COM call) once
-                If myDevices(x).IsWorkbaseDevice Then
-                    Dim deviceName As String = myDevices(x).GetName
-                    If InStr(UCase(deviceName), "CALCDEV") = 0 Then
-
-                        If Debugger.IsAttached Then
-                            ' Only enumerate calibration/measurement elements for known processor devices
-                            If IsKnownProcessorDevice(deviceName) Then
-                                If SaveCalList Then
-                                    Dim myExperimentElementsInDevice() As ExperimentElement = BrowseExperimentElementsInDevice("K*", myDevices(x))
-                                    For y As Integer = 0 To UBound(myExperimentElementsInDevice)
-                                        If myExperimentElementsInDevice(y).IsCalibrationElement Then
-                                            Dim calEntry As CalInfo
-                                            calEntry.CalName = myExperimentElementsInDevice(y).GetName
-                                            calEntry.DeviceName = deviceName
-                                            If myExperimentElementsInDevice(y).IsScalar Then
-                                                calEntry.CalType = "Scalar"
-                                            ElseIf myExperimentElementsInDevice(y).IsArray Then
-                                                calEntry.CalType = "Array"
-                                            ElseIf myExperimentElementsInDevice(y).IsOneDTable Then
-                                                calEntry.CalType = "OneDTable"
-                                            ElseIf myExperimentElementsInDevice(y).IsTwoDTable Then
-                                                calEntry.CalType = "TwoDTable"
-                                            ElseIf myExperimentElementsInDevice(y).IsDistribution Then
-                                                calEntry.CalType = "Distribution"
-                                            Else
-                                                calEntry.CalType = "?"
-                                            End If
-                                            calEntry.IsMatrix = myExperimentElementsInDevice(y).IsMatrix
-                                            calList.Add(calEntry)
-                                            calLines.Add(deviceName & Chr(9) & calEntry.CalName)
-                                        End If
-                                    Next
-                                End If
-
-                                If SaveMeasValList Then
-                                    Dim tempElements() As ExperimentElement = BrowseExperimentElementsInDevice("Va*", myDevices(x))
-                                    For y As Integer = 0 To UBound(tempElements)
-                                        If tempElements(y).IsMeasureElement Then
-                                            Dim measEntry As MeasInfo
-                                            measEntry.MeasName = tempElements(y).GetName
-                                            measEntry.DeviceName = deviceName
-                                            measList.Add(measEntry)
-                                            measLines.Add(deviceName & Chr(9) & measEntry.MeasName)
-                                        End If
-                                    Next
-                                    tempElements = BrowseExperimentElementsInDevice("Ve*", myDevices(x))
-                                    For y As Integer = 0 To UBound(tempElements)
-                                        If tempElements(y).IsMeasureElement Then
-                                            Dim measEntry As MeasInfo
-                                            measEntry.MeasName = tempElements(y).GetName
-                                            measEntry.DeviceName = deviceName
-                                            measList.Add(measEntry)
-                                            measLines.Add(deviceName & Chr(9) & measEntry.MeasName)
-                                        End If
-                                    Next
-                                End If
+                If myDevices(x).IsWorkbaseDevice = True And InStr(UCase(myDevices(x).GetName), "CALCDEV") = 0 Then
+                    If Debugger.IsAttached Then
+                        Dim myExperimentElementsInDevice() As ExperimentElement
+                        If SaveCalList Then
+                            myExperimentElementsInDevice = BrowseExperimentElementsInDevice("K*", myDevices(x))
+                            If fnum = 0 Then
+                                fnum = FreeFile()
+                                FileOpen(fnum, Path.Combine(My.Application.Info.DirectoryPath, "MasterCalList.txt"), OpenMode.Output)
                             End If
-                        End If
-
-                        ' Device-specific flash parameter logic - consolidated; deviceName already cached above
-                        If InStr(deviceName, "FCM") > 0 OrElse InStr(deviceName, "FCM100") > 0 OrElse
-                           InStr(deviceName, "ACP2_MCU") > 0 OrElse InStr(deviceName, "ACP3_MCU") > 0 OrElse InStr(deviceName, "ACP4_MCU") > 0 OrElse
-                           InStr(deviceName, "HCF") > 0 OrElse InStr(deviceName, "HCS") > 0 OrElse InStr(deviceName, "ASE37") > 0 OrElse
-                           InStr(deviceName, "XETK:1") > 0 OrElse InStr(deviceName, "LC") > 0 OrElse InStr(deviceName, "ASE34") > 0 Then
-                            cnt = x
-                            FlashParameters(cnt).FlashType = "Flash_NONE"
-                            FlashParameters(cnt).DeviceName = deviceName
-                        End If
-
-                        ' Non-XCP conformity checks - only run for known processor devices to avoid
-                        ' expensive blocking COM calls on unrelated workspace devices
-                        If InStr(deviceName, "XCP") = 0 Then
-                            If IsKnownProcessorDevice(deviceName) Then
-                                Dim myWorkbaseDevice As WorkbaseDevice = myDevices(x)
-                                If myWorkbaseDevice.CheckCodePageConform() = False Then
-                                    returnstring = "CheckCodePageConform Returned FALSE for " & deviceName
-                                    If InStr(FlashParameters(cnt).DeviceName, "FCM") > 0 Then
-                                        FlashParameters(cnt).FlashType = "Flash_AC"
+                            For y As Integer = 0 To UBound(myExperimentElementsInDevice)
+                                If myExperimentElementsInDevice(y).IsCalibrationElement Then
+                                    ReDim Preserve myCalInfo(Calcnt)
+                                    myCalInfo(Calcnt).CalName = myExperimentElementsInDevice(y).GetName
+                                    myCalInfo(Calcnt).DeviceName = myDevices(x).GetName
+                                    If myExperimentElementsInDevice(y).IsScalar Then
+                                        myCalInfo(Calcnt).CalType = "Scalar"
+                                    ElseIf myExperimentElementsInDevice(y).IsArray Then
+                                        myCalInfo(Calcnt).CalType = "Array"
+                                    ElseIf myExperimentElementsInDevice(y).IsOneDTable Then
+                                        myCalInfo(Calcnt).CalType = "OneDTable"
+                                    ElseIf myExperimentElementsInDevice(y).IsTwoDTable Then
+                                        myCalInfo(Calcnt).CalType = "TwoDTable"
+                                    ElseIf myExperimentElementsInDevice(y).IsDistribution Then
+                                        myCalInfo(Calcnt).CalType = "Distribution"
                                     Else
-                                        FlashParameters(cnt).FlashType = "Flash_BAC"
+                                        myCalInfo(Calcnt).CalType = "?"
                                     End If
-                                Else
-                                    HandleUserMessageLogging("GMRC", "HandleWorkspace: CheckCodePageConform Returned TRUE for " & deviceName)
-                                End If
-
-                                If myWorkbaseDevice.DownloadWorkPage() = True Then
-                                    HandleUserMessageLogging("GMRC", "HandleWorkspace: myWorkbaseDevice.DownloadWorkPage returned TRUE for " & deviceName)
-                                Else
-                                    returnstring = "Download Working Page = FAIL for " & deviceName
-                                End If
-
-                                If myWorkbaseDevice.CheckDataPagesConform() = False Then
-                                    returnstring = "CheckDataPagesConform Returned FALSE for " & deviceName
-                                    If FlashParameters(cnt).FlashType <> "Flash_BAC" And FlashParameters(cnt).FlashType <> "Flash_AC" Then
-                                        FlashParameters(cnt).FlashType = "Flash_CAL"
+                                    If myExperimentElementsInDevice(y).IsMatrix Then
+                                        myCalInfo(Calcnt).IsMatrix = True
                                     End If
-                                Else
-                                    HandleUserMessageLogging("GMRC", "HandleWorkspace: CheckDataPagesConform Returned TRUE for " & deviceName)
+                                    PrintLine(fnum, myCalInfo(Calcnt).DeviceName & Chr(9) & myCalInfo(Calcnt).CalName)
+                                    Calcnt += 1
                                 End If
-                            Else
-                                HandleUserMessageLogging("GMRC", "HandleWorkspace: Skipping conformity checks for non-configured device: " & deviceName)
-                            End If
+                            Next
                         End If
 
-                        ' Track disconnected devices
-                        If myDevices(x).IsActive = False Then
-                            If tempstr = "" Then
-                                tempstr = deviceName
-                                FlashParameters(cnt).FlashType = "Flash_NOCONNECT"
-                            Else
-                                tempstr = tempstr & ", " & deviceName
-                                FlashParameters(cnt).FlashType = "Flash_NOCONNECT"
+                        If SaveMeasValList Then
+                            If fnum2 = 0 Then
+                                fnum2 = FreeFile()
+                                FileOpen(fnum2, Path.Combine(My.Application.Info.DirectoryPath, "MasterMeasVarList.txt"), OpenMode.Output)
                             End If
+                            Dim tempElements() As ExperimentElement = BrowseExperimentElementsInDevice("Va*", myDevices(x))
+                            For y As Integer = 0 To UBound(tempElements)
+                                If tempElements(y).IsMeasureElement Then
+                                    ReDim Preserve myMeasInfo(MeasCnt)
+                                    myMeasInfo(MeasCnt).MeasName = tempElements(y).GetName
+                                    myMeasInfo(MeasCnt).DeviceName = myDevices(x).GetName
+                                    PrintLine(fnum2, myMeasInfo(MeasCnt).DeviceName & Chr(9) & myMeasInfo(MeasCnt).MeasName)
+                                    MeasCnt += 1
+                                End If
+                            Next
+                            tempElements = BrowseExperimentElementsInDevice("Ve*", myDevices(x))
+                            For y As Integer = 0 To UBound(tempElements)
+                                If tempElements(y).IsMeasureElement Then
+                                    ReDim Preserve myMeasInfo(MeasCnt)
+                                    myMeasInfo(MeasCnt).MeasName = tempElements(y).GetName
+                                    myMeasInfo(MeasCnt).DeviceName = myDevices(x).GetName
+                                    PrintLine(fnum2, myMeasInfo(MeasCnt).DeviceName & Chr(9) & myMeasInfo(MeasCnt).MeasName)
+                                    MeasCnt += 1
+                                End If
+                            Next
                         End If
-
-                        HandleUserMessageLogging("GMRC", "HandleWorkspace: " & deviceName & " - Is Active = " & myDevices(x).IsActive)
                     End If
+
+                    ' Device-specific flash parameter logic (preserve original rules)
+                    Dim myWorkbaseDevice As WorkbaseDevice = myDevices(x)
+                    If InStr(myDevices(x).GetName, "FCM") > 0 Or InStr(myDevices(x).GetName, "FCM100") > 0 Then
+                        cnt = x
+                        FlashParameters(cnt).FlashType = "Flash_NONE"
+                        FlashParameters(cnt).DeviceName = myDevices(x).GetName
+                    End If
+                    If InStr(myDevices(x).GetName, "ACP2_MCU") > 0 Or InStr(myDevices(x).GetName, "ACP3_MCU") > 0 Or InStr(myDevices(x).GetName, "ACP4_MCU") > 0 Then
+                        cnt = x
+                        FlashParameters(cnt).FlashType = "Flash_NONE"
+                        FlashParameters(cnt).DeviceName = myDevices(x).GetName
+                    End If
+                    If InStr(myDevices(x).GetName, "HCF") > 0 Or InStr(myDevices(x).GetName, "HCS") > 0 Or InStr(myDevices(x).GetName, "ASE37") > 0 Then
+                        cnt = x
+                        FlashParameters(cnt).FlashType = "Flash_NONE"
+                        FlashParameters(cnt).DeviceName = myDevices(x).GetName
+                    End If
+                    If InStr(myDevices(x).GetName, "XETK:1") > 0 Or InStr(myDevices(x).GetName, "LC") > 0 Or InStr(myDevices(x).GetName, "ASE34") > 0 Then
+                        cnt = x
+                        FlashParameters(cnt).FlashType = "Flash_NONE"
+                        FlashParameters(cnt).DeviceName = myDevices(x).GetName
+                    End If
+
+                    ' Non-XCP device checks
+                    If InStr(myDevices(x).GetName, "XCP") = 0 Then
+                        If myWorkbaseDevice.CheckCodePageConform() = False Then
+                            returnstring = "CheckCodePageConform Returned FALSE for " & myDevices(x).GetName
+                            If InStr(FlashParameters(cnt).DeviceName, "FCM") > 0 Then
+                                FlashParameters(cnt).FlashType = "Flash_AC"
+                            Else
+                                FlashParameters(cnt).FlashType = "Flash_BAC"
+                            End If
+                        Else
+                            HandleUserMessageLogging("GMRC", "HandleWorkspace: CheckCodePageConform Returned TRUE for " & myDevices(x).GetName)
+                        End If
+
+                        If myWorkbaseDevice.DownloadWorkPage() = True Then
+                            HandleUserMessageLogging("GMRC", "HandleWorkspace: myWorkbaseDevice.DownloadWorkPage returned TRUE for " & myDevices(x).GetName)
+                        Else
+                            returnstring = "Download Working Page = FAIL for " & myDevices(x).GetName
+                        End If
+
+                        If myWorkbaseDevice.CheckDataPagesConform() = False Then
+                            returnstring = "CheckDataPagesConform Returned FALSE for " & myDevices(x).GetName
+                            If FlashParameters(cnt).FlashType <> "Flash_BAC" And FlashParameters(cnt).FlashType <> "Flash_AC" Then
+                                FlashParameters(cnt).FlashType = "Flash_CAL"
+                            End If
+                        Else
+                            HandleUserMessageLogging("GMRC", "HandleWorkspace: CheckDataPagesConform Returned TRUE for " & myDevices(x).GetName)
+                        End If
+                    End If
+
+                    ' Track disconnected devices
+                    If myDevices(x).IsActive = False Then
+                        If tempstr = "" Then
+                            tempstr = myDevices(x).GetName
+                            FlashParameters(cnt).FlashType = "Flash_NOCONNECT"
+                        Else
+                            tempstr = tempstr & ", " & myDevices(x).GetName
+                            FlashParameters(cnt).FlashType = "Flash_NOCONNECT"
+                        End If
+                    End If
+
+                    HandleUserMessageLogging("GMRC", "HandleWorkspace: " & myDevices(x).GetName & " - Is Active = " & myDevices(x).IsActive)
                 End If
             Next
 
-            ' Write master files from accumulated lists - one atomic file write replaces per-record PrintLine
-            If SaveCalList AndAlso calList.Count > 0 Then
-                File.WriteAllLines(calListPath, calLines)
-                myCalInfo = calList.ToArray()
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: Saved " & calList.Count & " calibration entries to MasterCalList.txt")
-            End If
-            If SaveMeasValList AndAlso measList.Count > 0 Then
-                File.WriteAllLines(measListPath, measLines)
-                myMeasInfo = measList.ToArray()
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: Saved " & measList.Count & " measurement entries to MasterMeasVarList.txt")
-            End If
-
-            ' If arrays were not populated from INCA (master files already existed), load them cheaply from disk now
-            If myCalInfo Is Nothing AndAlso File.Exists(calListPath) AndAlso New FileInfo(calListPath).Length > 0 Then
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: Loading myCalInfo from MasterCalList.txt")
-                Dim diskCalList As New List(Of CalInfo)
-                For Each line As String In File.ReadAllLines(calListPath)
-                    Dim parts() As String = line.Split(Chr(9))
-                    If parts.Length >= 2 Then
-                        Dim entry As CalInfo
-                        entry.DeviceName = parts(0)
-                        entry.CalName = parts(1)
-                        diskCalList.Add(entry)
-                    End If
-                Next
-                myCalInfo = diskCalList.ToArray()
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: Loaded " & diskCalList.Count & " calibration entries from MasterCalList.txt")
-            End If
-
-            If myMeasInfo Is Nothing AndAlso File.Exists(measListPath) AndAlso New FileInfo(measListPath).Length > 0 Then
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: Loading myMeasInfo from MasterMeasVarList.txt")
-                Dim diskMeasList As New List(Of MeasInfo)
-                For Each line As String In File.ReadAllLines(measListPath)
-                    Dim parts() As String = line.Split(Chr(9))
-                    If parts.Length >= 2 Then
-                        Dim entry As MeasInfo
-                        entry.DeviceName = parts(0)
-                        entry.MeasName = parts(1)
-                        diskMeasList.Add(entry)
-                    End If
-                Next
-                myMeasInfo = diskMeasList.ToArray()
-                HandleUserMessageLogging("GMRC", "ProcessDevicesAfterOpen: Loaded " & diskMeasList.Count & " measurement entries from MasterMeasVarList.txt")
-            End If
+            ' Close any open file handles used for debug lists
+            If fnum > 0 Then FileClose(fnum)
+            If fnum2 > 0 Then FileClose(fnum2)
 
             ' Build return message for disconnected devices if any
             If Len(tempstr) > 0 Then
@@ -4321,22 +4162,6 @@ Implements IGM_INCA_Comm.InitINCA
             HandleUserMessageLogging("GMRC", "CreateExperimentFromTemplateIfRequested: " & ex.Message, DisplayMsgBox)
             Return False
         End Try
-    End Function
-
-    ''' <summary>
-    ''' Returns True if <paramref name="deviceName"/> contains at least one token from
-    ''' <see cref="ActiveProcessorNames"/> (case-insensitive Contains match), meaning it
-    ''' is one of the processor devices configured for this vehicle.
-    ''' Falls back to True when ActiveProcessorNames is Nothing or empty so that
-    ''' behaviour is identical to the pre-filter code on unconfigured vehicles.
-    ''' </summary>
-    Private Function IsKnownProcessorDevice(deviceName As String) As Boolean
-        If ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then Return True
-        Dim upper As String = UCase(deviceName)
-        For Each token As String In ActiveProcessorNames
-            If InStr(upper, UCase(token)) > 0 Then Return True
-        Next
-        Return False
     End Function
 
     Private Function BrowseExperimentElementsInDevice(ByVal mySearchString As String, ByVal myDevice As ExperimentDevice) As ExperimentElement()
@@ -4463,12 +4288,8 @@ Implements IGM_INCA_Comm.InitINCA
                     Return "SetRecordingFileName returned FALSE"
                 End If
 
-                ' SaveExperiment() intentionally omitted here.
-                ' The recording filename is held in INCA's in-memory experiment state and takes effect
-                ' immediately for the current session without being persisted to disk.
-                ' Saving the experiment at every START RECORD adds 10-15 seconds of gap between recordings
-                ' and is unnecessary because the experiment definition remains static across all recording
-                ' sessions. SaveExperiment is called once at startup and on FULL signal registration only.
+                ' Save experiment to persist settings
+                SaveExperiment()
 
             Catch ex As Exception
                 HandleUserMessageLogging("COMM", $"SetupDataLogging: ❌ Exception setting filename: {ex.Message}")
