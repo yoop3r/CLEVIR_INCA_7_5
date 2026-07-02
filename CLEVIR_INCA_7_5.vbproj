@@ -754,6 +754,12 @@
     <None Include=".github\copilot-instructions.md" />
     <None Include=".github\upgrades\scenarios\cppbuildtoolsupgrade_f73cc1\assessment.md" />
     <None Include=".github\upgrades\scenarios\cppbuildtoolsupgrade_f73cc1\plan.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\plan.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\scenario-instructions.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\01-prerequisites\progress-details.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\02-pcapeventbridge-retarget\progress-details.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\upgrade-options.md" />
     <None Include="app.config" />
     <None Include="CLEVIR_INCA_7_5_1_TemporaryKey.pfx" />
     <None Include="CLEVIR_INCA_7_5_2_TemporaryKey.pfx" />
@@ -1024,6 +1030,3 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>
-
-
-
