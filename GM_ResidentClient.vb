@@ -711,8 +711,6 @@ Public Class GmResidentClient
             StopRecordingMonitorTask()
 
             ' Write configuration changes
-            'HandleUserMessageLogging("GMRC", "Writing changes to signal list and user config file...")
-            'WriteLoginIDListFile()
             SaveSignalListChanges()
 
             ' ════════════════════════════════════════════════════════════════

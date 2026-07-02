@@ -4,8 +4,8 @@ Imports System.IO
 Imports System.Drawing.Drawing2D
 
 Public Class LoginForm
-    'Streamlined login form displaying up to 5 user login buttons.
-    'Allows signal registration mode selection, workspace changes, and LiDAR/recording configuration.
+    'Login form capturing session metadata (ADAS Group, Test Type, and Email) prior to entering the main application.
+    'The Driver/Login ID is derived from the email address (see GetDriverIDFromEmail) rather than a fixed user list.
 
     Private _isExitButtonClick As Boolean = False
     Private _isInitializing As Boolean = True
@@ -84,6 +84,9 @@ Public Class LoginForm
                         Return ' Stay on login form
                     End If
                 End If
+
+                ' Cache this email for autocomplete suggestions on future logins
+                AddEmailToHistory(SaveEmailAddress)
 
                 HandleUserMessageLogging("LoginForm",
                     $"Session metadata captured - Driver: [{SaveLoginID}], ADAS Group: [{SaveGroupName}], Test Type: [{SaveProcedureName}], Email: [{SaveEmailAddress}]")
@@ -174,6 +177,25 @@ Public Class LoginForm
 
         Catch ex As Exception
             HandleUserMessageLogging("LoginForm", $"Error initializing session metadata: {ex.Message}")
+        End Try
+
+        ' ═══════════════════════════════════════════════════════════════════
+        ' ✅ NEW: Cached Email Autocomplete (suggest previously used emails)
+        ' ═══════════════════════════════════════════════════════════════════
+        Try
+            ReadEmailHistoryFile()
+
+            Dim emailSource As New AutoCompleteStringCollection()
+            emailSource.AddRange(EmailHistoryList.ToArray())
+
+            TextBox_Email.AutoCompleteMode = AutoCompleteMode.SuggestAppend
+            TextBox_Email.AutoCompleteSource = AutoCompleteSource.CustomSource
+            TextBox_Email.AutoCompleteCustomSource = emailSource
+
+            HandleUserMessageLogging("GMRC", $"LoginForm: Email autocomplete initialized with {EmailHistoryList.Count} cached email(s)")
+
+        Catch ex As Exception
+            HandleUserMessageLogging("LoginForm", $"Error initializing email autocomplete: {ex.Message}")
         End Try
 
         ' ═══════════════════════════════════════════════════════════════════

@@ -38,26 +38,13 @@ Public Class UploadDataScreen
 
     Private Sub RadioButton13_CheckedChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles RadioButton13.CheckedChanged
 
-        Dim users As ArrayList
-
         If RadioButton13.Checked = True Then
             HandleUserMessageLogging("GMRC", "Current User Only")
             If Len(SaveLoginId) = 0 Then
-
-                'Users = MyIncaInterface.ReadUserIDList()
-                users = LoginIdNameAndFreqAl
-
+                ' Legacy login-ID list (LoginIDNameAndFreqAL / UserIDList.txt) has been removed - no longer tracked.
                 ListBox1.Items.Clear()
-                ListBox1.Visible = True
-
-                If Not users Is Nothing Then
-                    For x = 0 To users.Count - 1
-
-                        ListBox1.Items.Add(Mid(users(x).ToString, 8, Len(users(x).ToString)))
-
-                    Next x
-
-                End If
+                ListBox1.Visible = False
+                _searchString = "_"
             Else
                 _searchString = SaveLoginId
             End If

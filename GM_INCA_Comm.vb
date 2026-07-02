@@ -20,7 +20,6 @@ Public Interface IGM_INCA_Comm
     Function GetActualRecordingTimeMs() As Integer
     Function GetRemainingRecordingTimeMs() As Integer
     Function StopMeasurementAndSaveToFile(fileName As String, fileFormat As String) As Boolean
-    Function AddUserToList(ByVal UserName As String) As Boolean
     Function BrowseMeasureElementsInDevice(ByVal searchstr As String, ByVal devicename As String) As String()
     Function ClearINCAMonitor() As Boolean
     Function ConnectToInca() As String
@@ -88,7 +87,6 @@ Public Interface IGM_INCA_Comm
     Sub StartDataCollection(ByVal sleeptime As Integer)
     Sub StopDataCollection()
     Sub SetProjectDatabaseInfo()
-    Sub ReadUserIDList()
 
     Enum INIT_STATUS
         ALREADY_INITIALIZED = 0
@@ -800,35 +798,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
         GetRecordingState = myIncaOnlineExperiment.GetRecordingState
 
         ActiveIncaApiCall = String.Empty
-    End Function
-
-    Public Function AddUserToList(ByVal UserName As String) As Boolean Implements IGM_INCA_Comm.AddUserToList
-
-        'Keeps track of the number of times a user has logged in and / or creates a new user login entry in the UserIDList.txt file...
-
-        Dim x As Integer
-        Dim Found As Boolean
-
-        AddUserToList = True
-
-        For x = 0 To LoginIDNameAndFreqAL.Count - 1
-
-            If InStr(UCase(LoginIDNameAndFreqAL(x).ToString), UCase(UserName)) > 0 Then
-                Found = True
-                AddUserToList = False
-                Exit For
-            End If
-
-        Next
-
-        If Found = False Then
-
-            LoginIDNameAndFreqAL.Add("000001 " & UserName)
-
-            WriteLoginIDListFile()
-
-        End If
-
     End Function
 
     Public Function InitializeHardware() As Boolean Implements IGM_INCA_Comm.InitializeHardware
@@ -4387,26 +4356,8 @@ Implements IGM_INCA_Comm.InitINCA
                 Return "INCA Auto Increment Flag"
             End If
 
-            ' Save login id and update frequency list (robust to format)
+            ' Save login id (legacy LoginIDNameAndFreqAL frequency-tracking list removed - unused)
             SaveLoginID = LoginIDStr
-            'If LoginIDNameAndFreqAL IsNot Nothing Then
-            '    For idx As Integer = 0 To LoginIDNameAndFreqAL.Count - 1
-            '        Dim entry As String = LoginIDNameAndFreqAL(idx).ToString()
-            '        Dim parts() As String = entry.Split(New Char() {" "c}, 2)
-            '        If parts.Length = 2 AndAlso parts(1).Equals(LoginIDStr, StringComparison.OrdinalIgnoreCase) Then
-            '            Dim number As Integer = 0
-            '            Integer.TryParse(parts(0), number)
-            '            number += 1
-            '            LoginIDNameAndFreqAL(idx) = number.ToString("000000") & " " & parts(1)
-            '            Exit For
-            '        End If
-            '    Next
-            'Else
-            '    ' ensure the collection exists and add default if missing
-            '    LoginIDNameAndFreqAL = New ArrayList From {"000001 " & LoginIDStr}
-            'End If
-
-            'WriteLoginIDListFile()
 
             ' Build the session folder name: yyyyMMdd_HHmmss_LoginID
             Dim sessionFolder As String = DateTime.Now.ToString("yyyyMMdd_HHmmss") & "_" & LoginIDStr
@@ -4500,114 +4451,6 @@ Implements IGM_INCA_Comm.InitINCA
         End Try
 
     End Function
-
-    Public Sub ReadUserIDList() Implements IGM_INCA_Comm.ReadUserIDList
-
-        'Reads contents of userIDList.txt file and puts it into an arraylist.
-        'Modernized to use File IO APIs, robust parsing and clearer error handling.
-        Dim UserIDFileName As String = Path.Combine(My.Application.Info.DirectoryPath, "UserIDList.txt")
-
-        Try
-            LoginIDNameAndFreqAL = New ArrayList
-            HandleUserMessageLogging("GMRC", "Reading UserIDList File...")
-
-            ' If file doesn't exist -> create default and persist
-            If Not File.Exists(UserIDFileName) Then
-                HandleUserMessageLogging("GMRC", UserIDFileName & " does not exist, adding default username...")
-                LoginIDNameAndFreqAL.Add("000001 DRVR00")
-                WriteLoginIDListFile()
-                HandleUserMessageLogging("GMRC", "Reading UserIDList File Complete")
-                Return
-            End If
-
-            ' If file is locked/in use, keep previous behavior (skip read)
-            If FileInUse(UserIDFileName) Then
-                HandleUserMessageLogging("GMRC", UserIDFileName & " is in use, skipping read.")
-                Return
-            End If
-
-            Dim lines() As String = File.ReadAllLines(UserIDFileName)
-
-            If lines Is Nothing OrElse lines.Length = 0 OrElse String.IsNullOrWhiteSpace(lines(0)) Then
-                ' corrupted or empty file -> fallback default and persist
-                LoginIDNameAndFreqAL.Add("000001 DRVR00")
-                HandleUserMessageLogging("GMRC", UserIDFileName & " appears corrupted, using default name and frequency...")
-                WriteLoginIDListFile()
-                HandleUserMessageLogging("GMRC", "Reading UserIDList File Complete")
-                Return
-            End If
-
-            Dim first As String = lines(0).Trim()
-
-            ' Detect new format: starts with 6-digit number then space and username (e.g. "000001 DRVR00")
-            Dim isNewFormat As Boolean = False
-            If first.Length >= 6 Then
-                Dim candidate As String = first.Substring(0, 6)
-                Dim tmpNum As Integer
-                If Integer.TryParse(candidate, tmpNum) Then
-                    isNewFormat = True
-                End If
-            End If
-
-            If isNewFormat Then
-                ' New format - copy lines directly (trimmed)
-                For Each ln In lines
-                    If Not String.IsNullOrWhiteSpace(ln) Then
-                        LoginIDNameAndFreqAL.Add(ln.Trim())
-                    End If
-                Next
-            Else
-                ' Old format - expected "User<TAB>Number" (convert to "000001 User")
-                For Each ln In lines
-                    If String.IsNullOrWhiteSpace(ln) Then Continue For
-                    Dim raw As String = ln.Trim()
-                    Dim tabPos As Integer = raw.IndexOf(vbTab)
-                    If tabPos >= 0 Then
-                        Dim userPart As String = raw.Substring(0, tabPos).Trim()
-                        Dim numPart As String = raw.Substring(tabPos + 1).Trim()
-                        Dim parsedNum As Integer
-                        If Integer.TryParse(numPart, parsedNum) Then
-                            LoginIDNameAndFreqAL.Add(parsedNum.ToString("000000") & " " & userPart)
-                        Else
-                            ' fallback if numeric parse fails
-                            LoginIDNameAndFreqAL.Add("000001 " & userPart)
-                        End If
-                    Else
-                        ' No tab found - try whitespace split with last token numeric, else treat as username-only
-                        Dim parts() As String = raw.Split(New Char() {" "c}, StringSplitOptions.RemoveEmptyEntries)
-                        If parts.Length >= 2 Then
-                            Dim lastToken As String = parts(parts.Length - 1)
-                            Dim parsedNum As Integer
-                            If Integer.TryParse(lastToken, parsedNum) Then
-                                Dim userName As String = String.Join(" ", parts, 0, parts.Length - 1)
-                                LoginIDNameAndFreqAL.Add(parsedNum.ToString("000000") & " " & userName)
-                            Else
-                                LoginIDNameAndFreqAL.Add("000001 " & raw)
-                            End If
-                        Else
-                            LoginIDNameAndFreqAL.Add("000001 " & raw)
-                        End If
-                    End If
-                Next
-                ' Persist converted (new-format) list back to disk
-                WriteLoginIDListFile()
-            End If
-
-            HandleUserMessageLogging("GMRC", "Reading UserIDList File Complete")
-
-        Catch ex As Exception
-            ' On any failure, fallback to a safe default and persist it
-            HandleUserMessageLogging("GMRC", "ReadUserIDList: " & ex.Message)
-            HandleUserMessageLogging("GMRC", UserIDFileName & " appears corrupted, using default name and frequency...")
-            LoginIDNameAndFreqAL = New ArrayList From {"000001 kz0612"}
-            Try
-                If Not FileInUse(UserIDFileName) Then WriteLoginIDListFile()
-            Catch writeEx As Exception
-                HandleUserMessageLogging("GMRC", "ReadUserIDList: Failed to write default list: " & writeEx.Message)
-            End Try
-        End Try
-
-    End Sub
 
     Public Sub New()
         HandleUserMessageLogging("COMM", "New Connection Established.")

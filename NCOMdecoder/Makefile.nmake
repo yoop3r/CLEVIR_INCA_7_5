@@ -1,0 +1,24 @@
+﻿# Makefile for Visual Studio's nmake
+# Usage: nmake /f Makefile.nmake
+
+CC = cl
+CFLAGS = /O2 /W3 /LD /DNCOM_DECODE_DLL_EXPORT
+LDFLAGS = /link /DLL
+
+SRC_DIR = nav
+OBJ_DIR = obj
+BIN_DIR = bin
+
+all: $(BIN_DIR)\NCOMdecoder.dll
+
+$(BIN_DIR)\NCOMdecoder.dll: $(OBJ_DIR)\NcomRxC.obj
+	@if not exist $(BIN_DIR) mkdir $(BIN_DIR)
+	$(CC) $(OBJ_DIR)\NcomRxC.obj /Fe$(BIN_DIR)\NCOMdecoder.dll $(LDFLAGS)
+
+$(OBJ_DIR)\NcomRxC.obj: $(SRC_DIR)\NcomRxC.c
+	@if not exist $(OBJ_DIR) mkdir $(OBJ_DIR)
+	$(CC) $(CFLAGS) /c $(SRC_DIR)\NcomRxC.c /Fo$(OBJ_DIR)\NcomRxC.obj
+
+clean:
+	@if exist $(OBJ_DIR) rmdir /S /Q $(OBJ_DIR)
+	@if exist $(BIN_DIR) rmdir /S /Q $(BIN_DIR)

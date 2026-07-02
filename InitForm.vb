@@ -27,7 +27,6 @@ Public Class InitForm
 
     ' Module-level variables to track original state
     Private _originalConfigData As String = ""
-    Private _originalLoginIDData As String = ""
 
     ' Add this method to your class
     <DllImport("user32.dll", SetLastError:=True)>
@@ -970,8 +969,6 @@ Public Class InitForm
         HandleUserMessageLogging("GMRC", "InitForm_Load: New INCA Interface created.")
 
         MyIncaInterface.MyGmIncaComm = New GM_INCA_CommClass
-        MyIncaInterface.ReadUserIDList()
-        CaptureInitialLoginIDState()
 
         ' Schedule INCA minimization after connection
         Task.Run(Async Function()
@@ -1035,12 +1032,6 @@ Public Class InitForm
                 HandleUserMessageLogging("GMRC", "Skipping WriteConfigFile() - no changes detected")
             End If
 
-            'If HasLoginIDListChanged() Then
-            '    WriteLoginIDListFile()
-            'Else
-            '    HandleUserMessageLogging("GMRC", "Skipping WriteLoginIDListFile() - no changes detected")
-            'End If
-
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "InitForm Exit Button: " & ex.Message)
 
@@ -1077,18 +1068,6 @@ Public Class InitForm
         End Try
     End Sub
 
-    ' ✅ Call this after ReadUserIDList() to capture baseline
-    Private Sub CaptureInitialLoginIDState()
-        Try
-            Dim loginIDPath As String = Path.Combine(My.Application.Info.DirectoryPath, "UserIDList.txt")
-            If File.Exists(loginIDPath) Then
-                _originalLoginIDData = File.ReadAllText(loginIDPath)
-            End If
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"CaptureInitialLoginIDState: {ex.Message}")
-        End Try
-    End Sub
-
     ' ✅ Check if config has changed
     Private Function HasConfigChanged() As Boolean
         Try
@@ -1100,29 +1079,6 @@ Public Class InitForm
         End Try
     End Function
 
-    ' ✅ Check if LoginID list has changed
-    Private Function HasLoginIDListChanged() As Boolean
-        Try
-            If LoginIDNameAndFreqAL Is Nothing OrElse LoginIDNameAndFreqAL.Count = 0 Then
-                Return False ' No changes if list is empty
-            End If
-
-            ' Build current state
-            Dim currentData As New System.Text.StringBuilder()
-            Dim sortedList As New ArrayList(LoginIDNameAndFreqAL)
-            sortedList.Sort()
-            sortedList.Reverse()
-
-            For Each item In sortedList
-                currentData.AppendLine(item.ToString())
-            Next
-
-            Return Not String.Equals(_originalLoginIDData, currentData.ToString(), StringComparison.Ordinal)
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"HasLoginIDListChanged: {ex.Message}")
-            Return True ' Write on error to be safe
-        End Try
-    End Function
     Private Sub Button1_Click(ByVal sender As System.Object, ByVal e As EventArgs) Handles Button1.Click
 
         'This is the Drive Button on the InitForm.  When the Drive Button is pressed, we begin the main initialization sequence...

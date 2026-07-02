@@ -1770,14 +1770,6 @@ Public Class INCA_InterfaceClass
         End Try
     End Function
 
-    Public Function AddUserToList(ByVal UserName As String) As Boolean
-        Return MyGmIncaComm.AddUserToList(UserName)
-    End Function
-
-    Public Sub ReadUserIDList()
-        MyGmIncaComm.ReadUserIDList()
-    End Sub
-
     'Public Function GetGM_INCA_CommStatus() As String()
     '    GetGM_INCA_CommStatus = MyGmIncaComm.GetGM_INCA_CommStatus
     'End Function

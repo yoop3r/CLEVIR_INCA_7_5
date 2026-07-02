@@ -160,7 +160,6 @@ Public Module Module1
     Public CounterValue As Integer           'Set in ReadDebugFile, used in GM_INCA_CommClass - DataCollectionProcess
     Public DebugMessages As Integer          'Set in ReadDebugFile, used as a debug message fileter for DataCollectionProcess messages
     Public INCARunning As Boolean            'Set in ConnectToINCA and Connect (Called from InitINCA),  True if INCA is running.  Impacts startup behavior based on status of INCA when CLEVIR is launched.
-    Public LoginIDNameAndFreqAL As ArrayList = Nothing  'Set in GM_INCA_CommClass - ReadUserIDList, this is a list of login IDs and frequency of use
     Public myUserName As String              'Set in GM_INCA_CommClass - SwitchToUserNamed - used when switching to a new user (This is not commonly done anymore, this is more or less legacy)
     Public SetExperimentDispatch As Boolean      'Status of the rci2.IncaSetExperimentDispatch(myExpEnvView) call.  Used in HandleWorkspace and RegisterSignals
     Public ReferenceDataSetDataBasePaths() As String 'Set in Initialize, contains INCA reference Dataset Folder paths for each device
@@ -456,6 +455,10 @@ Public Module Module1
     Public SaveEmailAddress As String = ""
     Public SaveGroupName As String = ""
     Public SaveProcedureName As String = ""
+
+    ' Cached list of previously used emails (most-recently-used first) for TextBox_Email autocomplete.
+    ' Persisted to EmailHistory.txt in the application directory. See ReadEmailHistoryFile/WriteEmailHistoryFile/AddEmailToHistory.
+    Public EmailHistoryList As New List(Of String)
 
     ' Predefined dropdown values — loaded from SessionMetadata.xml; hardcoded values are fallback defaults.
     Public PredefinedGroups As String() = {
@@ -5383,47 +5386,90 @@ Public Module Module1
         End If
     End Sub
 
-    Public Sub WriteLoginIDListFile()
-        ' Called from SetupDataLogging and AddUserToList:
-        ' Saves the LoginID List to the UserIDList.txt file so if any new IDs have been added, they will be retained for subsequent
-        ' use.
+    ''' <summary>
+    ''' Reads the cached list of previously used emails from EmailHistory.txt (most-recently-used first).
+    ''' Populates EmailHistoryList; leaves it empty if the file is missing, in use, or unreadable.
+    ''' </summary>
+    Public Sub ReadEmailHistoryFile()
+        EmailHistoryList = New List(Of String)
+        Dim fileName As String = Path.Combine(My.Application.Info.DirectoryPath, "EmailHistory.txt")
 
-        ' Check if LoginIDNameAndFreqAL is null or empty before proceeding
-        If LoginIDNameAndFreqAL Is Nothing Then
-            HandleUserMessageLogging("GMRC", "WriteLoginIDListFile: LoginIDNameAndFreqAL is Nothing - skipping file write")
-            Return
-        End If
-
-        If LoginIDNameAndFreqAL.Count = 0 Then
-            HandleUserMessageLogging("GMRC", "WriteLoginIDListFile: LoginIDNameAndFreqAL is empty - skipping file write")
-            Return
-        End If
-
-        Dim fileName As String = Path.Combine(My.Application.Info.DirectoryPath, "UserIDList.txt")
-
-        If File.Exists(fileName) Then
-            If Not FileInUse(fileName) Then
-                Try
-                    ' Use FileStream and StreamWriter to write to the file
-                    Using fs As New FileStream(fileName, FileMode.Create, FileAccess.Write)
-                        Using writer As New StreamWriter(fs)
-                            LoginIDNameAndFreqAL.Sort()
-                            LoginIDNameAndFreqAL.Reverse()
-                            For Each item In LoginIDNameAndFreqAL
-                                writer.WriteLine(item.ToString())
-                            Next
-                        End Using
-                    End Using
-                    HandleUserMessageLogging("GMRC", $"WriteLoginIDListFile: Successfully wrote {LoginIDNameAndFreqAL.Count} login IDs to file")
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"WriteLoginIDListFile: Error writing to file - {ex.Message}")
-                End Try
-            Else
-                HandleUserMessageLogging("GMRC", "WriteLoginIDListFile: File is in use - skipping write")
+        Try
+            If Not File.Exists(fileName) Then
+                HandleUserMessageLogging("GMRC", fileName & " does not exist, starting with empty email history.")
+                Return
             End If
-        Else
-            HandleUserMessageLogging("GMRC", "WriteLoginIDListFile: UserIDList.txt file does not exist - skipping write")
-        End If
+
+            If FileInUse(fileName) Then
+                HandleUserMessageLogging("GMRC", fileName & " is in use, skipping read.")
+                Return
+            End If
+
+            For Each ln In File.ReadAllLines(fileName)
+                Dim trimmed As String = ln.Trim()
+                If Not String.IsNullOrWhiteSpace(trimmed) AndAlso Not EmailHistoryList.Contains(trimmed, StringComparer.OrdinalIgnoreCase) Then
+                    EmailHistoryList.Add(trimmed)
+                End If
+            Next
+
+            HandleUserMessageLogging("GMRC", $"ReadEmailHistoryFile: Loaded {EmailHistoryList.Count} cached email(s)")
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"ReadEmailHistoryFile: {ex.Message}")
+            EmailHistoryList = New List(Of String)
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' Persists the cached email history list to EmailHistory.txt, one email per line (most-recently-used first).
+    ''' </summary>
+    Public Sub WriteEmailHistoryFile()
+        If EmailHistoryList Is Nothing OrElse EmailHistoryList.Count = 0 Then Return
+
+        Dim fileName As String = Path.Combine(My.Application.Info.DirectoryPath, "EmailHistory.txt")
+
+        Try
+            ' Only check FileInUse when the file already exists - FileInUse opens with FileMode.Open,
+            ' which throws (and is misreported as "in use") when the file is missing on first run.
+            If File.Exists(fileName) AndAlso FileInUse(fileName) Then
+                HandleUserMessageLogging("GMRC", "WriteEmailHistoryFile: File is in use - skipping write")
+                Return
+            End If
+
+            Using fs As New FileStream(fileName, FileMode.Create, FileAccess.Write)
+                Using writer As New StreamWriter(fs)
+                    For Each item In EmailHistoryList
+                        writer.WriteLine(item)
+                    Next
+                End Using
+            End Using
+            HandleUserMessageLogging("GMRC", $"WriteEmailHistoryFile: Successfully wrote {EmailHistoryList.Count} cached email(s) to file")
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"WriteEmailHistoryFile: Error writing to file - {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' Adds (or promotes) an email address to the top of the cached history list and persists it to disk.
+    ''' Deduplicates case-insensitively so re-using an email moves it to the most-recently-used position.
+    ''' </summary>
+    Public Sub AddEmailToHistory(email As String)
+        Try
+            If String.IsNullOrWhiteSpace(email) Then Return
+            Dim trimmed As String = email.Trim()
+
+            If EmailHistoryList Is Nothing Then EmailHistoryList = New List(Of String)
+
+            ' Remove any existing case-insensitive match so it can be re-inserted at the most-recently-used position
+            EmailHistoryList.RemoveAll(Function(e) String.Equals(e, trimmed, StringComparison.OrdinalIgnoreCase))
+            EmailHistoryList.Insert(0, trimmed)
+
+            WriteEmailHistoryFile()
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"AddEmailToHistory: {ex.Message}")
+        End Try
     End Sub
 
     Public Sub CopyINCADatabase()
