@@ -3,12 +3,12 @@
 ## Overview
 
 Upgrading CLEVIR INCA 7.5 (VB.NET WinForms desktop app + supporting C# library) from .NET Framework 4.8 to .NET 10, using a Bottom-Up strategy: the leaf `PcapEventBridge.csproj` library is retargeted and validated first, then `CLEVIR_INCA_7_5.vbproj` is converted to SDK-style, retargeted to `net10.0-windows`, and reconciled (packages, binding redirects, obsolete APIs) before final solution-wide validation.
-**Progress**: 2/8 tasks complete <progress value="25" max="100"></progress> 25%
+**Progress**: 3/8 tasks complete <progress value="38" max="100"></progress> 38%
 
 ## Tasks
 - ✅ 01-prerequisites: Verify toolchain and .NET 10 SDK readiness ([Content](tasks/01-prerequisites/task.md), [Progress](tasks/01-prerequisites/progress-details.md))
 - ✅ 02-pcapeventbridge-retarget: Retarget PcapEventBridge.csproj to net10.0 ([Content](tasks/02-pcapeventbridge-retarget/task.md), [Progress](tasks/02-pcapeventbridge-retarget/progress-details.md))
-- 🔲 03-sdk-style-conversion: Convert CLEVIR_INCA_7_5.vbproj to SDK-style format
+- ✅ 03-sdk-style-conversion: Convert CLEVIR_INCA_7_5.vbproj to SDK-style format ([Content](tasks/03-sdk-style-conversion/task.md), [Progress](tasks/03-sdk-style-conversion/progress-details.md))
 - 🔲 04-winforms-retarget: Retarget CLEVIR_INCA_7_5.vbproj to net10.0-windows and resolve WinForms/GDI+ API surface
 - 🔲 05-package-updates: Update, remove, and add package references for net10.0
 - 🔲 06-binding-redirect-review: Document and reconcile app.config assembly binding redirects
@@ -16,5 +16,7 @@ Upgrading CLEVIR INCA 7.5 (VB.NET WinForms desktop app + supporting C# library) 
 - 🔲 08-final-validation: Full solution build, test, and INCA interop smoke test
 
 ## Recent Activity
+- 2026-07-03: Task 03 (SDK-style conversion) completed. Verified zero item regressions (Compile/EmbeddedResource/Content/PackageReference/Reference/COMReference) via exhaustive diffing plus an isolated diagnostic build. One pre-existing `NU1201` restore error remains (cross-tier TFM mismatch: `PcapEventBridge` is net10.0, this project is still net48 by design) — expected to resolve in task 04. Cleaned up sub-agent scratch artifacts and a resurrected stale task folder; fixed stale `07-obsolete-crypto-cleanup` references in `plan.md`/task 04's `task.md` to the renamed `07-crypto-removal`. Documented that this project requires full-framework `MSBuild.exe` (not `dotnet build`) due to COM references.
 - 2026-07-03: Regenerated this file to fix a duplication/corruption issue (duplicate progress lines, duplicate 01-prerequisites entry).
 - 2026-07-03: Task 07 rescoped from "obsolete-crypto-cleanup" (modernize APIs) to "crypto-removal" (delete encrypt/decrypt feature entirely), per explicit user confirmation after surfacing that the decrypt path also covers a shared network archive of `.encrypt` files (`Q:\` paths, dating to 2019/2020) that will become permanently unreadable/abandoned. `plan.md` and `scenario-instructions.md` updated accordingly.
+
