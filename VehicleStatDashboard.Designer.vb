@@ -28,13 +28,6 @@ Partial Class VehicleStatDashboard
         Me.ActionsToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.ToolStripMenuItem2 = New System.Windows.Forms.ToolStripMenuItem()
         Me.PerformSupportFileConfigurationToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
-        Me.DecryptFileToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
-        Me.FindEncryptedFilesToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
-        Me.ToolStripMenuItem1 = New System.Windows.Forms.ToolStripMenuItem()
-        Me.CSAV2ToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
-        Me.LowContentToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
-        Me.HighContentToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
-        Me.FindAndDecryptToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.ReadFlashInfoFileToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.ReadChromeConnectedVehiclesFileToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         Me.DisplayVehicleHostNamesToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
@@ -155,7 +148,7 @@ Partial Class VehicleStatDashboard
         '
         'ActionsToolStripMenuItem
         '
-        Me.ActionsToolStripMenuItem.DropDownItems.AddRange(New System.Windows.Forms.ToolStripItem() {Me.ToolStripMenuItem2, Me.PerformSupportFileConfigurationToolStripMenuItem, Me.DecryptFileToolStripMenuItem, Me.FindEncryptedFilesToolStripMenuItem, Me.ReadFlashInfoFileToolStripMenuItem, Me.ReadChromeConnectedVehiclesFileToolStripMenuItem, Me.DisplayVehicleHostNamesToolStripMenuItem, Me.CopyFlashInfoToFileToolStripMenuItem, Me.CreateAggregateAnnotationFileToolStripMenuItem, Me.UpdatePPAggregateAnnotationFilesToolStripMenuItem, Me.CopyFilesFromShareToLocalToolStripMenuItem, Me.ShowNetworkConnectedPCsToolStripMenuItem, Me.CheckForCalibrationFolderChangesToolStripMenuItem})
+        Me.ActionsToolStripMenuItem.DropDownItems.AddRange(New System.Windows.Forms.ToolStripItem() {Me.ToolStripMenuItem2, Me.PerformSupportFileConfigurationToolStripMenuItem, Me.ReadFlashInfoFileToolStripMenuItem, Me.ReadChromeConnectedVehiclesFileToolStripMenuItem, Me.DisplayVehicleHostNamesToolStripMenuItem, Me.CopyFlashInfoToFileToolStripMenuItem, Me.CreateAggregateAnnotationFileToolStripMenuItem, Me.UpdatePPAggregateAnnotationFilesToolStripMenuItem, Me.CopyFilesFromShareToLocalToolStripMenuItem, Me.ShowNetworkConnectedPCsToolStripMenuItem, Me.CheckForCalibrationFolderChangesToolStripMenuItem})
         Me.ActionsToolStripMenuItem.Name = "ActionsToolStripMenuItem"
         Me.ActionsToolStripMenuItem.Size = New System.Drawing.Size(59, 20)
         Me.ActionsToolStripMenuItem.Text = "Actions"
@@ -171,52 +164,6 @@ Partial Class VehicleStatDashboard
         Me.PerformSupportFileConfigurationToolStripMenuItem.Name = "PerformSupportFileConfigurationToolStripMenuItem"
         Me.PerformSupportFileConfigurationToolStripMenuItem.Size = New System.Drawing.Size(298, 22)
         Me.PerformSupportFileConfigurationToolStripMenuItem.Text = "Format Experiment Variable Output..."
-        '
-        'DecryptFileToolStripMenuItem
-        '
-        Me.DecryptFileToolStripMenuItem.Name = "DecryptFileToolStripMenuItem"
-        Me.DecryptFileToolStripMenuItem.Size = New System.Drawing.Size(298, 22)
-        Me.DecryptFileToolStripMenuItem.Text = "Decrypt File..."
-        '
-        'FindEncryptedFilesToolStripMenuItem
-        '
-        Me.FindEncryptedFilesToolStripMenuItem.DropDownItems.AddRange(New System.Windows.Forms.ToolStripItem() {Me.ToolStripMenuItem1, Me.CSAV2ToolStripMenuItem, Me.LowContentToolStripMenuItem, Me.HighContentToolStripMenuItem, Me.FindAndDecryptToolStripMenuItem})
-        Me.FindEncryptedFilesToolStripMenuItem.Name = "FindEncryptedFilesToolStripMenuItem"
-        Me.FindEncryptedFilesToolStripMenuItem.Size = New System.Drawing.Size(298, 22)
-        Me.FindEncryptedFilesToolStripMenuItem.Text = "Decrypt and Delete Files on Q..."
-        '
-        'ToolStripMenuItem1
-        '
-        Me.ToolStripMenuItem1.Name = "ToolStripMenuItem1"
-        Me.ToolStripMenuItem1.Size = New System.Drawing.Size(174, 22)
-        Me.ToolStripMenuItem1.Text = "All"
-        '
-        'CSAV2ToolStripMenuItem
-        '
-        Me.CSAV2ToolStripMenuItem.CheckOnClick = True
-        Me.CSAV2ToolStripMenuItem.Name = "CSAV2ToolStripMenuItem"
-        Me.CSAV2ToolStripMenuItem.Size = New System.Drawing.Size(174, 22)
-        Me.CSAV2ToolStripMenuItem.Text = "CSAV2"
-        '
-        'LowContentToolStripMenuItem
-        '
-        Me.LowContentToolStripMenuItem.CheckOnClick = True
-        Me.LowContentToolStripMenuItem.Name = "LowContentToolStripMenuItem"
-        Me.LowContentToolStripMenuItem.Size = New System.Drawing.Size(174, 22)
-        Me.LowContentToolStripMenuItem.Text = "Low Content"
-        '
-        'HighContentToolStripMenuItem
-        '
-        Me.HighContentToolStripMenuItem.CheckOnClick = True
-        Me.HighContentToolStripMenuItem.Name = "HighContentToolStripMenuItem"
-        Me.HighContentToolStripMenuItem.Size = New System.Drawing.Size(174, 22)
-        Me.HighContentToolStripMenuItem.Text = "High Content"
-        '
-        'FindAndDecryptToolStripMenuItem
-        '
-        Me.FindAndDecryptToolStripMenuItem.Name = "FindAndDecryptToolStripMenuItem"
-        Me.FindAndDecryptToolStripMenuItem.Size = New System.Drawing.Size(174, 22)
-        Me.FindAndDecryptToolStripMenuItem.Text = "Decrypt and Delete"
         '
         'ReadFlashInfoFileToolStripMenuItem
         '
@@ -1136,19 +1083,12 @@ Partial Class VehicleStatDashboard
     Friend WithEvents Button5 As Button
     Friend WithEvents Button6 As Button
     Friend WithEvents DisplayVehicleHostNamesToolStripMenuItem As ToolStripMenuItem
-    Friend WithEvents DecryptFileToolStripMenuItem As ToolStripMenuItem
-    Friend WithEvents FindEncryptedFilesToolStripMenuItem As ToolStripMenuItem
-    Friend WithEvents CSAV2ToolStripMenuItem As ToolStripMenuItem
-    Friend WithEvents LowContentToolStripMenuItem As ToolStripMenuItem
-    Friend WithEvents HighContentToolStripMenuItem As ToolStripMenuItem
-    Friend WithEvents FindAndDecryptToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents CopyFlashInfoToFileToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents ReadFlashInfoFileToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents ReadChromeConnectedVehiclesFileToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents CreateAggregateAnnotationFileToolStripMenuItem As ToolStripMenuItem
     Friend WithEvents FolderBrowserDialog1 As FolderBrowserDialog
     Friend WithEvents UpdatePPAggregateAnnotationFilesToolStripMenuItem As ToolStripMenuItem
-    Friend WithEvents ToolStripMenuItem1 As ToolStripMenuItem
     Friend WithEvents Button7 As Button
     Friend WithEvents Button8 As Button
     Friend WithEvents BackgroundWorker1 As System.ComponentModel.BackgroundWorker

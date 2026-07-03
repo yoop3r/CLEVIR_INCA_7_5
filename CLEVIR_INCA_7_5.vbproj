@@ -314,6 +314,7 @@
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\04-winforms-retarget\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\05-package-updates\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\06-binding-redirect-review\progress-details.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\07-crypto-removal\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\upgrade-options.md" />
     <None Update="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
