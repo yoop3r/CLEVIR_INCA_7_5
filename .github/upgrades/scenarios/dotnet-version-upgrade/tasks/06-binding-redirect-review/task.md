@@ -4,3 +4,45 @@
 
 **Done when**: every flagged binding redirect issue (7 mandatory + 8 potential + 1 missing) is resolved or explicitly documented as intentionally retained with a stated reason, `app.config` reflects the reconciled set, and the project builds without MSB3836 warnings.
 
+## Research Findings
+
+### Key context shift vs. the original assessment
+The assessment (15 flagged rows: 7 🔴Mandatory MSB3836 conflicts + 7 🟡Potential forced-downgrades on the *same* 7 assemblies + 1 🟡Potential missing redirect = 15 rows total) was generated **before** task `04-retarget` (net48 → net10.0-windows) and task `05-package-updates` (package cleanup) executed. Both tasks materially changed the dependency graph the assessment was reasoning about, so it could not be trusted as current truth and required empirical re-verification:
+
+1. **Runtime model shift (net10.0-windows is CoreCLR, not .NET Framework).** CoreCLR resolves assemblies via the app's `.deps.json`/`.runtimeconfig.json` (trusted-assembly list), not the legacy Fusion-style `<assemblyBinding><bindingRedirect>` mechanism. `AutoGenerateBindingRedirects` defaults to `true` only for `.NETFramework` TFMs, so it does not apply here, and the RAR auto-redirect/conflict diagnostics that produce `MSB3836` do not run for this project's build. **Verified empirically**, not assumed: baseline build (`build_output_36.log`, run before any app.config edits) shows 0 `MSB3836` warnings — full log grep for `MSB3836|bindingRedirect|conflicts with|There was a conflict` returned zero matches, only 3 pre-existing crypto warnings (`SYSLIB0021` x2, `SYSLIB0022` x1, out of scope — task 07).
+2. **6 of the 7 assemblies named in the 7 mandatory + 7 potential rows are no longer PackageReferences at all.** Cross-referenced task 05's `progress-details.md` and the current `.vbproj` / `obj\project.assets.json` (`net10.0-windows` target): `System.Runtime.CompilerServices.Unsafe`, `System.Buffers`, `System.Memory`, `System.Threading.Tasks.Extensions`, `System.Numerics.Vectors`, and `System.Security.AccessControl` were all explicitly removed as direct `PackageReference` entries in `05-package-updates` (framework-provided on `net10.0`, confirmed absent from the resolved `net10.0-windows` target in `project.assets.json`). Their redirects are now orphaned — not merely version-mismatched.
+3. **Azure.Core is the only one of the 7 flagged assemblies still a live dependency.** Still a direct `PackageReference` at `1.57.0` (confirmed via `get_project_dependencies` and `project.assets.json`), so its redirect is genuinely fixable (version-correctable), not removable.
+4. **2 more of the original 12 redirects (not in the 15 flagged rows) are also orphaned:** `System.Text.Encoding.CodePages` (removed as a package in task 05's "will not be pruned" cleanup) and `System.Security.Principal.Windows` (removed as one of the original 10 framework-provided removals in task 05). Neither appears in `project.assets.json`'s `net10.0-windows` closure.
+5. **`Microsoft.Win32.Registry`'s redirect has no corresponding package at all** — absent from task 05's removal record (meaning it likely was never a direct `PackageReference` in this project's history), and absent from the resolved dependency closure. Treated as a defensive/legacy redirect with nothing to reconcile against; removed as dead weight.
+6. **The "missing redirect" for `System.IO.Compression`** (assessment: manual redirect would need to cover v4.2.0.0→package's v4.3.0) is stale for a different reason: `System.IO.Compression` in this project is a `<Reference>` (HintPath to the .NET Framework v4.8 reference assemblies), not a versioned NuGet package. Post-retarget, this now resolves to the `net10.0-windows` shared framework (v10.0.0.0) — the assessment's v4.2.0.0/v4.3.0 framing predates task 04's TFM retarget entirely. The only still-present `System.IO.Compression`-adjacent package is `runtime.native.System.IO.Compression` (4.3.2), which ships native (non-managed) assets only — there is no managed assembly boundary for a binding redirect to apply to. **Decision: do not add the suggested redirect** (documented, not silently ignored).
+7. **PacketDotNet and Newtonsoft.Json redirects were already correct** and required no change: `PacketDotNet` package is `1.4.9-pre53` but its assembly version is `1.4.9.0` (prerelease suffix doesn't affect assembly version); `Newtonsoft.Json` is `13.0.4` but keeps assembly version pinned at `13.0.0.0` across all `13.x.y` releases (standard Newtonsoft.Json versioning convention). Both retained as-is, documented as intentional in `app.config`.
+
+### Full 12-redirect reconciliation (mapped against all 15 assessment rows)
+
+| # | Assembly | Original redirect | Assessment flags | Still a PackageReference? | Disposition |
+|---|---|---|---|---|---|
+| 1 | System.Runtime.CompilerServices.Unsafe | 0.0.0.0-6.0.3.0 → 6.0.3.0 | Mandatory MSB3836 + Potential downgrade | No (removed task 05) | **Removed** — orphaned |
+| 2 | System.Buffers | 0.0.0.0-4.0.5.0 → 4.0.5.0 | Mandatory MSB3836 + Potential downgrade | No (removed task 05) | **Removed** — orphaned |
+| 3 | System.Memory | 0.0.0.0-4.0.5.0 → 4.0.5.0 | Mandatory MSB3836 + Potential downgrade | No (removed task 05) | **Removed** — orphaned |
+| 4 | System.Threading.Tasks.Extensions | 0.0.0.0-4.2.4.0 → 4.2.4.0 | Mandatory MSB3836 + Potential downgrade | No (removed task 05) | **Removed** — orphaned |
+| 5 | Azure.Core | 0.0.0.0-1.51.1.0 → 1.51.1.0 | Mandatory MSB3836 + Potential downgrade | Yes (1.57.0) | **Corrected** → newVersion 1.57.0.0 |
+| 6 | System.Numerics.Vectors | 0.0.0.0-4.1.6.0 → 4.1.6.0 | Mandatory MSB3836 + Potential downgrade | No (removed task 05) | **Removed** — orphaned |
+| 7 | System.Security.AccessControl | 0.0.0.0-6.0.0.1 → 6.0.0.1 | Mandatory MSB3836 + Potential downgrade | No (removed task 05) | **Removed** — orphaned |
+| 8 | *(missing)* System.IO.Compression | n/a | Potential (missing redirect) | Reference only; framework-provided on net10.0-windows | **Not added** — documented rationale |
+| 9 | System.Text.Encoding.CodePages | 0.0.0.0-11.0.0.0 → 11.0.0.0 | Not in the 15 flagged rows | No (removed task 05) | **Removed** — orphaned |
+| 10 | System.Security.Principal.Windows | 0.0.0.0-5.0.0.0 → 5.0.0.0 | Not in the 15 flagged rows | No (removed task 05) | **Removed** — orphaned |
+| 11 | Microsoft.Win32.Registry | 0.0.0.0-5.0.0.0 → 5.0.0.0 | Not in the 15 flagged rows | No (never referenced) | **Removed** — orphaned/defensive, no target package |
+| 12 | PacketDotNet | 0.0.0.0-1.4.9.0 → 1.4.9.0 | Not flagged (already correct) | Yes (1.4.9-pre53) | **Retained as-is** |
+| 13 | Newtonsoft.Json | 0.0.0.0-13.0.0.0 → 13.0.0.0 | Not flagged (already correct) | Yes (13.0.4) | **Retained as-is** |
+
+All 15 assessment-flagged rows (7 mandatory + 7 potential-downgrade covering the same 7 assemblies, + 1 potential-missing) are accounted for: 6 resolved by removal (orphaned packages), 1 resolved by correction (Azure.Core), 1 resolved by documented non-action (System.IO.Compression). The remaining 3 reconciled entries (#9, #10, #11) were not themselves in the 15 flagged rows but were cleaned up as part of reconciling "all 12 existing redirects" per the task's explicit scope.
+
+### Decomposition assessment
+Single file (`app.config`), single concern (binding-redirect section reconciliation), no independent parallel workstreams — executed as-is, no decomposition needed.
+
+### Validation
+- Baseline build (`build_output_36.log`, before edits): 0 errors, 3 warnings (pre-existing crypto, out of scope), 0 MSB3836/binding-redirect-conflict matches on full-log grep.
+- Post-edit forced rebuild (`build_output_38.log`, `/t:Rebuild`): **Build succeeded**, 0 errors, 3 warnings (same pre-existing crypto set), 0 MSB3836/binding-redirect-conflict matches on full-log grep.
+- Final incremental sanity build (`build_output_39.log`): **Build succeeded**, 0 errors, 0 warnings (fully up-to-date incremental build — app.config copy step confirmed re-run: "Copying file from app.config to bin\x64\Debug\CLEVIR_INCA_7_5.dll.config").
+- Note: two of the three build invocations (`build_output_37.log`'s run and the final `build_output_39.log` run) reported a terminal-wrapper exit code of 1 despite the MSBuild log itself explicitly stating "Build succeeded" / "0 Error(s)" and `EXIT=0` captured immediately after the MSBuild.exe call returned. Treated as a terminal/tool artifact unrelated to build correctness — confirmed twice, and the forced `/t:Rebuild` run (`build_output_38.log`) is unambiguous corroborating evidence.
+
