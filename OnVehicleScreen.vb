@@ -350,10 +350,9 @@ Public Class OnVehicleScreen
                     End If
 
                 Case DialogResult.Retry
-                    ' User clicked "Select Different Workspace/Experiment" button
+                    ' Legacy branch: LoginForm no longer produces DialogResult.Retry (workspace-selection
+                    ' flow removed). Kept as a defensive no-op in case DialogResult.Retry is set elsewhere.
                     HandleUserMessageLogging("GMRC", "User requested workspace change from OnVehicleScreen")
-                    ' Show SoftwareVersionSelect form (this will be handled by calling code)
-                    ' For now, just log the request
 
                 Case Else
                     ' User closed form without selecting (X button triggers Exit handler)

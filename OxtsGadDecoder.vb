@@ -36,9 +36,18 @@ Public Class OxtsNcomDecoder
     End Structure
 
     ' ✅ Import NCOM decoder function
-    <DllImport(DllPath, CallingConvention:=CallingConvention.Cdecl)>
-    Private Shared Function NcomDecodePacket(<MarshalAs(UnmanagedType.LPArray)> packet As Byte(), packetLength As Integer, <Out> ByRef decoded As NcomData) As Integer
-    End Function
+    ''' <summary>
+    ''' P/Invoke declarations isolated per CA1060 (native methods must live in a
+    ''' type whose name ends in NativeMethods/SafeNativeMethods/UnsafeNativeMethods).
+    ''' </summary>
+    Private NotInheritable Class NativeMethods
+        Private Sub New()
+        End Sub
+
+        <DllImport(DllPath, CallingConvention:=CallingConvention.Cdecl)>
+        Public Shared Function NcomDecodePacket(<MarshalAs(UnmanagedType.LPArray)> packet As Byte(), packetLength As Integer, <Out> ByRef decoded As NcomData) As Integer
+        End Function
+    End Class
 
     ''' <summary>
     ''' Decodes NCOM packet to OxtsPosition structure
@@ -48,7 +57,7 @@ Public Class OxtsNcomDecoder
             Dim ncomData As NcomData
 
             ' Decode the packet
-            Dim result As Integer = NcomDecodePacket(data, data.Length, ncomData)
+            Dim result As Integer = NativeMethods.NcomDecodePacket(data, data.Length, ncomData)
 
             If result = 1 AndAlso ncomData.IsValid = 1 Then ' Success
                 ' Compute GPS time from week + TOW

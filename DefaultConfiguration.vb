@@ -11,7 +11,7 @@ Public Class DefaultConfiguration
     'This form can be accessed from a menu selection in the Configuration Environment (GmResidentClient)
     'or will be automatically displayed on initialization if there is no database name entered in the config.xml file
 
-    'This form will also be displayed if the Edit Config File button on the SoftwareVersionSelect form is pressed.
+    'This form will also be displayed automatically on initialization if there is no database name entered in the config.xml file.
 
     Private _changesMade As Boolean
     Private Loading As Boolean
@@ -180,12 +180,12 @@ Public Class DefaultConfiguration
     Private Sub Button5_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles Button5.Click
 
         'If any changes are made on the DefaultConfiguration form, ChangeButtonText is called which changes button text from Exit to Exit and Save.
-        'DialogResult is used to convey whether changes have been made to SoftwareVersionSelect form...
+        'DialogResult is used to convey whether changes have been made...
 
         If Button5.Text = "Exit" Then
-            Me.DialogResult = Windows.Forms.DialogResult.Cancel
+            Me.DialogResult = System.Windows.Forms.DialogResult.Cancel
         ElseIf Button5.Text = "Exit and Save" Then
-            Me.DialogResult = Windows.Forms.DialogResult.OK
+            Me.DialogResult = System.Windows.Forms.DialogResult.OK
         End If
 
         Me.Close()
@@ -231,14 +231,12 @@ Public Class DefaultConfiguration
     Private Sub TextBox1_TextChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TextBox1.TextChanged
         INCAWorkspace = TextBox1.Text
         _changesMade = True
-        SoftwareVersionSelect.TextBox1.Text = INCAWorkspace
         ChangeButtonText()
     End Sub
 
     Private Sub TextBox2_TextChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TextBox2.TextChanged
         INCAExperiment = TextBox2.Text
         _changesMade = True
-        SoftwareVersionSelect.TextBox2.Text = INCAExperiment
         ChangeButtonText()
     End Sub
 
@@ -251,8 +249,6 @@ Public Class DefaultConfiguration
     End Sub
 
     Private Sub Label5_TextChanged(ByVal sender As Object, ByVal e As System.EventArgs) Handles Label5.TextChanged
-        SoftwareVersionSelect.TextBox3.Text = Label5.Text
-
         _changesMade = True
 
         ChangeButtonText()

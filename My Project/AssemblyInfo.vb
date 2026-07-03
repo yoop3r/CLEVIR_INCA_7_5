@@ -1,12 +1,22 @@
 ﻿Imports System.Resources
 Imports System.Reflection
 Imports System.Runtime.InteropServices
+Imports System.Runtime.Versioning
 
 ' General Information about an assembly is controlled through the following 
 ' set of attributes. Change these attribute values to modify the information
 ' associated with an assembly.
 
 ' Review the values of the assembly attributes
+
+' GenerateAssemblyInfo is disabled for this project (hand-authored attributes below),
+' which means the SDK's automatic "SupportedOSPlatformAttribute" generation for the
+' net10.0-windows TargetFramework is also skipped (both are gated by the same
+' GenerateAssemblyInfo target in Microsoft.NET.GenerateAssemblyInfo.targets). Without
+' this attribute, the CA1416 platform-compatibility analyzer treats this assembly as
+' platform-agnostic and flags nearly every WinForms/GDI+ API call. This restores the
+' attribute the SDK would otherwise have generated automatically.
+<Assembly: SupportedOSPlatform("windows")>
 
 <Assembly: AssemblyTitle("CLEVIR_INCA_7_5")>
 <Assembly: AssemblyDescription("Controller Logging Enhanced Vehicle Incident Recorder")>

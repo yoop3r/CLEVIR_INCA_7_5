@@ -87,6 +87,20 @@ Public NotInheritable Class InitProgressSplash
         Controls.Add(panel)
     End Sub
 
+    ''' <summary>
+    ''' Disposes the runtime-created label, progress bar, and cancel button. These are parented
+    ''' under Me.Controls (the cancel button via an intermediate panel) but are disposed
+    ''' explicitly here for analyzer compliance and clarity of ownership.
+    ''' </summary>
+    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+        If disposing Then
+            _label?.Dispose()
+            _progress?.Dispose()
+            _cancel?.Dispose()
+        End If
+        MyBase.Dispose(disposing)
+    End Sub
+
     Public Sub CenterOnActiveScreen()
         Dim area = Screen.FromPoint(Cursor.Position).WorkingArea
         Location = New Point(CInt(area.Left + (area.Width - Width) / 2),

@@ -4183,6 +4183,7 @@ bypass:
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property GridSpacingAcross() As Integer
         Get
             Return _GridSpacingAcross
@@ -4192,6 +4193,7 @@ bypass:
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property GridSpacingForeAft() As Integer
         Get
             Return _GridSpacingForeAft
@@ -4221,6 +4223,7 @@ bypass:
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HostVehiclePercentFromBottom() As Integer
         Get
             Return _HostVehiclePercentFromBottom
@@ -4230,6 +4233,7 @@ bypass:
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HostVehicleDimForwardOfCG() As Single
         Get
             Return _HostVehicleDimForwardOfCG
@@ -4239,6 +4243,7 @@ bypass:
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HostVehicleDimRearwardOfCG() As Single
         Get
             Return _HostVehicleDimRearwardOfCG
@@ -4248,6 +4253,7 @@ bypass:
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property COG_To_COV_Offset() As Double
 
         Get
@@ -4259,6 +4265,7 @@ bypass:
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HostVehicleDimLongitudinal() As Single
         Get
             Return _HostVehicleDimLongitudinal
@@ -4268,6 +4275,7 @@ bypass:
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HostVehicleDimLateral() As Single
         Get
             Return _HostVehicleDimLateral
@@ -4276,6 +4284,52 @@ bypass:
             _HostVehicleDimLateral = value
         End Set
     End Property
+
+    ''' <summary>
+    ''' Disposes the sensor-object overlays and dynamically-created controls owned by this form.
+    ''' Controls parented under Me.Controls would be disposed automatically by the base class,
+    ''' but several fields (sensor target overlays) are not guaranteed to be parented, so all
+    ''' owned disposable fields are explicitly released here. Safe to call multiple times.
+    ''' </summary>
+    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+        If disposing Then
+            FusionTargetObject?.Dispose()
+            FusionTargetObject = Nothing
+            LRR_Object?.Dispose()
+            LRR_Object = Nothing
+            LSRR_Object?.Dispose()
+            LSRR_Object = Nothing
+            RSRR_Object?.Dispose()
+            RSRR_Object = Nothing
+            VIS_Object?.Dispose()
+            VIS_Object = Nothing
+            VehicleObject?.Dispose()
+            VehicleObject = Nothing
+
+            myExitButton?.Dispose()
+            myTDViewConfigButton?.Dispose()
+            myFullScreenButton?.Dispose()
+            myPictureBoxGreenLeftArrow?.Dispose()
+            myPictureBoxGreenRightArrow?.Dispose()
+            myPictureBoxGrayLeftArrow?.Dispose()
+            myPictureBoxGrayRightArrow?.Dispose()
+            myPictureBoxYellowLeftArrow?.Dispose()
+            myPictureBoxYellowRightArrow?.Dispose()
+            myPictureBoxRedLeftArrow?.Dispose()
+            myPictureBoxRedRightArrow?.Dispose()
+            myPictureBoxBlueLeftArrow?.Dispose()
+            myPictureBoxBlueRightArrow?.Dispose()
+            myALCReasonLeftLabel?.Dispose()
+            myALCReasonRightLabel?.Dispose()
+            myALCStatusLeftLabel?.Dispose()
+            myALCStatusRightLabel?.Dispose()
+            mylabel1?.Dispose()
+            myMovinglabel?.Dispose()
+            myMovinglabel = Nothing
+        End If
+
+        MyBase.Dispose(disposing)
+    End Sub
 
     Private Sub InitializeComponent()
         SuspendLayout()
@@ -4706,10 +4760,6 @@ bypass:
 
     Private Sub Label1_Click_1(ByVal sender As System.Object, ByVal e As EventArgs)
 
-    End Sub
-
-    Protected Overrides Sub Finalize()
-        MyBase.Finalize()
     End Sub
 
     Private Sub TDGraphicsContainerClass_Move(sender As Object, e As EventArgs) Handles Me.Move

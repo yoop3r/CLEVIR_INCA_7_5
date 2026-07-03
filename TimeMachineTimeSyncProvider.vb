@@ -30,6 +30,8 @@ Public Class TimeMachineTimeSyncProvider
     Private _syncState As String = "No Data"
 
     Private ReadOnly _stateLock As New Object()
+    ' CA2002: separate dedicated lock object for the running-flag critical sections (was locking on Me)
+    Private ReadOnly _runLock As New Object()
 
     Public ReadOnly Property ProviderName As String Implements ITimeSyncProvider.ProviderName
         Get
@@ -46,7 +48,7 @@ Public Class TimeMachineTimeSyncProvider
     End Property
 
     Public Sub Start() Implements ITimeSyncProvider.Start
-        SyncLock Me
+        SyncLock _runLock
             If _running Then Return
             _running = True
         End SyncLock
@@ -61,7 +63,7 @@ Public Class TimeMachineTimeSyncProvider
     End Sub
 
     Public Sub [Stop]() Implements ITimeSyncProvider.Stop
-        SyncLock Me
+        SyncLock _runLock
             _running = False
         End SyncLock
 

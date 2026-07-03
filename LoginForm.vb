@@ -122,7 +122,7 @@ Public Class LoginForm
             Return
         End If
 
-        If Me.DialogResult = DialogResult.OK OrElse Me.DialogResult = DialogResult.Retry Then
+        If Me.DialogResult = DialogResult.OK Then
             HandleUserMessageLogging("GMRC", $"LoginForm_FormClosing: Programmatic close via DialogResult={Me.DialogResult}, allowing close")
             e.Cancel = False
             Return

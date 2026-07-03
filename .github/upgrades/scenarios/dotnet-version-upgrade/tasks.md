@@ -3,13 +3,13 @@
 ## Overview
 
 Upgrading CLEVIR INCA 7.5 (VB.NET WinForms desktop app + supporting C# library) from .NET Framework 4.8 to .NET 10, using a Bottom-Up strategy: the leaf `PcapEventBridge.csproj` library is retargeted and validated first, then `CLEVIR_INCA_7_5.vbproj` is converted to SDK-style, retargeted to `net10.0-windows`, and reconciled (packages, binding redirects, obsolete APIs) before final solution-wide validation.
-**Progress**: 3/8 tasks complete <progress value="38" max="100"></progress> 38%
+**Progress**: 4/8 tasks complete <progress value="50" max="100"></progress> 50%
 
 ## Tasks
 - ✅ 01-prerequisites: Verify toolchain and .NET 10 SDK readiness ([Content](tasks/01-prerequisites/task.md), [Progress](tasks/01-prerequisites/progress-details.md))
 - ✅ 02-pcapeventbridge-retarget: Retarget PcapEventBridge.csproj to net10.0 ([Content](tasks/02-pcapeventbridge-retarget/task.md), [Progress](tasks/02-pcapeventbridge-retarget/progress-details.md))
 - ✅ 03-sdk-style-conversion: Convert CLEVIR_INCA_7_5.vbproj to SDK-style format ([Content](tasks/03-sdk-style-conversion/task.md), [Progress](tasks/03-sdk-style-conversion/progress-details.md))
-- 🔲 04-winforms-retarget: Retarget CLEVIR_INCA_7_5.vbproj to net10.0-windows and resolve WinForms/GDI+ API surface
+- ✅ 04-winforms-retarget: Retarget CLEVIR_INCA_7_5.vbproj to net10.0-windows and resolve WinForms/GDI+ API surface ([Content](tasks/04-winforms-retarget/task.md), [Progress](tasks/04-winforms-retarget/progress-details.md))
 - 🔲 05-package-updates: Update, remove, and add package references for net10.0
 - 🔲 06-binding-redirect-review: Document and reconcile app.config assembly binding redirects
 - 🔲 07-crypto-removal: Remove file encryption/decryption feature entirely (scope confirmed with user 2026-07-03 — full removal, not modernization; see scenario-instructions.md Key Decisions Log)

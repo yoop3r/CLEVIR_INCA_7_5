@@ -18,6 +18,7 @@
     ''' <summary>
     ''' Gets or sets the dialog result.
     ''' </summary>
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property Result As DialogResult
 
     ''' <summary>

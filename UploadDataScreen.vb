@@ -199,7 +199,7 @@ Public Class UploadDataScreen
                 EnableWirelessNetworkConnection()
             Else
                 HandleUserMessageLogging("GMRC", "EXITING UPLOAD -- Shutdown Windows Selected.",, )
-                ExitWindows(EwxPoweroff Or EwxShutdown Or EwxForce, 0)
+                NativeMethods.ExitWindows(EwxPoweroff Or EwxShutdown Or EwxForce, 0)
                 Me.Dispose()
             End If
 
@@ -491,7 +491,7 @@ Public Class UploadDataScreen
                                 Button4.Enabled = False
                             Else
 
-                                If WirelessUnavailable = True And GmlanConnectionUnavailable = False Then
+                                If WirelessUnavailable = True And GMLANConnectionUnavailable = False Then
                                     InhibitGmLanRadioButton = True
                                     RadioButton2.Checked = False
                                     RadioButton8.Checked = True
@@ -701,8 +701,8 @@ Public Class UploadDataScreen
 
         Me.Button1.Enabled = False
 
-        If Len(SaveLoginId) > 0 Then
-            Me.RadioButton13.Text = "Current User Only (" & SaveLoginId & ")"
+        If Len(SaveLoginID) > 0 Then
+            Me.RadioButton13.Text = "Current User Only (" & SaveLoginID & ")"
             Me.RadioButton13.Checked = True
         Else
             Me.RadioButton13.Text = "Select User LoginID"
@@ -740,24 +740,13 @@ Public Class UploadDataScreen
 
             If InStr(_selectedDriveLetter, "\") = 0 Then
 
-                HandleUserMessageLogging("GMRC", fullPath & " directory not found.  Mapping Drive...")
+                ' Network drive auto-mapping (WNetAddConnection2) is no longer supported - the drive must
+                ' already be mapped/available. Report the failure directly instead of attempting to map it.
+                HandleUserMessageLogging("GMRC", "Drive Mapping failed.  Data Cannot be Uploaded to " & fullPath & "gmcsv" & VehicleNumber & " at this time...", DisplayMsgBox, )
+                HandleUserMessageLogging("GMRC", "The NetworkDriveLetter defined in the " & My.Application.Info.DirectoryPath & "\config.xml file, currently (" & NetworkDriveLetter & "), MUST be mapped to \\Nam.corp.gm.com\tcws-dfs\project\CSV\CSAV2", DisplayMsgBox, )
+                HandleUserMessageLogging("GMRC", "Should you need to make changes to the config.xml file, Exit CLEVIR prior to making any changes...", DisplayMsgBox)
 
-                If MapDrive(_selectedDriveLetter, NetworkDriveMapping) = False Then
-
-                    HandleUserMessageLogging("GMRC", "Drive Mapping failed.  Data Cannot be Uploaded to " & fullPath & "gmcsv" & VehicleNumber & " at this time...", DisplayMsgBox, )
-                    'HandleUserMessageLogging("GMRC", FullPath & " not found.  Data Cannot be Uploaded to " & FullPath & "gmcsv" & VehicleNumber & " at this time...", DisplayMsgBox, )
-                    HandleUserMessageLogging("GMRC", "The NetworkDriveLetter defined in the " & My.Application.Info.DirectoryPath & "\config.xml file, currently (" & NetworkDriveLetter & "), MUST be mapped to \\Nam.corp.gm.com\tcws-dfs\project\CSV\CSAV2", DisplayMsgBox, )
-                    HandleUserMessageLogging("GMRC", "Should you need to make changes to the config.xml file, Exit CLEVIR prior to making any changes...", DisplayMsgBox)
-
-                    Exit Sub
-
-                Else
-
-                    If Not Directory.Exists(fullPath & "gmcsv" & VehicleNumber) Then
-                        Directory.CreateDirectory(fullPath & "gmcsv" & VehicleNumber)
-                    End If
-
-                End If
+                Exit Sub
 
             Else
                 HandleUserMessageLogging("GMRC", "Directory " & fullPath & " not found.", DisplayMsgBox, )

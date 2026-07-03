@@ -5,8 +5,12 @@ Partial Class LoginForm
     <System.Diagnostics.DebuggerNonUserCode()>
     Protected Overrides Sub Dispose(ByVal disposing As Boolean)
         Try
-            If disposing AndAlso components IsNot Nothing Then
-                components.Dispose()
+            If disposing Then
+                If components IsNot Nothing Then
+                    components.Dispose()
+                End If
+
+                _loginSubmitButton?.Dispose()
             End If
         Finally
             MyBase.Dispose(disposing)

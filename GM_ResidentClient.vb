@@ -268,7 +268,9 @@ Public Class GmResidentClient
     Private Const RecordingCapacityStep As Integer = 1024
 
     Public MuteVoiceRecordingMessages As Boolean
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property SaveSwitchToName As String
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property TotalNumSignalsDisplayed As Integer
     Private Shared lIsTargetOnWorkingPage As String = "False"
     Private Shared saveIsTargetOnWorkingPage As String
@@ -1268,7 +1270,7 @@ Public Class GmResidentClient
 
             If Not Debugger.IsAttached Then
                 uflags = If(ShutdownWindows, EwxPoweroff Or EwxShutdown Or EwxForce, EWX_REBOOT Or EwxForce)
-                ExitWindows(uflags, 0)
+                NativeMethods.ExitWindows(uflags, 0)
                 End
             End If
         End If
@@ -2051,7 +2053,6 @@ Public Class GmResidentClient
     ''' <summary>
     ''' Shows LoginForm and handles user authentication.
     ''' Returns True if user logged in successfully, False if cancelled/error.
-    ''' Automatically shows SoftwareVersionSelect if user clicks Button44.
     ''' </summary>
     Private Function LoginIfRequired() As Boolean
         If exitInProgress Then
@@ -2063,7 +2064,6 @@ Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", "LoginIfRequired: Preparing LoginForm...")
 
             Dim wasAlreadyLoggedIn As Boolean = Not String.IsNullOrEmpty(SaveLoginID)
-            Dim previousLoginID As String = SaveLoginID
 
             If Not wasAlreadyLoggedIn Then
                 SaveLoginID = String.Empty
@@ -2074,57 +2074,7 @@ Public Class GmResidentClient
 
             HandleUserMessageLogging("GMRC", $"LoginIfRequired: Showing LoginForm (wasAlreadyLoggedIn={wasAlreadyLoggedIn})")
 
-            Dim loginResult As DialogResult = LoginForm.ShowDialog(Me)
-
-            ' ════════════════════════════════════════════════════════════
-            ' ✅ HANDLE WORKSPACE SELECTION (Button44 clicked)
-            ' ════════════════════════════════════════════════════════════
-            If loginResult = DialogResult.Retry Then
-                HandleUserMessageLogging("GMRC", "LoginIfRequired: Showing workspace selection...")
-
-                Dim result = SoftwareVersionSelect.ShowDialog(Me)
-
-                If result = DialogResult.Cancel Then
-                    HandleUserMessageLogging("GMRC", "LoginIfRequired: User cancelled workspace selection")
-
-                    If wasAlreadyLoggedIn Then
-                        SaveLoginID = previousLoginID
-                        Return True
-                    Else
-                        Return LoginIfRequired()
-                    End If
-
-                ElseIf result = DialogResult.OK Then
-                    ' ✅ CRITICAL FIX: Reset initialization flag BEFORE proceeding
-                    _initializing = False
-                    HandleUserMessageLogging("GMRC", "LoginIfRequired: Workspace selection completed - reset _initializing flag")
-
-                    If wasAlreadyLoggedIn Then
-                        SaveLoginID = previousLoginID
-                        HandleUserMessageLogging("GMRC", $"LoginIfRequired: Keeping existing login '{SaveLoginID}' with new workspace")
-                        Return True
-                    Else
-                        SaveLoginID = String.Empty
-                        LoginForm.DialogResult = DialogResult.None
-                        LoginForm.TopMost = True
-
-                        loginResult = LoginForm.ShowDialog(Me)
-
-                        If loginResult = DialogResult.Retry Then
-                            HandleUserMessageLogging("GMRC", "LoginIfRequired: User clicked Button44 again - recursive call")
-                            Return LoginIfRequired()
-                        End If
-                    End If
-
-                Else
-                    If wasAlreadyLoggedIn Then
-                        SaveLoginID = previousLoginID
-                        Return True
-                    Else
-                        Return False
-                    End If
-                End If
-            End If
+            LoginForm.ShowDialog(Me)
 
             If String.IsNullOrEmpty(SaveLoginID) Then
                 HandleUserMessageLogging("GMRC", "LoginIfRequired: No login ID provided - exiting")
@@ -9630,7 +9580,7 @@ Public Class GmResidentClient
 
     End Function
 
-    Private Function ProcessGrids(
+    Private Sub ProcessGrids(
                                   ByVal saveOdoReading As Double,
                                   ByRef saveWhereAmIAt As String,
                                   ByRef goNoGoFault() As Boolean,
@@ -9651,7 +9601,6 @@ Public Class GmResidentClient
 
         Dim lTotalnumsignalsdisplayed As Integer
 
-        Dim dataFrozen As Boolean
         Dim logMsgWritten As Boolean
 
         Dim saveHealthCounter As Integer
@@ -9667,16 +9616,16 @@ Public Class GmResidentClient
 
         Try
 
-            If MyDGs(0) IsNot Nothing Then
+            If myDGs(0) IsNot Nothing Then
 
                 'Here we will loop through all of the grids on all of the forms...
-                For z = 0 To MyDGs.Count - 1
+                For z = 0 To myDGs.Count - 1
 
                     whereAmI = "Go Thru All Displayed Grids"
 
                     'need to go thru all grids which are displayed, or are associated with gonogo, or are associated with a custom screen (CS_)....
-                    If MyDGs(z).Parent.Visible = True Or MyDFs(MyDGs(z).ParentFormIndex).AlsoAssociatedWith = "GO/NOGO" Or MyDFs(MyDGs(z).ParentFormIndex).AlsoAssociatedWith = "AUTOANNO" Or
-                (InStr(MyDFs(MyDGs(z).ParentFormIndex).AlsoAssociatedWith, "CS_") > 0) Then
+                    If myDGs(z).Parent.Visible = True Or MyDFs(myDGs(z).ParentFormIndex).AlsoAssociatedWith = "GO/NOGO" Or MyDFs(myDGs(z).ParentFormIndex).AlsoAssociatedWith = "AUTOANNO" Or
+                (InStr(MyDFs(myDGs(z).ParentFormIndex).AlsoAssociatedWith, "CS_") > 0) Then
 
                         whereAmI = "Grid Visible or GO/NOGO or CS_"
 
@@ -9686,13 +9635,13 @@ Public Class GmResidentClient
 
                         If lRecordingState = True Then
 
-                            If MyDGs(z).CS_NAN_STATUS > 0 Then
-                                HandleNanStatus(MyDGs(z))
+                            If myDGs(z).CS_NAN_STATUS > 0 Then
+                                HandleNanStatus(myDGs(z))
                             End If
 
-                            If MyDGs(z).CS_WAVRECORD > 0 Then
+                            If myDGs(z).CS_WAVRECORD > 0 Then
                                 If OnVehicleScreen.PictureBox1.BackColor = Color.Red Then
-                                    Handle_CS_WAVRECORD(MyDGs(z))
+                                    Handle_CS_WAVRECORD(myDGs(z))
                                 End If
                             End If
 
@@ -9700,14 +9649,14 @@ Public Class GmResidentClient
 
                         'This Routine handles all things related to vehicle mileage and where the vehicle is,
                         'on grounds or off grounds, etc. Will not be called unless CS_ODOMETER is defined in signallist...
-                        If MyDGs(z).CS_ODOMETER > 0 Then
-                            HandleOdometerRelatedStatus(MyDGs(z), saveOdoReading, saveWhereAmIAt, lRecordingState)
+                        If myDGs(z).CS_ODOMETER > 0 Then
+                            HandleOdometerRelatedStatus(myDGs(z), saveOdoReading, saveWhereAmIAt, lRecordingState)
                         End If
 
                         'This Routine handles CLEVIR display of cluster message...
                         'Nothing happens unless CS_LCC_CLUSTER_MSG and CS_LCC_BUTTON_PRESS are defined in signal list...
-                        If MyDGs(z).CS_LCC_CLUSTER_MSG > 0 And MyDGs(z).CS_LCC_BUTTON_PRESS > 0 Then
-                            HandleClevirDisplayOfClusterMsgs(MyDGs(z))
+                        If myDGs(z).CS_LCC_CLUSTER_MSG > 0 And myDGs(z).CS_LCC_BUTTON_PRESS > 0 Then
+                            HandleClevirDisplayOfClusterMsgs(myDGs(z))
                         End If
 
                         'this next section handles custom displays.  This is where data is put into the
@@ -9717,28 +9666,28 @@ Public Class GmResidentClient
 
                         'ADD CUSTOM SCREEN HANDLING HERE....
 
-                        UpdateCustomDisplays(MyDGs(z))
+                        UpdateCustomDisplays(myDGs(z))
 
-                        If MyDGs(z).CS_CPSTOS_X_POS > 0 And MyDGs(z).CS_CPSTOS_Y_POS > 0 Then
+                        If myDGs(z).CS_CPSTOS_X_POS > 0 And myDGs(z).CS_CPSTOS_Y_POS > 0 Then
 
                             If TargetStatusDisplay.Visible = True Then
-                                TargetStatusDisplay.Label2.Text = Format$(Math.Abs(Math.Sqrt((MySignalDataWithTime(MyDGs(z).SignalIndex(MyDGs(z).CS_CPSTOS_X_POS, 1)).SignalData * MySignalDataWithTime(MyDGs(z).SignalIndex(MyDGs(z).CS_CPSTOS_X_POS, 1)).SignalData) +
-                        (MySignalDataWithTime(MyDGs(z).SignalIndex(MyDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData * MySignalDataWithTime(MyDGs(z).SignalIndex(MyDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData))), "0.00")
+                                TargetStatusDisplay.Label2.Text = Format$(Math.Abs(Math.Sqrt((MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData * MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData) +
+                        (MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData * MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData))), "0.00")
                             End If
 
-                            Dim xPos As Double = MySignalDataWithTime(MyDGs(z).SignalIndex(MyDGs(z).CS_CPSTOS_X_POS, 1)).SignalData
-                            Dim yPos As Double = MySignalDataWithTime(MyDGs(z).SignalIndex(MyDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData
+                            Dim xPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData
+                            Dim yPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData
                             Dim distText As String = Format$(Math.Abs(Math.Sqrt((xPos * xPos) + (yPos * yPos))), "0.00")
                             OnVehicleScreen.Label17.Text = distText
 
                         End If
 
-                        If PedestrianStatusDisplay.Visible = True Then HandlePedestrianStatusDisplay(MyDGs(z))
+                        If PedestrianStatusDisplay.Visible = True Then HandlePedestrianStatusDisplay(myDGs(z))
 
                         ' ============================================================
                         ' SUSPEND LAYOUT FOR BATCHED GRID UPDATES
                         ' ============================================================
-                        MyDGs(z).SuspendLayout()
+                        myDGs(z).SuspendLayout()
                         Try
                             whereAmI = "Rows and Columns"
                             'For each grid, we must go through all configured rows and columns to update data display,
@@ -10230,8 +10179,7 @@ Public Class GmResidentClient
             End If
 
         End Try
-        ' All code paths lead here; implicit return of Nothing (no return type declared)
-    End Function
+    End Sub
 
 
     Private Sub UpdateCustomDisplays(ByVal MyDg As GridDataClass)

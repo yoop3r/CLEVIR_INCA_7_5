@@ -10,6 +10,7 @@
     'The selected experiment is then used for the current session.
 
     ' Add a public property to store the selected index
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property SelectedFormIndex As Integer = -1
 
     Private Sub Button1_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles Button1.Click

@@ -11,9 +11,6 @@ Public Class HesaiInterop
     ' ====================================================================
     ' Win32 API for DLL Search Path
     ' ====================================================================
-    <DllImport("kernel32.dll", CharSet:=CharSet.Unicode, SetLastError:=True)>
-    Private Shared Function SetDllDirectory(lpPathName As String) As Boolean
-    End Function
 
     ''' <summary>
     ''' ✅ Sets the DLL search directory to the application folder
@@ -22,7 +19,7 @@ Public Class HesaiInterop
     Public Shared Sub SetDllSearchPath()
         Try
             Dim appDir As String = AppDomain.CurrentDomain.BaseDirectory
-            If SetDllDirectory(appDir) Then
+            If NativeMethods.SetDllDirectory(appDir) Then
                 HandleUserMessageLogging("GMRC", $"✓ DLL search path set to: {appDir}")
             Else
                 HandleUserMessageLogging("GMRC", $"⚠️ Failed to set DLL search path")
@@ -87,64 +84,73 @@ Public Class HesaiInterop
 
     ' ====================================================================
     ' P/Invoke Declarations
+    ' Isolated in a NativeMethods-suffixed nested class per CA1060.
     ' ====================================================================
+    Private NotInheritable Class NativeMethods
+        Private Sub New()
+        End Sub
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi)>
-    Private Shared Function hesai_register_device(
-        <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
-        <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
-        dataPort As Integer
-    ) As Integer
-    End Function
+        <DllImport("kernel32.dll", CharSet:=CharSet.Unicode, SetLastError:=True)>
+        Public Shared Function SetDllDirectory(lpPathName As String) As Boolean
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
-    Private Shared Function hesai_register_device_ex(
-        ByRef config As HesaiDeviceConfig
-    ) As Integer
-    End Function
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_register_device(
+            <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
+            <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
+            dataPort As Integer
+        ) As Integer
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi)>
-    Private Shared Function hesai_register_device_validation_only(
-        <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
-        <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
-        dataPort As Integer
-    ) As Integer
-    End Function
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
+        Public Shared Function hesai_register_device_ex(
+            ByRef config As HesaiDeviceConfig
+        ) As Integer
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi)>
-    Private Shared Function hesai_validate_packet(
-        <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
-        packetData As Byte(),
-        packetLength As Integer
-    ) As Integer
-    End Function
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_register_device_validation_only(
+            <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
+            <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
+            dataPort As Integer
+        ) As Integer
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi)>
-    Private Shared Function hesai_unregister_device(
-        <MarshalAs(UnmanagedType.LPStr)> deviceId As String
-    ) As Integer
-    End Function
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_validate_packet(
+            <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
+            packetData As Byte(),
+            packetLength As Integer
+        ) As Integer
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi)>
-    Private Shared Function hesai_get_device_stats(
-        <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
-        ByRef stats As HesaiSdkStats
-    ) As Integer
-    End Function
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_unregister_device(
+            <MarshalAs(UnmanagedType.LPStr)> deviceId As String
+        ) As Integer
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi)>
-    Private Shared Function hesai_reset_device_stats(
-        <MarshalAs(UnmanagedType.LPStr)> deviceId As String
-    ) As Integer
-    End Function
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_get_device_stats(
+            <MarshalAs(UnmanagedType.LPStr)> deviceId As String,
+            ByRef stats As HesaiSdkStats
+        ) As Integer
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
-    Private Shared Function hesai_initialize() As Integer
-    End Function
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_reset_device_stats(
+            <MarshalAs(UnmanagedType.LPStr)> deviceId As String
+        ) As Integer
+        End Function
 
-    <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
-    Private Shared Sub hesai_shutdown()
-    End Sub
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
+        Public Shared Function hesai_initialize() As Integer
+        End Function
+
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
+        Public Shared Sub hesai_shutdown()
+        End Sub
+    End Class
 
     ' ====================================================================
     ' Public Managed Wrappers
@@ -156,7 +162,7 @@ Public Class HesaiInterop
     ''' </summary>
     Public Shared Function RegisterDevice(deviceId As String, ipAddress As String, dataPort As Integer) As Boolean
         Try
-            Dim result As Integer = hesai_register_device(deviceId, ipAddress, dataPort)
+            Dim result As Integer = NativeMethods.hesai_register_device(deviceId, ipAddress, dataPort)
             If result = 0 Then
                 HandleUserMessageLogging("GMRC", $"✅ Hesai SDK: Registered device '{deviceId}' at {ipAddress}:{dataPort} (using defaults)")
                 Return True
@@ -185,7 +191,7 @@ Public Class HesaiInterop
             HandleUserMessageLogging("GMRC", $"  PTC: {config.use_ptc_connected}")
             HandleUserMessageLogging("GMRC", $"  Validation Only: {config.validation_only}")
 
-            Dim result As Integer = hesai_register_device_ex(config)
+            Dim result As Integer = NativeMethods.hesai_register_device_ex(config)
 
             Select Case result
                 Case 0
@@ -238,7 +244,7 @@ Public Class HesaiInterop
         Try
             HandleUserMessageLogging("GMRC", $"Hesai SDK: Registering device '{deviceId}' in VALIDATION-ONLY mode (no UDP binding)...")
 
-            Dim result As Integer = hesai_register_device_validation_only(deviceId, ipAddress, dataPort)
+            Dim result As Integer = NativeMethods.hesai_register_device_validation_only(deviceId, ipAddress, dataPort)
 
             If result = 0 Then
                 HandleUserMessageLogging("GMRC", $"✅ Hesai SDK: Registered '{deviceId}' in VALIDATION-ONLY mode - NO UDP port binding")
@@ -268,7 +274,7 @@ Public Class HesaiInterop
                 Return -1
             End If
 
-            Return hesai_validate_packet(deviceId, packetData, packetData.Length)
+            Return NativeMethods.hesai_validate_packet(deviceId, packetData, packetData.Length)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"HesaiInterop.ValidatePacket: {ex.Message}")
@@ -281,7 +287,7 @@ Public Class HesaiInterop
     ''' </summary>
     Public Shared Function UnregisterDevice(deviceId As String) As Boolean
         Try
-            Dim result As Integer = hesai_unregister_device(deviceId)
+            Dim result As Integer = NativeMethods.hesai_unregister_device(deviceId)
             If result = 0 Then
                 HandleUserMessageLogging("GMRC", $"✅ Hesai SDK: Unregistered device '{deviceId}'")
                 Return True
@@ -300,7 +306,7 @@ Public Class HesaiInterop
     Public Shared Function GetDeviceStats(deviceId As String) As HesaiSdkStats
         Try
             Dim stats As New HesaiSdkStats()
-            Dim result As Integer = hesai_get_device_stats(deviceId, stats)
+            Dim result As Integer = NativeMethods.hesai_get_device_stats(deviceId, stats)
             If result <> 0 Then
                 Return New HesaiSdkStats()
             End If
@@ -318,7 +324,7 @@ Public Class HesaiInterop
     ''' </summary>
     Public Shared Function ResetDeviceStats(deviceId As String) As Boolean
         Try
-            Dim result As Integer = hesai_reset_device_stats(deviceId)
+            Dim result As Integer = NativeMethods.hesai_reset_device_stats(deviceId)
             Return result = 0
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"HesaiInterop.ResetDeviceStats: {ex.Message}")
@@ -371,7 +377,7 @@ Public Class HesaiInterop
     ''' </summary>
     Public Shared Function Initialize() As Boolean
         Try
-            Dim result As Integer = hesai_initialize()
+            Dim result As Integer = NativeMethods.hesai_initialize()
             If result = 0 Then
                 HandleUserMessageLogging("GMRC", "✅ Hesai SDK: Initialized")
                 Return True
@@ -393,7 +399,7 @@ Public Class HesaiInterop
     ''' </summary>
     Public Shared Sub Shutdown()
         Try
-            hesai_shutdown()
+            NativeMethods.hesai_shutdown()
             HandleUserMessageLogging("GMRC", "✅ Hesai SDK: Shutdown complete")
         Catch ex As DllNotFoundException
             ' DLL not loaded - nothing to shutdown
@@ -417,7 +423,7 @@ Public Class HesaiInterop
 
             ' Try to call a function to verify DLL loads
             Dim testStats As New HesaiSdkStats()
-            hesai_get_device_stats("", testStats)
+            NativeMethods.hesai_get_device_stats("", testStats)
             Return True
 
         Catch ex As DllNotFoundException

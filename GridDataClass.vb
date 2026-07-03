@@ -69,6 +69,9 @@ Public Class GridDataClass
     'Public myMommoArrayRowView As MSHFlexGridReplace.Data.ArrayRowView
 
     Friend WithEvents GridHeader As Label
+    Friend Function ShouldSerializeGridHeader() As Boolean
+        Return False
+    End Function
     Private _SaveFormattedString(,) As String
     Public DataArray(,) As String
     Private ColumnNames() As String
@@ -360,16 +363,40 @@ Public Class GridDataClass
 
     Private components As IContainer
 
+    ''' <summary>
+    ''' Disposes the designer components container (ContextMenuStrip1, ToolTip1) owned by this
+    ''' grid. GridDataClass has no separate designer partial, so this override is declared here.
+    ''' </summary>
+    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+        Try
+            If disposing AndAlso components IsNot Nothing Then
+                components.Dispose()
+            End If
+        Finally
+            MyBase.Dispose(disposing)
+        End Try
+    End Sub
+
     Private _isDoubleClickBusy As Boolean = False
 
     Friend WithEvents ContextMenuStrip1 As ContextMenuStrip
+    Friend Function ShouldSerializeContextMenuStrip1() As Boolean
+        Return False
+    End Function
     Friend WithEvents ToolTip1 As ToolTip
+    Friend Function ShouldSerializeToolTip1() As Boolean
+        Return False
+    End Function
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property NumberOfRows As Integer
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property NumberOfColumns As Integer
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property ParentFormIndex As Integer
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property ParentFormName As String
 
     Property CS_NAN_STATUS() As Integer
@@ -658,6 +685,7 @@ Public Class GridDataClass
             _CS_AutoPropAxlTrqArbStat = value
         End Set
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_ESADSS_CntrlStat() As Integer
         Get
             Return _CS_ESADSS_CntrlStat
@@ -759,6 +787,7 @@ Public Class GridDataClass
             _CS_CE_VehMdMngrSt = value
         End Set
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_CE_VehHlthMngrSt() As Integer
         Get
             Return _CS_CE_VehHlthMngrSt
@@ -787,6 +816,7 @@ Public Class GridDataClass
             _CS_ADIMCntrlFailed = value
         End Set
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_HS_VehMdMngrSt() As Integer
         Get
             Return _CS_HS_VehMdMngrSt
@@ -797,6 +827,7 @@ Public Class GridDataClass
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_HS_VehHlthMngrSt() As Integer
         Get
             Return _CS_HS_VehHlthMngrSt
@@ -855,6 +886,7 @@ Public Class GridDataClass
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_VeTSTR_Cnt_HiThreatObjID() As Integer
         Get
             Return _CS_VeTSTR_Cnt_HiThreatObjID
@@ -1031,6 +1063,7 @@ Public Class GridDataClass
     'Private _CS_IMU_BlueLine
     '_CS_AlertIUncertainLnLines
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_AlertIUncertainLnLines() As Integer
         Get
             Return _CS_AlertIUncertainLnLines
@@ -1301,6 +1334,7 @@ Public Class GridDataClass
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_LCC_FEATURE_STATUS() As Integer
         Get
             Return _CS_LCC_FEATURE_STATUS
@@ -1646,6 +1680,7 @@ Public Class GridDataClass
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property AUTOANNO() As Integer
         Get
             Return _AUTOANNO
@@ -1986,6 +2021,7 @@ Public Class GridDataClass
 
     'VIS_LANE_OFFSET_0
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property VIS_LANE_OFFSET_0() As Integer
         Get
             Return _VIS_LANE_OFFSET_0
@@ -2048,25 +2084,30 @@ Public Class GridDataClass
     'End Set
     'End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property GridSize As String
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property LocationOnForm As String
 
     ''' <summary>
     ''' When True, all data columns are rendered extra-wide (e.g. for DTC or enumeration grids).
     ''' Replaces hard-coded form-name checks inside FinalizeGridDisplays.
     ''' </summary>
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property UseWideColumns As Boolean = False
 
     ''' <summary>
     ''' Background colour used for the GridHeader label. Defaults to Blue.
     ''' Override to theme the header without touching FinalizeGridHeader.
     ''' </summary>
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property GridHeaderBackColor As Color = Color.Blue
 
     ''' <summary>
     ''' Foreground colour used for the GridHeader label. Defaults to White.
     ''' </summary>
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property GridHeaderForeColor As Color = Color.White
 
     ''' <summary>
@@ -2081,6 +2122,7 @@ Public Class GridDataClass
         End If
     End Sub
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property AlsoAssociatedWith(ByVal row As Integer, ByVal col As Integer) As String
         Get
             Return _AlsoAssociatedWith(row, col)
@@ -2099,6 +2141,7 @@ Public Class GridDataClass
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property DisplayFormat(ByVal row As Integer, ByVal col As Integer) As String
         Get
             Return _DisplayFormat(row, col)
@@ -2117,6 +2160,7 @@ Public Class GridDataClass
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property Registered(ByVal row As Integer, ByVal col As Integer) As Boolean
 
         Get
@@ -2138,6 +2182,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property DataFrozen(ByVal row As Integer, ByVal col As Integer) As Boolean
 
         Get
@@ -2152,6 +2197,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property EqualTo(ByVal row As Integer, ByVal col As Integer) As String
 
         Get
@@ -2173,6 +2219,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property LowThresh(ByVal row As Integer, ByVal col As Integer) As Double
 
         Get
@@ -2195,6 +2242,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property SaveLastValue(ByVal row As Integer, ByVal col As Integer) As Double
 
         Get
@@ -2209,6 +2257,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property SaveFormattedString(ByVal row As Integer, ByVal col As Integer) As String
 
         Get
@@ -2232,6 +2281,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HighThresh(ByVal row As Integer, ByVal col As Integer) As Double
 
         Get
@@ -2253,6 +2303,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property LowThreshForeColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2274,6 +2325,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HighThreshForeColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2295,6 +2347,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property LowThreshBackColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2316,6 +2369,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property HighThreshBackColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2337,6 +2391,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property DefaultCellForeColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2358,6 +2413,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property DefaultCellBackColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2379,6 +2435,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CurrentBackColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2401,6 +2458,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CurrentForeColor(ByVal row As Integer, ByVal col As Integer) As Color
 
         Get
@@ -2423,6 +2481,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property Raster(ByVal row As Integer, ByVal col As Integer) As String
 
         Get
@@ -2444,6 +2503,7 @@ Public Class GridDataClass
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property DeviceName(ByVal row As Integer, ByVal col As Integer) As String
 
         Get
@@ -2466,6 +2526,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property VariableName(ByVal row As Integer, ByVal col As Integer) As String
 
         Get
@@ -2488,6 +2549,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property DisplayName(ByVal row As Integer, ByVal col As Integer) As String
 
         Get
@@ -2512,6 +2574,7 @@ Public Class GridDataClass
 
 
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property DataFrozenCounter(ByVal row As Integer, ByVal col As Integer) As Integer
 
         Get
@@ -2526,6 +2589,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property VariableIndex(ByVal row As Integer, ByVal col As Integer) As Integer
 
         Get
@@ -2547,6 +2611,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property SignalIndex(ByVal row As Integer, ByVal col As Integer) As Integer
 
         Get
@@ -2568,6 +2633,7 @@ Public Class GridDataClass
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CheckForDataChange(ByVal row As Integer, ByVal col As Integer) As Boolean
 
         Get
@@ -2586,7 +2652,8 @@ Public Class GridDataClass
               [ReadOnly](False),
               BindableAttribute(False),
               DesignOnly(False),
-              Description("Enter a number")>
+              Description("Enter a number"),
+              System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property DefaultColumnOneWidth As Integer
 
     Public Property TD_X_Start_Pos() As Integer
@@ -3075,8 +3142,9 @@ Public Class GridDataClass
                 If hostForm Is Nothing Then Continue For
 
                 ' Collect all grids that belong to this form.
+                Dim currentFormIdx = formIdx ' Capture to avoid closure issue with iteration variable
                 Dim formGrids As IEnumerable(Of GridDataClass) =
-                    myDGs.Where(Function(g) g IsNot Nothing AndAlso g.ParentFormIndex = formIdx)
+                    myDGs.Where(Function(g) g IsNot Nothing AndAlso g.ParentFormIndex = currentFormIdx)
 
                 If Not formGrids.Any() Then Continue For
 

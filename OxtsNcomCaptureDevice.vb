@@ -13,8 +13,8 @@ Imports System.Net.NetworkInformation
 ''' Provides time-synchronized 6-DOF pose data alongside LiDAR point clouds
 ''' ✅ MIGRATED: Now uses SharpPcap with native Npcap NDIS 6 LWF for optimal performance
 ''' </summary>
-Public Class OxtsNcomCaptureDevice
-
+Public NotInheritable Class OxtsNcomCaptureDevice
+    Implements IDisposable
     ' ====================================================================
     ' Configuration (set from XML or defaults)
     ' ====================================================================
@@ -247,12 +247,10 @@ Public Class OxtsNcomCaptureDevice
             ' Wait for marker pump thread to finish (with timeout)
             If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
                 If Not _captureThread.Join(TimeSpan.FromSeconds(3)) Then
-                    HandleUserMessageLogging("GMRC", $"{logPrefix}: Capture thread did not stop gracefully")
-                    Try
-                        _captureThread.Abort()
-                    Catch
-                        ' Ignore abort exceptions
-                    End Try
+                    ' Thread.Abort is not supported on modern .NET (throws PlatformNotSupportedException
+                    ' without affecting the target thread). The thread is IsBackground=True, so it will
+                    ' not block process exit; log and move on so cleanup below still runs.
+                    HandleUserMessageLogging("GMRC", $"{logPrefix}: Capture thread did not stop gracefully, abandoning it")
                 End If
             End If
 
@@ -524,6 +522,22 @@ Public Class OxtsNcomCaptureDevice
     End Sub
 
     ''' <summary>
+    ''' Releases the capture device, dump file, and event logger owned by this instance.
+    ''' Safe to call multiple times.
+    ''' </summary>
+    Public Sub Dispose() Implements IDisposable.Dispose
+        Try
+            If _isCapturing Then
+                StopCapture()
+            End If
+        Catch
+            ' Ignore errors from an already-degraded capture session during disposal
+        End Try
+
+        CleanupResources()
+    End Sub
+
+    ''' <summary>
     ''' ✅ VERIFIED: Gets capture statistics (thread-safe reads)
     ''' </summary>
     Public Function GetStatistics() As String
@@ -535,7 +549,9 @@ End Class
 ''' <summary>
 ''' Event logger for OXTS capture (creates sidecar .oxts_events.txt file)
 ''' </summary>
-Public Class OxtsEventLogger
+Public NotInheritable Class OxtsEventLogger
+    Implements IDisposable
+
     Private eventLogPath As String
     Private eventLogWriter As StreamWriter
     Private syncLockObj As New Object()
@@ -574,5 +590,9 @@ Public Class OxtsEventLogger
                 eventLogWriter = Nothing
             End If
         End SyncLock
+    End Sub
+
+    Public Sub Dispose() Implements IDisposable.Dispose
+        Close()
     End Sub
 End Class

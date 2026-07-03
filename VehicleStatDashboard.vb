@@ -7390,17 +7390,9 @@ bypassMerge:
 
     End Sub
 
-    Private Sub VehicleStatDashboard_Closed(sender As Object, e As EventArgs) Handles Me.Closed
-
-    End Sub
-
-    Private Sub VehicleStatDashboard_Closing(sender As Object, e As CancelEventArgs) Handles Me.Closing
+    Private Sub VehicleStatDashboard_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         EnableMyBackgroundTasks = False
         'SetAvailability(NetworkDriveMapping & ClevirBaseDir & "\Development\PC_HostNameLogFiles", False, Button11)
-    End Sub
-
-    Private Sub VehicleStatDashboard_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
-
     End Sub
 
     Private Sub ListBox7_SelectedIndexChanged(sender As Object, e As EventArgs) Handles ListBox7.SelectedIndexChanged

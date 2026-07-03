@@ -7,6 +7,7 @@
 
 Public Class ExitAppForm
     ' This property will store the user's choice.
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property SelectedExitOption As ExitOption = ExitOption.None
 
     ' Button3: "Exit CLEVIR And Close INCA"

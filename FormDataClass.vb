@@ -11,11 +11,17 @@ Public Class FormDataClass
 
     Public Const MAX_NUM_FORMS As Integer = 50
     Public myContextMenuStrip As ContextMenuStrip
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property SignalsRegistered As Boolean
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property DisplayWindowSize As String
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property AlsoAssociatedWith As String
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property GoNoGoIndex As Integer
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property DefaultHeight As Integer
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property DefaultWidth As Integer
 
     Private Sub FormDataClass_Activated(ByVal sender As Object, ByVal e As System.EventArgs) Handles Me.Activated

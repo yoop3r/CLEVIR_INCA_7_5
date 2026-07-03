@@ -5,7 +5,6 @@ Imports System.Diagnostics
 Imports System.IO
 Imports System.Collections.Generic
 Imports System.Runtime.InteropServices
-Imports System.Runtime.Remoting.Lifetime
 Imports System.Threading
 Imports System.Threading.Tasks
 Imports de.etas.cebra.toolAPI.Common
@@ -352,13 +351,22 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
     Private _activeLabelsTimestamp As DateTime = DateTime.MinValue
     Private Const ACTIVE_LABELS_CACHE_SECONDS As Integer = 30
 
-    <DllImport("kernel32.dll", SetLastError:=True, CharSet:=CharSet.Unicode)>
-    Private Shared Function LoadLibrary(lpFileName As String) As IntPtr
-    End Function
+    ''' <summary>
+    ''' P/Invoke declarations isolated per CA1060 (native methods must live in a
+    ''' type whose name ends in NativeMethods/SafeNativeMethods/UnsafeNativeMethods).
+    ''' </summary>
+    Private NotInheritable Class NativeMethods
+        Private Sub New()
+        End Sub
 
-    <DllImport("kernel32.dll", SetLastError:=True)>
-    Private Shared Function FreeLibrary(hModule As IntPtr) As Boolean
-    End Function
+        <DllImport("kernel32.dll", SetLastError:=True, CharSet:=CharSet.Unicode)>
+        Public Shared Function LoadLibrary(lpFileName As String) As IntPtr
+        End Function
+
+        <DllImport("kernel32.dll", SetLastError:=True)>
+        Public Shared Function FreeLibrary(hModule As IntPtr) As Boolean
+        End Function
+    End Class
 
     ' Modified helper function
     Private Function GetCachedActiveMeasureLabels() As String()
@@ -1242,22 +1250,6 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
             HandleUserMessageLogging("COMM", "Data Collection Not Running....")
         End If
     End Sub
-
-    Public Overrides Function InitializeLifetimeService() As Object
-
-        'This function no longer used...
-
-        Dim lease As ILease = Nothing
-        lease = DirectCast(MyBase.InitializeLifetimeService(), ILease)
-        If lease IsNot Nothing Then
-            lease.InitialLeaseTime = TimeSpan.FromMinutes(20)
-            lease.RenewOnCallTime = TimeSpan.FromMinutes(20)
-            lease.SponsorshipTimeout = TimeSpan.FromMinutes(20)
-
-        End If
-        Return (lease)
-
-    End Function
 
     Public Function GetDefaultRasterForMeasureElementInDevice(ByVal devicename As String, ByVal measname As String) As String Implements IGM_INCA_Comm.GetDefaultRasterForMeasureElementInDevice
 
@@ -4160,7 +4152,7 @@ Implements IGM_INCA_Comm.InitINCA
                 For Each line As String In File.ReadAllLines(calListPath)
                     Dim parts() As String = line.Split(Chr(9))
                     If parts.Length >= 2 Then
-                        Dim entry As CalInfo
+                        Dim entry As CalInfo = Nothing
                         entry.DeviceName = parts(0)
                         entry.CalName = parts(1)
                         diskCalList.Add(entry)

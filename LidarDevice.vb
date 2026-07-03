@@ -13,7 +13,9 @@ Imports System.Net.NetworkInformation
 ''' <summary>
 ''' Maintains a log file of event markers with frame numbers for offline analysis
 ''' </summary>
-Public Class LidarEventLogger
+Public NotInheritable Class LidarEventLogger
+    Implements IDisposable
+
     Private eventLogPath As String
     Private eventLogWriter As StreamWriter
     Private syncLockObj As New Object()
@@ -58,6 +60,10 @@ Public Class LidarEventLogger
             End If
         End SyncLock
     End Sub
+
+    Public Sub Dispose() Implements IDisposable.Dispose
+        Close()
+    End Sub
 End Class
 
 ''' <summary>
@@ -81,7 +87,8 @@ End Structure
 ''' <summary>
 ''' Represents a single LiDAR sensor device with independent capture state
 ''' </summary>
-Public Class LidarDevice
+Public NotInheritable Class LidarDevice
+    Implements IDisposable
 
     ' ====================================================================
     ' Instance-level configuration (each LiDAR has its own settings)
@@ -834,8 +841,11 @@ Public Class LidarDevice
             ' ═══════════════════════════════════════════════════════════════════
             If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
                 If Not _captureThread.Join(5000) Then
-                    HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Thread did not exit gracefully, forcing abort")
-                    _captureThread.Abort()
+                    ' Thread.Abort is not supported on modern .NET (throws PlatformNotSupportedException
+                    ' without affecting the target thread), so we can no longer force-terminate it here.
+                    ' The thread is IsBackground=True, so it will not block process exit; proceed with
+                    ' cleanup regardless so resources are still released.
+                    HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Thread did not exit gracefully, abandoning it")
                 End If
                 _captureThread = Nothing
             End If
@@ -1023,8 +1033,11 @@ Public Class LidarDevice
             ' Wait for marker-pump thread
             If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
                 If Not _captureThread.Join(5000) Then
-                    HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Thread did not exit, forcing abort")
-                    _captureThread.Abort()
+                    ' Thread.Abort is not supported on modern .NET (throws PlatformNotSupportedException
+                    ' without affecting the target thread), so we can no longer force-terminate it here.
+                    ' The thread is IsBackground=True, so it will not block process exit; proceed with
+                    ' cleanup regardless so resources are still released.
+                    HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Thread did not exit, abandoning it")
                 End If
                 _captureThread = Nothing
             End If
@@ -1483,6 +1496,27 @@ Public Class LidarDevice
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: {ex.Message}")
         End Try
+    End Sub
+
+    ''' <summary>
+    ''' Releases the capture device, dump file, and event logger owned by this instance.
+    ''' Safe to call multiple times.
+    ''' </summary>
+    Public Sub Dispose() Implements IDisposable.Dispose
+        Try
+            If _isCapturing Then
+                StopCapture()
+            End If
+        Catch
+            ' Ignore errors from an already-degraded capture session during disposal
+        End Try
+
+        CleanupResources()
+
+        If _eventLogger IsNot Nothing Then
+            _eventLogger.Dispose()
+            _eventLogger = Nothing
+        End If
     End Sub
 
     ' ====================================================================

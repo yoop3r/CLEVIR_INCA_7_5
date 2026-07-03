@@ -3,7 +3,7 @@
     'This class supports the top down view screen.  Each sensor input (LRR, SRR, VIS) as well as the Fusion tracks and other top down view elements are objects
     'defined as TD_TargetObjectsClass.
 
-    Inherits Windows.Forms.Label
+    Inherits System.Windows.Forms.Label
 
     Private _IDString As String
     Private _Visible As Boolean
@@ -14,14 +14,35 @@
     Private _TargetVisible() As Boolean
     Private _ObjectID() As String
     Private _SensorCCWRotationDegs As Double ' was Single
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Friend WithEvents ToolTip1 As ToolTip
+    Friend Function ShouldSerializeToolTip1() As Boolean
+        Return False
+    End Function
     Private components As System.ComponentModel.IContainer
+
+    ''' <summary>
+    ''' Disposes the designer components container (ToolTip1) owned by this label-derived
+    ''' target overlay. TD_TargetObjectsClass has no separate designer partial, so this
+    ''' override is declared here.
+    ''' </summary>
+    Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+        Try
+            If disposing AndAlso components IsNot Nothing Then
+                components.Dispose()
+            End If
+        Finally
+            MyBase.Dispose(disposing)
+        End Try
+    End Sub
 
     Private MouseEntry_Y As Integer
     Private _saveSenderTop As Integer
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property NumObjects As Integer
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property TargetObjectID() As String
         Get
             Return _IDString
@@ -31,16 +52,22 @@
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property MinSizePixels As Integer
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property ShowFieldOfView As Boolean
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property FieldOfView As Single
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property DefaultHeight As Integer
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property DefaultWidth As Integer
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property SensorCCWRotationDegs() As Double ''changed from single to double
         Get
             Return _SensorCCWRotationDegs
@@ -50,8 +77,10 @@
         End Set
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property LeftOfOrigin As Double
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property FwdOfOrigin As Double
 
     'Property Visible() As Boolean
@@ -63,12 +92,16 @@
     '   End Set
     'End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property Fill As Boolean
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property Color As System.Drawing.Color
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Public Property Style As String
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property TargetVisible(ByVal index As Integer) As Boolean
 
         Get
@@ -88,6 +121,7 @@
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property ObjectID(ByVal index As Integer) As String
 
         Get
@@ -107,6 +141,7 @@
 
     End Property
 
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property X_Pos(ByVal index As Integer) As Double ''changed from single to double
 
         Get
@@ -125,6 +160,7 @@
         End Set
 
     End Property
+    <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property Y_Pos(ByVal index As Integer) As Double ''changed from single to double
         Get
             Return _Y_Pos(index)

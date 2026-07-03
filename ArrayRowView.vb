@@ -2,7 +2,7 @@
 Imports System.ComponentModel
 
 Namespace MSHFlexGridReplace.Data
-    Public Class ArrayRowView
+    Public NotInheritable Class ArrayRowView
         Implements ICustomTypeDescriptor, IEditableObject, IDataErrorInfo
 
         Private ReadOnly _owner As ArrayDataView
@@ -170,6 +170,26 @@ Namespace MSHFlexGridReplace.Data
             'Throw New NotImplementedException()
             Return _owner
         End Function
+
+        Private Function ICustomTypeDescriptor_GetConverterFromRegisteredType() As TypeConverter Implements ICustomTypeDescriptor.GetConverterFromRegisteredType
+            Return ICustomTypeDescriptor_GetConverter()
+        End Function
+
+        Private Function ICustomTypeDescriptor_GetEventsFromRegisteredType() As EventDescriptorCollection Implements ICustomTypeDescriptor.GetEventsFromRegisteredType
+            Return ICustomTypeDescriptor_GetEvents()
+        End Function
+
+        Private Function ICustomTypeDescriptor_GetPropertiesFromRegisteredType() As PropertyDescriptorCollection Implements ICustomTypeDescriptor.GetPropertiesFromRegisteredType
+            Return ICustomTypeDescriptor_GetProperties()
+        End Function
+
+        Private ReadOnly Property ICustomTypeDescriptor_RequireRegisteredTypes As Boolean? Implements ICustomTypeDescriptor.RequireRegisteredTypes
+            Get
+                ' This app does not use TypeDescriptor.RegisterType(Of T)() / trimming-safe reflection,
+                ' so fall back to the classic reflection-based Get*() members above (not the *FromRegisteredType ones).
+                Return False
+            End Get
+        End Property
 
         Default Public ReadOnly Property Item(ByVal columnName As String) As String
             Get

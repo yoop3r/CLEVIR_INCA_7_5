@@ -61,7 +61,7 @@ End Class
 ''' </summary>
 Public Class VehicleConfig
     Public Property VehicleNumber As String = ""
-    ''' <summary>Up to 6 processor names
+    ''' <summary>Up to 6 processor names</summary>
     Public Property Processors As String() = {"NA", "NA", "NA", "NA", "NA", "NA"}
     ''' <summary>Up to 9 camera positions (e.g. "FRONT,REAR,NA,NA,NA,NA,NA,NA,NA")</summary>
     Public Property CameraPositions As String() = {"NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"}

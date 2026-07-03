@@ -27,10 +27,6 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
 
     ' Error Constants:
 
-    Private Const NO_ERROR = 0
-
-    Private Const ERROR_ACCESS_DENIED = 5&
-    Private Const ERROR_ALREADY_ASSIGNED = 85&
     Public Const ERROR_BAD_DEV_TYPE = 66&
     Public Const ERROR_BAD_DEVICE = 1200&
     Public Const ERROR_BAD_NET_NAME = 67&
@@ -41,11 +37,8 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
     Public Const ERROR_CANNOT_OPEN_PROFILE = 1205&
     Public Const ERROR_DEVICE_ALREADY_REMEMBERED = 1202&
     Public Const ERROR_EXTENDED_ERROR = 1208&
-    Private Const ERROR_INVALID_PASSWORD = 86&
     Public Const ERROR_NO_NET_OR_BAD_PATH = 1203&
 
-    Private Const ForceDisconnect As Integer = 1
-    Private Const RESOURCETYPE_DISK As Long = &H1
     Public Const ERROR_BAD_NETPATH As Long = 53&
     Public Const ERROR_NETWORK_ACCESS_DENIED As Long = 65&
     Public Const ERROR_NETWORK_BUSY As Long = 54&
@@ -64,78 +57,85 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
     Const SE_PRIVILEGE_ENABLED As Integer = &H2
 
     <System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)>
-    Private Structure LUID
+    Friend Structure LUID
         Public LowPart As UInt32
         Public HighPart As UInt32
     End Structure
 
     <System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)>
-    Private Structure LUID_AND_ATTRIBUTES
+    Friend Structure LUID_AND_ATTRIBUTES
         Public Luid As LUID
         Public Attributes As UInt32
     End Structure
 
     <System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)>
-    Private Structure TOKEN_PRIVILEGES
+    Friend Structure TOKEN_PRIVILEGES
         Public PrivilegeCount As UInt32
         <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValArray, SizeConst:=ANYSIZE_ARRAY)>
         Public Privileges() As LUID_AND_ATTRIBUTES
     End Structure
 
-    <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True)>
-    Private Function LookupPrivilegeValue(
-     ByVal lpSystemName As String,
-     ByVal lpName As String,
-     ByRef lpLuid As LUID
-      ) As Boolean
-    End Function
+    ''' <summary>
+    ''' P/Invoke declarations isolated per CA1060 (native methods must live in a
+    ''' type whose name ends in NativeMethods/SafeNativeMethods/UnsafeNativeMethods).
+    ''' Kept Friend (not Private) because ExitWindows is called from other files
+    ''' in this project (GM_ResidentClient.vb, UploadDataScreen.vb).
+    ''' </summary>
+    Friend NotInheritable Class NativeMethods
+        Private Sub New()
+        End Sub
 
-    <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True)>
-    Private Function OpenProcessToken(
-     ByVal ProcessHandle As IntPtr,
-     ByVal DesiredAccess As Integer,
-     ByRef TokenHandle As IntPtr
-      ) As Boolean
-    End Function
+        <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Friend Shared Function LookupPrivilegeValue(
+         <MarshalAs(UnmanagedType.LPStr)> ByVal lpSystemName As String,
+         <MarshalAs(UnmanagedType.LPStr)> ByVal lpName As String,
+         ByRef lpLuid As LUID
+          ) As Boolean
+        End Function
 
-    <System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError:=True)>
-    Private Function CloseHandle(ByVal hHandle As IntPtr) As Boolean
-    End Function
+        <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True)>
+        Friend Shared Function OpenProcessToken(
+         ByVal ProcessHandle As IntPtr,
+         ByVal DesiredAccess As Integer,
+         ByRef TokenHandle As IntPtr
+          ) As Boolean
+        End Function
 
-    <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True)>
-    Private Function AdjustTokenPrivileges(
-       ByVal TokenHandle As IntPtr,
-       ByVal DisableAllPrivileges As Boolean,
-       ByRef NewState As TOKEN_PRIVILEGES,
-       ByVal BufferLength As Integer,
-       ByRef PreviousState As TOKEN_PRIVILEGES,
-       ByRef ReturnLength As IntPtr
-     ) As Boolean
-    End Function
+        <System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError:=True)>
+        Friend Shared Function CloseHandle(ByVal hHandle As IntPtr) As Boolean
+        End Function
 
-    Private Structure NETRESOURCE
-        Public dwScope As Integer
-        Public dwType As Integer
-        Public dwDisplayType As Integer
-        Public dwUsage As Integer
-        Public lpLocalName As String
-        Public lpRemoteName As String
-        Public lpComment As String
-        Public lpProvider As String
-    End Structure
+        <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True)>
+        Friend Shared Function AdjustTokenPrivileges(
+           ByVal TokenHandle As IntPtr,
+           ByVal DisableAllPrivileges As Boolean,
+           ByRef NewState As TOKEN_PRIVILEGES,
+           ByVal BufferLength As Integer,
+           ByRef PreviousState As TOKEN_PRIVILEGES,
+           ByRef ReturnLength As IntPtr
+         ) As Boolean
+        End Function
 
-    Private Declare Function WNetAddConnection2 Lib "mpr.dll" Alias "WNetAddConnection2A" (ByRef lpNetResource As NETRESOURCE, ByVal lpPassword As String, ByVal lpUserName As String, ByVal dwFlags As Integer) As Integer
-    Private Declare Function WNetCancelConnection2 Lib "mpr" Alias "WNetCancelConnection2A" (ByVal lpName As String, ByVal dwFlags As Integer, ByVal fForce As Integer) As Integer
+        Public Declare Function ExitWindows _
+            Lib "User32" Alias "ExitWindowsEx" _
+            (ByVal dwOptions As Long, ByVal dwReserved As Long) As Long
 
-    Public Declare Function ExitWindows _
-        Lib "User32" Alias "ExitWindowsEx" _
-        (ByVal dwOptions As Long, ByVal dwReserved As Long) As Long
+        <DllImport("winmm.dll", EntryPoint:="mciSendStringA", CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function mciSendString(<MarshalAs(UnmanagedType.LPStr)> ByVal lpstrCommand As String, <MarshalAs(UnmanagedType.LPStr)> ByVal lpstrReturnString As String, ByVal uReturnLength As Integer, ByVal hwndCallback As Integer) As Integer
+        End Function
 
-    Public Declare Function mciSendString Lib "winmm.dll" Alias "mciSendStringA" (ByVal lpstrCommand As String, ByVal lpstrReturnString As String, ByVal uReturnLength As Integer, ByVal hwndCallback As Integer) As Integer
+        <DllImport("user32.dll")>
+        Public Shared Function SetForegroundWindow(ByVal hWnd As IntPtr) As <MarshalAs(UnmanagedType.Bool)> Boolean
+        End Function
 
-    <DllImport("user32.dll")>
-    Public Function SetForegroundWindow(ByVal hWnd As IntPtr) As <MarshalAs(UnmanagedType.Bool)> Boolean
-    End Function
+        <DllImport("user32.dll", EntryPoint:="FindWindowA", CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function FindWindow(<MarshalAs(UnmanagedType.LPStr)> ByVal lpClassName As String, <MarshalAs(UnmanagedType.LPStr)> ByVal lpWindowName As String) As Integer
+        End Function
+
+        Public Declare Function GetWindowPlacement Lib "user32" (ByVal hwnd As Integer, ByRef lpwndpl As WINDOWPLACEMENT) As Integer
+
+        Public Declare Function SetWindowPlacement Lib "user32" (ByVal hwnd As Integer, ByRef lpwndpl As WINDOWPLACEMENT) As Integer
+    End Class
 
     Public Structure POINTAPI
 
@@ -177,12 +177,6 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
     End Structure
 
     Private myVehicleConfigDirStatus() As VehicleConfigDirStatus
-
-    Public Declare Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Integer
-
-    Public Declare Function GetWindowPlacement Lib "user32" (ByVal hwnd As Integer, ByRef lpwndpl As WINDOWPLACEMENT) As Integer
-
-    Public Declare Function SetWindowPlacement Lib "user32" (ByVal hwnd As Integer, ByRef lpwndpl As WINDOWPLACEMENT) As Integer
 
     Public Const SW_SHOWMINIMIZED As Short = 2
 
@@ -319,7 +313,7 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
         Try
 
             If NetworkDrivePermission = False Then
-                HandleUserMessageLogging("GMRC", "checkvehicleconfigfiles: Could not access " & NetworkDriveMapping & ClevirBaseDir & ". Exiting...", DisplayMsgBox)
+                HandleUserMessageLogging("GMRC", "checkvehicleconfigfiles: Could not access " & NetworkDriveMapping & CLEVIRBaseDir & ". Exiting...", DisplayMsgBox)
                 Exit Sub
             End If
 
@@ -328,7 +322,7 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
             updatingVehicleList = True
 
             'First we need to make sure that the vehicle configurations directory exists and can be found using the defined NetworkDriveMapping...
-            If System.IO.Directory.Exists(NetworkDriveMapping & ClevirBaseDir & "\Development\CLEVIR Vehicle Configurations") Then
+            If System.IO.Directory.Exists(NetworkDriveMapping & CLEVIRBaseDir & "\Development\CLEVIR Vehicle Configurations") Then
 
                 HandleUserMessageLogging("GMRC", "Updating Vehicle Configuration Information...",,, FlashMsgOn)
 
@@ -1106,76 +1100,9 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
 
     End Sub
 
-    Public Function MapDrive(ByVal DriveLetter As String, ByVal UNCPath As String) As Boolean
-
-        'Called when user makes a File Upload Destination selection on the UploadDataScreen if the upload destination cannot be found
-        'Maps a network drive to the name specified in the config.xml file, this is where the recorded data from the vehicle
-        'will be copied.
-
-        Dim nr As NETRESOURCE
-        Dim Username As String
-        Dim Password As String
-
-        nr = New NETRESOURCE With {
-            .lpRemoteName = UNCPath,
-            .lpLocalName = DriveLetter
-        }
-        Username = Nothing '(add parameters to pass this if necessary)
-        Password = Nothing '(add parameters to pass this if necessary)
-        nr.dwType = RESOURCETYPE_DISK
-
-        Dim result As Long
-        Dim resultstr As String
-
-        HandleUserMessageLogging("GMRC", "Mapping Drive - " & DriveLetter & ": " & UNCPath)
-
-        result = WNetAddConnection2(nr, Password, Username, 0)
-
-        'NETWORK DRIVE MAPPING
-
-        'Public Const ERROR_ACCESS_DENIED = 5&
-        'Public Const ERROR_ALREADY_ASSIGNED = 85&
-
-        If result = NO_ERROR Or result = ERROR_ALREADY_ASSIGNED Then
-            'If System.IO.Directory.Exists(NetworkDriveLetter & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\UpdatedFiles") Then
-            If System.IO.Directory.Exists(DriveLetter) Then
-                HandleUserMessageLogging("GMRC", "Drive Mapping for Data Upload succeeded.")
-                Return True
-            Else
-                HandleUserMessageLogging("GMRC", "Drive Mapping for Data Upload Failed - Directory not found.", DisplayMsgBox, )
-                Return False
-            End If
-        Else
-
-            Select Case result
-                Case ERROR_ACCESS_DENIED
-                    resultstr = "ACCESS_DENIED"
-                Case ERROR_INVALID_PASSWORD
-                    resultstr = "INVALID_PASSWORD"
-                Case Else
-                    resultstr = CStr(result)
-            End Select
-            HandleUserMessageLogging("GMRC", "Map Network Drive Failed, Return Value = " & resultstr, DisplayMsgBox, )
-            Return False
-        End If
-    End Function
-
-    Public Function UnMapDrive(ByVal DriveLetter As String) As Boolean
-
-        'not currently used, saved in case we may need this functionality down the road...
-
-        'Unmaps the network drive that was mapped prior to uploading data.
-
-        Dim rc As Integer
-        rc = WNetCancelConnection2(DriveLetter, 0, ForceDisconnect)
-
-        If rc = 0 Then
-            Return True
-        Else
-            Return False
-        End If
-
-    End Function
+    ' MapDrive/UnMapDrive (WNetAddConnection2/WNetCancelConnection2) removed - network drive mapping is no longer
+    ' supported. Upload paths are expected to be directly accessible (e.g. a UNC path); see
+    ' UploadDataScreen.VerifyNetworkMapping for the corresponding caller-side behavior.
 
     Public Sub DirectoryCopy(
             ByVal sourceDirName As String,
@@ -1344,7 +1271,7 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
 
         'Get the LUID that corresponds to the Shutdown privilege, if it exists.
         Dim luid_Shutdown As LUID
-        If Not LookupPrivilegeValue(Nothing, SE_SHUTDOWN_NAME, luid_Shutdown) Then
+        If Not NativeMethods.LookupPrivilegeValue(Nothing, SE_SHUTDOWN_NAME, luid_Shutdown) Then
             lastWin32Error = System.Runtime.InteropServices.Marshal.GetLastWin32Error()
             Throw New System.ComponentModel.Win32Exception(lastWin32Error,
              "LookupPrivilegeValue failed with error " & lastWin32Error.ToString & ".")
@@ -1353,7 +1280,7 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
         'Get the current process's token.
         Dim hProc As IntPtr = Process.GetCurrentProcess().Handle
         Dim hToken As IntPtr
-        If Not OpenProcessToken(hProc, TOKEN_ADJUST_PRIVILEGES Or TOKEN_QUERY, hToken) Then
+        If Not NativeMethods.OpenProcessToken(hProc, TOKEN_ADJUST_PRIVILEGES Or TOKEN_QUERY, hToken) Then
             lastWin32Error = System.Runtime.InteropServices.Marshal.GetLastWin32Error()
             Throw New System.ComponentModel.Win32Exception(lastWin32Error,
              "OpenProcessToken failed with error " & lastWin32Error.ToString & ".")
@@ -1379,14 +1306,14 @@ Module GenericAnyCLEVIRToolSuiteApp 'GlobalCommonModule
 
             'Apply the TOKEN_PRIVILEGES structure to the current process's token.
             Dim returnLength As IntPtr
-            If Not AdjustTokenPrivileges(hToken, False, newState, System.Runtime.InteropServices.Marshal.SizeOf(prevState), prevState, returnLength) Then
+            If Not NativeMethods.AdjustTokenPrivileges(hToken, False, newState, System.Runtime.InteropServices.Marshal.SizeOf(prevState), prevState, returnLength) Then
                 lastWin32Error = System.Runtime.InteropServices.Marshal.GetLastWin32Error()
                 Throw New System.ComponentModel.Win32Exception(lastWin32Error,
                  "AdjustTokenPrivileges failed with error " & lastWin32Error.ToString & ".")
             End If
 
         Finally
-            CloseHandle(hToken)
+            NativeMethods.CloseHandle(hToken)
         End Try
 
     End Sub

@@ -7,12 +7,16 @@ Imports System.Net.NetworkInformation
 ''' Listens to OXTS NCOM packets with integrity-first validation approach.
 ''' Prioritizes checksum verification over packet loss monitoring per NCOM specification.
 ''' </summary>
-Public Class OxtsNcomInterface
+Public NotInheritable Class OxtsNcomInterface
     Implements ITimeSyncProvider
+    Implements IDisposable
 
     Private _udpClient As UdpClient
     Private _listenerThread As Thread
     Private _isRunning As Boolean = False
+
+    ' CA2002: dedicated lock object instead of locking on Me (weak identity - publicly accessible instance)
+    Private ReadOnly _syncRoot As New Object()
 
     ' NCOM configuration
     Public Property NcomIpAddress As String ' Set via configuration
@@ -176,7 +180,7 @@ Public Class OxtsNcomInterface
     ''' Starts listening for OXTS NCOM packets
     ''' </summary>
     Public Sub OxtsStartListening()
-        SyncLock Me
+        SyncLock _syncRoot
             If _isRunning Then
                 HandleUserMessageLogging("GMRC", $"⚠️ OXTS listener already running on instance {Me.GetHashCode()} - ignoring duplicate start")
                 Return
@@ -257,6 +261,13 @@ Public Class OxtsNcomInterface
         End If
 
         HandleUserMessageLogging("GMRC", "OXTS NCOM listener stopped")
+    End Sub
+
+    ''' <summary>
+    ''' Releases the UDP listener and stops the listener thread. Safe to call multiple times.
+    ''' </summary>
+    Public Sub Dispose() Implements IDisposable.Dispose
+        OxtsStopListening()
     End Sub
 
     Private Sub ListenLoop()
@@ -529,7 +540,7 @@ Public Class OxtsNcomInterface
     End Sub
 
     Public Function GetRtkStatus() As String
-        SyncLock Me
+        SyncLock _syncRoot
             If Not _latestPosition.HasValue Then Return "None"
 
             Select Case _latestPosition.Value.GpsMode
@@ -541,14 +552,14 @@ Public Class OxtsNcomInterface
     End Function
 
     Public Function IsRealtime() As Boolean
-        SyncLock Me
+        SyncLock _syncRoot
             If Not _latestPosition.HasValue Then Return False
             Return (DateTime.Now - _latestPositionTime).TotalSeconds < 2
         End SyncLock
     End Function
 
     Private Sub UpdateLatestPosition(navStatus As Byte)
-        SyncLock Me
+        SyncLock _syncRoot
             _latestPosition = New OxtsPosition With {
                 .Timestamp = DateTime.UtcNow,
                 .Latitude = Me.Latitude,
@@ -583,7 +594,7 @@ Public Class OxtsNcomInterface
     End Function
 
     Public Function GetGpsPosition() As OxtsPosition?
-        SyncLock Me
+        SyncLock _syncRoot
             If Not _latestPosition.HasValue Then Return Nothing
             If (DateTime.UtcNow - _latestPositionTime).TotalSeconds > 2 Then Return Nothing
             Return _latestPosition
@@ -598,7 +609,7 @@ Public Class OxtsNcomInterface
     End Sub
 
     Public Function GetCurrentPosition() As OxtsPosition
-        SyncLock Me
+        SyncLock _syncRoot
             If _latestPosition.HasValue Then
                 Return _latestPosition.Value
             Else

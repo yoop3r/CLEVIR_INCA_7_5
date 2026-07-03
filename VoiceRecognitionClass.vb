@@ -2,7 +2,7 @@
 Imports System.Speech.Recognition
 Imports System.Speech.Synthesis
 
-Public Class VoiceRecognitionClass
+Public NotInheritable Class VoiceRecognitionClass
     Implements IDisposable
 
     Private WithEvents myRecognizer As SpeechRecognitionEngine

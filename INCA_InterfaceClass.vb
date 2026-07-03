@@ -928,7 +928,7 @@ Public Class INCA_InterfaceClass
                     End If
                     If measureelementnames IsNot Nothing Then
                         For x = 0 To UBound(measureelementnames)
-                            Dim entry As INCA_Variables
+                            Dim entry As INCA_Variables = Nothing
                             entry.variablename = measureelementnames(x)
                             If InStr(entry.variablename, "[x]") > 0 Then entry.variablename &= "_[0]"
                             varList.Add(entry)

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <OutputType>WinExe</OutputType>
     <StartupObject>CLEVIR_INCA_7_5.My.MyApplication</StartupObject>
     <MyType>WindowsForms</MyType>
@@ -28,6 +28,10 @@
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
     <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <Configurations>All;Debug;Release</Configurations>
+    <!-- Single-targeted (net10.0-windows only): keep the classic flat output layout
+         (bin\x64\Debug\ with no TFM subfolder) so CLEVIR_7.5 Installation\Product.wxs
+         (which hardcodes bin\x64\$(var.Configuration)\ per file) keeps working unchanged. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
   <ItemGroup Label="Exclude foreign/vendor directories swept in by implicit SDK-style globbing (not part of this project's original item list)">
     <!-- Separate solution projects with their own project files - not part of this VB project -->
@@ -111,14 +115,8 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\Interop\RCI2dotNet.dll</HintPath>
     </Reference>
-    <Reference Update="System">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.dll</HintPath>
-    </Reference>
     <Reference Include="System.Configuration">
       <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Configuration.dll</HintPath>
-    </Reference>
-    <Reference Update="System.Drawing">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Drawing.dll</HintPath>
     </Reference>
     <Reference Include="System.IO.Compression">
       <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.IO.Compression.dll</HintPath>
@@ -128,9 +126,6 @@
     </Reference>
     <Reference Include="System.Net.Http">
       <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Net.Http.dll</HintPath>
-    </Reference>
-    <Reference Update="System.Numerics">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Numerics.dll</HintPath>
     </Reference>
     <Reference Include="System.Speech">
       <RequiredTargetFramework>3.0</RequiredTargetFramework>
@@ -142,22 +137,18 @@
     <Reference Include="System.Windows.Forms.DataVisualization">
       <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.DataVisualization.dll</HintPath>
     </Reference>
-    <Reference Update="System.Xml">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Xml.dll</HintPath>
-    </Reference>
-    <Reference Update="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Core.dll</HintPath>
-    </Reference>
-    <Reference Update="System.Xml.Linq">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Xml.Linq.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Import Include="Microsoft.VisualBasic" />
+    <Import Include="System" />
+    <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
     <Import Include="System.ComponentModel" />
     <Import Include="System.Drawing" />
+    <Import Include="System.Diagnostics" />
     <Import Include="System.Windows.Forms" />
+    <Import Include="System.Linq" />
+    <Import Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="AnnotationInterfaceConfigure.designer.vb">
@@ -247,9 +238,6 @@
     <Compile Update="SelectExperiment.designer.vb">
       <DependentUpon>SelectExperiment.vb</DependentUpon>
     </Compile>
-    <Compile Update="SoftwareVersionSelect.designer.vb">
-      <DependentUpon>SoftwareVersionSelect.vb</DependentUpon>
-    </Compile>
     <Compile Update="TargetStatusDisplay.designer.vb">
       <DependentUpon>TargetStatusDisplay.vb</DependentUpon>
     </Compile>
@@ -327,22 +315,13 @@
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\01-prerequisites\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\02-pcapeventbridge-retarget\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\03-sdk-style-conversion\progress-details.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\04-winforms-retarget\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\upgrade-options.md" />
     <None Update="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
       <LastGenOutput>Application.Designer.vb</LastGenOutput>
     </None>
     <ProjectReference Include="PcapEventBridge\PcapEventBridge.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <COMReference Include="VBIDE">
-      <Guid>{0002E157-0000-0000-C000-000000000046}</Guid>
-      <VersionMajor>5</VersionMajor>
-      <VersionMinor>3</VersionMinor>
-      <Lcid>0</Lcid>
-      <WrapperTool>primary</WrapperTool>
-      <Isolated>False</Isolated>
-    </COMReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="NCOMdecoder\.vs\NCOMdecoder.slnx\FileContentIndex\c92f43ab-52f7-4729-84c5-dafab14ffada.vsidx" />

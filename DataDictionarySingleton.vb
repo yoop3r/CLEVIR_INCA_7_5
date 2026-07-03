@@ -103,10 +103,12 @@ Public Class DataDictionarySingleton
     Public Class VoiceRecognitionManager
         ' Private shared instance of the class
         Private Shared _instance As VoiceRecognitionClass
+        ' CA2002: dedicated lock object instead of locking on GetType(...) (weak identity, shared across AppDomains)
+        Private Shared ReadOnly _instanceLock As New Object()
         ' Public shared property to access the single instance
         Public Shared ReadOnly Property Instance As VoiceRecognitionClass
             Get
-                SyncLock GetType(VoiceRecognitionManager)
+                SyncLock _instanceLock
                     If _instance Is Nothing Then
                         _instance = New VoiceRecognitionClass()
                     End If

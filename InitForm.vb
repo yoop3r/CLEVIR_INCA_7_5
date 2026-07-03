@@ -23,14 +23,12 @@ Public Class InitForm
 
     Public VehicleNumbersList As List(Of String)
 
-    Private _initCts As Threading.CancellationTokenSource = Nothing
-
     ' Module-level variables to track original state
     Private _originalConfigData As String = ""
 
     ' Add this method to your class
-    <DllImport("user32.dll", SetLastError:=True)>
-    Private Shared Function FindWindow(lpClassName As String, lpWindowName As String) As IntPtr
+    <DllImport("user32.dll", SetLastError:=True, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+    Private Shared Function FindWindow(<MarshalAs(UnmanagedType.LPStr)> lpClassName As String, <MarshalAs(UnmanagedType.LPStr)> lpWindowName As String) As IntPtr
     End Function
 
     <DllImport("user32.dll")>

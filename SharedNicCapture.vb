@@ -18,7 +18,7 @@ Imports PcapEventBridge
 '''   This class ensures exactly one open handle per adapter GUID and fans each
 '''   arriving UDP packet out to the correct LidarDevice by source IP address.
 ''' </summary>
-Public Class SharedNicCapture
+Public NotInheritable Class SharedNicCapture
     Implements IDisposable
 
     ' ================================================================

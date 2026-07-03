@@ -6,8 +6,12 @@ Partial Class LidarHealthDetailForm
     <System.Diagnostics.DebuggerNonUserCode()>
     Protected Overrides Sub Dispose(ByVal disposing As Boolean)
         Try
-            If disposing AndAlso components IsNot Nothing Then
-                components.Dispose()
+            If disposing Then
+                If components IsNot Nothing Then
+                    components.Dispose()
+                End If
+
+                _refreshTimer?.Dispose()
             End If
         Finally
             MyBase.Dispose(disposing)

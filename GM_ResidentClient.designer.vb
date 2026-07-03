@@ -3,11 +3,31 @@ Partial Class GmResidentClient
     Inherits System.Windows.Forms.Form
 
     'Form overrides dispose to clean up the component list.
+    ''' <summary>
+    ''' Disposes designer components plus runtime-owned fields (menu items, background
+    ''' cancellation tokens, and hosted child forms/controls) that are not guaranteed to be
+    ''' reachable through the designer's components container. Safe to call multiple times.
+    ''' </summary>
     <System.Diagnostics.DebuggerNonUserCode()>
     Protected Overrides Sub Dispose(ByVal disposing As Boolean)
         Try
-            If disposing AndAlso components IsNot Nothing Then
-                components.Dispose()
+            If disposing Then
+                If components IsNot Nothing Then
+                    components.Dispose()
+                End If
+
+                MyOxtsInterface?.Dispose()
+                MyTdGraphicsContainer?.Dispose()
+                MyMainTabControl?.Dispose()
+                MyLogin?.Dispose()
+                MyToolStripMenuItem?.Dispose()
+                _MyMiscInfo?.Dispose()
+                _MyUploadData?.Dispose()
+                _MyRecordPlayback?.Dispose()
+                _MyCreateNewDisplayMenuItem?.Dispose()
+                _recordingMonitorCts?.Dispose()
+                _backgroundTasksCts?.Dispose()
+                _initCts?.Dispose()
             End If
         Finally
             MyBase.Dispose(disposing)

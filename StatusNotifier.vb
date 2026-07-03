@@ -211,6 +211,20 @@ Public Module StatusNotifier
             End Try
         End Sub
 
+        ''' <summary>
+        ''' Disposes the lifetime and fade timers. These are also stopped/disposed in the
+        ''' FormClosed handler registered in the constructor, but that path is invisible to
+        ''' static analysis, so this override disposes them explicitly as well. Timer.Dispose()
+        ''' is idempotent, so calling it twice is safe.
+        ''' </summary>
+        Protected Overrides Sub Dispose(ByVal disposing As Boolean)
+            If disposing Then
+                _lifetimeTimer?.Dispose()
+                _fadeTimer?.Dispose()
+            End If
+            MyBase.Dispose(disposing)
+        End Sub
+
         Protected Overrides ReadOnly Property CreateParams As CreateParams
             Get
                 Dim cp = MyBase.CreateParams
