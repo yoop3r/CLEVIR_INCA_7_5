@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="CLEVIR_7.5 Installation" 
+           Language="1033" 
+           Version="$(var.ProductVersion)"
+           Manufacturer="Client Solutions" 
+           UpgradeCode="23105CF9-22DC-4835-BA8D-D3432A8FAF09"
+           InstallerVersion="500" 
+           Compressed="yes" 
+           Scope="perMachine">
+
+    <SummaryInformation Description="CLEVIR INCA 7.5 Installation" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <!-- Features and Components defined below -->
+
+    <Feature Id="MainFeature" Title="CLEVIR INCA 7.5" Level="1">
+      <ComponentGroupRef Id="MainApplicationComponents" />
+      <ComponentGroupRef Id="ThirdPartyLibraries" />
+      <ComponentGroupRef Id="ConfigurationFiles" />
+      <ComponentGroupRef Id="DataFiles" />
+      <ComponentGroupRef Id="UtilityBinaries" />
+      <ComponentGroupRef Id="IconFiles" />
+      <ComponentGroupRef Id="ShortcutComponents" />
+      <ComponentGroupRef Id="RegistryComponents" />
+    </Feature>
+
+    <!-- .NET Framework 4.8 registry check: Release value 528040 = 4.8 on Win10 1903+ / Server 2019 -->
+    <Property Id="NETFRAMEWORK48">
+      <RegistrySearch Id="NetFramework48"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"
+                      Name="Release"
+                      Type="raw" />
+    </Property>
+    <Launch Condition="Installed OR (NETFRAMEWORK48 >= 528040)"
+            Message="This application requires .NET Framework 4.8. Please download and install it from Microsoft, then run setup again." />
+
+    <!-- Define Icon -->
+    <Icon Id="AppIcon.ico" SourceFile="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\GM_ResidentClient_256px.ico" />
+
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFilesFolder" />
+
+    <!-- Custom install location: C:\CLEVIR_INCA_7_5 -->
+    <Directory Id="CLEVIR_ROOT" Name="CLEVIR_INCA_7_5">
+      <Directory Id="INSTALLDIR" />
+    </Directory>
+
+    <StandardDirectory Id="DesktopFolder" />
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="CLEVIR_7.5 Installation" />
+    </StandardDirectory>
+  </Fragment>
+
+    <Fragment>
+      <ComponentGroup Id="MainApplicationComponents" Directory="INSTALLDIR">
+
+        <!-- Main Executable -->
+        <Component Id="CMP_CLEVIR_INCA_EXE" Guid="*">
+          <File Id="FILE_CLEVIR_INCA_EXE" 
+                Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\CLEVIR_INCA_7_5.exe" 
+                KeyPath="yes" />
+        </Component>
+
+        <!-- AutoUpdater.exe removed: no build source; not part of current deployment -->
+
+      </ComponentGroup>
+    </Fragment>
+
+    <Fragment>
+      <ComponentGroup Id="ThirdPartyLibraries" Directory="INSTALLDIR">
+        <!-- PcapDotNet.Core/Packets/Base removed — obsolete, replaced by SharpPcap 6.3.1 + PacketDotNet.
+             The Pcap.Net.x64 NuGet package is no longer referenced; DLLs dated Jul 2016 were
+             stale artefacts from the original design. Active capture uses SharpPcap natively. -->
+        <Component Id="CMP_NAudio_Core" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\NAudio.Core.dll" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_NAudio_WinMM" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\NAudio.WinMM.dll" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_IncaCOM" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\incacom.dll" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_IncaRci2" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\incaRci2.dll" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_RCI2dotNet" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\RCI2dotNet.dll" KeyPath="yes" />
+        </Component>
+        <!-- Etas.Base.ComSupport.dll removed: no code references; vdproj artifact -->
+      </ComponentGroup>
+    </Fragment>
+
+    <!-- SystemAssemblies removed: System.IO.Compression, System.IO.Compression.FileSystem, and System.Diagnostics.Tracing are .NET 4.8 GAC assemblies. Do not redistribute in the MSI. -->
+
+    <Fragment>
+      <ComponentGroup Id="ConfigurationFiles" Directory="INSTALLDIR">
+        <Component Id="CMP_CLEVIR_INI" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\CLEVIR.ini" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_ConfigXML" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\config.xml" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_AudioToTextConfig" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\AudioTotextConfig.xml" KeyPath="yes" />
+        </Component>
+        <!-- ONVIFSystemConfigurationDialog.exe.config removed: no build source; not part of current deployment -->
+        <!-- Driver XML files (DRVR00.xml-DRVR05.xml) removed: deprecated in favor of config.xml -->
+        <!-- TXT configuration files -->
+        <Component Id="CMP_AdminPCs" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\adminPCs.txt" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_Availability" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\Availability.txt" KeyPath="yes" />
+        </Component>
+        <!-- CameraIPAddresses.txt removed: no code references; vdproj artifact -->
+        <Component Id="CMP_CANalyzerStartDelay" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\CANalyzerStartDelayTimeMsec.txt" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_CLEVIRFeatureAccess" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\CLEVIR_FeatureAccessForPATAC.txt" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_ClearCodesDelay" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\ClearCodesDelayTimes.txt" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_Debug" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\debug.txt" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_ReadMe" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\ReadMe.txt" KeyPath="yes" />
+        </Component>
+        <Component Id="CMP_TopDownViewConfig" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\TopDownViewConfig30.txt" KeyPath="yes" />
+        </Component>
+        <!-- UserIDList.txt removed: legacy login-ID list (LoginIDNameAndFreqAL) persistence was removed from the app; file is no longer generated -->
+        <!-- VehicleConfig.txt removed: superseded by <SelectedVehicleNumber> persisted in config.xml (see Module1.vb ReadSelectedVehicleNumber/SaveSelectedVehicleNumber) -->
+      </ComponentGroup>
+    </Fragment>
+
+    <Fragment>
+      <ComponentGroup Id="DataFiles" Directory="INSTALLDIR">
+        <Component Id="CMP_ValidationDataDictionary" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\VALIDATION_DataDictionary.csv" KeyPath="yes" />
+        </Component>
+        <!-- VehicleConfigurationsNF.csv removed: deprecated in favor of config.xml -->
+        <!-- VehiclePTPLookup.csv removed: no code references; vdproj artifact -->
+      </ComponentGroup>
+    </Fragment>
+
+    <Fragment>
+      <ComponentGroup Id="UtilityBinaries" Directory="INSTALLDIR">
+        <!-- 7z executables removed - not found in build output -->
+        <!-- HesaiWrapper.dll is the C++ VCX project output; builds to bin\x64\$(var.Configuration)\ rather than InstallFiles\GM\ by design -->
+        <Component Id="CMP_HesaiWrapper" Guid="*">
+          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\HesaiWrapper.dll" KeyPath="yes" />
+        </Component>
+        <!-- NCOMdecoder.dll: precompiled native C DLL for OxTS NCOM inertial data decoding -->
+        <Component Id="CMP_NCOMdecoder" Guid="*">
+          <File Source="$(var.ProjectDir)..\NCOMdecoder\NCOMdecoder.dll" KeyPath="yes" />
+        </Component>
+      </ComponentGroup>
+    </Fragment>
+
+    <Fragment>
+      <ComponentGroup Id="IconFiles" Directory="INSTALLDIR">
+        <Component Id="CMP_AppIcon" Guid="*">
+          <File Id="FILE_AppIcon" Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\GM_ResidentClient_256px.ico" KeyPath="yes" />
+        </Component>
+      </ComponentGroup>
+      </Fragment>
+
+      <Fragment>
+        <ComponentGroup Id="ShortcutComponents">
+
+          <!-- Desktop Shortcut -->
+          <Component Id="CMP_DesktopShortcut" Guid="*" Directory="DesktopFolder">
+            <Shortcut Id="DesktopShortcut"
+                      Name="CLEVIR_INCA_7_5"
+                      Description="CLEVIR_INCA_7_5"
+                      Target="[INSTALLDIR]CLEVIR_INCA_7_5.exe"
+                      WorkingDirectory="INSTALLDIR"
+                      Icon="AppIcon.ico" />
+            <RemoveFolder Id="RemoveDesktopFolder" Directory="DesktopFolder" On="uninstall" />
+            <RegistryValue Root="HKCU" Key="Software\ClientSolutions\CLEVIR" 
+                           Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+          </Component>
+
+          <!-- Start Menu Shortcut -->
+          <Component Id="CMP_StartMenuShortcut" Guid="*" Directory="ApplicationProgramsFolder">
+            <Shortcut Id="StartMenuShortcut"
+                      Name="CLEVIR_INCA_7_5"
+                      Description="CLEVIR_INCA_7_5"
+                      Target="[INSTALLDIR]CLEVIR_INCA_7_5.exe"
+                      WorkingDirectory="INSTALLDIR"
+                      Icon="AppIcon.ico" />
+            <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+            <RegistryValue Root="HKCU" Key="Software\ClientSolutions\CLEVIR" 
+                           Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+          </Component>
+
+        </ComponentGroup>
+      </Fragment>
+
+      <Fragment>
+        <ComponentGroup Id="RegistryComponents" Directory="INSTALLDIR">
+
+          <!-- HKLM Registry -->
+          <Component Id="CMP_Registry_HKLM" Guid="*">
+            <RegistryKey Root="HKLM" Key="Software\Client Solutions">
+              <RegistryValue Type="string" Value="" KeyPath="yes" />
+            </RegistryKey>
+          </Component>
+
+          <!-- HKCU Registry -->
+          <Component Id="CMP_Registry_HKCU" Guid="*">
+            <RegistryKey Root="HKCU" Key="Software\Client Solutions">
+              <RegistryValue Type="string" Value="" KeyPath="yes" />
+            </RegistryKey>
+          </Component>
+
+        </ComponentGroup>
+      </Fragment>
+
+    </Wix>

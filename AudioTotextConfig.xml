@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+    <PythonPath>C:\Python\Python310\python.exe</PythonPath>
+    <ScriptName>__main__.py</ScriptName>
+    <WorkingDirectory>C:\Data\Robustness\Driver_Log_Tools\</WorkingDirectory>
+    <IntakeDir>C:\HB\Data\</IntakeDir>
+    <ConfigPath>C:\Data\Robustness\Common_Data\Common_Configs\DLconfig.xlsx</ConfigPath>
+    <ConfigSheetName>Sheet1</ConfigSheetName>
+    <RunValue>Conso,EventLabel,AudioToText,ANNOcat</RunValue>
+</Configuration>

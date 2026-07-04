@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+    <TargetName>CLEVIR_7.5_Setup</TargetName>
+    <TargetExt>.msi</TargetExt>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <OutputType>Package</OutputType>
+    <DefineSolutionProperties>false</DefineSolutionProperties>
+    <!-- Disable SDK wildcard so only Product.wxs is compiled -->
+      <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <!-- Only Product.wxs belongs to this MSI project -->
+  <ItemGroup>
+    <Compile Include="Product.wxs" />
+  </ItemGroup>
+  <PropertyGroup>
+    <NuGetAuditLevel>critical</NuGetAuditLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AcceptEula>wix4</AcceptEula>
+  </PropertyGroup>
+
+  <!-- Shared version-binding (reads AssemblyInfo.vb) and signtool targets -->
+  <Import Project="CLEVIR.Build.props" />
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <OutputPath>bin\Debug\</OutputPath>
+    <IntermediateOutputPath>obj\Debug\</IntermediateOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <OutputPath>bin\Release\</OutputPath>
+    <IntermediateOutputPath>obj\Release\</IntermediateOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="CLEVIR.Build.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Netfx.wixext" Version="6.0.2" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CLEVIR_INCA_7_5.vbproj" />
+    <ProjectReference Include="..\HesaiWrapper\HesaiWrapper\HesaiWrapper.vcxproj" />
+  </ItemGroup>
+</Project>

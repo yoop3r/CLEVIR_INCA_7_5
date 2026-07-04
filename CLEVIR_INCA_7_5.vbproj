@@ -315,6 +315,7 @@
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\05-package-updates\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\06-binding-redirect-review\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\07-crypto-removal\progress-details.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\08-final-validation\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\upgrade-options.md" />
     <None Update="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
@@ -332,7 +333,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="CLEVIR_INCA_7_5.sln.DotSettings.user" />
-    <Content Include="GM_ResidentClient_256px.ico" />
+    <Content Include="GM_ResidentClient_256px.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="lib\Interop\incacom.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -340,6 +343,45 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="lib\Interop\RCI2dotNet.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="incaRci2.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CLEVIR.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="config.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="AudioTotextConfig.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="adminPCs.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Availability.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CANalyzerStartDelayTimeMsec.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CLEVIR_FeatureAccessForPATAC.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ClearCodesDelayTimes.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="debug.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ReadMe.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TopDownViewConfig30.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="VALIDATION_DataDictionary.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="NCOMdecoder\.gitignore" />

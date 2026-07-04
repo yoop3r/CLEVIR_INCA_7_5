@@ -1,0 +1,4 @@
+DataUploadButtonEnable	False
+ImportSoftwareAndCalsButtonEnable	False
+ChangeVehicleNumberButtonEnable	True
+DevelopmentRadioButtonEnable	False

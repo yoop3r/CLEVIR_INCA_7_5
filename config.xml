@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <!-- ================================================================ -->
+  <!-- INCA Configuration -->
+  <!-- ================================================================ -->
+  <INCADatabase>C:\Users\Public\Documents\ETAS\INCA7.5\Database\clevirdb</INCADatabase>
+  <INCAWorkspace>184_MY26_ACP3_1P</INCAWorkspace>
+  <INCAExperiment>184_25927_MY26_ACP3</INCAExperiment>
+  <INCAVariableFile>C:\DEV\CLEVIR\CLEVIR_INCA_7_5\bin\x64\Debug\SignalLists\184_25927_MY26_ACP3.csv</INCAVariableFile>
+  <ETAS_USER_PATH>C:\Users\Public\Documents\ETAS\INCA7.5\User</ETAS_USER_PATH>
+  <SignalRegistrationMode>DISPLAYS</SignalRegistrationMode>
+  <!-- ================================================================ -->
+  <!-- Recording Configuration -->
+  <!-- ================================================================ -->
+  <RecordWAVTime>30</RecordWAVTime>
+  <RecordFileDurationMinutes>5</RecordFileDurationMinutes>
+  <MuteVoiceRecordingMessages>False</MuteVoiceRecordingMessages>
+  <AudioToTextConversion>False</AudioToTextConversion>
+  <!-- ================================================================ -->
+  <!-- Alternate Recording (CANalyzer/VehicleSpy) -->
+  <!-- ================================================================ -->
+  <AlternateRecordEnabled>True</AlternateRecordEnabled>
+  <AlternateRecordConfig>VehicleSpy</AlternateRecordConfig>
+  <EnableAltRecReStartAfterRecordStop>False</EnableAltRecReStartAfterRecordStop>
+  <!-- ================================================================ -->
+  <!-- Data Storage & Network -->
+  <!-- ================================================================ -->
+  <BaseDataCollectionPath>C:\HB</BaseDataCollectionPath>
+  <NetworkDriveLetter>Q:</NetworkDriveLetter>
+  <NetworkDriveMapping />
+  <!-- ================================================================ -->
+  <!-- Compression Configuration -->
+  <!-- ================================================================ -->
+  <Compression>
+    <!-- File type compression switches -->
+    <CompressMF4>False</CompressMF4>
+    <CompressPCAP>False</CompressPCAP>
+    <CompressASC>False</CompressASC>
+    <CompressVSB>False</CompressVSB>
+    <!-- Deletion policy (SAFE DEFAULT = False) -->
+    <DeleteAfterCompression>False</DeleteAfterCompression>
+    <!-- Compression parameters -->
+    <CompressionLevel>1</CompressionLevel>
+    <!-- 1=Fastest, 9=Best -->
+    <MaxRetries>5</MaxRetries>
+    <RetryDelaySeconds>10</RetryDelaySeconds>
+    <!-- Lock detection -->
+    <FileLockTimeoutSeconds>30</FileLockTimeoutSeconds>
+  </Compression>
+  <!-- ================================================================ -->
+  <!-- Hardware Configuration -->
+  <!-- ================================================================ -->
+  <NetworkAdapterDescription />
+  <CameraConfiguration>
+    <MaxCameras>2</MaxCameras>
+    <Cameras>
+      <Camera position="FRONT" ipAddress="192.168.40.101" enabled="true" />
+      <Camera position="REAR" ipAddress="192.168.40.102" enabled="true" />
+      <Camera position="LEFTREAR" ipAddress="192.168.40.103" enabled="false" />
+      <Camera position="HMI" ipAddress="192.168.40.104" enabled="false" />
+      <Camera position="LEFTFRONT" ipAddress="192.168.40.105" enabled="false" />
+      <Camera position="RIGHTFRONT" ipAddress="192.168.40.106" enabled="false" />
+      <Camera position="LABEL1" ipAddress="192.168.40.107" enabled="false" />
+      <Camera position="LABEL2" ipAddress="192.168.40.108" enabled="false" />
+      <Camera position="LABEL3" ipAddress="192.168.40.109" enabled="false" />
+    </Cameras>
+    <InitialWaitTime>10</InitialWaitTime>
+    <PingTimeout>20</PingTimeout>
+  </CameraConfiguration>
+  <!-- ================================================================ -->
+  <!-- OXTS GPS/INS Configuration -->
+  <!-- ================================================================ -->
+  <OxtsConfiguration>
+    <!-- Master enable flag - Enable/disable OXTS INS integration -  -->
+    <OxtsEnabled>False</OxtsEnabled>
+    <!-- Network adapter GUID (typically same as LiDAR) -->
+    <!-- If empty, will use first LiDAR device's adapter -->
+    <NetworkAdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</NetworkAdapterGuid>
+    <!-- NCOM UDP listener settings -->
+    <!-- OXTS device IP address -->
+    <NcomIpAddress>10.5.55.200</NcomIpAddress>
+    <!-- NCOM UDP port (default: 3000) -->
+    <NcomPort>3000</NcomPort>
+    <!-- GPS lock behavior  -->
+    <GpsLockTimeout>30000</GpsLockTimeout>
+    <WaitForLockOnStart>False</WaitForLockOnStart>
+  </OxtsConfiguration>
+  <!-- ================================================================ -->
+  <!-- OXTS NCOM PCAP Capture Configuration                        -->
+  <!-- Captures raw NCOM UDP packets for post-processing           -->
+  <!-- Creates synchronized ground truth dataset with LiDAR        -->
+  <!-- ================================================================ -->
+  <OxtsCaptureEnabled>False</OxtsCaptureEnabled>
+  <OxtsCapture>
+    <!-- Network adapter GUID (same as OXTS interface above) -->
+    <NetworkAdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</NetworkAdapterGuid>
+    <!-- OXTS device IP address (same as NCOM interface) -->
+    <IpAddress>10.5.55.200</IpAddress>
+    <!-- NCOM UDP port (same as NCOM interface) -->
+    <NcomPort>3000</NcomPort>
+  </OxtsCapture>
+  <!-- ================================================================ -->
+  <!-- New shared time-sync selector -->
+  <!-- ================================================================ -->
+  <TimeSyncConfiguration>
+    <EnableTimeSync>True</EnableTimeSync>
+    <Provider>TimeMachine</Provider>
+    <!-- OXTS or TimeMachine -->
+  </TimeSyncConfiguration>
+  <!-- ================================================================ -->
+  <!-- New TimeMachine settings -->
+  <!-- ================================================================ -->
+  <TimeMachineConfiguration>
+    <Enabled>True</Enabled>
+    <DeviceIp>10.5.55.10</DeviceIp>
+    <!-- broadcast, or specific IP like 192.168.1.50 -->
+    <Port>7372</Port>
+    <PollMs>1000</PollMs>
+    <PtpAssumeLocked>True</PtpAssumeLocked>
+  </TimeMachineConfiguration>
+  <!-- ================================================================ -->
+  <!-- LiDAR Configuration (Legacy + Multi-Device) -->
+  <!-- ================================================================ -->
+  <LidarCaptureEnabled>True</LidarCaptureEnabled>
+  <!-- Legacy single-device (backward compatibility) -->
+  <LidarAdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</LidarAdapterGuid>
+  <LidarIpAddress>10.5.55.14</LidarIpAddress>
+  <LidarDataPort>2368</LidarDataPort>
+  <LidarImuPort>8308</LidarImuPort>
+  <!-- Multi-device configuration -->
+  <LidarDevices>
+    <Lidar id="1" enabled="True">
+      <AdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</AdapterGuid>
+      <IpAddress>10.5.55.14</IpAddress>
+      <DataPort>2368</DataPort>
+      <ImuPort>8308</ImuPort>
+      <Orientation>FRONT</Orientation>
+    </Lidar>
+    <Lidar id="2" enabled="True">
+      <AdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</AdapterGuid>
+      <IpAddress>10.5.55.15</IpAddress>
+      <DataPort>2368</DataPort>
+      <ImuPort>8308</ImuPort>
+      <Orientation>REAR</Orientation>
+    </Lidar>
+    <!-- Optional Hesai SDK parameters -->
+    <HesaiConfig>
+      <CorrectionFilePath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Angle Correction File.csv</CorrectionFilePath>
+      <FiretimesPath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Firetime Correction File.csv</FiretimesPath>
+      <HostIpAddress>10.5.55.20</HostIpAddress>
+      <MulticastIpAddress>239.192.20.10</MulticastIpAddress>
+      <PtcPort>9347</PtcPort>
+      <UsePtcConnected>false</UsePtcConnected>
+      <EnableParserThread>True</EnableParserThread>
+      <EnableUdpThread>True</EnableUdpThread>
+    </HesaiConfig>
+  </LidarDevices>
+  <!-- ================================================================ -->
+  <!-- Application Configuration -->
+  <!-- ================================================================ -->
+  <Vehicles>
+    <!-- Add a <Vehicle> child for each fleet vehicle. Example: -->
+    <Vehicle>
+      <VehicleNumber>6SME5384</VehicleNumber>
+      <Processors>ACP3_MCU,NA,NA,NA,NA,NA</Processors>
+      <CameraPositions>FRONT,REAR,NA,NA,NA,NA,NA,NA,NA</CameraPositions>
+      <CanMonitors>886,886,886,886</CanMonitors>
+      <DataUploadPath>ACP3\VehicleData\</DataUploadPath>
+      <CLEVIRFilesPath>Current\ACP3</CLEVIRFilesPath>
+      <ZipMF4Files>False</ZipMF4Files>
+      <ConfigName>ACP3_1P1C</ConfigName>
+    </Vehicle>
+  </Vehicles>
+  <CurrentVehicleUsage>VALIDATION</CurrentVehicleUsage>
+  <SelectedVehicleNumber>6SME5384</SelectedVehicleNumber>
+  <SaveCalSnapshotEnabled>False</SaveCalSnapshotEnabled>
+  <APICommErrorMsgDelayTime>90</APICommErrorMsgDelayTime>
+  <SkipSubscriptionOnCacheHit>False</SkipSubscriptionOnCacheHit>
+</Configuration>

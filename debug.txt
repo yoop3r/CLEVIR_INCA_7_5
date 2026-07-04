@@ -1,0 +1,3 @@
+CounterValue	500
+DebugMessages	1
+MessageLogLevel	0

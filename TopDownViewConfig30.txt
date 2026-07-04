@@ -1,0 +1,30 @@
+LAYOUT
+FieldOfView_VIS_Visible	True
+FieldOfView_LRR_Visible	True
+FieldOfView_LFSRR_Visible	True
+FieldOfView_RFSRR_Visible	True
+ZoomAxis	XY
+DefaultPointSize	2
+DangerZoneDisplay_Visible	True
+DangerZoneLongAdj	0
+VehicleDim_WidthMeters	2
+VehicleDim_LengthMeters	5
+PATHS
+TCPath_Visible	True
+VPath_Visible	True
+LXCRDesiredPath_Visible	True
+BlueLinePath_Visible	True
+LXCRBlueLinePath_Visible	True
+LXCRTargetLanePath_Visible	True
+LXCRBlendedPath_Visible	True
+LXCRBlendedPath_TimeStepSec	0.1
+LXCRBlueLinePath_Color	Blue
+LXCRTargetLanePath_Color	Red
+LXCRBlendedPath_ColorWCoefs	DarkGreen
+LXCRBlendedPath_ColorWCoords	Violet
+FusionDisplayType	Triangle
+TARGETS
+FusionTargetObject_MinSizePixels	10
+LRR_Object_MinSizePixels	5
+SRR_Objects_MinSizePixels	5
+VIS_Object_MinSizePixels	5

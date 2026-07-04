@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!--
+    CLEVIR.Build.props  —  Shared build properties for CLEVIR installer projects
+    Imported by both CLEVIR_Installer.wixproj and CLEVIR_Bundle.wixproj.
+
+    1. VERSION BINDING
+       Reads AssemblyVersion from AssemblyInfo.vb at project LOAD time and exposes
+       it to the WiX preprocessor as $(var.ProductVersion).  Evaluated statically
+       so $(DefineConstants) is populated before the WiX SDK captures it.
+       AssemblyInfo.vb is the single source of truth for the version number.
+
+    2. CODE SIGNING  (Release builds only)
+       Signs the MSI or bundle EXE with signtool using SHA-256 and timestamps via
+       DigiCert RFC 3161.  /a auto-selects the best certificate in the cert store.
+       ContinueOnError="WarnAndContinue" keeps the build green even without a cert.
+  -->
+
+  <!-- VERSION BINDING - static evaluation (project load time) -->
+  <PropertyGroup>
+    <!--
+      Build the absolute path to AssemblyInfo.vb using NormalizePath so that
+      the space in "My Project" is handled correctly.
+    -->
+    <_AIPath>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'My Project', 'AssemblyInfo.vb'))</_AIPath>
+
+    <!--
+      Read the file content at project load time.  VB.NET sources contain no
+      $() sequences so MSBuild will not attempt further property expansion.
+    -->
+    <_AIContent Condition="Exists('$(_AIPath)')">$([System.IO.File]::ReadAllText('$(_AIPath)'))</_AIContent>
+
+    <!--
+      Extract the four-part numeric version from the active AssemblyVersion
+      attribute.  The regex excludes the commented fallback ("1.0.*") because
+      that uses * which does not satisfy [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+.
+    -->
+    <ProductVersion>$([System.Text.RegularExpressions.Regex]::Match('$(_AIContent)', 'AssemblyVersion\s*\(&quot;([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)&quot;\)').Groups[1].Value)</ProductVersion>
+
+    <!-- Expose as $(var.ProductVersion) inside all WiX source files -->
+    <DefineConstants>$(DefineConstants);ProductVersion=$(ProductVersion)</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Diagnostic target: confirm the version or fail with a clear message -->
+  <Target Name="ValidateProductVersion" BeforeTargets="CoreCompile">
+    <Error Condition="'$(ProductVersion)' == ''"
+           Text="[CLEVIR Build] Could not read ProductVersion from AssemblyInfo.vb. Verify that &lt;Assembly: AssemblyVersion(&quot;x.x.x.x&quot;)&gt; is present and not commented out." />
+    <Message Text="[CLEVIR Build] ProductVersion = $(ProductVersion)" Importance="high" />
+  </Target>
+
+  <!-- CODE SIGNING - Release builds only -->
+  <Target Name="SignOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <!-- Prefer the Windows SDK signtool that VS places on the build path -->
+      <_SignToolExe Condition="Exists('$(WindowsSdkVerBinPath)x64\signtool.exe')">$(WindowsSdkVerBinPath)x64\signtool.exe</_SignToolExe>
+      <!-- Fall back to signtool on PATH (VS Developer Command Prompt / CI) -->
+      <_SignToolExe Condition="'$(_SignToolExe)' == ''">signtool</_SignToolExe>
+      <_OutputToSign>$(MSBuildThisFileDirectory)$(OutputPath)$(TargetName)$(TargetExt)</_OutputToSign>
+    </PropertyGroup>
+
+    <Message Text="[CLEVIR Build] Signing: $(_OutputToSign)" Importance="high" />
+    <!--
+      /fd SHA256        — file digest algorithm
+      /a                — auto-select best certificate from current-user store
+      /tr ...digicert.. — RFC 3161 timestamp server
+      /td SHA256        — timestamp digest algorithm
+    -->
+    <Exec Command="&quot;$(_SignToolExe)&quot; sign /fd SHA256 /a /tr http://timestamp.digicert.com /td SHA256 &quot;$(_OutputToSign)&quot;"
+          ContinueOnError="WarnAndContinue" />
+  </Target>
+
+</Project>
