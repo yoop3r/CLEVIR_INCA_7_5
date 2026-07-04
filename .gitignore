@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Copilot Modernization Agent - large generated assessment artifact (52+ MB, regenerable via query_dotnet_assessment tooling)
+.github/upgrades/scenarios/dotnet-version-upgrade/assessment.json
