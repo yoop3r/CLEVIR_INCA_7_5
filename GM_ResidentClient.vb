@@ -607,49 +607,52 @@ Public Class GmResidentClient
             ' ✅ FIX 7: USER CONFIRMATION (IF NEEDED)
             ' ════════════════════════════════════════════════════════════════
             If String.IsNullOrEmpty(exitParameter) Then
-                ' Display the ExitAppForm modally
-                Using exitForm As New ExitAppForm()
-                    exitForm.TopMost = True
-                    exitForm.ShowDialog()
-                    selectedOption = exitForm.SelectedExitOption
+                ' Display the ExitAppForm modally.
+                ' ✅ WPF PILOT: ExitAppForm was migrated from WinForms to WPF (ExitAppFormWpf).
+                ' System.Windows.Window is not IDisposable (unlike WinForms Form), so the
+                ' previous "Using...End Using" wrapper is replaced with a plain Dim; there was
+                ' no unmanaged/disposable state on the original form to clean up.
+                Dim exitForm As New ExitAppFormWpf()
+                exitForm.Topmost = True
+                exitForm.ShowDialog()
+                selectedOption = exitForm.SelectedExitOption
 
-                    Select Case selectedOption
-                        Case ExitOption.CancelExit
-                            HandleUserMessageLogging("GMRC", "ExitApp: Exit Cancelled by user")
-                            ExitApp = False
-                            Return False
+                Select Case selectedOption
+                    Case ExitOption.CancelExit
+                        HandleUserMessageLogging("GMRC", "ExitApp: Exit Cancelled by user")
+                        ExitApp = False
+                        Return False
 
-                        Case ExitOption.ExitClevirAndCloseInca
-                            HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR and Close INCA selected")
-                            CheckForExperiment = False
-                            MyIncaInterface?.CloseINCA()
-                            If Not PlaybackMode Then CopyINCADatabase()
-                            ' ✅ SET FLAG: User committed to exiting
-                            exitInProgress = True
-                            HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
+                    Case ExitOption.ExitClevirAndCloseInca
+                        HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR and Close INCA selected")
+                        CheckForExperiment = False
+                        MyIncaInterface?.CloseINCA()
+                        If Not PlaybackMode Then CopyINCADatabase()
+                        ' ✅ SET FLAG: User committed to exiting
+                        exitInProgress = True
+                        HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
 
-                        Case ExitOption.ExitClevirOnly
-                            HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR Only selected (leaving INCA running)")
-                            CheckForExperiment = False
-                            ' ✅ SET FLAG: User committed to exiting
-                            exitInProgress = True
-                            HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
+                    Case ExitOption.ExitClevirOnly
+                        HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR Only selected (leaving INCA running)")
+                        CheckForExperiment = False
+                        ' ✅ SET FLAG: User committed to exiting
+                        exitInProgress = True
+                        HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
 
-                        Case ExitOption.ExitClevirCloseIncaShutdownWindows
-                            HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR, Close INCA and Shutdown Windows selected")
-                            CheckForExperiment = False
-                            MyIncaInterface?.CloseINCA()
-                            If Not PlaybackMode Then CopyINCADatabase()
-                            ShutdownWindows = True
-                            ' ✅ SET FLAG: User committed to exiting
-                            exitInProgress = True
-                            HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
-                        Case Else
-                            ' Unknown option - treat as cancel
-                            ExitApp = False
-                            Return False
-                    End Select
-                End Using
+                    Case ExitOption.ExitClevirCloseIncaShutdownWindows
+                        HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR, Close INCA and Shutdown Windows selected")
+                        CheckForExperiment = False
+                        MyIncaInterface?.CloseINCA()
+                        If Not PlaybackMode Then CopyINCADatabase()
+                        ShutdownWindows = True
+                        ' ✅ SET FLAG: User committed to exiting
+                        exitInProgress = True
+                        HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
+                    Case Else
+                        ' Unknown option - treat as cancel
+                        ExitApp = False
+                        Return False
+                End Select
 
             ElseIf exitParameter = "Complete" Then
                 ' Force a complete shutdown without user interaction

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <OutputType>WinExe</OutputType>
     <StartupObject>CLEVIR_INCA_7_5.My.MyApplication</StartupObject>
     <MyType>WindowsForms</MyType>
@@ -26,12 +26,30 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
+    <!-- Keeps the WinForms designer itself DPI-unaware (VS 2022 17.8+ feature) so opening forms
+         on HiDPI monitors doesn't rewrite AutoScaleDimensions/control layout in the *.Designer.vb
+         files. Does not affect runtime DPI behavior, which is controlled separately via
+         My Project\Application.myapp (HighDpiMode). See
+         https://github.com/dotnet/winforms/blob/main/docs/designer/designer-high-dpi-mode.md -->
+    <ForceDesignerDpiUnaware>true</ForceDesignerDpiUnaware>
     <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <Configurations>All;Debug;Release</Configurations>
+    <!-- Explicit so Visual Studio's project system (Configuration Manager / solution load
+         validation) recognizes Debug|x64 and Release|x64 as real configurations. SDK-style
+         projects derive their known configuration set from Configurations x Platforms, not
+         from the raw Condition="'$(Configuration)|$(Platform)'=='...'" PropertyGroups below -
+         without this, Platforms silently defaulted to AnyCPU only, and the solution's x64
+         mappings for this project were flagged as referencing configurations that "do not
+         exist" even though the conditioned PropertyGroups build fine from the command line. -->
+    <Platforms>AnyCPU;x64</Platforms>
     <!-- Single-targeted (net10.0-windows only): keep the classic flat output layout
          (bin\x64\Debug\ with no TFM subfolder) so CLEVIR_7.5 Installation\Product.wxs
          (which hardcodes bin\x64\$(var.Configuration)\ per file) keeps working unchanged. -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Hoisted from 6 identical per-Configuration|Platform PropertyGroups below (Debug/Release
+         x AnyCPU/x64, plus All|AnyCPU and All|x64) - value never varied across configurations,
+         so it is set once here unconditionally to avoid duplication/configuration drift. -->
+    <RegisterForComInterop>False</RegisterForComInterop>
   </PropertyGroup>
   <ItemGroup Label="Exclude foreign/vendor directories swept in by implicit SDK-style globbing (not part of this project's original item list)">
     <!-- Separate solution projects with their own project files - not part of this VB project -->
@@ -44,6 +62,15 @@
     <None Remove="MigrationBackup\**" />
     <!-- Native build output directory at repo root (distinct from this project's own bin\x64 output) -->
     <None Remove="x64\**" />
+    <!-- NAVsdk\Examples\...\NavLibWPFExample ships its own vendor App.xaml/MainWindow.xaml sample.
+         Now that UseWPF is enabled (WinForms -> WPF migration), SDK-style default globbing would
+         also pull these in as Page/ApplicationDefinition/Compile items belonging to *this* project,
+         producing a broken generated App.g.vb with no matching hand-written partial class.
+         NAVsdk is vendor/example content, not part of this project - exclude the WPF item types too. -->
+    <Page Remove="NAVsdk\**" />
+    <ApplicationDefinition Remove="NAVsdk\**" />
+    <Compile Remove="NAVsdk\**\*.xaml.vb" />
+    <Resource Remove="NAVsdk\**" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\x64\Debug\</OutputPath>
@@ -96,6 +123,10 @@
   </PropertyGroup>
   <PropertyGroup>
     <TargetZone>LocalIntranet</TargetZone>
+    <!-- Enabled for the incremental WinForms -> WPF migration (side-by-side / strangler-fig approach).
+         WPF Window-derived pilot forms coexist with the remaining WinForms forms in this same
+         project; UseWindowsForms above remains true so both UI stacks are available. -->
+    <UseWPF>True</UseWPF>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="incacom, Version=20.0.0.0, Culture=neutral, PublicKeyToken=c9b6e760b808c9f9, processorArchitecture=AMD64">
@@ -105,33 +136,17 @@
     <Reference Include="Interop.Scripting, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>lib\Interop\Interop.Scripting.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.CSharp">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\Microsoft.CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.VisualBasic.Compatibility">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\Microsoft.VisualBasic.Compatibility.dll</HintPath>
-    </Reference>
     <Reference Include="RCI2dotNet, Version=7.3.0.21245, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\Interop\RCI2dotNet.dll</HintPath>
     </Reference>
-    <Reference Include="System.Configuration">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Configuration.dll</HintPath>
-    </Reference>
-    <Reference Include="System.IO.Compression">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.IO.Compression.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Management">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Management.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Net.Http">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Net.Http.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Web.Extensions">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Web.Extensions.dll</HintPath>
-    </Reference>
+    <!-- No modern replacement is shipped by Microsoft for the WinForms Chart control, so this
+         still binds to the .NET Framework 4.8 Reference Assemblies. $(MSBuildProgramFiles32) is
+         a reserved MSBuild property that resolves to "Program Files (x86)" (or "Program Files" on
+         a 32-bit OS) - unlike a hardcoded relative path, it does not depend on the repo's folder
+         depth or drive letter. -->
     <Reference Include="System.Windows.Forms.DataVisualization">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.DataVisualization.dll</HintPath>
+      <HintPath>$(MSBuildProgramFiles32)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.DataVisualization.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -320,6 +335,10 @@
     <None Update="My Project\Application.myapp">
       <Generator>MyApplicationCodeGenerator</Generator>
       <LastGenOutput>Application.Designer.vb</LastGenOutput>
+    </None>
+    <None Update="My Project\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
     </None>
     <ProjectReference Include="PcapEventBridge\PcapEventBridge.csproj" />
   </ItemGroup>
@@ -672,5 +691,38 @@
     <EmbeddedResource Remove="NAVsdk\Examples\NAVdisplayPlugins\NavLibWPFExample\NavLibWPFExample\Properties\Resources.resx" />
     <EmbeddedResource Remove="NAVsdk\Examples\NAVdisplayPlugins\DisplayDataStore\DisplayDatastoreStreamInfo.resx" />
     <EmbeddedResource Remove="CalibrationInterface.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Local build-debug log scratch files (untracked, already matched by .gitignore's
+         "*.log" rule). Consolidated from 45 individual per-run None Remove entries
+         (build_output_2.log ... build_output_46_pcapeventbridge_final.log, build_diag.log)
+         into wildcard removes to avoid the list growing unbounded on every build/debug run.
+         Prefer not creating new build_output_*.log files inside the project directory at all;
+         if a scratch log is needed, write it outside the project tree (e.g., a temp folder). -->
+    <None Remove="build_output_*.log" />
+    <None Remove="build_diag.log" />
+    <None Remove="ChangeLog.md" />
+    <None Remove="CHANGE_LOG.md" />
+    <None Remove="claudeprompt.md" />
+    <None Remove="CLEVIR_INCA_7_5.vbproj.NEW" />
+    <None Remove="Migration_CaptureLoop_New.vb.exclude" />
+    <None Remove="Migration_CaptureLoop_New.vb.txt" />
+    <None Remove="Migration_FindAdapter_New.vb.exclude" />
+    <None Remove="Migration_FindAdapter_New.vb.txt" />
+    <None Remove="Migration_InjectMarker_New.vb.exclude" />
+    <None Remove="Migration_InjectMarker_New.vb.txt" />
+    <None Remove="Migration_PacketHandler_New.vb.exclude" />
+    <None Remove="Migration_PacketHandler_New.vb.txt" />
+    <None Remove="Migration_StartCapture_New.vb.exclude" />
+    <None Remove="Migration_StartCapture_New.vb.txt" />
+    <None Remove="Migration_StopCapture_New.vb.exclude" />
+    <None Remove="Migration_StopCapture_New.vb.txt" />
+    <None Remove="Migration_TestChecklist.md" />
+    <!-- Same rationale as build_output_*.log above: these are untracked, gitignored
+         (*.log) scratch logs from ad-hoc build/debug investigations. Wildcarded to
+         avoid re-adding one explicit entry per future stderr/stdout/wix log run. -->
+    <None Remove="stderr_*.log" />
+    <None Remove="stdout_*.log" />
+    <None Remove="wix_*.log" />
   </ItemGroup>
 </Project>

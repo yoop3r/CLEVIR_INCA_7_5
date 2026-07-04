@@ -1,0 +1,65 @@
+<Window x:Class="ExitAppFormWpf"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Exit CLEVIR"
+        Width="424" Height="323"
+        WindowStyle="ToolWindow"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Background="White"
+        Loaded="Window_Loaded">
+	<!--
+        WPF pilot replacement for ExitAppForm.vb / ExitAppForm.designer.vb (WinForms).
+        Layout intentionally mirrors the original designer's absolute control positions
+        (Canvas + fixed offsets) for a faithful, low-risk first migration - this is not
+        meant to be the final "modernized" layout, just a validated 1:1 behavioral port.
+
+        Note: WinForms' ControlBox=False (no title bar buttons at all) has no exact WPF
+        equivalent. WindowStyle="ToolWindow" is the closest built-in approximation; it adds
+        a small close (X) button that the original dialog did not have. This is a minor,
+        non-regressive cosmetic difference - the Cancel button still works identically.
+    -->
+	<Grid>
+		<!--
+			The Canvas below is sized to exactly fit its content (see the Canvas.Top/Height
+			math on Button5: 219 + 52 = 271, plus a 12px bottom margin to mirror the checkbox's
+			12px top margin => 283 total). Centering this fixed-size block inside the Grid
+			(which stretches to fill the Window) means that whenever the Window's Height is
+			increased or decreased - e.g. via the Properties window - the extra/removed space
+			is split evenly above the checkbox and below the Cancel Exit button, instead of
+			all collecting below Button5 as it did when Canvas was the direct Window content.
+		-->
+		<Canvas Width="424" Height="283" HorizontalAlignment="Center" VerticalAlignment="Center">
+			<CheckBox x:Name="CheckBox1"
+					  Content="Audio to Text Conversion on Exit"
+					  FontFamily="Microsoft Sans Serif" FontSize="15.75" FontWeight="Bold"
+					  Canvas.Left="23" Canvas.Top="12"
+					  Visibility="Collapsed"
+					  Checked="CheckBox1_CheckedChanged" Unchecked="CheckBox1_CheckedChanged" />
+
+			<Button x:Name="Button1"
+					Content="Exit CLEVIR and Shutdown Windows"
+					FontFamily="Microsoft Sans Serif" FontSize="12" FontWeight="Bold"
+					Canvas.Left="89" Canvas.Top="45" Width="242" Height="52"
+					Click="Button1_Click" />
+
+			<Button x:Name="Button3"
+					Content="Exit CLEVIR And Close INCA"
+					FontFamily="Microsoft Sans Serif" FontSize="12" FontWeight="Bold"
+					Canvas.Left="89" Canvas.Top="103" Width="242" Height="52"
+					Click="Button3_Click" />
+
+			<Button x:Name="Button2"
+					Content="Exit CLEVIR Only"
+					FontFamily="Microsoft Sans Serif" FontSize="12" FontWeight="Bold"
+					Canvas.Left="89" Canvas.Top="161" Width="242" Height="52"
+					Click="Button2_Click" />
+
+			<Button x:Name="Button5"
+					Content="Cancel Exit"
+					FontFamily="Microsoft Sans Serif" FontSize="12" FontWeight="Bold"
+					Canvas.Left="89" Canvas.Top="219" Width="242" Height="52"
+					Click="Button5_Click" />
+		</Canvas>
+	</Grid>
+</Window>
