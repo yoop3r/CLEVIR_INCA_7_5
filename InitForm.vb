@@ -26,11 +26,6 @@ Public Class InitForm
     ' Module-level variables to track original state
     Private _originalConfigData As String = ""
 
-    ' Add this method to your class
-    <DllImport("user32.dll", SetLastError:=True, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
-    Private Shared Function FindWindow(<MarshalAs(UnmanagedType.LPStr)> lpClassName As String, <MarshalAs(UnmanagedType.LPStr)> lpWindowName As String) As IntPtr
-    End Function
-
     <DllImport("user32.dll")>
     Private Shared Function ShowWindow(hWnd As IntPtr, nCmdShow As Integer) As Boolean
     End Function
@@ -38,17 +33,29 @@ Public Class InitForm
     Private Const SW_MINIMIZE As Integer = 6
 
     Private Sub MinimizeInca()
+        Dim processes() As Process = Nothing
         Try
+            processes = Process.GetProcessesByName("INCA") ' replace with actual process name
 
-            Dim processes = Process.GetProcessesByName("INCA") ' replace with actual process name
-            If processes.Length > 0 Then
-                Dim hwnd = processes(0).MainWindowHandle
+            ' GetProcessesByName can match more than one process; check each until one with a
+            ' usable window handle is found instead of assuming the first entry is the right one.
+            For Each proc As Process In processes
+                Dim hwnd = proc.MainWindowHandle
                 If hwnd <> IntPtr.Zero Then
                     ShowWindow(hwnd, SW_MINIMIZE)
+                    Exit For
                 End If
-            End If
+            Next
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"Failed to minimize INCA: {ex.Message}")
+        Finally
+            ' Process instances returned by GetProcessesByName wrap native OS handles and should
+            ' be disposed explicitly rather than left for the finalizer.
+            If processes IsNot Nothing Then
+                For Each proc As Process In processes
+                    proc.Dispose()
+                Next
+            End If
         End Try
     End Sub
 
@@ -677,7 +684,6 @@ Public Class InitForm
                 ' Initialize core system information
                 hostname = Environment.MachineName
                 Using identity = WindowsIdentity.GetCurrent()
-                    Dim wp As New WindowsPrincipal(identity)
                     GmResidentClient.EtasDefaultUserName = identity.Name.Split("\"c).LastOrDefault()?.ToUpper()
                 End Using
 

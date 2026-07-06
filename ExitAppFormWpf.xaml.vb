@@ -4,13 +4,15 @@ Option Explicit On
 Imports System.Windows
 Imports System.Windows.Controls
 
-''' <summary>
-''' WPF pilot replacement for ExitAppForm (WinForms). Displayed modally from
-''' GmResidentClient.ExitApp when the user exits the application via the Exit button.
-''' Allows the user to choose between several shutdown options; the caller reads
-''' <see cref="SelectedExitOption"/> after ShowDialog() returns - it does not rely on
-''' Window.DialogResult, so that WPF property is intentionally left unset here.
-''' </summary>
+' WPF pilot replacement for ExitAppForm (WinForms). Displayed modally from
+' GmResidentClient.ExitApp when the user exits the application via the Exit button.
+' Allows the user to choose between several shutdown options; the caller reads
+' SelectedExitOption after ShowDialog() returns - it does not rely on
+' Window.DialogResult, so that WPF property is intentionally left unset here.
+' (Note: kept as a regular comment, not an XML doc comment, because the XAML-generated
+' partial class (ExitAppFormWpf.g.vb) already carries its own XML doc comment on this
+' same type declaration - VB does not merge XML doc comments across partial-class parts,
+' so having both triggers BC42314.)
 Partial Public Class ExitAppFormWpf
 
     ' This property stores the user's choice, same contract as the original WinForms form.

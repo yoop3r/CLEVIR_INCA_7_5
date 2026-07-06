@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <OutputType>WinExe</OutputType>
+	<Nullable>enable</Nullable>
     <StartupObject>CLEVIR_INCA_7_5.My.MyApplication</StartupObject>
     <MyType>WindowsForms</MyType>
     <OptionStrict>On</OptionStrict>
@@ -31,6 +32,8 @@
          files. Does not affect runtime DPI behavior, which is controlled separately via
          My Project\Application.myapp (HighDpiMode). See
          https://github.com/dotnet/winforms/blob/main/docs/designer/designer-high-dpi-mode.md -->
+	<ImplicitUsings>enable</ImplicitUsings>
+	<ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
     <ForceDesignerDpiUnaware>true</ForceDesignerDpiUnaware>
     <DocumentationFile>CLEVIR_INCA_7_5.xml</DocumentationFile>
     <Configurations>All;Debug;Release</Configurations>
@@ -322,6 +325,7 @@
     <None Include=".github\upgrades\scenarios\cppbuildtoolsupgrade_f73cc1\plan.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\plan.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\scenario-instructions.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\smoke-test.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\01-prerequisites\progress-details.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\02-pcapeventbridge-retarget\progress-details.md" />
