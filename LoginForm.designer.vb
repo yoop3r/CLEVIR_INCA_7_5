@@ -58,10 +58,6 @@ Partial Class LoginForm
         Me.Button43.Text = "EXIT"
         Me.Button43.UseVisualStyleBackColor = True
         '
-        'ToolTip1
-        '
-        AddHandler Me.ToolTip1.Popup, AddressOf Me.ToolTip1_Popup
-        '
         'GroupBox_SessionMetadata
         '
         Me.GroupBox_SessionMetadata.Controls.Add(Me.Label_Group)

@@ -155,9 +155,14 @@
     <Fragment>
       <ComponentGroup Id="UtilityBinaries" Directory="INSTALLDIR">
         <!-- 7z executables removed - not found in build output -->
-        <!-- HesaiWrapper.dll is the C++ VCX project output; builds to bin\x64\$(var.Configuration)\ rather than InstallFiles\GM\ by design -->
+        <!-- HesaiWrapper.dll is the C++ VCX project's own build output, at x64\$(var.Configuration)\
+             (the default VC++ OutDir) - sourced directly from there rather than the bin\x64\ copy that
+             HesaiWrapper.vcxproj's PostBuildEvent drops next to the app (for P/Invoke probing). That copy
+             only refreshes when the native project itself rebuilds, so it can go stale or go missing
+             independently (e.g. after bin\x64\ is cleaned by the main app's own build) - pointing at the
+             native project's real output avoids that fragility, matching the NCOMdecoder.dll pattern below. -->
         <Component Id="CMP_HesaiWrapper" Guid="*">
-          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\HesaiWrapper.dll" KeyPath="yes" />
+          <File Source="$(var.ProjectDir)..\x64\$(var.Configuration)\HesaiWrapper.dll" KeyPath="yes" />
         </Component>
         <!-- NCOMdecoder.dll: precompiled native C DLL for OxTS NCOM inertial data decoding -->
         <Component Id="CMP_NCOMdecoder" Guid="*">

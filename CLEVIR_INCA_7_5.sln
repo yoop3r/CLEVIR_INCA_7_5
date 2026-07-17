@@ -10,6 +10,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HesaiWrapper", "HesaiWrapper\HesaiWrapper\HesaiWrapper.vcxproj", "{17FAA3D5-AF5E-43BD-8970-8C698154DBE2}"
 EndProject
 Project("{B7DD6F7E-DEF8-4E67-B5B7-07EF123DB6F0}") = "CLEVIR_Installer", "CLEVIR_7.5 Installation\CLEVIR_Installer.wixproj", "{0A538176-2BD1-48DC-9374-061399F1322F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5793D1D6-599E-4970-96D3-0D4F7EB69B36} = {5793D1D6-599E-4970-96D3-0D4F7EB69B36}
+		{17FAA3D5-AF5E-43BD-8970-8C698154DBE2} = {17FAA3D5-AF5E-43BD-8970-8C698154DBE2}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PcapEventBridge", "PcapEventBridge\PcapEventBridge.csproj", "{E635DC2D-3924-4043-BD45-7EBB00C5BFD1}"
 EndProject

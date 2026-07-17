@@ -709,6 +709,7 @@
     <None Remove="CHANGE_LOG.md" />
     <None Remove="claudeprompt.md" />
     <None Remove="CLEVIR_INCA_7_5.vbproj.NEW" />
+    <None Remove="GM_ResidentClient.log" />
     <None Remove="Migration_CaptureLoop_New.vb.exclude" />
     <None Remove="Migration_CaptureLoop_New.vb.txt" />
     <None Remove="Migration_FindAdapter_New.vb.exclude" />
@@ -722,6 +723,7 @@
     <None Remove="Migration_StopCapture_New.vb.exclude" />
     <None Remove="Migration_StopCapture_New.vb.txt" />
     <None Remove="Migration_TestChecklist.md" />
+    <None Remove="OxtsCaptureConfig_Example.xml" />
     <!-- Same rationale as build_output_*.log above: these are untracked, gitignored
          (*.log) scratch logs from ad-hoc build/debug investigations. Wildcarded to
          avoid re-adding one explicit entry per future stderr/stdout/wix log run. -->
@@ -729,4 +731,35 @@
     <None Remove="stdout_*.log" />
     <None Remove="wix_*.log" />
   </ItemGroup>
+
+  <!-- Self-healing copy of the native HesaiWrapper.dll (built by HesaiWrapper.vcxproj - a solution-level
+       ProjectDependency of this project, see CLEVIR_INCA_7_5.sln, which guarantees it builds first) into
+       this project's own output directory, where HesaiInterop.vb's DllImport("HesaiWrapper.dll") P/Invoke
+       resolves it from at runtime. Runs on every build of THIS project - unlike HesaiWrapper.vcxproj's own
+       former PostBuildEvent xcopy (removed), which only fired when that native project itself rebuilt -
+       so the copy can no longer silently go stale or disappear after this project's own OutDir is cleaned
+       independently of the native project (e.g. Clean Solution, a fresh build after a git clone, etc.).
+       Uses $(MSBuildProjectDirectory) rather than $(SolutionDir) - the latter is only guaranteed to
+       resolve when building through the .sln, whereas this project's own directory IS the repo root, so
+       the two are equivalent here but this form also works for a standalone build of just this project.
+       Silently no-ops (via the per-item Exists() conditions below) if HesaiWrapper hasn't been built even
+       once yet, matching HesaiInterop.vb's own warn-and-continue tolerance for a missing native wrapper.
+       Native folder name is derived from PlatformTarget/Platform rather than hardcoded, since
+       HesaiWrapper.vcxproj's own output layout follows VC++'s platform-folder convention (Win32, not x86)
+       and doesn't necessarily match this project's $(Platform) spelling - this project's PlatformTarget is
+       forced to x64 in every configured PropertyGroup above, so this resolves to x64 today, but stays
+       correct if a non-x64 configuration/platform is ever introduced instead of silently no-op'ing or
+       grabbing a mismatched binary. -->
+  <PropertyGroup>
+    <_HesaiWrapperNativePlatform Condition="'$(PlatformTarget)' != ''">$(PlatformTarget)</_HesaiWrapperNativePlatform>
+    <_HesaiWrapperNativePlatform Condition="'$(_HesaiWrapperNativePlatform)' == ''">$(Platform)</_HesaiWrapperNativePlatform>
+    <_HesaiWrapperNativePlatform Condition="'$(_HesaiWrapperNativePlatform)' == 'AnyCPU' Or '$(_HesaiWrapperNativePlatform)' == 'x86'">Win32</_HesaiWrapperNativePlatform>
+  </PropertyGroup>
+  <Target Name="CopyHesaiWrapperNative" AfterTargets="Build">
+    <ItemGroup>
+      <_HesaiWrapperNativeFiles Include="$(MSBuildProjectDirectory)\$(_HesaiWrapperNativePlatform)\$(Configuration)\HesaiWrapper.dll" Condition="Exists('$(MSBuildProjectDirectory)\$(_HesaiWrapperNativePlatform)\$(Configuration)\HesaiWrapper.dll')" />
+      <_HesaiWrapperNativeFiles Include="$(MSBuildProjectDirectory)\$(_HesaiWrapperNativePlatform)\$(Configuration)\HesaiWrapper.pdb" Condition="Exists('$(MSBuildProjectDirectory)\$(_HesaiWrapperNativePlatform)\$(Configuration)\HesaiWrapper.pdb')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_HesaiWrapperNativeFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" Condition="'@(_HesaiWrapperNativeFiles)' != ''" />
+  </Target>
 </Project>

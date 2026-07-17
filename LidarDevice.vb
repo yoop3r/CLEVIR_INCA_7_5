@@ -16,35 +16,35 @@ Imports System.Net.NetworkInformation
 Public NotInheritable Class LidarEventLogger
     Implements IDisposable
 
-    Private eventLogPath As String
-    Private eventLogWriter As StreamWriter
-    Private syncLockObj As New Object()
+    Private _eventLogPath As String
+    Private _eventLogWriter As StreamWriter
+    Private _syncLockObj As New Object()
 
     Public Sub New(pcapFilePath As String)
         ' Create sidecar log file (e.g., "Recording_01_LiDAR1.pcap" -> "Recording_01_LiDAR1.lidar_events.txt")
-        eventLogPath = Path.ChangeExtension(pcapFilePath, ".lidar_events.txt")
-        eventLogWriter = New StreamWriter(eventLogPath, append:=False)
+        _eventLogPath = Path.ChangeExtension(pcapFilePath, ".lidar_events.txt")
+        _eventLogWriter = New StreamWriter(_eventLogPath, append:=False)
 
         ' Write header
-        eventLogWriter.WriteLine("# LiDAR Event Marker Log")
-        eventLogWriter.WriteLine($"# PCAP File: {Path.GetFileName(pcapFilePath)}")
-        eventLogWriter.WriteLine($"# Created: {DateTime.Now:yyyy-MM-dd HH:mm:ss}")
-        eventLogWriter.WriteLine("#")
-        eventLogWriter.WriteLine("# Format: FrameNumber | Timestamp | EventType | Message | SequenceNumber")
-        eventLogWriter.WriteLine("# -------------------------------------------------------------------------")
-        eventLogWriter.Flush()
+        _eventLogWriter.WriteLine("# LiDAR Event Marker Log")
+        _eventLogWriter.WriteLine($"# PCAP File: {Path.GetFileName(pcapFilePath)}")
+        _eventLogWriter.WriteLine($"# Created: {DateTime.Now:yyyy-MM-dd HH:mm:ss}")
+        _eventLogWriter.WriteLine("#")
+        _eventLogWriter.WriteLine("# Format: FrameNumber | Timestamp | EventType | Message | SequenceNumber")
+        _eventLogWriter.WriteLine("# -------------------------------------------------------------------------")
+        _eventLogWriter.Flush()
     End Sub
 
     ' ✅ REMOVED: UpdateFromSdk() doesn't belong here!
 
     Public Sub LogEvent(frameNumber As Long, timestamp As DateTime, eventType As String, message As String, sequenceNumber As Integer)
-        SyncLock syncLockObj
+        SyncLock _syncLockObj
             Try
                 Dim line As String = $"{frameNumber}|{timestamp:yyyy-MM-dd HH:mm:ss.fff}|{eventType}|{message}|{sequenceNumber}"
                 HandleUserMessageLogging("GMRC", $"LidarEventLogger: Writing line = '{line}'")
-                eventLogWriter.WriteLine(line)
-                eventLogWriter.Flush()
-                HandleUserMessageLogging("GMRC", $"LidarEventLogger: Line written to {eventLogPath}")
+                _eventLogWriter.WriteLine(line)
+                _eventLogWriter.Flush()
+                HandleUserMessageLogging("GMRC", $"LidarEventLogger: Line written to {_eventLogPath}")
 
             Catch ex As Exception
                 HandleUserMessageLogging("GMRC", $"LidarEventLogger.LogEvent: {ex.Message}")
@@ -53,10 +53,10 @@ Public NotInheritable Class LidarEventLogger
     End Sub
 
     Public Sub Close()
-        SyncLock syncLockObj
-            If eventLogWriter IsNot Nothing Then
-                eventLogWriter.Close()
-                eventLogWriter = Nothing
+        SyncLock _syncLockObj
+            If _eventLogWriter IsNot Nothing Then
+                _eventLogWriter.Close()
+                _eventLogWriter = Nothing
             End If
         End SyncLock
     End Sub
@@ -156,7 +156,7 @@ Public NotInheritable Class LidarDevice
     ' Read-only properties
     Public ReadOnly Property IsCapturing As Boolean
         Get
-            Return _isCapturing
+            Return Volatile.Read(_isCapturing)
         End Get
     End Property
 
@@ -306,7 +306,7 @@ Public NotInheritable Class LidarDevice
         HandleUserMessageLogging("GMRC", "=== LiDAR + OXTS Integration Test ===")
         HandleUserMessageLogging("GMRC", $"Device: {DeviceId}")
         HandleUserMessageLogging("GMRC", $"LiDAR IP: {LidarIpAddress}")
-        HandleUserMessageLogging("GMRC", $"Capturing: {_isCapturing}")
+        HandleUserMessageLogging("GMRC", $"Capturing: {Volatile.Read(_isCapturing)}")
         HandleUserMessageLogging("GMRC", $"Packets: {_packetCount:N0}")
         HandleUserMessageLogging("GMRC", $"Dropped: {_droppedPackets:N0}")
         HandleUserMessageLogging("GMRC", $"Checksum Errors: {_checksumErrors:N0}")
@@ -335,7 +335,7 @@ Public NotInheritable Class LidarDevice
     ''' ✅ NEW: Inject test marker with OXTS data
     ''' </summary>
     Public Sub InjectTestMarkerWithOxtsData()
-        If Not _isCapturing Then
+        If Not Volatile.Read(_isCapturing) Then
             HandleUserMessageLogging("GMRC", "Cannot inject marker - not capturing")
             Return
         End If
@@ -373,7 +373,7 @@ Public NotInheritable Class LidarDevice
                 $"[{DeviceId}] DIAG: 🔴 ALERT TRIGGER — stopped responding, " &
                 $"last_pkt={timeSinceLastPacket:F1}s ago, " &
                 $"pkts={PacketCount:N0}, dropped={DroppedPackets:N0}, " &
-                $"isCapturing={_isCapturing}, " &
+                $"isCapturing={Volatile.Read(_isCapturing)}, " &
                 $"dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
                 $"gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
                 $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
@@ -445,7 +445,7 @@ Public NotInheritable Class LidarDevice
         Dim logPrefix As String = $"[{DeviceId}] StartCapture"
 
         Try
-            If _isCapturing Then
+            If Volatile.Read(_isCapturing) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Already active")
                 Return
             End If
@@ -560,7 +560,7 @@ Public NotInheritable Class LidarDevice
             ' STEP 8: Start Marker Pump Thread (running before NIC opens so it
             ' is ready to accept the START marker injected in Step 11)
             ' ═══════════════════════════════════════════════════════════════════
-            _isCapturing = True
+            Volatile.Write(_isCapturing, True)
             Interlocked.Exchange(_captureStartedAt, DateTime.Now.Ticks)
 
             _captureThread = New Thread(AddressOf CaptureLoop) With {
@@ -572,7 +572,14 @@ Public NotInheritable Class LidarDevice
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 9: Register Packet Handler
+            ' StopCapture() nulls _eventBridge after unsubscribing, so it must be
+            ' recreated here on every (re)start rather than relying on the one-time
+            ' instance created in the constructor (root cause of a NullReferenceException
+            ' on subsequent recording-rotation restarts).
             ' ═══════════════════════════════════════════════════════════════════
+            If _eventBridge Is Nothing Then
+                _eventBridge = New PcapEventBridge.PcapEventBridge()
+            End If
             AddHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
             _eventBridge.Subscribe(_captureDevice)
             AddHandler _captureDevice.OnCaptureStopped, AddressOf OnCaptureStopped
@@ -624,7 +631,7 @@ Public NotInheritable Class LidarDevice
                 ' Ignore - handler may not have been added yet
             End Try
             CleanupResources()
-            _isCapturing = False
+            Volatile.Write(_isCapturing, False)
         End Try
     End Sub
 
@@ -644,7 +651,7 @@ Public NotInheritable Class LidarDevice
             LastPacketTimestamp = DateTime.Now
 
             ' Write to PCAP dump file
-            If _dumpFile IsNot Nothing AndAlso _isCapturing Then
+            If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
                 _dumpFile.Write(rawPacket)
 
                 ' Update counters (thread-safe)
@@ -690,7 +697,7 @@ Public NotInheritable Class LidarDevice
     Private Sub OnCaptureStopped(sender As Object, e As CaptureStoppedEventStatus)
         HandleUserMessageLogging("GMRC",
             $"[{DeviceId}] DIAG: ⚠️ SharpPcap OnCaptureStopped fired — " &
-            $"status={e}, isCapturing={_isCapturing}, " &
+            $"status={e}, isCapturing={Volatile.Read(_isCapturing)}, " &
             $"pkts={_packetCount:N0}, gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
             $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
             $"lastPkt={(If(LastPacketTimestamp.HasValue, $"{DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds:F1}s ago", "never"))}, " &
@@ -794,7 +801,7 @@ Public NotInheritable Class LidarDevice
         Dim logPrefix As String = $"[{DeviceId}] StopCapture"
 
         Try
-            If Not _isCapturing Then
+            If Not Volatile.Read(_isCapturing) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Not capturing")
                 Return
             End If
@@ -813,7 +820,7 @@ Public NotInheritable Class LidarDevice
             ' ═══════════════════════════════════════════════════════════════════
             ' Signal capture loop to stop
             ' ═══════════════════════════════════════════════════════════════════
-            _isCapturing = False
+            Volatile.Write(_isCapturing, False)
 
             ' ═══════════════════════════════════════════════════════════════════
             ' Stop SharpPcap capture (symmetric with StartCapture in StartCapture method)
@@ -900,7 +907,7 @@ Public NotInheritable Class LidarDevice
         Dim logPrefix As String = $"[{DeviceId}] StartCaptureShared"
 
         Try
-            If _isCapturing Then
+            If Volatile.Read(_isCapturing) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Already active")
                 Return
             End If
@@ -946,7 +953,7 @@ Public NotInheritable Class LidarDevice
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Drained {drainedCount} stale marker(s) from prior sequence")
             End If
 
-            _isCapturing = True
+            Volatile.Write(_isCapturing, True)
             Interlocked.Exchange(_captureStartedAt, DateTime.Now.Ticks)
 
             ' Start marker-pump thread
@@ -966,7 +973,7 @@ Public NotInheritable Class LidarDevice
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
             CleanupResources()
-            _isCapturing = False
+            Volatile.Write(_isCapturing, False)
         End Try
     End Sub
 
@@ -979,7 +986,7 @@ Public NotInheritable Class LidarDevice
             ' Update health timestamp first — before any parse that could throw
             LastPacketTimestamp = DateTime.Now
 
-            If _dumpFile IsNot Nothing AndAlso _isCapturing Then
+            If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
                 _dumpFile.Write(rawPacket)
 
                 Interlocked.Increment(_frameCounter)
@@ -1017,7 +1024,7 @@ Public NotInheritable Class LidarDevice
         Dim logPrefix As String = $"[{DeviceId}] StopCaptureShared"
 
         Try
-            If Not _isCapturing Then
+            If Not Volatile.Read(_isCapturing) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Not capturing")
                 Return
             End If
@@ -1028,7 +1035,7 @@ Public NotInheritable Class LidarDevice
             InjectEventMarker("STOP", "Recording stopped", currentSeq)
             Thread.Sleep(200)
 
-            _isCapturing = False
+            Volatile.Write(_isCapturing, False)
 
             ' Wait for marker-pump thread
             If _captureThread IsNot Nothing AndAlso _captureThread.IsAlive Then
@@ -1077,7 +1084,7 @@ Public NotInheritable Class LidarDevice
 
         Try
             ' First, stop any active capture
-            If _isCapturing Then
+            If Volatile.Read(_isCapturing) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping active capture first...")
                 StopCapture()
             End If
@@ -1102,7 +1109,7 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Public Function InjectEventMarker(eventType As String, message As String, sequenceNumber As Integer) As Long
         Try
-            If Not _isCapturing Then
+            If Not Volatile.Read(_isCapturing) Then
                 Return -1
             End If
 
@@ -1143,7 +1150,7 @@ Public NotInheritable Class LidarDevice
             Dim lastWatchdogPacketCount As Long = 0
             Dim starvationWarned As Boolean = False
 
-            While _isCapturing
+            While Volatile.Read(_isCapturing)
                 ' ═══════════════════════════════════════════════════════════════
                 ' 1. Process Pending Event Markers
                 ' ═══════════════════════════════════════════════════════════════
@@ -1177,7 +1184,7 @@ Public NotInheritable Class LidarDevice
                         HandleUserMessageLogging("GMRC",
                             $"[{DeviceId}] DIAG: ⚠️ STARVATION — 0 packets in last 10s " &
                             $"(total={currentPktCount:N0}, last_pkt={timeSinceLast:F1}s ago, " &
-                            $"isCapturing={_isCapturing}, " &
+                            $"isCapturing={Volatile.Read(_isCapturing)}, " &
                             $"dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
                             $"gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
                             $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
@@ -1205,7 +1212,7 @@ Public NotInheritable Class LidarDevice
         Catch ex As Exception
             HandleUserMessageLogging("GMRC",
                 $"[{DeviceId}] DIAG: ⚠️ Capture loop CRASHED: {ex.GetType().Name}: {ex.Message} " &
-                $"(pkts={_packetCount:N0}, isCapturing={_isCapturing}, ts={DateTime.Now:HH:mm:ss.fff})")
+                $"(pkts={_packetCount:N0}, isCapturing={Volatile.Read(_isCapturing)}, ts={DateTime.Now:HH:mm:ss.fff})")
         End Try
     End Sub
 
@@ -1303,7 +1310,7 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Private Sub InjectMarkerPacket(marker As EventMarker)
         Try
-            If _dumpFile Is Nothing OrElse Not _isCapturing Then Return
+            If _dumpFile Is Nothing OrElse Not Volatile.Read(_isCapturing) Then Return
 
             ' ═══════════════════════════════════════════════════════════════════
             ' Use GPS-synchronized timestamp if available
@@ -1504,7 +1511,7 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Public Sub Dispose() Implements IDisposable.Dispose
         Try
-            If _isCapturing Then
+            If Volatile.Read(_isCapturing) Then
                 StopCapture()
             End If
         Catch

@@ -63,7 +63,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
     ' ====================================================================
     Public ReadOnly Property IsCapturing As Boolean
         Get
-            Return _isCapturing
+            Return Volatile.Read(_isCapturing)
         End Get
     End Property
 
@@ -108,7 +108,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
         Dim logPrefix As String = $"[{DeviceId}] StartCapture"
 
         Try
-            If _isCapturing Then
+            If Volatile.Read(_isCapturing) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Already active")
                 Return
             End If
@@ -191,7 +191,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 9: Start SharpPcap Capture
             ' ═══════════════════════════════════════════════════════════════════
-            _isCapturing = True
+            Volatile.Write(_isCapturing, True)
             _captureDevice.StartCapture()
 
             ' ═══════════════════════════════════════════════════════════════════
@@ -215,7 +215,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
             CleanupResources()
-            _isCapturing = False
+            Volatile.Write(_isCapturing, False)
         End Try
     End Sub
 
@@ -226,7 +226,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
         Dim logPrefix As String = $"[{DeviceId}] StopCapture"
 
         Try
-            If Not _isCapturing Then
+            If Not Volatile.Read(_isCapturing) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Not capturing")
                 Return
             End If
@@ -234,7 +234,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping capture...")
 
             ' Signal capture thread to stop and stop SharpPcap capture
-            _isCapturing = False
+            Volatile.Write(_isCapturing, False)
 
             If _captureDevice IsNot Nothing Then
                 Try
@@ -309,7 +309,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
             Dim rawPacket As RawCapture = e.Packet
 
             ' Write to PCAP dump file
-            If _dumpFile IsNot Nothing AndAlso _isCapturing Then
+            If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
                 _dumpFile.Write(rawPacket)
 
                 ' Update counters (thread-safe)
@@ -336,7 +336,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
 
             Dim lastStatsUpdate As DateTime = DateTime.Now
 
-            While _isCapturing
+            While Volatile.Read(_isCapturing)
                 ' Process Pending Event Markers
                 Dim marker As EventMarker = Nothing
                 While _markerQueue.TryDequeue(marker)
@@ -388,7 +388,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
     ''' </summary>
     Private Sub InjectMarkerPacket(marker As EventMarker)
         Try
-            If _dumpFile Is Nothing OrElse Not _isCapturing Then Return
+            If _dumpFile Is Nothing OrElse Not Volatile.Read(_isCapturing) Then Return
 
             Interlocked.Increment(_eventMarkerCounter)
 
@@ -527,7 +527,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
     ''' </summary>
     Public Sub Dispose() Implements IDisposable.Dispose
         Try
-            If _isCapturing Then
+            If Volatile.Read(_isCapturing) Then
                 StopCapture()
             End If
         Catch

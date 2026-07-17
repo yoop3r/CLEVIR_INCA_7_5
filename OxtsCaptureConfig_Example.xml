@@ -1,0 +1,83 @@
+<!-- ============================================================ -->
+<!-- OXTS NCOM PCAP Capture Configuration                        -->
+<!-- Captures raw NCOM UDP packets for post-processing           -->
+<!-- Creates synchronized ground truth dataset with LiDAR        -->
+<!-- ============================================================ -->
+
+<!-- Master enable flag -->
+<OxtsCaptureEnabled>true</OxtsCaptureEnabled>
+
+<OxtsCapture>
+    <!-- Network adapter GUID (typically same as LiDAR) -->
+    <!-- If empty, will use first LiDAR device's adapter -->
+    <NetworkAdapterGuid>{YOUR-NETWORK-ADAPTER-GUID}</NetworkAdapterGuid>
+    
+    <!-- OXTS device IP address -->
+    <IpAddress>10.5.55.200</IpAddress>
+    
+    <!-- NCOM UDP port (default: 3000) -->
+    <NcomPort>3000</NcomPort>
+</OxtsCapture>
+
+<!-- ============================================================ -->
+<!-- Example: Complete Synchronized Capture Configuration        -->
+<!-- ============================================================ -->
+<Configuration>
+    <!-- Enable both LiDAR and OXTS capture -->
+    <LidarCaptureEnabled>true</LidarCaptureEnabled>
+    <OxtsCaptureEnabled>true</OxtsCaptureEnabled>
+    
+    <!-- LiDAR devices -->
+    <LidarDevices>
+        <Lidar id="LiDAR1" enabled="true">
+            <AdapterGuid>{12345678-1234-1234-1234-123456789012}</AdapterGuid>
+            <IpAddress>10.5.55.14</IpAddress>
+            <DataPort>2311</DataPort>
+            <ImuPort>8308</ImuPort>
+            <HesaiConfig>
+                <CorrectionFilePath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Angle Correction File.csv</CorrectionFilePath>
+                <FiretimesPath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Firetime Correction File.csv</FiretimesPath>
+                <HostIpAddress>10.5.55.201</HostIpAddress>
+                <MulticastIpAddress>239.192.20.10</MulticastIpAddress>
+                <PtcPort>9347</PtcPort>
+                <UsePtcConnected>false</UsePtcConnected>
+                <EnableParserThread>true</EnableParserThread>
+                <EnableUdpThread>true</EnableUdpThread>
+            </HesaiConfig>
+        </Lidar>
+    </LidarDevices>
+    
+    <!-- OXTS capture (shares same adapter as LiDAR) -->
+    <OxtsCapture>
+        <NetworkAdapterGuid>{12345678-1234-1234-1234-123456789012}</NetworkAdapterGuid>
+        <IpAddress>10.5.55.200</IpAddress>
+        <NcomPort>3000</NcomPort>
+    </OxtsCapture>
+    
+    <!-- OXTS NCOM interface (existing) -->
+    <OxtsEnabled>true</OxtsEnabled>
+    <OxtsNcomIpAddress>10.5.55.200</OxtsNcomIpAddress>
+    <OxtsNcomPort>3000</OxtsNcomPort>
+    <OxtsGpsLockTimeout>30000</OxtsGpsLockTimeout>
+    <OxtsWaitForLockOnStart>true</OxtsWaitForLockOnStart>
+</Configuration>
+
+<!-- ============================================================ -->
+<!-- Expected Output Files                                        -->
+<!-- ============================================================ -->
+<!-- 
+When recording session "20250121_143052_JDoe_1234":
+
+1. INCA MF4 file (vehicle CAN data):
+   C:\Data\gmcsv1234\20250121_143052_JDoe_1234\20250121_143052_JDoe_1234_01.mf4
+
+2. LiDAR PCAP (point clouds @ 10Hz):
+   C:\Data\gmcsv1234\20250121_143052_JDoe_1234\20250121_143052_JDoe_1234_01_LiDAR1.pcap
+   C:\Data\gmcsv1234\20250121_143052_JDoe_1234\20250121_143052_JDoe_1234_01_LiDAR1.lidar_events.txt
+
+3. OXTS NCOM PCAP (pose @ 100Hz):
+   C:\Data\gmcsv1234\20250121_143052_JDoe_1234\20250121_143052_JDoe_1234_01_OXTS.pcap
+   C:\Data\gmcsv1234\20250121_143052_JDoe_1234\20250121_143052_JDoe_1234_01_OXTS.oxts_events.txt
+
+All three streams share GPS/PTP time base for synchronized post-processing!
+-->

@@ -426,10 +426,6 @@ Public Class LoginForm
         HandleUserMessageLogging("GMRC", $"LoginForm_VisibleChanged: Visible={Me.Visible}")
     End Sub
 
-    Private Sub ToolTip1_Popup(sender As Object, e As PopupEventArgs)
-
-    End Sub
-
     ' ═══════════════════════════════════════════════════════════════
     ' Config Summary Helpers
     ' ═══════════════════════════════════════════════════════════════
