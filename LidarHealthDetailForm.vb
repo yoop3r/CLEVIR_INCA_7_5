@@ -152,6 +152,19 @@ Public Class LidarHealthDetailForm
             lblPtp.ForeColor = If(timeProvider.IsPtpSynchronized(), Color.Green, Color.Red)
         End If
 
+        ' Update absolute UTC date/time from the active precision time source
+        Dim lblUtc = TryCast(Me.Controls.Find("Label_UtcTime", True).FirstOrDefault(), Label)
+        If lblUtc IsNot Nothing Then
+            If timeProvider.IsSynchronized() Then
+                Dim utcNow As DateTime = timeProvider.GetSynchronizedTimestamp()
+                lblUtc.Text = $"UTC: {utcNow:yyyy-MM-dd HH:mm:ss.fff}"
+                lblUtc.ForeColor = Color.Black
+            Else
+                lblUtc.Text = "UTC: n/a"
+                lblUtc.ForeColor = Color.Gray
+            End If
+        End If
+
         ' Update GPS/sync status
         Dim lblGps = TryCast(Me.Controls.Find("Label_GpsLock", True).FirstOrDefault(), Label)
         If lblGps IsNot Nothing Then
@@ -212,6 +225,7 @@ Public Class LidarHealthDetailForm
         Dim lblGps = TryCast(Me.Controls.Find("Label_GpsLock", True).FirstOrDefault(), Label)
         Dim lblIntegrity = TryCast(Me.Controls.Find("Label_PacketLoss", True).FirstOrDefault(), Label)
         Dim lblPackets = TryCast(Me.Controls.Find("Label_PacketCount", True).FirstOrDefault(), Label)
+        Dim lblUtc = TryCast(Me.Controls.Find("Label_UtcTime", True).FirstOrDefault(), Label)
 
         If lblPtp Is Nothing OrElse lblGps Is Nothing OrElse lblIntegrity Is Nothing OrElse lblPackets Is Nothing Then
             Return
@@ -219,6 +233,7 @@ Public Class LidarHealthDetailForm
 
         Const startX As Integer = 6
         Const topY As Integer = 16
+        Const utcY As Integer = 30
         Const spacing As Integer = 12
 
         lblPtp.AutoSize = True
@@ -232,6 +247,11 @@ Public Class LidarHealthDetailForm
 
         If lblPackets.Visible Then
             lblPackets.Location = New Point(lblIntegrity.Right + spacing, topY)
+        End If
+
+        If lblUtc IsNot Nothing Then
+            lblUtc.AutoSize = True
+            lblUtc.Location = New Point(startX, utcY)
         End If
     End Sub
 

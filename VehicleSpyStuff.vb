@@ -777,7 +777,7 @@ Module VehicleSpyStuff
             Dim mainWindowFound As Boolean = False
             While stopwatch.Elapsed.TotalSeconds < 30 ' Additional 30 second timeout for window
                 myVSPYprocess.Refresh() ' Refresh process info
-                If myVSPYprocess.MainWindowHandle <> IntPtr.Zero Then
+                If Not myVSPYprocess.MainWindowHandle.Equals(IntPtr.Zero) Then
                     mainWindowFound = True
                     HandleUserMessageLogging("GMRC", $"StartVSpyProcess: Main window detected after {stopwatch.ElapsedMilliseconds}ms")
                     Exit While

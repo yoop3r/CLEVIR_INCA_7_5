@@ -1,9 +1,9 @@
 ﻿Option Strict Off
 
 Imports System.Diagnostics
-Imports VB = Microsoft.VisualBasic
+'Imports VB = Microsoft.VisualBasic
 Imports System.Security.Principal
-Imports System.Threading
+'Imports System.Threading
 Imports System.Threading.Tasks
 Imports System.IO
 Imports System.Linq
@@ -41,7 +41,7 @@ Public Class InitForm
             ' usable window handle is found instead of assuming the first entry is the right one.
             For Each proc As Process In processes
                 Dim hwnd = proc.MainWindowHandle
-                If hwnd <> IntPtr.Zero Then
+                If Not hwnd.Equals(IntPtr.Zero) Then
                     ShowWindow(hwnd, SW_MINIMIZE)
                     Exit For
                 End If
@@ -456,7 +456,7 @@ Public Class InitForm
             If textstr.Contains("DATALOGGING") Then
                 If MsgBox("CLEVIR is currently set up to run in DATALOGGING mode. In this mode, the init screen and login screen will be bypassed, and CLEVIR will immediately initialize using the current configuration. Continue in DATALOGGING mode?", vbYesNo) = vbNo Then
                     CLEVIRFlavor = "DEVELOPMENT"
-                    userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Development. User {GmResidentClient.EtasDefaultUserName}"
+                    userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Development."
                     If MsgBox("DATALOGGING Operating mode is now OFF. Do you wish to save this change for subsequent CLEVIR sessions?", vbYesNo) = vbYes Then
                         ' Save the updated flavor to the file
                         Using writer As New StreamWriter(operatingModePath, False)
@@ -465,7 +465,7 @@ Public Class InitForm
                     End If
                 Else
                     CLEVIRFlavor = textstr
-                    userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Data Logging. User {GmResidentClient.EtasDefaultUserName}"
+                    userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Data Logging."
                     DebugMode = True
                     If textstr.Contains("WITHUPLOAD") Then
                         UploadDataOnExit = True
@@ -473,12 +473,12 @@ Public Class InitForm
                 End If
             Else
                 CLEVIRFlavor = "DEVELOPMENT"
-                userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Development. User {GmResidentClient.EtasDefaultUserName}"
+                userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Development."
             End If
         Else
             ' Default state if OperatingMode.txt does not exist
             CLEVIRFlavor = "DEVELOPMENT"
-            userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Development. User {GmResidentClient.EtasDefaultUserName}"
+            userMessage = $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} for Development."
         End If
         ' Log the user message
         If Not PATAC Then
@@ -747,7 +747,7 @@ Public Class InitForm
         )
 
             ' Show InitForm after initialization
-            ShowInitFormAfterInitialization()
+            InitFormAfterInitialization()
 
         Catch ex As OperationCanceledException
             Close()
@@ -761,10 +761,10 @@ Public Class InitForm
     ''' ✅ SIMPLIFIED: Shows InitForm after initialization completes
     ''' Bypasses InitForm ONLY for actual DATALOGGING mode
     ''' </summary>
-    Private Sub ShowInitFormAfterInitialization()
+    Private Sub InitFormAfterInitialization()
         Try
             ' ✅ CRITICAL: Add logging to see what we're working with
-            HandleUserMessageLogging("GMRC", $"ShowInitFormAfterInitialization: CLEVIRFlavor='{CLEVIRFlavor}' CurrentVehicleUsage='{CurrentVehicleUsage}' UserName='{GmResidentClient.EtasDefaultUserName}'")
+            HandleUserMessageLogging("GMRC", $"InitFormInitialization: CLEVIRFlavor='{CLEVIRFlavor}' CurrentVehicleUsage='{CurrentVehicleUsage}'")
 
             ' ✅ ONLY bypass InitForm if DATALOGGING mode is EXPLICITLY enabled
             If CLEVIRFlavor.ToUpper().Contains("DATALOGGING") Then
@@ -778,7 +778,7 @@ Public Class InitForm
             AutoDriveOrFallback()
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"ShowInitFormAfterInitialization: {ex.Message}", DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"InitFormAfterInitialization: {ex.Message}", DisplayMsgBox)
             ' Fallback - try to show form anyway
             ShowInitFormInteractive("Initialization completed with warnings.")
         End Try
@@ -922,7 +922,7 @@ Public Class InitForm
 
     Private Sub LogInitializationStart()
         HandleUserMessageLogging("GMRC", " ")
-        HandleUserMessageLogging("GMRC", $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))} User {GmResidentClient.EtasDefaultUserName}")
+        HandleUserMessageLogging("GMRC", $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))}")
         HandleUserMessageLogging("GMRC", " ")
     End Sub
 

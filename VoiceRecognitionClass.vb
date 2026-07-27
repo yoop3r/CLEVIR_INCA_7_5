@@ -8,6 +8,7 @@ Public NotInheritable Class VoiceRecognitionClass
     Private WithEvents myRecognizer As SpeechRecognitionEngine
     Private _exitPending As Boolean
     Private _voiceActivated As Boolean
+    Private _isInitialized As Boolean
     Private ReadOnly synth As SpeechSynthesizer
 
     Public Property VoiceActivated() As Boolean
@@ -40,6 +41,18 @@ Public NotInheritable Class VoiceRecognitionClass
     Public ReadOnly Property IsListening As Boolean
         Get
             Return VoiceActivated
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' True once InitVoice() has successfully constructed the recognition engine and
+    ''' loaded a grammar. Used to decide whether InitVoice() needs to be (re)run before
+    ''' voice recognition can be started - avoids relying on the caller's own instance
+    ''' being null, since this class is used as a shared singleton.
+    ''' </summary>
+    Public ReadOnly Property IsInitialized As Boolean
+        Get
+            Return _isInitialized
         End Get
     End Property
 
@@ -103,15 +116,18 @@ Public NotInheritable Class VoiceRecognitionClass
                 ' Do NOT start recognition here. It will be started by ActivateVoiceRecognition
                 ' when the user clicks the button.
                 VoiceActivated = False
+                _isInitialized = True
 
                 HandleUserMessageLogging("GMRC", "Voice recognition initialized successfully.")
             Else
                 HandleUserMessageLogging("GMRC", "Custom grammar is null. Disabling voice recognition.")
                 OnVehicleScreen?.Button23?.Invoke(Sub() OnVehicleScreen.Button23.Enabled = False)
+                _isInitialized = False
             End If
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "Error in InitVoice: " & ex.Message)
+            _isInitialized = False
         End Try
     End Sub
 

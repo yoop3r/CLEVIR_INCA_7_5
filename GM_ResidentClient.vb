@@ -475,6 +475,10 @@ Public Class GmResidentClient
 
         ToolStripComboBox3.Items.Add("Add Custom INCA Setup")
 
+        'The logged-in user's email address (captured on LoginForm) now identifies the current
+        'INCA user, falling back to DRVR00 when no email address was provided.
+        EtasDefaultUserName = If(String.IsNullOrWhiteSpace(SaveEmailAddress), "DRVR00", UCase(SaveEmailAddress))
+
         If Directory.Exists(ETAS_USER_PATH) Then
             MyDirectories = Directory.GetDirectories(ETAS_USER_PATH)
 
@@ -2726,11 +2730,10 @@ Public Class GmResidentClient
         ' Load and parse the data dictionary
         ParseDataDictionary()
 
-        ' Initialize voice recognition
-        Dim MyVoiceRecognition = DataDictionarySingleton.VoiceRecognitionManager.Instance
-
-        ' Enable the UI element tied to voice activation
-        MyVoiceRecognition.InitVoice()
+        ' Voice recognition is no longer eagerly initialized at app startup.
+        ' DataDictionarySingleton.VoiceRecognitionManager.Instance is lazily created and
+        ' initialized the first time the user clicks Button23 (VOICE) on OnVehicleScreen -
+        ' see Module1.ActivateDeactivateVoiceCommands, "enabled" case.
     End Sub
 
     ''' <summary>
@@ -4825,18 +4828,6 @@ Public Class GmResidentClient
     End Function
 
     ''' <summary>
-    ''' Returns the next index in MyDGs that is Nothing (i.e., not in use).
-    ''' </summary>
-    Private Function GetNextAvailableGridIndex() As Integer
-        For i As Integer = 0 To myDGs.Count - 1
-            If myDGs(i) Is Nothing Then
-                Return i
-            End If
-        Next
-        Return 0
-    End Function
-
-    ''' <summary>
     ''' Checks whether we should force-register the signal (based on SignalRegistrationMode, etc).
     ''' </summary>
     Private Function ShouldForceRegister(
@@ -5904,14 +5895,20 @@ Public Class GmResidentClient
 
     End Sub
 
+    ''' <summary>
+    ''' Called from various click events which are associated with displaying a particular
+    ''' form which has been dynamically created based on information in the INCAVariableFile.
+    '''
+    ''' This routine will register the signals on a given form dynamically.
+    ''' This will occur if the user has selected the GO/NOGO option on initialization, because the signals
+    ''' associated with the display have not been registered until it has been displayed for the first time.
+    '''
+    ''' ✅ NAMING: Despite the similar name, this is NOT another copy of signal registration logic.
+    ''' It only flags the signals belonging to display form "j" as ForceRegister=True in
+    ''' MyIncaInterface.myDisplaySignals, then delegates the actual INCA registration work to
+    ''' MyIncaInterface.RegisterSignals() (which in turn calls MyGmIncaComm.RegisterSignalsCore).
+    ''' </summary>
     Public Sub RegisterDisplaySignals(ByVal j As Integer)
-
-        'Called from various click events which are associated with displaying a particular 
-        'form which has been dynamically created based on information in the INCAVariableFile.
-
-        'This routine will register the signals on a given form dynamically.
-        'This will occur if the user has selected the GO/NOGO option on initialization, because the signals
-        'associated with the display have not been registered until it has been displayed for the first time.
 
         Dim found As Boolean
         Dim e As EventArgs
@@ -9742,7 +9739,7 @@ Public Class GmResidentClient
                                             If _healthCounter = 0 Then
 
                                                 If saveHealthCounter > 1 Then
-                                                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: HealthCounter = " & _healthCounter)
+                                                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: HealthCounter recovered from " & saveHealthCounter)
                                                 End If
                                                 saveHealthCounter = 0
 

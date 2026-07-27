@@ -5,6 +5,8 @@ Imports System.Diagnostics
 Imports System.IO
 Imports System.Collections.Generic
 Imports System.Runtime.InteropServices
+Imports System.Text.Json
+Imports System.Text.Json.Serialization
 Imports System.Threading
 Imports System.Threading.Tasks
 Imports de.etas.cebra.toolAPI.Common
@@ -150,11 +152,27 @@ Public Interface IGM_INCA_Comm
 End Interface
 
 ''' <summary>
+''' Serializable DTO backing the registration cache JSON file. Using System.Text.Json for both
+''' serialization and deserialization guarantees well-formed JSON (no missing commas, no manual
+''' string escaping errors) versus the previous hand-built StringBuilder approach.
+''' </summary>
+Public Class SignalRegistrationCacheData
+    Public Property ExperimentName As String
+    Public Property CreatedUtc As String
+    Public Property SignalCount As Integer
+    Public Property SignalKeys As List(Of String)
+End Class
+
+''' <summary>
 ''' ✅ NEW: Persistent registration cache to skip re-registration on subsequent startups
 ''' Stores the last successfully registered signals in a JSON file alongside the signal list CSV.
 ''' </summary>
 Public Class SignalRegistrationCache
     Private Shared ReadOnly CacheLock As New Object()
+
+    Private Shared ReadOnly WriteOptions As New JsonSerializerOptions() With {
+        .WriteIndented = True
+    }
 
     ''' <summary>
     ''' Gets the cache file path based on the signal list CSV path.
@@ -192,8 +210,16 @@ Public Class SignalRegistrationCache
             Dim cacheContent As String = File.ReadAllText(cachePath)
             If String.IsNullOrEmpty(cacheContent) Then Return False
 
-            ' Parse experiment name from cache (simple JSON parsing)
-            If Not cacheContent.Contains($"""ExperimentName"":""{experimentName}""") Then
+            ' Parse experiment name from cache using strict JSON parsing
+            Dim data As SignalRegistrationCacheData = Nothing
+            Try
+                data = JsonSerializer.Deserialize(Of SignalRegistrationCacheData)(cacheContent)
+            Catch jsonEx As JsonException
+                HandleUserMessageLogging("COMM", $"SignalRegistrationCache: Cache file is malformed JSON ({jsonEx.Message}) - invalidating")
+                Return False
+            End Try
+
+            If data Is Nothing OrElse Not String.Equals(data.ExperimentName, experimentName, StringComparison.Ordinal) Then
                 HandleUserMessageLogging("COMM", "SignalRegistrationCache: Experiment name mismatch - invalidating")
                 Return False
             End If
@@ -219,34 +245,22 @@ Public Class SignalRegistrationCache
                 End If
 
                 Dim cacheContent As String = File.ReadAllText(cachePath)
+                If String.IsNullOrEmpty(cacheContent) Then Return Nothing
+
+                Dim data As SignalRegistrationCacheData = Nothing
+                Try
+                    data = JsonSerializer.Deserialize(Of SignalRegistrationCacheData)(cacheContent)
+                Catch jsonEx As JsonException
+                    HandleUserMessageLogging("COMM", $"SignalRegistrationCache.LoadCachedSignalKeys: Malformed JSON ({jsonEx.Message})")
+                    Return Nothing
+                End Try
+
+                If data Is Nothing OrElse data.SignalKeys Is Nothing Then Return Nothing
+
                 Dim result As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
-
-                ' ✅ FIXED: Use line-by-line parsing to handle signal names with brackets like [x]
-                ' Format: {"ExperimentName":"...", "SignalCount":123, "SignalKeys":["key1","key2",...]}
-                Dim inSignalKeys As Boolean = False
-                Dim lines() As String = cacheContent.Split(New String() {vbCrLf, vbLf}, StringSplitOptions.RemoveEmptyEntries)
-
-                For Each line In lines
-                    Dim trimmedLine As String = line.Trim()
-
-                    ' Detect start of SignalKeys array
-                    If trimmedLine.Contains("""SignalKeys"":[") Then
-                        inSignalKeys = True
-                        Continue For
-                    End If
-
-                    ' Detect end of SignalKeys array
-                    If inSignalKeys AndAlso trimmedLine = "]" Then
-                        Exit For
-                    End If
-
-                    ' Parse signal key lines (format: "DeviceName|RasterName|SignalName",)
-                    If inSignalKeys Then
-                        ' Remove leading/trailing quotes, commas, and whitespace
-                        Dim cleanKey As String = trimmedLine.TrimEnd(","c).Trim().Trim(""""c)
-                        If Not String.IsNullOrEmpty(cleanKey) AndAlso cleanKey.Contains("|") Then
-                            result.Add(cleanKey)
-                        End If
+                For Each key In data.SignalKeys
+                    If Not String.IsNullOrEmpty(key) AndAlso key.Contains("|") Then
+                        result.Add(key)
                     End If
                 Next
 
@@ -262,6 +276,9 @@ Public Class SignalRegistrationCache
 
     ''' <summary>
     ''' Saves the successfully registered signals to the cache file.
+    ''' Uses System.Text.Json for serialization (guarantees well-formed JSON) and writes to a
+    ''' temp file first, then atomically replaces the target file, so a crash or manual edit
+    ''' mid-write can never leave a corrupted/malformed cache file on disk.
     ''' </summary>
     Public Shared Sub SaveCache(signalListPath As String, experimentName As String, signals() As IGM_INCA_Comm.DeviceRasterSignalStatus)
         Try
@@ -269,26 +286,28 @@ Public Class SignalRegistrationCache
                 Dim cachePath As String = GetCacheFilePath(signalListPath)
                 If String.IsNullOrEmpty(cachePath) Then Return
 
-                ' Build simple JSON manually (no external dependencies)
-                Dim sb As New Text.StringBuilder()
-                sb.AppendLine("{")
-                sb.AppendLine($"  ""ExperimentName"":""{experimentName}"",")
-                sb.AppendLine($"  ""CreatedUtc"":""{DateTime.UtcNow:o}"",")
-                sb.AppendLine($"  ""SignalCount"":{signals.Length},")
-                sb.AppendLine("  ""SignalKeys"":[")
-
                 Dim validSignals = signals.Where(Function(s) s.Status = "Valid").ToArray()
-                For i As Integer = 0 To validSignals.Length - 1
-                    Dim signal = validSignals(i)
-                    Dim key As String = $"{signal.DeviceName}|{signal.RasterName}|{signal.SignalName}"
-                    Dim comma As String = If(i < validSignals.Length - 1, ",", "")
-                    sb.AppendLine($"    ""{key}""{comma}")
-                Next
 
-                sb.AppendLine("  ]")
-                sb.AppendLine("}")
+                Dim data As New SignalRegistrationCacheData With {
+                    .ExperimentName = experimentName,
+                    .CreatedUtc = DateTime.UtcNow.ToString("o"),
+                    .SignalCount = validSignals.Length,
+                    .SignalKeys = validSignals.Select(Function(s) $"{s.DeviceName}|{s.RasterName}|{s.SignalName}").ToList()
+                }
 
-                File.WriteAllText(cachePath, sb.ToString())
+                Dim json As String = JsonSerializer.Serialize(data, WriteOptions)
+
+                ' Atomic write: write to temp file, then replace target, to avoid partial/corrupt
+                ' cache files if the process is interrupted mid-write.
+                Dim tempPath As String = cachePath & "." & Guid.NewGuid().ToString("N") & ".tmp"
+                File.WriteAllText(tempPath, json)
+
+                If File.Exists(cachePath) Then
+                    File.Replace(tempPath, cachePath, Nothing)
+                Else
+                    File.Move(tempPath, cachePath)
+                End If
+
                 HandleUserMessageLogging("COMM", $"SignalRegistrationCache: Saved {validSignals.Length} signals to {Path.GetFileName(cachePath)}")
             End SyncLock
 
@@ -2291,7 +2310,16 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
 
     End Function
 
-    Public Function RegisterSignals(
+    ''' <summary>
+    ''' ✅ NAMING: This is the low-level, INCA-facing signal registration implementation
+    ''' (RCI2 init, registration cache lookup/validation, device-raster pair building, actual
+    ''' INCA registration calls). It implements IGM_INCA_Comm.RegisterSignals but is named
+    ''' "RegisterSignalsCore" locally to distinguish it from the higher-level orchestration
+    ''' method INCA_InterfaceClass.RegisterSignals, which decides WHICH signal array to pass
+    ''' here (mySignals vs myPreliminaryDisplaySignals) based on SignalRegistrationMode and
+    ''' handles UI/measurement-state concerns around the call.
+    ''' </summary>
+    Public Function RegisterSignalsCore(
                                     ByVal DeviceRasterSignals() As IGM_INCA_Comm.DeviceRasterSignalStatus,
                                     Optional ByVal progressForm As SignalRegistrationProgressForm = Nothing
                                     ) As IGM_INCA_Comm.DeviceRasterSignalStatus() Implements IGM_INCA_Comm.RegisterSignals

@@ -37,6 +37,7 @@ Partial Class LidarHealthDetailForm
         Me.Label_PacketLoss = New System.Windows.Forms.Label()
         Me.Label_GpsLock = New System.Windows.Forms.Label()
         Me.Label_PtpStatus = New System.Windows.Forms.Label()
+        Me.Label_UtcTime = New System.Windows.Forms.Label()
         Me.Button_TestOxts = New System.Windows.Forms.Button()
         Me.Button_TestLidar = New System.Windows.Forms.Button()
         Me.Button_TestIntegration = New System.Windows.Forms.Button()
@@ -116,6 +117,7 @@ Partial Class LidarHealthDetailForm
         '
         Me.GroupBox_OxtsStatus.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_UtcTime)
         Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_PacketCount)
         Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_PacketLoss)
         Me.GroupBox_OxtsStatus.Controls.Add(Me.Label_GpsLock)
@@ -174,6 +176,17 @@ Partial Class LidarHealthDetailForm
         Me.Label_PtpStatus.Size = New System.Drawing.Size(108, 13)
         Me.Label_PtpStatus.TabIndex = 0
         Me.Label_PtpStatus.Text = "PTP: Initializing..."
+        '
+        'Label_UtcTime
+        '
+        Me.Label_UtcTime.AutoSize = True
+        Me.Label_UtcTime.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.Label_UtcTime.Location = New System.Drawing.Point(5, 30)
+        Me.Label_UtcTime.Margin = New System.Windows.Forms.Padding(2, 0, 2, 0)
+        Me.Label_UtcTime.Name = "Label_UtcTime"
+        Me.Label_UtcTime.Size = New System.Drawing.Size(108, 13)
+        Me.Label_UtcTime.TabIndex = 7
+        Me.Label_UtcTime.Text = "UTC: n/a"
         '
         'Button_TestOxts
         '
@@ -291,4 +304,5 @@ Partial Class LidarHealthDetailForm
     Friend WithEvents Label_GpsLock As System.Windows.Forms.Label
     Friend WithEvents Label_PacketLoss As System.Windows.Forms.Label
     Friend WithEvents Label_PacketCount As System.Windows.Forms.Label
+    Friend WithEvents Label_UtcTime As System.Windows.Forms.Label
 End Class

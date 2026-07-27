@@ -3,7 +3,7 @@ Option Explicit On
 Imports System.ComponentModel
 Imports System.Diagnostics
 Imports System.Drawing
-Imports System.IO
+'Imports System.IO
 Imports System.Linq
 Imports System.Threading.Tasks
 Imports System.Windows.Forms
@@ -144,6 +144,14 @@ Public Class OnVehicleScreen
     End Sub
 
     Private Sub OnVehicleScreen_FormClosing(ByVal sender As Object, ByVal e As FormClosingEventArgs) Handles Me.FormClosing
+        ' ✅ FIX: Don't re-invoke the EXIT button logic if an exit is already underway
+        ' (e.g. this FormClosing event fires as a side-effect of GmResidentClient.Close()
+        ' during ExitApp's own shutdown sequence).
+        If ExitPressed Then
+            e.Cancel = False
+            Return
+        End If
+
         ' Check if the recording state is active
         If MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.GetRecordingState Then
             ' Prevent the form from closing
@@ -565,17 +573,12 @@ Public Class OnVehicleScreen
             ' ✅ Hide Label6 since it's no longer used
             Label6.Visible = False
 
-            ' ✅ OPTIONAL: Auto-initialize voice recognition in background
-            If VoiceRecognitionInstance Is Nothing Then
-                Try
-                    VoiceRecognitionInstance = New VoiceRecognitionClass()
-                    VoiceRecognitionInstance.InitVoice()
-                    HandleUserMessageLogging("GMRC", "Voice Recognition initialized (inactive)")
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"Voice recognition initialization failed: {ex.Message}")
-                    Button23.Enabled = False
-                End Try
-            End If
+            ' Voice recognition is no longer eagerly initialized here. The shared
+            ' DataDictionarySingleton.VoiceRecognitionManager.Instance is lazily created
+            ' and initialized the first time the user clicks Button23 (see
+            ' Module1.ActivateDeactivateVoiceCommands, "enabled" case). Enable the button
+            ' up front so the user can trigger that first-time initialization.
+            Button23.Enabled = True
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"Failed to initialize voice button: {ex.Message}")

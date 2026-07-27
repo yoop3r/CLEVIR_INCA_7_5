@@ -121,7 +121,7 @@ Public NotInheritable Class SharedNicCapture
             Dim config As New DeviceConfiguration() With {
                 .Mode = DeviceModes.Promiscuous,
                 .ReadTimeout = 500,
-                .KernelBufferSize = 16 * 1024 * 1024,  ' 16 MB
+                .KernelBufferSize = 16 * 1024 * 1024,  ' 16 MB — see LidarDevice.CaptureBufferSize; 64MB caused silent fallback to 1MB on this system
                 .Snaplen = 65535,
                 .Immediate = True
             }

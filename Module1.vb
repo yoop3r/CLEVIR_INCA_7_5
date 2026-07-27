@@ -268,7 +268,6 @@ Public Module Module1
     Public OverrideCommFailureInDebugMode As Boolean
 
     Public myVoiceCommands() As String
-    Public VoiceRecognitionInstance As VoiceRecognitionClass = Nothing
 
     Public UserStatusInfoText As String
 
@@ -3378,11 +3377,15 @@ Public Module Module1
                     ' ═══════════════════════════════════════════════════════
                     ' ENABLE VOICE COMMANDS
                     ' ═══════════════════════════════════════════════════════
-                    If VoiceRecognitionInstance Is Nothing Then
-                        ' Initialize voice recognition if not already created
+                    ' Voice recognition is created and initialized on demand, the first
+                    ' time the user clicks Button23 to enable it - not eagerly at app
+                    ' startup. This avoids claiming the default audio device and
+                    ' constructing a SpeechRecognitionEngine unless voice is actually used.
+                    Dim myVoiceRecognition = DataDictionarySingleton.VoiceRecognitionManager.Instance
+
+                    If Not myVoiceRecognition.IsInitialized Then
                         Try
-                            VoiceRecognitionInstance = New VoiceRecognitionClass()
-                            VoiceRecognitionInstance.InitVoice()
+                            myVoiceRecognition.InitVoice()
 
                             ' Small delay to ensure initialization completes
                             Threading.Thread.Sleep(500)
@@ -3399,10 +3402,10 @@ Public Module Module1
 
                     ' ✅ Use new convenience method (StartListening = ActivateVoiceRecognition)
                     Try
-                        VoiceRecognitionInstance.StartListening()
+                        myVoiceRecognition.StartListening()
 
                         ' Verify activation succeeded
-                        If VoiceRecognitionInstance.IsListening Then
+                        If myVoiceRecognition.IsListening Then
                             ' Update button appearance
                             button.BackColor = Color.LightGreen
                             button.ForeColor = Color.Black
@@ -3437,10 +3440,11 @@ Public Module Module1
                     ' ═══════════════════════════════════════════════════════
                     ' DISABLE VOICE COMMANDS
                     ' ═══════════════════════════════════════════════════════
-                    If VoiceRecognitionInstance IsNot Nothing Then
+                    Dim myVoiceRecognitionToDisable = DataDictionarySingleton.VoiceRecognitionManager.Instance
+                    If myVoiceRecognitionToDisable.IsInitialized Then
                         Try
                             ' ✅ Use new convenience method (StopListening = DeactivateVoiceRecognition)
-                            VoiceRecognitionInstance.StopListening()
+                            myVoiceRecognitionToDisable.StopListening()
 
                             ' Update button appearance
                             button.BackColor = SystemColors.Control

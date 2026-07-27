@@ -310,8 +310,15 @@ Module LidarPcapCapture
 
             HandleUserMessageLogging("GMRC", $"== ProcessLidarPcapFile: {fileName} ==")
 
-            Dim offlineDevice As New CaptureFileReaderDevice(pcapFilePath)
-            offlineDevice.Open()
+            ' Uses PcapEventBridge.ResilientPcapReader (C#) instead of SharpPcap's own
+            ' CaptureFileReaderDevice. A torn/partial disk write can corrupt a single PCAP
+            ' record header mid-file; SharpPcap's reader treats the first bad header as EOF
+            ' and silently discards every packet after it (root cause of the "first frame
+            ' only" symptom — a 5GB/~5.5M-packet file reporting only ~1,835 packets read).
+            ' ResilientPcapReader detects a corrupt header and resyncs forward to the next
+            ' plausible record instead of stopping, so the rest of the file is recovered.
+            Dim resilientReader As New PcapEventBridge.ResilientPcapReader()
+            resilientReader.Open(pcapFilePath)
 
             ' --- Frame / byte counters ---
             Dim frameNumber As Long = 0
@@ -338,8 +345,22 @@ Module LidarPcapCapture
             Dim phaseMeanUs As Double = 0.0     ' running mean of (pcapUs − sensorUs)
             Dim phaseM2Us As Double = 0.0       ' Welford M2 accumulator → variance
             Dim phaseMaxJitterUs As Double = 0.0 ' max |deviation from running mean|
+            Dim phaseMaxJitterOffset As TimeSpan = TimeSpan.Zero  ' when-into-file the peak jitter occurred
             Dim phaseJitterEvents As Long = 0
-            Const PhaseJitterTolUs As Double = 16000.0  ' 16 ms jitter tolerance
+            Const PhaseJitterTolUs As Double = 45000.0  ' 45 ms jitter tolerance
+            ' Raised from the original 16 ms after histogram analysis showed a persistent 20-40 ms
+            ' jitter floor across an entire clean, gap-free capture window. Root cause: Windows 11
+            ' cannot currently use NIC hardware PTP timestamping (known OS-level PTP handler issue),
+            ' so timestamps are software-stamped and inherit normal OS scheduling/interrupt jitter.
+            ' 45 ms keeps that expected floor out of the report while still catching true anomalies
+            ' (e.g. the ~114 ms re-sync spike observed immediately after a CAPTURE_LOSS_GAP).
+            'TODO: If/when Windows PTP timestamping is fixed, this can be lowered back to 16 ms.
+
+            ' Bucketed jitter-event histogram (PHASE_DRIFT correlation) — grouping into fixed windows
+            ' keeps the report readable even with tens of thousands of individual jitter events.
+            Const JitterBucketSeconds As Double = 10.0
+            Dim jitterBucketCounts As New Dictionary(Of Long, Integer)()
+            Dim jitterBucketPeakUs As New Dictionary(Of Long, Double)()
 
             ' --- Source IPs and return mode ---
             Dim sourceIps As New Dictionary(Of String, Long)()
@@ -353,18 +374,28 @@ Module LidarPcapCapture
             End If
 
             ' === Main packet loop ===
-            Dim packetStatus As GetPacketStatus
-            Dim packetCapture As Object = Nothing
             Dim malformedCount As Long = 0
+            Dim recordResyncEvents As Long = 0
+            Dim recordResyncLog As New System.Text.StringBuilder()
 
             Do
-                packetStatus = offlineDevice.GetNextPacket(packetCapture)
-                If packetStatus <> GetPacketStatus.PacketRead Then Exit Do
+                Dim rawPacket As RawCapture = Nothing
+                Dim wasResync As Boolean = False
+                Dim bytesSkipped As Integer = 0
+                Dim gotRecord As Boolean = resilientReader.TryReadNext(rawPacket, wasResync, bytesSkipped)
+                If Not gotRecord Then Exit Do
+
+                If wasResync Then
+                    recordResyncEvents += 1
+                    Dim resyncOffset As TimeSpan = If(firstTimestamp.HasValue,
+                        rawPacket.Timeval.Date - firstTimestamp.Value,
+                        TimeSpan.Zero)
+                    recordResyncLog.AppendLine(
+                        $"    resync #{recordResyncEvents}: +{resyncOffset.TotalSeconds:F2} s into file — " &
+                        $"skipped {bytesSkipped:N0} corrupt byte(s) to recover the rest of the file")
+                End If
 
                 Try
-                    Dim getPacketMethod = packetCapture.GetType().GetMethod("GetPacket")
-                    Dim rawPacket As RawCapture = DirectCast(getPacketMethod.Invoke(packetCapture, Nothing), RawCapture)
-
                     ' Skip zero-length or undersized frames (can occur at rotation boundary)
                     If rawPacket Is Nothing OrElse rawPacket.Data Is Nothing OrElse rawPacket.Data.Length < 42 Then
                         malformedCount += 1
@@ -455,8 +486,27 @@ Module LidarPcapCapture
 
                                         ' Jitter = deviation from the running mean
                                         Dim jitterUs As Double = Math.Abs(CDbl(rawOffsetUs) - phaseMeanUs)
-                                        If jitterUs > phaseMaxJitterUs Then phaseMaxJitterUs = jitterUs
-                                        If jitterUs > PhaseJitterTolUs Then phaseJitterEvents += 1
+                                        Dim jitterOffset As TimeSpan = If(firstTimestamp.HasValue,
+                                            rawPacket.Timeval.Date - firstTimestamp.Value,
+                                            TimeSpan.Zero)
+                                        If jitterUs > phaseMaxJitterUs Then
+                                            phaseMaxJitterUs = jitterUs
+                                            phaseMaxJitterOffset = jitterOffset
+                                        End If
+                                        If jitterUs > PhaseJitterTolUs Then
+                                            phaseJitterEvents += 1
+
+                                            ' Track which time window this jitter event fell into
+                                            Dim bucketIndex As Long = CLng(jitterOffset.TotalSeconds \ JitterBucketSeconds)
+                                            If jitterBucketCounts.ContainsKey(bucketIndex) Then
+                                                jitterBucketCounts(bucketIndex) += 1
+                                            Else
+                                                jitterBucketCounts(bucketIndex) = 1
+                                            End If
+                                            If Not jitterBucketPeakUs.ContainsKey(bucketIndex) OrElse jitterUs > jitterBucketPeakUs(bucketIndex) Then
+                                                jitterBucketPeakUs(bucketIndex) = jitterUs
+                                            End If
+                                        End If
 
                                     Else
                                         nonHesaiUdpCount += 1
@@ -478,7 +528,7 @@ Module LidarPcapCapture
                 End Try
             Loop
 
-            offlineDevice.Close()
+            resilientReader.Dispose()
             postProcessLogger?.Close()
 
             ' === Report ===
@@ -498,6 +548,9 @@ Module LidarPcapCapture
             Dim lastSlice As Long = hesaiPacketCount Mod 65L
 
             HandleUserMessageLogging("GMRC", $"  hesai packets : {hesaiPacketCount:N0}  (non-hesai UDP: {nonHesaiUdpCount:N0}{If(malformedCount > 0, $", malformed/skipped: {malformedCount:N0}", "")})")
+            If recordResyncEvents > 0 Then
+                HandleUserMessageLogging("GMRC", $"  file corruption : {recordResyncEvents:N0} corrupt record header(s) recovered via resync")
+            End If
             If returnModeStr <> String.Empty Then
                 HandleUserMessageLogging("GMRC", $"  return mode   : {returnModeStr}")
             End If
@@ -506,7 +559,7 @@ Module LidarPcapCapture
             Next
             HandleUserMessageLogging("GMRC", $"  duration      : {duration.TotalSeconds:F2} s  ({avgRate:F0} pkt/s)")
             HandleUserMessageLogging("GMRC", $"  est loss      : {estimatedLostPackets:N0} pkts / {lossPercent:F2}%  over {gapEvents:N0} gap(s)")
-            HandleUserMessageLogging("GMRC", $"  phase-lock    : clock offset {If(clockOffsetMs >= 0, "+", "")}{clockOffsetMs:F1} ms (INFO),  jitter σ={phaseStdDevMs:F2} ms,  peak={maxJitterMs:F2} ms  (tol 16 ms)")
+            HandleUserMessageLogging("GMRC", $"  phase-lock    : clock offset {If(clockOffsetMs >= 0, "+", "")}{clockOffsetMs:F1} ms (INFO),  jitter σ={phaseStdDevMs:F2} ms,  peak={maxJitterMs:F2} ms  (tol {PhaseJitterTolUs / 1000.0:F0} ms)")
             HandleUserMessageLogging("GMRC", $"  65-pkt slices : {slices:N0}  (last slice: {lastSlice} pkts)")
             HandleUserMessageLogging("GMRC", $"  event markers : {markerCount:N0}")
             HandleUserMessageLogging("GMRC", $"  event log     : {If(eventLogExists, "Validated", "Generated")} — {Path.GetFileName(eventLogPath)}")
@@ -535,7 +588,25 @@ Module LidarPcapCapture
             End If
             If phaseJitterEvents > 0 Then
                 warnCount += 1
-                HandleUserMessageLogging("GMRC", $"[!] WARNING PHASE_DRIFT       ({phaseJitterEvents} event(s) jitter > 16 ms, peak {maxJitterMs:F2} ms, σ={phaseStdDevMs:F2} ms)")
+                HandleUserMessageLogging("GMRC",
+                    $"[!] WARNING PHASE_DRIFT       ({phaseJitterEvents} event(s) jitter > {PhaseJitterTolUs / 1000.0:F0} ms, peak {maxJitterMs:F2} ms @ +{phaseMaxJitterOffset.TotalSeconds:F2} s into file, σ={phaseStdDevMs:F2} ms)")
+
+                ' Bucketed histogram — shows WHEN in the file jitter events clustered, so bursts
+                ' (e.g. right after a CAPTURE_LOSS_GAP) can be distinguished from chronic drift.
+                Dim jitterHistogram As New System.Text.StringBuilder()
+                For Each bucketIndex In jitterBucketCounts.Keys.OrderBy(Function(k) k)
+                    Dim windowStart As Double = bucketIndex * JitterBucketSeconds
+                    Dim windowEnd As Double = windowStart + JitterBucketSeconds
+                    jitterHistogram.AppendLine(
+                        $"    window +{windowStart:F0}s-{windowEnd:F0}s : {jitterBucketCounts(bucketIndex):N0} event(s), peak {jitterBucketPeakUs(bucketIndex) / 1000.0:F2} ms")
+                Next
+                HandleUserMessageLogging("GMRC", jitterHistogram.ToString().TrimEnd())
+            End If
+            If recordResyncEvents > 0 Then
+                warnCount += 1
+                HandleUserMessageLogging("GMRC",
+                    $"[!] WARNING FILE_CORRUPTION   ({recordResyncEvents} corrupt record header(s) recovered — likely a torn disk write during capture)")
+                HandleUserMessageLogging("GMRC", recordResyncLog.ToString().TrimEnd())
             End If
             If errorCount = 0 AndAlso warnCount = 0 Then
                 HandleUserMessageLogging("GMRC", "[OK] No errors or warnings — capture looks clean")

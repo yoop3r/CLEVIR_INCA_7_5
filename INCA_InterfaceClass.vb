@@ -1796,6 +1796,15 @@ Public Class INCA_InterfaceClass
         SwitchToReferencePage = MyGmIncaComm.SwitchToReferencePage
     End Function
 
+    ''' <summary>
+    ''' High-level signal registration entry point used by UI/business-logic callers
+    ''' (e.g. MyIncaInterface.RegisterSignals() from GM_ResidentClient, GridCellPropConfig,
+    ''' NewGridCreation). Decides which signal array to register based on
+    ''' SignalRegistrationMode (mySignals for FULL, myPreliminaryDisplaySignals otherwise),
+    ''' manages measurement start/stop around registration, and surfaces the result as a
+    ''' simple Boolean. The actual INCA-facing registration work is delegated to
+    ''' MyGmIncaComm.RegisterSignalsCore.
+    ''' </summary>
     Public Function RegisterSignals(Optional ByVal progressForm As SignalRegistrationProgressForm = Nothing) As Boolean
         Try
             ' Save the initial measurement status and stop measurement if necessary
@@ -1827,9 +1836,9 @@ Public Class INCA_InterfaceClass
 
                 ' ✅ FIXED: Pass progressForm to the underlying implementation
                 If SignalRegistrationMode.ToUpper() = "FULL" Then
-                    myDisplaySignals = MyGmIncaComm.RegisterSignals(mySignals, progressForm)
+                    myDisplaySignals = MyGmIncaComm.RegisterSignalsCore(mySignals, progressForm)
                 Else
-                    myDisplaySignals = MyGmIncaComm.RegisterSignals(myPreliminaryDisplaySignals, progressForm)
+                    myDisplaySignals = MyGmIncaComm.RegisterSignalsCore(myPreliminaryDisplaySignals, progressForm)
                 End If
 
                 ' Check if signal registration was successful
