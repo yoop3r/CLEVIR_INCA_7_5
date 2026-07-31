@@ -73,12 +73,16 @@
   <OxtsConfiguration>
     <!-- Master enable flag - Enable/disable OXTS INS integration -  -->
     <OxtsEnabled>False</OxtsEnabled>
-    <!-- Network adapter GUID (typically same as LiDAR) -->
-    <!-- If empty, will use first LiDAR device's adapter -->
+    <!-- Network adapter GUID for a NIC connected to OXTS's dedicated Vlan40 (10.5.2.0/24). -->
+    <!-- OXTS now lives on its own isolated private network (Vlan40) alongside Hunter, -->
+    <!-- Intrepid GigaStar, and ETAS for CAN/RTK data extraction -- it no longer shares -->
+    <!-- the LiDAR NIC/VLAN20. This feature is currently disabled (OxtsEnabled=False); -->
+    <!-- if re-enabled, a PC consuming this data must have a NIC physically connected -->
+    <!-- to Vlan40, since NCOM is UDP broadcast traffic that does not cross VLANs. -->
     <NetworkAdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</NetworkAdapterGuid>
     <!-- NCOM UDP listener settings -->
-    <!-- OXTS device IP address -->
-    <NcomIpAddress>10.5.55.200</NcomIpAddress>
+    <!-- OXTS device IP address (Vlan40, 10.5.2.0/24 dedicated/isolated OXTS VLAN) -->
+    <NcomIpAddress>10.5.2.30</NcomIpAddress>
     <!-- NCOM UDP port (default: 3000) -->
     <NcomPort>3000</NcomPort>
     <!-- GPS lock behavior  -->
@@ -92,10 +96,10 @@
   <!-- ================================================================ -->
   <OxtsCaptureEnabled>False</OxtsCaptureEnabled>
   <OxtsCapture>
-    <!-- Network adapter GUID (same as OXTS interface above) -->
+    <!-- Network adapter GUID for a NIC on OXTS's isolated Vlan40 (same VLAN as above). -->
     <NetworkAdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</NetworkAdapterGuid>
-    <!-- OXTS device IP address (same as NCOM interface) -->
-    <IpAddress>10.5.55.200</IpAddress>
+    <!-- OXTS device IP address (same as NCOM interface, Vlan40 10.5.2.0/24, isolated) -->
+    <IpAddress>10.5.2.30</IpAddress>
     <!-- NCOM UDP port (same as NCOM interface) -->
     <NcomPort>3000</NcomPort>
   </OxtsCapture>
@@ -112,7 +116,7 @@
   <!-- ================================================================ -->
   <TimeMachineConfiguration>
     <Enabled>True</Enabled>
-    <DeviceIp>10.5.55.10</DeviceIp>
+    <DeviceIp>192.168.10.20</DeviceIp>
     <!-- broadcast, or specific IP like 192.168.1.50 -->
     <Port>7372</Port>
     <PollMs>1000</PollMs>
@@ -124,22 +128,22 @@
   <LidarCaptureEnabled>True</LidarCaptureEnabled>
   <!-- Legacy single-device (backward compatibility) -->
   <LidarAdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</LidarAdapterGuid>
-  <LidarIpAddress>10.5.55.14</LidarIpAddress>
+  <LidarIpAddress>100.64.1.2</LidarIpAddress>
   <LidarDataPort>2368</LidarDataPort>
   <LidarImuPort>8308</LidarImuPort>
   <!-- Multi-device configuration -->
   <LidarDevices>
     <Lidar id="1" enabled="True">
       <AdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</AdapterGuid>
-      <IpAddress>10.5.55.14</IpAddress>
+      <IpAddress>100.64.1.2</IpAddress>
       <DataPort>2368</DataPort>
       <ImuPort>8308</ImuPort>
       <Orientation>FRONT</Orientation>
     </Lidar>
     <Lidar id="2" enabled="True">
       <AdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</AdapterGuid>
-      <IpAddress>10.5.55.15</IpAddress>
-      <DataPort>2368</DataPort>
+      <IpAddress>100.64.1.3</IpAddress>
+      <DataPort>2369</DataPort>
       <ImuPort>8308</ImuPort>
       <Orientation>REAR</Orientation>
     </Lidar>
@@ -147,7 +151,9 @@
     <HesaiConfig>
       <CorrectionFilePath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Angle Correction File.csv</CorrectionFilePath>
       <FiretimesPath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Firetime Correction File.csv</FiretimesPath>
-      <HostIpAddress>10.5.55.20</HostIpAddress>
+      <!-- Must match THIS PC's LiDAR NIC address (per-PC, not shared) -->
+      <!-- DEV = 100.64.1.8, Test Bench = 100.64.1.9 -->
+      <HostIpAddress>100.64.1.8</HostIpAddress>
       <MulticastIpAddress>239.192.20.10</MulticastIpAddress>
       <PtcPort>9347</PtcPort>
       <UsePtcConnected>false</UsePtcConnected>
