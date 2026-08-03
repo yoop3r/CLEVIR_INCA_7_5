@@ -1,0 +1,20 @@
+CLEVIR_INCA_7_5 - Revision History
+===================================
+
+Version 7.5.2.0
+----------------
+- Fixed an issue where a malformed entry in config.xml (an invalid XML
+  comment) could prevent the application's configuration from loading
+  correctly.
+- Replaced the old "Default Configuration" screen with the improved
+  Configuration Editor throughout the application (login screen, main
+  menu, and startup).
+- Added a clear prompt to open the Configuration Editor if config.xml
+  fails to load at startup, instead of showing a confusing legacy
+  dialog.
+- Minor documentation updates to the network setup guide (no functional
+  changes to the application).
+
+Version 7.5.1.0
+----------------
+- Initial tracked release baseline.

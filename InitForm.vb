@@ -701,7 +701,18 @@ Public Class InitForm
                 If Not cfgOk Then
                     splash.Hide()  ' ✅ Hide before modal dialog
                     Try
-                        DefaultConfiguration.ShowDialog()
+                        ' ✅ DefaultConfiguration is deprecated; offer the Configuration Editor instead.
+                        Dim openEditor = MsgBox(
+                            "The configuration file (config.xml) could not be loaded. It may be missing or malformed." & vbCrLf & vbCrLf &
+                            "Would you like to open the Configuration Editor to fix it now?",
+                            vbYesNo + vbQuestion, "Configuration Error")
+
+                        If openEditor = vbYes Then
+                            Dim editor As New ConfigurationEditorForm()
+                            editor.ShowDialog()
+                            ReadConfigFile()
+                        End If
+
                         If String.IsNullOrEmpty(INCADatabase) Then
                             HandleUserMessageLogging("GMRC", "Invalid INCA Database Entered, Exiting...", DisplayMsgBox)
                             Close()

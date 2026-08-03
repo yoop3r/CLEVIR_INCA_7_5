@@ -75,7 +75,7 @@
     <OxtsEnabled>False</OxtsEnabled>
     <!-- Network adapter GUID for a NIC connected to OXTS's dedicated Vlan40 (10.5.2.0/24). -->
     <!-- OXTS now lives on its own isolated private network (Vlan40) alongside Hunter, -->
-    <!-- Intrepid GigaStar, and ETAS for CAN/RTK data extraction -- it no longer shares -->
+    <!-- Intrepid GigaStar, and ETAS for CAN/RTK data extraction; it no longer shares -->
     <!-- the LiDAR NIC/VLAN20. This feature is currently disabled (OxtsEnabled=False); -->
     <!-- if re-enabled, a PC consuming this data must have a NIC physically connected -->
     <!-- to Vlan40, since NCOM is UDP broadcast traffic that does not cross VLANs. -->

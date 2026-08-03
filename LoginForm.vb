@@ -304,6 +304,19 @@ Public Class LoginForm
         HandleUserMessageLogging("GMRC", "LoginForm_Load: Initialization complete, form ready for user interaction")
     End Sub
 
+    Private Sub LinkLabel_WhatsNew_LinkClicked(ByVal sender As System.Object, ByVal e As System.Windows.Forms.LinkLabelLinkClickedEventArgs) Handles LinkLabel_WhatsNew.LinkClicked
+        Try
+            ' LoginForm is TopMost, so RevisionHistoryForm must also be TopMost or
+            ' LoginForm will repaint over it even though it's shown modally.
+            Using historyForm As New RevisionHistoryForm()
+                historyForm.TopMost = True
+                historyForm.ShowDialog(Me)
+            End Using
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"LinkLabel_WhatsNew_LinkClicked: {ex.Message}")
+        End Try
+    End Sub
+
     Private Sub Button43_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles Button43.Click
         'Exit Button
         Try

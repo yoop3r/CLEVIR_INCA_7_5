@@ -201,9 +201,6 @@
     <Compile Update="CustomAnnotation.designer.vb">
       <DependentUpon>CustomAnnotation.vb</DependentUpon>
     </Compile>
-    <Compile Update="DefaultConfiguration.designer.vb">
-      <DependentUpon>DefaultConfiguration.vb</DependentUpon>
-    </Compile>
     <Compile Update="DeviceStatus.designer.vb">
       <DependentUpon>DeviceStatus.vb</DependentUpon>
     </Compile>
@@ -291,6 +288,9 @@
     <Compile Update="ConfigurationEditorForm.Designer.vb">
       <DependentUpon>ConfigurationEditorForm.vb</DependentUpon>
     </Compile>
+    <Compile Update="RevisionHistoryForm.Designer.vb">
+      <DependentUpon>RevisionHistoryForm.vb</DependentUpon>
+    </Compile>
     <Compile Update="CustomDialogForm.Designer.vb">
       <DependentUpon>CustomDialogForm.vb</DependentUpon>
     </Compile>
@@ -375,6 +375,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="config.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="RevisionHistory.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="AudioTotextConfig.xml">
@@ -521,6 +524,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="HesaiWrapper\" />
     <Folder Include="NCOMdecoder\.vs\NCOMdecoder.slnx\copilot-chat\117df1c7\sessions\" />
     <Folder Include="NCOMdecoder\obj\" />
   </ItemGroup>

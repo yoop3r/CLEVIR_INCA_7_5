@@ -8,9 +8,8 @@
     <OutputType>Package</OutputType>
     <DefineSolutionProperties>false</DefineSolutionProperties>
     <!-- Disable SDK wildcard so only Product.wxs is compiled -->
-      <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
-
   <!-- Only Product.wxs belongs to this MSI project -->
   <ItemGroup>
     <Compile Include="Product.wxs" />
@@ -21,7 +20,6 @@
   <PropertyGroup>
     <AcceptEula>wix4</AcceptEula>
   </PropertyGroup>
-
   <!-- Shared version-binding (reads AssemblyInfo.vb) and signtool targets -->
   <Import Project="CLEVIR.Build.props" />
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -34,6 +32,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="CLEVIR.Build.props" />
+    <None Include="CLEVIR_Bundle.wixproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="WixToolset.Netfx.wixext" Version="6.0.2" />

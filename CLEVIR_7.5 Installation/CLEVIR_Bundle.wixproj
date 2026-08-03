@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+	<TargetName>CLEVIR_7.5_Setup_Bootstrapper</TargetName>
+	<TargetExt>.exe</TargetExt>
+	<Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+	<Platform Condition="'$(Platform)' == ''">x64</Platform>
+	<OutputType>Bundle</OutputType>
+	<DefineSolutionProperties>false</DefineSolutionProperties>
+	<!-- Disable SDK wildcard so only Bundle.wxs is compiled -->
+	<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <!-- Only Bundle.wxs belongs to this bootstrapper project -->
+  <ItemGroup>
+	<Compile Include="Bundle.wxs" />
+  </ItemGroup>
+  <PropertyGroup>
+	<NuGetAuditLevel>critical</NuGetAuditLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+	<AcceptEula>wix4</AcceptEula>
+  </PropertyGroup>
+
+  <!-- Shared version-binding (reads AssemblyInfo.vb) and signtool targets -->
+  <Import Project="CLEVIR.Build.props" />
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+	<OutputPath>bin\Debug\</OutputPath>
+	<IntermediateOutputPath>obj\Debug\</IntermediateOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+	<OutputPath>bin\Release\</OutputPath>
+	<IntermediateOutputPath>obj\Release\</IntermediateOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+	<None Include="CLEVIR.Build.props" />
+  </ItemGroup>
+  <ItemGroup>
+	<PackageReference Include="WixToolset.Bal.wixext" Version="6.0.2" />
+	<PackageReference Include="WixToolset.Util.wixext" Version="6.0.2" />
+  </ItemGroup>
+
+  <!-- The bootstrapper embeds/chains the MSI produced by CLEVIR_Installer.wixproj -->
+  <ItemGroup>
+	<ProjectReference Include="CLEVIR_Installer.wixproj" />
+  </ItemGroup>
+
+  <!-- Embedded .NET 10 Windows Desktop Runtime x64 redistributable, chained by Bundle.wxs -->
+  <ItemGroup>
+	<Content Include="Redist\windowsdesktop-runtime-10.0-win-x64.exe" />
+  </ItemGroup>
+</Project>

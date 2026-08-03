@@ -12267,7 +12267,14 @@ Public Class GmResidentClient
     End Sub
 
     Private Sub EditUserConfigFileToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As EventArgs) Handles EditUserConfigFileToolStripMenuItem.Click
-        DefaultConfiguration.ShowDialog()
+        ' ✅ DefaultConfiguration is deprecated; ConfigurationEditorForm is now the supported editor.
+        Dim editor As New ConfigurationEditorForm()
+        If editor.ShowDialog(Me) = DialogResult.OK Then
+            If MsgBox("Configuration updated successfully. Reload settings now?", vbYesNo + vbQuestion) = vbYes Then
+                ReadConfigFile()
+                HandleUserMessageLogging("GMRC", "Configuration reloaded after editing")
+            End If
+        End If
     End Sub
 
     Private Sub GmResidentClient_Shown(ByVal sender As Object, ByVal e As EventArgs) Handles Me.Shown

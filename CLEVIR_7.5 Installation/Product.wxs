@@ -26,16 +26,11 @@
       <ComponentGroupRef Id="RegistryComponents" />
     </Feature>
 
-    <!-- .NET Framework 4.8 registry check: Release value 528040 = 4.8 on Win10 1903+ / Server 2019 -->
-    <Property Id="NETFRAMEWORK48">
-      <RegistrySearch Id="NetFramework48"
-                      Root="HKLM"
-                      Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"
-                      Name="Release"
-                      Type="raw" />
-    </Property>
-    <Launch Condition="Installed OR (NETFRAMEWORK48 >= 528040)"
-            Message="This application requires .NET Framework 4.8. Please download and install it from Microsoft, then run setup again." />
+    <!-- .NET Framework 4.8 launch condition removed: the app was migrated to net10.0-windows
+         and no longer requires .NET Framework at all. Prerequisite detection/installation of
+         the .NET 10 Windows Desktop Runtime is now handled by the CLEVIR_Bundle bootstrapper
+         (CLEVIR_Bundle.wixproj/Bundle.wxs), which chains this MSI after confirming/installing
+         the runtime. This MSI is no longer intended to be run standalone by end users. -->
 
     <!-- Define Icon -->
     <Icon Id="AppIcon.ico" SourceFile="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\GM_ResidentClient_256px.ico" />
