@@ -131,6 +131,16 @@ Public NotInheritable Class LidarDevice
     Public Const MarkerDestPort As UShort = 65000    ' Unique port for event markers
     Public Const MarkerSourcePort As UShort = 65001  ' Source port for markers
 
+    ' Cached marker-frame constants — parsing these literals on every marker injection is wasteful
+    Private Shared ReadOnly MarkerSrcMac As PhysicalAddress = PhysicalAddress.Parse("02-00-00-00-00-01")
+    Private Shared ReadOnly MarkerDstMac As PhysicalAddress = PhysicalAddress.Parse("02-00-00-00-00-02")
+    Private Shared ReadOnly MarkerSrcIp As Net.IPAddress = Net.IPAddress.Parse("192.168.40.200")
+    Private Shared ReadOnly MarkerDstIp As Net.IPAddress = Net.IPAddress.Parse("192.168.40.255")
+
+    ' Shared speech synthesizer — creating one per alert leaked native COM resources
+    Private Shared ReadOnly _speechSyncLock As New Object()
+    Private Shared _sharedSynth As SpeechSynthesizer
+
     ' Track when we last spoke to avoid spam
     Private _lastAudioAlert As DateTime = DateTime.MinValue
     Private Const AudioAlertCooldownSeconds As Integer = 30
@@ -210,14 +220,17 @@ Public NotInheritable Class LidarDevice
     ' written by the SharpPcap capture thread without needing a full lock.
     Private _lastPacketTimestamp As Long = 0  ' Ticks; 0 = never received
 
+    ' Stored as UTC ticks — DateTime.UtcNow is significantly cheaper than DateTime.Now
+    ' on the per-packet hot path (no timezone conversion). The getter converts to local
+    ' time so existing readers comparing against DateTime.Now remain correct.
     Public Property LastPacketTimestamp As DateTime?
         Get
             Dim ticks As Long = Interlocked.Read(_lastPacketTimestamp)
             If ticks = 0 Then Return Nothing
-            Return New DateTime(ticks, DateTimeKind.Local)
+            Return New DateTime(ticks, DateTimeKind.Utc).ToLocalTime()
         End Get
         Set(value As DateTime?)
-            Interlocked.Exchange(_lastPacketTimestamp, If(value.HasValue, value.Value.Ticks, 0L))
+            Interlocked.Exchange(_lastPacketTimestamp, If(value.HasValue, value.Value.ToUniversalTime().Ticks, 0L))
         End Set
     End Property
 
@@ -397,12 +410,16 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Public Sub SpeakAlert()
         Try
-            Dim synth As New SpeechSynthesizer()
-            synth.SelectVoice("Microsoft Zira Desktop")
-            synth.Rate = 0
+            SyncLock _speechSyncLock
+                If _sharedSynth Is Nothing Then
+                    _sharedSynth = New SpeechSynthesizer()
+                    _sharedSynth.SelectVoice("Microsoft Zira Desktop")
+                    _sharedSynth.Rate = 0
+                End If
+            End SyncLock
 
             Dim message As String = GetAlertMessage()
-            synth.SpeakAsync(message) ' Use Async to avoid blocking
+            _sharedSynth.SpeakAsync(message) ' Use Async to avoid blocking
 
             _lastAudioAlert = DateTime.Now
 
@@ -646,31 +663,33 @@ Public NotInheritable Class LidarDevice
             Dim rawPacket As RawCapture = e.Packet
 
             ' Update health timestamp FIRST — before any parsing that can throw.
-            ' This ensures a PacketDotNet parse failure never makes the device appear
+            ' This ensures a parse failure never makes the device appear
             ' silent to the health monitor (root cause of false "stopped responding" alerts).
-            LastPacketTimestamp = DateTime.Now
+            ' UtcNow avoids the per-packet timezone conversion cost of DateTime.Now.
+            Interlocked.Exchange(_lastPacketTimestamp, DateTime.UtcNow.Ticks)
 
             ' Write to PCAP dump file
             If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
                 _dumpFile.Write(rawPacket)
 
-                ' Update counters (thread-safe)
+                ' Update counters (thread-safe) — capture the increment result so the
+                ' sampling check below doesn't re-read the shared field
                 Interlocked.Increment(_frameCounter)
-                Interlocked.Increment(_packetCount)
+                Dim count As Long = Interlocked.Increment(_packetCount)
                 Interlocked.Add(_totalBytes, rawPacket.Data.Length)
 
                 ' ═══════════════════════════════════════════════════════════════
                 ' Parse Hesai packet for health monitoring (every 100th packet)
-                ' Parsing is deferred to here — raw write and counters above need
-                ' no parsed representation, so we avoid ~99% of PacketDotNet
-                ' allocations and the GC pressure they would place on this thread.
+                ' Parsing is deferred to here and done directly on raw bytes —
+                ' raw write and counters above need no parsed representation, so
+                ' we avoid all PacketDotNet allocations and the GC pressure they
+                ' would place on this thread.
                 ' ═══════════════════════════════════════════════════════════════
-                If _packetCount Mod 100 = 0 Then
+                If count Mod 100 = 0 Then
                     Try
-                        Dim packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
-                        UpdateStatisticsFromPacket(packet)
+                        UpdateStatisticsFromRawPacket(rawPacket.Data)
                     Catch parseEx As Exception
-                        If _packetCount Mod 10000 = 0 Then
+                        If count Mod 10000 = 0 Then
                             HandleUserMessageLogging("GMRC", $"[{DeviceId}] Parse error: {parseEx.Message}")
                         End If
                     End Try
@@ -707,20 +726,23 @@ Public NotInheritable Class LidarDevice
     ''' <summary>
     ''' ✅ NEW: Update statistics from parsed packet
     ''' </summary>
-    Private Sub UpdateStatisticsFromPacket(packet As Packet)
+    Private Sub UpdateStatisticsFromRawPacket(data As Byte())
         Try
-            ' Extract UDP payload for Hesai packet parsing
-            Dim ethPacket = TryCast(packet, EthernetPacket)
-            If ethPacket Is Nothing Then Return
+            ' Locate the UDP payload directly in the raw frame — avoids building the
+            ' full PacketDotNet object graph. The BPF filter already guarantees
+            ' UDP-from-LiDAR-IP, but headers are still validated defensively.
+            ' Layout: Ethernet(14) + IPv4(IHL) + UDP(8)
+            If data Is Nothing OrElse data.Length < 42 Then Return
+            If data(12) <> &H8 OrElse data(13) <> &H0 Then Return   ' EtherType must be IPv4
+            If (data(14) >> 4) <> 4 Then Return                     ' IP version must be 4
+            If data(23) <> 17 Then Return                           ' IP protocol must be UDP
+            Dim ipHeaderLen As Integer = (data(14) And &HF) * 4
+            If ipHeaderLen < 20 Then Return
+            Dim payloadOffset As Integer = 14 + ipHeaderLen + 8
+            If data.Length <= payloadOffset Then Return
 
-            Dim ipPacket = TryCast(ethPacket.PayloadPacket, IPv4Packet)
-            If ipPacket Is Nothing Then Return
-
-            Dim udpPacket = TryCast(ipPacket.PayloadPacket, UdpPacket)
-            If udpPacket Is Nothing OrElse udpPacket.PayloadData Is Nothing Then Return
-
-            ' Parse Hesai packet structure
-            Dim info As HesaiPacketInfo = ParseHesaiPacket(udpPacket.PayloadData, DeviceId)
+            ' Parse Hesai packet structure in place (no payload copy)
+            Dim info As HesaiPacketInfo = ParseHesaiPacket(data, DeviceId, payloadOffset)
 
             If info.IsValid Then
                 ' Store last packet info for health monitoring
@@ -983,21 +1005,21 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Public Sub DispatchPacket(rawPacket As RawCapture)
         Try
-            ' Update health timestamp first — before any parse that could throw
-            LastPacketTimestamp = DateTime.Now
+            ' Update health timestamp first — before any parse that could throw.
+            ' UtcNow avoids the per-packet timezone conversion cost of DateTime.Now.
+            Interlocked.Exchange(_lastPacketTimestamp, DateTime.UtcNow.Ticks)
 
             If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
                 _dumpFile.Write(rawPacket)
 
                 Interlocked.Increment(_frameCounter)
-                Interlocked.Increment(_packetCount)
+                Dim count As Long = Interlocked.Increment(_packetCount)
                 Interlocked.Add(_totalBytes, rawPacket.Data.Length)
 
-                ' Parse for statistics every 100th packet
-                If _packetCount Mod 100 = 0 Then
+                ' Parse for statistics every 100th packet (raw bytes — no PacketDotNet allocations)
+                If count Mod 100 = 0 Then
                     Try
-                        Dim parsed = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data)
-                        UpdateStatisticsFromPacket(parsed)
+                        UpdateStatisticsFromRawPacket(rawPacket.Data)
                     Catch
                         ' Silent — timestamp already updated above
                     End Try
@@ -1145,8 +1167,10 @@ Public NotInheritable Class LidarDevice
         Try
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread started")
 
-            Dim lastStatsUpdate As DateTime = DateTime.Now
-            Dim lastWatchdogCheck As DateTime = DateTime.Now
+            ' Environment.TickCount64 is monotonic — cheaper than DateTime.Now and
+            ' immune to wall-clock jumps (e.g., GPS time sync adjusting the system clock)
+            Dim lastStatsUpdate As Long = Environment.TickCount64
+            Dim lastWatchdogCheck As Long = Environment.TickCount64
             Dim lastWatchdogPacketCount As Long = 0
             Dim starvationWarned As Boolean = False
 
@@ -1162,16 +1186,16 @@ Public NotInheritable Class LidarDevice
                 ' ═══════════════════════════════════════════════════════════════
                 ' 2. Update Statistics from Device (every second)
                 ' ═══════════════════════════════════════════════════════════════
-                If DateTime.Now.Subtract(lastStatsUpdate).TotalSeconds >= 1.0 Then
+                If Environment.TickCount64 - lastStatsUpdate >= 1000 Then
                     UpdateDeviceStatistics()
-                    lastStatsUpdate = DateTime.Now
+                    lastStatsUpdate = Environment.TickCount64
                 End If
 
                 ' ═══════════════════════════════════════════════════════════════
                 ' 3. DIAGNOSTIC: Packet starvation watchdog (every 10s)
                 '    Fires if SharpPcap's internal thread has stopped delivering packets
                 ' ═══════════════════════════════════════════════════════════════
-                If DateTime.Now.Subtract(lastWatchdogCheck).TotalSeconds >= 10.0 Then
+                If Environment.TickCount64 - lastWatchdogCheck >= 10000 Then
                     Dim currentPktCount = Interlocked.Read(_packetCount)
                     Dim pktsDelta = currentPktCount - lastWatchdogPacketCount
 
@@ -1198,7 +1222,7 @@ Public NotInheritable Class LidarDevice
                     End If
 
                     lastWatchdogPacketCount = currentPktCount
-                    lastWatchdogCheck = DateTime.Now
+                    lastWatchdogCheck = Environment.TickCount64
                 End If
 
                 ' Sleep to avoid busy-waiting (marker queue is not high-frequency)
@@ -1327,20 +1351,14 @@ Public NotInheritable Class LidarDevice
             Dim payloadBytes = System.Text.Encoding.UTF8.GetBytes(payload)
 
             ' ═══════════════════════════════════════════════════════════════════
-            ' Build Ethernet Frame using PacketDotNet
+            ' Build Ethernet Frame using PacketDotNet (cached address constants)
             ' ═══════════════════════════════════════════════════════════════════
-            Dim srcMac = PhysicalAddress.Parse("02-00-00-00-00-01")
-            Dim dstMac = PhysicalAddress.Parse("02-00-00-00-00-02")
-
-            Dim ethPacket As New EthernetPacket(srcMac, dstMac, EthernetType.IPv4)
+            Dim ethPacket As New EthernetPacket(MarkerSrcMac, MarkerDstMac, EthernetType.IPv4)
 
             ' ═══════════════════════════════════════════════════════════════════
             ' Build IP Packet
             ' ═══════════════════════════════════════════════════════════════════
-            Dim srcIp = Net.IPAddress.Parse("192.168.40.200")
-            Dim dstIp = Net.IPAddress.Parse("192.168.40.255")  ' Broadcast
-
-            Dim ipPacket As New IPv4Packet(srcIp, dstIp) With {
+            Dim ipPacket As New IPv4Packet(MarkerSrcIp, MarkerDstIp) With {
             .TimeToLive = 128,
             .Protocol = ProtocolType.Udp
         }
@@ -1534,22 +1552,22 @@ Public NotInheritable Class LidarDevice
     ''' ✅ NEW: Parse Hesai AT128 UDP packet for health monitoring
     ''' Based on Hesai AT128 User Manual packet structure
     ''' </summary>
-    Public Shared Function ParseHesaiPacket(udpPayload As Byte(), Optional label As String = "PCAP") As HesaiPacketInfo
+    Public Shared Function ParseHesaiPacket(udpPayload As Byte(), Optional label As String = "PCAP", Optional offset As Integer = 0) As HesaiPacketInfo
         Dim info As New HesaiPacketInfo With {.IsValid = False}
 
         Try
             ' Minimum size check (Pre-Header + Header + Body minimum)
-            If udpPayload.Length < 800 Then Return info
+            If udpPayload.Length - offset < 800 Then Return info
 
             ' Verify Pre-Header magic bytes (0xEE 0xFF)
-            If udpPayload(0) <> &HEE OrElse udpPayload(1) <> &HFF Then Return info
+            If udpPayload(offset) <> &HEE OrElse udpPayload(offset + 1) <> &HFF Then Return info
 
             ' Read Protocol Version (bytes 2-3)
-            Dim versionMajor As Byte = udpPayload(2)
-            Dim versionMinor As Byte = udpPayload(3)
+            Dim versionMajor As Byte = udpPayload(offset + 2)
+            Dim versionMinor As Byte = udpPayload(offset + 3)
 
             ' Read Header Flags (byte 11 - last byte of Header section)
-            Dim flags As Byte = udpPayload(11)
+            Dim flags As Byte = udpPayload(offset + 11)
             info.HasSignature = (flags And &H8) <> 0      ' Bit 3
             info.HasFunctionalSafety = (flags And &H4) <> 0  ' Bit 2
             info.HasIMU = (flags And &H2) <> 0            ' Bit 1
@@ -1557,7 +1575,7 @@ Public NotInheritable Class LidarDevice
 
             ' Calculate Tail offset
             ' Pre-Header(6) + Header(6) + Body(776) = 788
-            Dim tailOffset As Integer = 788
+            Dim tailOffset As Integer = offset + 788
 
             ' Add Functional Safety section if present (17 bytes)
             If info.HasFunctionalSafety Then

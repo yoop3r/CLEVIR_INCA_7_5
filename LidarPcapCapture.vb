@@ -437,11 +437,9 @@ Module LidarPcapCapture
 
                                         ' Source IP (Hesai packets only — mirrors diagnose_pcap)
                                         Dim srcIp As String = ipPacket.SourceAddress.ToString()
-                                        If sourceIps.ContainsKey(srcIp) Then
-                                            sourceIps(srcIp) += 1
-                                        Else
-                                            sourceIps(srcIp) = 1
-                                        End If
+                                        Dim ipCount As Integer = 0
+                                        sourceIps.TryGetValue(srcIp, ipCount)
+                                        sourceIps(srcIp) = ipCount + 1
 
                                         ' Return mode from first valid packet
                                         If returnModeStr = String.Empty Then

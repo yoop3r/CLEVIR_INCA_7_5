@@ -152,7 +152,7 @@
       <CorrectionFilePath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Angle Correction File.csv</CorrectionFilePath>
       <FiretimesPath>C:\CLEVIR_INCA_7_5\LIDAR\Pandar128E3X_Firetime Correction File.csv</FiretimesPath>
       <!-- Must match THIS PC's LiDAR NIC address (per-PC, not shared) -->
-      <!-- DEV = 100.64.1.8, Test Bench = 100.64.1.9 -->
+      <!-- 100.64.1.8 = formal build PC (single PC on the LiDAR VLAN for the foreseeable future) -->
       <HostIpAddress>100.64.1.8</HostIpAddress>
       <MulticastIpAddress>239.192.20.10</MulticastIpAddress>
       <PtcPort>9347</PtcPort>

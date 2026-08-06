@@ -1,4 +1,4 @@
-﻿Option Strict Off
+﻿Option Strict On
 
 Imports System.Diagnostics
 Imports System.IO
@@ -52,6 +52,10 @@ Public Class INCA_InterfaceClass
     Private ReadOnly MaxRetries As Integer = 100
     Private DeviceDataAvailable As Boolean
     Public MyGmIncaComm As GM_INCA_CommClass
+
+    ' Cached compiled regexes — recompiled on every sequence rotation otherwise
+    Private Shared ReadOnly Mf4SequenceRegex As New System.Text.RegularExpressions.Regex(
+        "_(\d+)\.mf4$", System.Text.RegularExpressions.RegexOptions.IgnoreCase Or System.Text.RegularExpressions.RegexOptions.Compiled)
 
     Public myAddedSignals() As IGM_INCA_Comm.DeviceRasterSignalStatus
     Public DeviceRasterSignals() As IGM_INCA_Comm.DeviceRasterSignalStatus
@@ -204,7 +208,13 @@ Public Class INCA_InterfaceClass
 
             HandleUserMessageLogging("GMRC", "Waiting for INCA to shut down...",,, FlashMsg1Sec)
 
-            Do While IsProcessRunning("INCA") = True Or IsProcessRunning("TGTSVR") = True
+            ' Bounded wait — a hung INCA/TGTSVR process must not hang CLEVIR shutdown forever
+            Dim shutdownDeadline As Long = Environment.TickCount64 + 60000
+            Do While IsProcessRunning("INCA") OrElse IsProcessRunning("TGTSVR")
+                If Environment.TickCount64 > shutdownDeadline Then
+                    HandleUserMessageLogging("GMRC", "CloseINCA: Timed out after 60s waiting for INCA/TGTSVR to exit — continuing shutdown")
+                    Exit Do
+                End If
                 System.Threading.Thread.Sleep(1000)
             Loop
 
@@ -229,22 +239,30 @@ Public Class INCA_InterfaceClass
     End Sub
 
     Public Async Function StartStopMeasurement(ByVal sender As System.Object) As Task
+        Dim button = TryCast(sender, Button)
+        If button Is Nothing Then Return
+
         Try
             ' ✅ Safe to access UI controls - we're on UI thread
-            sender.parent.Cursor = Cursors.WaitCursor
+            button.Parent.Cursor = Cursors.WaitCursor
 
-            If sender.Text = "START MEASUREMENT" Then
-                Await StartMeasurementRoutine(sender)
+            If button.Text = "START MEASUREMENT" Then
+                Await StartMeasurementRoutine(button)
             Else
-                StopMeasurementRoutine(sender)
+                StopMeasurementRoutine(button)
             End If
 
-            sender.parent.Cursor = Cursors.Arrow
-            sender.parent.refresh()
             OnVehicleScreen.Button1.Enabled = True
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "StartStopMeasurement: " & ex.Message)
+        Finally
+            ' Restore the cursor even when an exception occurs — previously a failure
+            ' left the UI stuck on WaitCursor
+            If button.Parent IsNot Nothing Then
+                button.Parent.Cursor = Cursors.Arrow
+                button.Parent.Refresh()
+            End If
         End Try
     End Function
 
@@ -271,9 +289,12 @@ Public Class INCA_InterfaceClass
         ' Move blocking INCA call to background thread
         Await Task.Run(Sub() MyIncaInterface.StartMeasurement())
 
-        sender.Text = "STOP MEASUREMENT"
-        sender.BackColor = Color.Blue
-        sender.ForeColor = Color.White
+        Dim measurementButton = TryCast(sender, Button)
+        If measurementButton IsNot Nothing Then
+            measurementButton.Text = "STOP MEASUREMENT"
+            measurementButton.BackColor = Color.Blue
+            measurementButton.ForeColor = Color.White
+        End If
 
         ' Move blocking device status check to background thread
         Await GetAvailableDevicesAsync(False)
@@ -363,13 +384,19 @@ Public Class INCA_InterfaceClass
     End Sub
 
     Private Sub UpdateButtonStates(ByVal sender As System.Object, ByVal WasRecording As Boolean)
-        sender.Text = "START MEASUREMENT"
-        sender.BackColor = Color.WhiteSmoke
-        sender.ForeColor = Color.Black
+        Dim measurementButton = TryCast(sender, Button)
+        If measurementButton IsNot Nothing Then
+            measurementButton.Text = "START MEASUREMENT"
+            measurementButton.BackColor = Color.WhiteSmoke
+            measurementButton.ForeColor = Color.Black
 
-        sender.parent.Button14.Text = "START RECORD"
-        sender.parent.Button14.BackColor = Color.WhiteSmoke
-        sender.parent.Button14.ForeColor = Color.Black
+            Dim recordButton = TryCast(measurementButton.Parent?.Controls("Button14"), Button)
+            If recordButton IsNot Nothing Then
+                recordButton.Text = "START RECORD"
+                recordButton.BackColor = Color.WhiteSmoke
+                recordButton.ForeColor = Color.Black
+            End If
+        End If
 
         If WasRecording Then
             InSession = False
@@ -404,43 +431,50 @@ Public Class INCA_InterfaceClass
     ''' ✅ REFACTORED: Async to support await pattern
     ''' </summary>
     Private Async Sub HandleStartRecording(ByVal startButton As Button)
-        ' 1. Finalize files from the previous session if applicable
-        If ZipTheMF4Files AndAlso HaveRecorded Then
-            If String.IsNullOrEmpty(SaveFinalPathToSaveData) Then
-                ReadFinalDataSavePath()
-            End If
-            If Not String.IsNullOrEmpty(SaveFinalPathToSaveData) Then
-                ' ✅ FIXED: Use CompressRecordingFiles() for consistency
-                ' This compresses the LAST file from previous session
-                If Not CompressRecordingFiles(SaveFinalPathToSaveData) Then
-                    HandleUserMessageLogging("GMRC", "HandleStartRecording: Previous session compression completed with warnings")
+        Try
+            ' 1. Finalize files from the previous session if applicable
+            If ZipTheMF4Files AndAlso HaveRecorded Then
+                If String.IsNullOrEmpty(SaveFinalPathToSaveData) Then
+                    ReadFinalDataSavePath()
                 End If
-                SaveFinalPathToSaveData = ""
+                If Not String.IsNullOrEmpty(SaveFinalPathToSaveData) Then
+                    ' ✅ FIXED: Use CompressRecordingFiles() for consistency
+                    ' This compresses the LAST file from previous session
+                    If Not CompressRecordingFiles(SaveFinalPathToSaveData) Then
+                        HandleUserMessageLogging("GMRC", "HandleStartRecording: Previous session compression completed with warnings")
+                    End If
+                    SaveFinalPathToSaveData = ""
+                End If
             End If
-        End If
 
-        ' 2. Ensure user is logged in
-        If String.IsNullOrEmpty(SaveLoginID) Then
-            HandleUserMessageLogging("GMRC", "Please select a Login ID", DisplayMsgBox)
-            Return
-        End If
+            ' 2. Ensure user is logged in
+            If String.IsNullOrEmpty(SaveLoginID) Then
+                HandleUserMessageLogging("GMRC", "Please select a Login ID", DisplayMsgBox)
+                Return
+            End If
 
-        ' 3. Set up INCA measurement and data logging if not already in a session
-        If GetMeasurementStatus() = "False" AndAlso Not InSession Then
-            ' ✅ FIXED: Await the async call
-            If Not Await MyIncaInterface.SetupDataLogging(SaveLoginID) Then Return
-            InSession = True
-        End If
+            ' 3. Set up INCA measurement and data logging if not already in a session
+            If GetMeasurementStatus() = "False" AndAlso Not InSession Then
+                ' ✅ FIXED: Await the async call
+                If Not Await MyIncaInterface.SetupDataLogging(SaveLoginID) Then Return
+                InSession = True
+            End If
 
-        MyIncaInterface.StartMeasurement()
+            MyIncaInterface.StartMeasurement()
 
-        ' 5. Start the actual recording in INCA
-        MyIncaInterface.StartRecording()
+            ' 5. Start the actual recording in INCA
+            Await MyIncaInterface.StartRecordingAsync()
 
-        ' 6. Update UI to reflect the new recording state
-        If MyIncaInterface.GetRecordingState() Then
-            UpdateUIForRecordingStarted(startButton)
-        End If
+            ' 6. Update UI to reflect the new recording state
+            If MyIncaInterface.GetRecordingState() Then
+                UpdateUIForRecordingStarted(startButton)
+            End If
+
+        Catch ex As Exception
+            ' Async Sub — an unhandled exception here (after the first Await) is not
+            ' observable by the caller's Try/Catch and would crash the process
+            HandleUserMessageLogging("GMRC", "HandleStartRecording: " & ex.Message, DisplayMsgBox)
+        End Try
     End Sub
 
     ''' <summary>
@@ -918,7 +952,7 @@ Public Class INCA_InterfaceClass
                 End If
 
                 ' Detect processor-like devices (Va*/Ve* variables)
-                If InStr(normalizedDeviceName, "ETK") > 0 Or InStr(normalizedDeviceName, "ACP") > 0 Or InStr(normalizedDeviceName, "XCP:1") Then
+                If InStr(normalizedDeviceName, "ETK") > 0 Or InStr(normalizedDeviceName, "ACP") > 0 Or InStr(normalizedDeviceName, "XCP:1") > 0 Then
 
                     ' Browse Va* elements
                     measureelementnames = Await BrowseMeasureElementsInDeviceIdxAsync("Va*", DeviceIndex)
@@ -1167,13 +1201,14 @@ Public Class INCA_InterfaceClass
     End Function
     ' ===================================================================
     ' Modified StartRecording() method
+    ' ✅ REFACTORED: Async — blocking INCA/GPS calls run off the UI thread
     ' ===================================================================
-    Private Sub StartRecording()
+    Private Async Function StartRecordingAsync() As Task
         'Sends the Start Record command to INCA
 
         HandleUserMessageLogging("GMRC", "StartRecording: Start Recording Requested...")
 
-        _Recording = MyGmIncaComm.StartRecording()
+        _Recording = Await Task.Run(Function() MyGmIncaComm.StartRecording())
 
         If _Recording Then
             ' ================================================================
@@ -1275,7 +1310,8 @@ Public Class INCA_InterfaceClass
                     ' Optional OXTS-specific lock wait only when OXTS is active
                     If GmResidentClient.MyOxtsInterface IsNot Nothing AndAlso GmResidentClient.OxtsWaitForLockOnStart Then
                         StatusNotifier.Toast("Waiting for OXTS GPS lock...", ToastKind.Info, "OXTS", 3000, True)
-                        Dim gpsLocked = GmResidentClient.MyOxtsInterface.WaitForGpsLock(timeoutMs:=30000)
+                        ' WaitForGpsLock blocks for up to 30s — run it off the UI thread
+                        Dim gpsLocked = Await Task.Run(Function() GmResidentClient.MyOxtsInterface.WaitForGpsLock(timeoutMs:=30000))
 
                         If Not gpsLocked Then
                             StatusNotifier.ToastError("OXTS GPS lock timeout - timestamps may be inaccurate", "RTK Warning", durationMs:=12000, ensureMainOnTop:=False)
@@ -1338,9 +1374,10 @@ Public Class INCA_InterfaceClass
 
             ' ================================================================
             ' ✅ STAGE 2: Keep "Recording Starting..." visible for 2 seconds
-            ' Then query filename and display
+            ' (also gives INCA time to settle so GetLastRecordingFileName is valid)
+            ' Non-blocking: UI thread stays responsive during the delay
             ' ================================================================
-            Thread.Sleep(2000)
+            Await Task.Delay(2000)
 
             Try
                 Dim lastClosedFile As String = MyGmIncaComm.GetLastRecordingFileName()
@@ -1348,17 +1385,14 @@ Public Class INCA_InterfaceClass
                 ' ✅ FIXED: Increment sequence from last closed file to get CURRENT recording filename
                 If Not String.IsNullOrEmpty(lastClosedFile) Then
                     ' Parse sequence number from last closed file (e.g., "_02.mf4" → 2)
-                    Dim match = System.Text.RegularExpressions.Regex.Match(lastClosedFile, "_(\d+)\.mf4$",
-                                System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                    Dim match = Mf4SequenceRegex.Match(lastClosedFile)
 
                     If match.Success Then
                         Dim lastSeq As Integer = Integer.Parse(match.Groups(1).Value)
                         Dim currentSeq As Integer = lastSeq + 1  ' Increment for current recording
 
                         ' Reconstruct filename with new sequence
-                        Dim baseName As String = System.Text.RegularExpressions.Regex.Replace(
-                            lastClosedFile, "_\d+\.mf4$", "",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                        Dim baseName As String = Mf4SequenceRegex.Replace(lastClosedFile, "")
 
                         CachedRecordingFilename = $"{baseName}_{currentSeq:D2}.mf4"
                         SaveRecordingFileName = CachedRecordingFilename
@@ -1409,7 +1443,7 @@ Public Class INCA_InterfaceClass
                 OnVehicleScreen.Label5.BackColor = SystemColors.Control
             End Try
         End If
-    End Sub
+    End Function
 
     Private Sub StopRecording()
         'Sends the stop recording command to INCA
@@ -1990,7 +2024,7 @@ Public Class INCA_InterfaceClass
         WriteMonitorLogFileToPathUsingFileName = MyGmIncaComm.WriteMonitorLogFileToPathUsingFileName(pathname, filename)
     End Function
 
-    Public Sub StopAndStartRecording()
+    Public Async Function StopAndStartRecordingAsync() As Task
         'this routine stops the recording and restarts it.  It is called from myBackground tasks which monitors the record timer while we are
         'recording.  if we set a record duration, then we record for that amount of time,save and immediately start recording a second file.
         'we continue in this manner until the stop record button is pressed.
@@ -1998,6 +2032,7 @@ Public Class INCA_InterfaceClass
         Dim stopSuccessful As Boolean = False
         Dim startSuccessful As Boolean = False
         Dim retryCount As Integer = 0
+        Dim needsRecovery As Boolean = False
         Const MaxRetries As Integer = 3
         Const RetryDelayMs As Integer = 1000
 
@@ -2007,7 +2042,7 @@ Public Class INCA_InterfaceClass
             ' Verify we're in a valid state before proceeding
             If MyGmIncaComm Is Nothing Then
                 HandleUserMessageLogging("GMRC", "StopAndStartRecording: ERROR - MyGmIncaComm is not initialized", DisplayMsgBox)
-                Exit Sub
+                Return
             End If
 
             ' Check current recording state before attempting to stop
@@ -2025,13 +2060,13 @@ Public Class INCA_InterfaceClass
                 Try
                     If retryCount > 0 Then
                         HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Retry attempt {retryCount} for stop operation")
-                        System.Threading.Thread.Sleep(RetryDelayMs)
+                        Await Task.Delay(RetryDelayMs)
                     End If
 
                     StopRecording()
 
                     ' Verify the stop was successful
-                    System.Threading.Thread.Sleep(500) ' Brief delay to allow state to update
+                    Await Task.Delay(500) ' Brief delay to allow state to update
                     If Not GetRecordingState() Then
                         stopSuccessful = True
                         Dim currentActiveSequence As String = GetCurrentActiveSequence()
@@ -2049,8 +2084,8 @@ Public Class INCA_InterfaceClass
 
                         ' Add to StopAndStartRecording after stop
                         If ZipTheMF4Files Then
-                            ' ✅ ASYNC FIX: Don't block on compression
-                            Task.Run(Sub()
+                            ' ✅ ASYNC FIX: Don't block on compression (intentional fire-and-forget)
+                            Dim compressionTask As Task = Task.Run(Sub()
                                          Try
                                              Dim compressionStopwatch As New Stopwatch()
                                              compressionStopwatch.Start()
@@ -2070,12 +2105,12 @@ Public Class INCA_InterfaceClass
                                              ' Only warn if compression is taking excessive time
                                              If compressionStopwatch.ElapsedMilliseconds > 30000 Then
                                                  HandleUserMessageLogging("GMRC",
-                                                                 "⚠️ WARNING: Compression took >30 seconds - disk may be slow")
+                                                                 "⚠️ Compression took >30 seconds - disk may be slow")
                                              End If
 
                                          Catch ex As Exception
                                              HandleUserMessageLogging("GMRC",
-                                                             $"❌ Background compression error: {ex.Message}")
+                                                             $"❌ Background compression failed - {ex.Message}")
                                          End Try
                                      End Sub)
 
@@ -2097,7 +2132,7 @@ Public Class INCA_InterfaceClass
 
             If Not stopSuccessful Then
                 HandleUserMessageLogging("GMRC", $"StopAndStartRecording: FAILED to stop recording after {MaxRetries} attempts", DisplayMsgBox)
-                Exit Sub
+                Return
             End If
 
             ' Reset and restart the stopwatch
@@ -2106,7 +2141,7 @@ Public Class INCA_InterfaceClass
                     INCACommCheckStopWatch.Reset()
                     INCACommCheckStopWatch.Start()
                     If Not String.IsNullOrEmpty(APICommErrorMsgDelayTime) Then
-                        INCACommCheckWarningTime = Val(APICommErrorMsgDelayTime)
+                        INCACommCheckWarningTime = CInt(Val(APICommErrorMsgDelayTime))
                         HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Reset IncaCommCheckStopWatch to {INCACommCheckWarningTime}")
                     End If
                 End If
@@ -2119,11 +2154,11 @@ Public Class INCA_InterfaceClass
             Try
                 If CheckRecordingFileNameFormat(displayMsg:=False) = False Then
                     HandleUserMessageLogging("GMRC", "StopAndStartRecording: Recording file name format check failed", DisplayMsgBox)
-                    Exit Sub
+                    Return
                 End If
             Catch ex As Exception
                 HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Exception during file name format check: {ex.Message}", DisplayMsgBox)
-                Exit Sub
+                Return
             End Try
 
             ' Start recording with retry logic
@@ -2132,13 +2167,13 @@ Public Class INCA_InterfaceClass
                 Try
                     If retryCount > 0 Then
                         HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Retry attempt {retryCount} for start operation")
-                        System.Threading.Thread.Sleep(RetryDelayMs)
+                        Await Task.Delay(RetryDelayMs)
                     End If
 
-                    StartRecording()
+                    Await StartRecordingAsync()
 
                     ' Verify the start was successful
-                    System.Threading.Thread.Sleep(500) ' Brief delay to allow state to update
+                    Await Task.Delay(500) ' Brief delay to allow state to update
                     If GetRecordingState() Then
                         startSuccessful = True
                         HandleUserMessageLogging("GMRC", "StopAndStartRecording: Start recording successful")
@@ -2155,7 +2190,7 @@ Public Class INCA_InterfaceClass
 
             If Not startSuccessful Then
                 HandleUserMessageLogging("GMRC", $"StopAndStartRecording: FAILED to start recording after {MaxRetries} attempts", DisplayMsgBox)
-                Exit Sub
+                Return
             End If
 
             ' Final stopwatch reset after successful start
@@ -2164,7 +2199,7 @@ Public Class INCA_InterfaceClass
                     INCACommCheckStopWatch.Reset()
                     INCACommCheckStopWatch.Start()
                     If Not String.IsNullOrEmpty(APICommErrorMsgDelayTime) Then
-                        INCACommCheckWarningTime = Val(APICommErrorMsgDelayTime)
+                        INCACommCheckWarningTime = CInt(Val(APICommErrorMsgDelayTime))
                         HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Final reset IncaCommCheckStopWatch to {INCACommCheckWarningTime}")
                     End If
                 End If
@@ -2176,8 +2211,12 @@ Public Class INCA_InterfaceClass
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"StopAndStartRecording: CRITICAL EXCEPTION - {ex.Message}", DisplayMsgBox)
+            ' 'Await' is not allowed in a Catch block — flag recovery and run it below
+            needsRecovery = True
+        End Try
 
-            ' Emergency recovery attempt
+        ' Emergency recovery attempt (outside Catch so we can Await)
+        If needsRecovery Then
             Try
                 HandleUserMessageLogging("GMRC", "StopAndStartRecording: Attempting emergency recovery...")
                 If GetRecordingState() Then
@@ -2186,14 +2225,13 @@ Public Class INCA_InterfaceClass
                 Else
                     ' If not recording, try to restart
                     HandleUserMessageLogging("GMRC", "StopAndStartRecording: Attempting to restart recording after error")
-                    StartRecording()
+                    Await StartRecordingAsync()
                 End If
             Catch recoveryEx As Exception
                 HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Emergency recovery also failed: {recoveryEx.Message}", DisplayMsgBox)
             End Try
-
-        End Try
-    End Sub
+        End If
+    End Function
 
     ' This subroutine starts the measurement process in INCA.
     Private Sub StartMeasurement()

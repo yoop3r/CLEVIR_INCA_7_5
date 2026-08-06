@@ -38,6 +38,77 @@ OXTS RT, Hunter, Intrepid GigaStar --- VLAN 40 (10.5.2.0/24) --- Catalyst switch
   This is a fundamental property of broadcast traffic, not an OXTS defect.
 - TM Locator Data Service: UDP port `7372`, query bytes `0xA1 0x04 0xB2`, 80-byte response
 
+## PTP timing chain — TM2000B → Cisco C9300L → Hesai LiDAR
+
+The TM2000B, C9300L, and Hesai Pandar128 LiDARs all support both standard IEEE
+1588-2008 PTP and IEEE 802.1AS (gPTP). **The Hesai "Frozen" status observed
+during initial bring-up was root-caused to a missing `ptp enable` on the
+physical LiDAR/TM2000B-facing switch interfaces** — see `CISCO_PTP.md` for the
+full investigation and verified fix. Once `ptp enable` was applied to the
+correct interfaces (`GigabitEthernet2/0/14`, `GigabitEthernet2/0/16`,
+`GigabitEthernet2/0/26` on this switch), further testing established the
+**final working configuration**:
+
+- **Both Hesai LiDARs must have their own `Profile` set to `IEEE1588`.**
+  Setting a LiDAR's own profile to `802.1AS` causes it to go `Frozen`, then
+  `Free Run` after a reboot — it never (re-)acquires sync through this
+  switch, because the switch's boundary clock re-originates PTP on every port
+  as Default Profile over `udp-ipv4` (confirmed hard-locked via `ptp transport
+  ?`, no pure-L2/Ethernet transport exists at the CLI level on this platform),
+  and a genuinely 802.1AS-only LiDAR client does not recognize that traffic
+  as valid gPTP (802.1AS requires raw L2 Ethernet frames, no IP/UDP header).
+- **The TM2000B's own `Profile` must be set to `IEEE1588`** (`Packet Output =
+  IPv4 UDP`, `Delay Mechanism = End to End`, `Transmission Method =
+  Multicast`). **Do not set the TM2000B to `802.1AS`** — an earlier revision
+  of this doc incorrectly claimed 802.1AS gave the tightest lock; this was
+  disproven. In `802.1AS` mode the TM2000B transmits native Layer-2 gPTP
+  frames the switch's `udp-ipv4`-only PTP engine cannot receive at all, so the
+  switch silently stops hearing the TM2000B and BMCA elects whatever else is
+  reachable over `udp-ipv4` instead — in this environment that turned out to
+  be the **ETAS ES886**, whose own PTP clock free-runs to master when no
+  other master is heard. The earlier "excellent lock" under 802.1AS was
+  actually the LiDARs/switch locking to the ES886, not the TM2000B. See
+  `CISCO_PTP.md` "ES886 masquerade" incident for the full investigation.
+- The LiDAR's own profile setting does **not** need to match the TM2000B's —
+  the switch normalizes/re-originates PTP for the LiDAR-facing ports
+  regardless of the TM2000B's upstream profile (when it can receive it).
+
+Before troubleshooting "Frozen"/"Free Run"/lock-quality issues on this switch,
+confirm:
+1. `show switch` to identify the actual active stack member number — this
+   switch is a single-member unit at member `2`; do not assume `1/0/x`
+   interface naming even if a phantom `1/0/x` interface appears to accept
+   configuration commands without error.
+2. `show interfaces status | include LIDAR|TIMEMACHINE` to find the correct
+   physical ports before applying any PTP config.
+3. `ptp enable` is applied per-interface on every LiDAR port and the
+   TM2000B-facing port (it does not appear in `show run interface` output on
+   this platform — verify with `show ptp port <interface>` instead).
+4. PTP domain number matches across LiDAR, switch, and TM2000B (CLEVIR
+   default: domain `0`).
+5. Both LiDARs' own `Profile` setting is `IEEE1588`, and the TM2000B's
+   `Profile` is **`IEEE1588`** (not `802.1AS` — see above). See `CISCO_PTP.md`
+   for the full explanation of why 802.1AS cannot sync through this switch
+   for either the LiDAR or the TM2000B.
+6. Global delay mechanism is `ptp mode boundary delay-req` (End-to-End), not
+   `pdelay-req` (Peer-to-Peer) — this has been observed to drift on its own
+   and causes ports to hang at `Port state: UNCALIBRATED` with `Peer mean
+   path delay(ns): 0` even when the TM2000B is correctly elected grandmaster.
+   **The TM2000B also has its own independent delay-mechanism setting**
+   (separate from its 802.1AS/IEEE1588 profile selection) and must be set to
+   **End-to-End** to match the switch (confirmed correct at time of writing).
+7. **Confirm `show ptp parent` → Grandmaster Clock Identity matches the
+   TM2000B's known identity (`0xC:AE:7D:FF:FE:25:19:F6`)** — not the switch's
+   own identity (`0x90:EB:50:FF:FE:46:DF:80`, self-elected) and not the ETAS
+   ES886 (`0x0:60:34:FF:FE:1D:C3:47`, masquerading master). Only the
+   TM2000B's identity means the switch is genuinely disciplined to it.
+8. **Run `copy running-config startup-config` immediately after any verified
+   PTP fix** — an unsaved config fully reverts on the next switch
+   reboot/power-cycle, which has caused this exact issue (both `ptp enable`
+   loss and delay-mechanism drift) to recur. See `CISCO_PTP.md` "Incident"
+   section for the full recurrence writeup.
+
+
 
 ## Switch-side prerequisites (already configured on the shared switch; verify only)
 
@@ -85,8 +156,8 @@ OXTS RT, Hunter, Intrepid GigaStar --- VLAN 40 (10.5.2.0/24) --- Catalyst switch
 ## Per-PC setup (required on every new PC connected to the LiDAR VLAN)
 
 1. **Assign a unique static IP on the LiDAR NIC**, on the `100.64.1.0/24` subnet.
-   - Do not reuse another PC's address (e.g. DEV = `100.64.1.8`, bench = `100.64.1.9`), and do
-	 not reuse `100.64.1.2`/`100.64.1.3`, which are reserved for LiDAR 1/2 themselves.
+   - Do not reuse `100.64.1.2`/`100.64.1.3`, which are reserved for LiDAR 1/2 themselves, or
+	 `100.64.1.177`, which is the Vlan20 SVI gateway.
    - Do **not** leave a secondary/duplicate address assigned from prior troubleshooting
 	 (check with `Get-NetIPAddress -InterfaceAlias "LiDAR"`), including any leftover
 	 `100.64.20.x` addresses from before this subnet was renumbered.
@@ -304,7 +375,7 @@ uniquely per machine (see step 1 of "Per-PC setup" above) rather than being a fi
 
 | Device    | IP Address                    | Subnet Mask     | Gateway            |
 |-----------|-------------------------------|-----------------|--------------------|
-| LiDAR NIC (also Hesai `HostIpAddress`) | *(per-PC, e.g. 100.64.1.8/9)* | 255.255.255.0  | 100.64.1.177 (Vlan20 SVI) |
+| LiDAR NIC (also Hesai `HostIpAddress`) | 100.64.1.8 | 255.255.255.0  | 100.64.1.177 (Vlan20 SVI) |
 | ETAS NIC  | *(per-PC, on 192.168.40.0/24)* | 255.255.255.0  | 192.168.40.254 (Vlan10 SVI) |
 | LiDAR 1   | 100.64.1.2                    | 255.255.255.0   | 100.64.1.177 (Vlan20 SVI) |
 | LiDAR 2   | 100.64.1.3                    | 255.255.255.0   | 100.64.1.177 (Vlan20 SVI) |
@@ -329,15 +400,13 @@ Notes:
   ambiguity — see the per-PC routing issues resolved earlier in this document). Explicit
   binding removes that ambiguity.
 
-  The repo `config.xml` is checked in with `100.64.1.8` (DEV PC's LiDAR NIC address) as the
-  default `HostIpAddress`, with an inline comment noting the DEV/bench values. **Bench PC
-  must override this to `100.64.1.9`** in its own runtime config copy (or per-user config,
-  per `GM_ResidentClient.ReadUserConfigFile()`) before running the Hesai capture pipeline —
-  do not run bench with the DEV value still in place. Any additional PC added later must set
-  its own `config.xml` (or per-user runtime copy) `HostIpAddress` to match its own LiDAR NIC
-  address the same way. Each PC must use a unique host address on this subnet (see
-  "Per-PC setup" step 1); do not reuse another PC's address, and do not reuse `100.64.1.2`/
-  `100.64.1.3` (reserved for LiDAR 1/2). Renumbered from `100.64.20.0/24` on the LiDAR
+  The repo `config.xml` is checked in with `100.64.1.8` as the default `HostIpAddress`,
+  matching this PC's LiDAR NIC address — this is now the single formal build for the
+  foreseeable future, so no per-PC override is required. If an additional PC is ever added
+  later, its `config.xml` (or per-user runtime copy) `HostIpAddress` must be set to match its
+  own LiDAR NIC address, and it must use a unique host address on this subnet (see
+  "Per-PC setup" step 1); do not reuse `100.64.1.2`/`100.64.1.3` (reserved for LiDAR 1/2) or
+  `100.64.1.177` (Vlan20 SVI gateway). Renumbered from `100.64.20.0/24` on the LiDAR
   alignment-tool renumbering date (see revision history).
 - **ETAS NIC**: dedicated adapter used for ETAS/INCA XCP communication. VLAN 10 (Cisco name
   `VLAN0010`, ETAS ports `Gi2/0/1`-`Gi2/0/11`) now carries `192.168.40.0/24` with SVI
@@ -349,7 +418,7 @@ Notes:
   by the LiDAR alignment tool**, which is used broadly across the organization and expects
   these exact addresses; renumbered from `100.64.20.14`/`100.64.20.15`. Remain on Vlan20 so
   the switch can distribute gPTP/802.1AS timing to them over the same L2 broadcast domain as
-  the LiDAR NIC, without requiring a boundary-clock hop across VLANs. **The DEV/bench PC's
+  the LiDAR NIC, without requiring a boundary-clock hop across VLANs. **The formal build PC's
   LiDAR NIC physically connects to switch port `Gi2/0/18`** (confirmed via
   `show mac address-table vlan 20`). **Always verify the actual current port** with
   `show mac address-table vlan 20` (look up the PC's LiDAR NIC MAC address, shown by
@@ -396,7 +465,10 @@ Notes:
 
 | Date       | Change                                                                 |
 |------------|------------------------------------------------------------------------|
-| (latest)   | **Final decision: OXTS moved back to a dedicated, isolated `Vlan40` (`10.5.2.0/24`) as its own private CAN/RTK network**, shared with Hunter Sync Omni and Intrepid GigaStar, consumed by ETAS -- superseding the same-VLAN20 secondary-subnet workaround described in the two entries below. Following end-user review, LiDAR and OXTS are confirmed **not** to need to interoperate over the network, so there is no requirement for OXTS/NCOM traffic to reach VLAN20 PCs. Switch changes: `Vlan20` SVI's `10.5.2.1/24` secondary address removed (Vlan20 is back to only `100.64.1.177/24`); `Vlan40` SVI re-enabled as `10.5.2.1/24`; OXTS's port `Gi2/0/38` reconfigured as a `Vlan40` access port. Verified: `show ip interface brief` shows `Vlan20 = 100.64.1.177`, `Vlan40 = 10.5.2.1`, both up/up; `show mac address-table vlan 40` learned OXTS's MAC on `Gi2/0/38`; `show arp vlan 40` learned OXTS's IP; `show ip route` shows `10.5.2.0/24` directly connected via `Vlan40`. A VLAN20 PC's `ping 10.5.2.30` times out and NAVdisplay does not receive NCOM once OXTS is isolated this way -- expected, since NCOM is UDP broadcast traffic that does not cross VLAN boundaries even with valid routing. Updated `docs/TM2000B_Network_Setup.md` (topology diagram, addendum table, OXTS notes, "Per-PC setup" step 7) and `config.xml`/`bin\x64\Debug\config.xml` comments accordingly. |
+| (latest)   | **RESOLVED — Hesai LiDAR "Frozen"/"Free Run" PTP status.** Two findings, in order: (1) `ptp enable` was never applied to the real, physically-cabled LiDAR/TM2000B interfaces — all earlier config attempts targeted a phantom interface `GigabitEthernet1/0/20` which does not physically exist (`show switch` revealed stack member `1` has MAC `0000.0000.0000` and state `Provisioned`/not present; switch is a single active unit at member `2`). Real ports: `GigabitEthernet2/0/14` (LiDAR #1), `GigabitEthernet2/0/16` (LiDAR #2), `GigabitEthernet2/0/18` (PC LiDAR NIC), `GigabitEthernet2/0/26` (TM2000B). After applying `ptp enable` to `Gi2/0/14`, `Gi2/0/16`, and `Gi2/0/26`, both LiDARs locked **when each LiDAR's own `Profile` was `IEEE1588`**. (2) Setting a LiDAR's own `Profile` to `802.1AS` produced `Frozen`, then `Free Run` after a LiDAR reboot — root cause: this switch's PTP transport is hard-locked to `udp-ipv4` (confirmed via `ptp transport ?`, no pure-L2/Ethernet transport option exists), and `ptp mode boundary` terminates/re-originates PTP on every port as Default Profile regardless of what's attached, so a genuinely 802.1AS-only LiDAR client never receives traffic it recognizes as valid gPTP. **Final working configuration: both Hesai LiDARs set to `Profile = IEEE1588`; TM2000B set to `Profile = 802.1AS`** (gives tightest lock, single-digit ns offset on both LiDARs; TM2000B set to `IEEE1588` also works but with looser double/triple-digit ns offset). The LiDAR's own profile does not need to match the TM2000B's. See `CISCO_PTP.md` for the full investigation and verified commands. `Configure-HesaiPTP-8021AS.ps1` is retained in the repo for reference but should **not** be used against these LiDARs on this switch — use the existing `Configure-HesaiPTP.ps1` (IEEE1588) script for both LiDARs instead. |
+| (later)    | **RECURRENCE AND SECOND FIX — both LiDARs found in Free Run again, independent of TM2000B profile.** Live diagnosis found two compounding problems, both from the switch config never having been saved: (1) `ptp enable` had been lost again on `Gi2/0/14` and `Gi2/0/16` (switch reboot/power-cycle reverted to the old `startup-config`); `Gi2/0/26` still had it, so the switch could still elect the TM2000B as grandmaster (`Steps Removed: 1`) but the LiDAR-facing ports were dark to PTP — fixed by re-applying `ptp enable` and this time saving with `copy running-config startup-config`. (2) The switch's global delay mechanism had drifted from `ptp mode boundary delay-req` (End-to-End, the original working baseline) to `pdelay-req` (Peer-to-Peer) — symptom was `Gi2/0/26` stuck at `Port state: UNCALIBRATED` with `Peer mean path delay(ns): 0` even after the grandmaster was correctly the TM2000B; fixed with `no ptp mode` then `ptp mode boundary delay-req`, then saved. After both fixes, both LiDARs achieved **Locked** status. See `CISCO_PTP.md` "Incident" section for the full writeup. **Lesson: always `copy running-config startup-config` immediately after any verified PTP fix on this switch.** |
+| (correction) | **CORRECTED — "TM2000B=802.1AS gives tightest lock" was a false correlation ("ES886 masquerade").** Re-testing (switch=`pdelay-req`+TM2000B=802.1AS/Peer-to-Peer, matching the original "best lock" recipe) showed `show ptp parent` grandmaster identity was `0x0:60:34:FF:FE:1D:C3:47` — **not** the TM2000B (`0xC:AE:7D:FF:FE:25:19:F6`) — identified as the **ETAS ES886**, which free-runs to master when no other master is heard over `udp-ipv4`. Because the switch's PTP transport is hard-locked to `udp-ipv4` and the TM2000B in `802.1AS` mode transmits only native Layer-2 gPTP frames (confirmed via its UI: `PTP Destination MAC 01:1B:19:00:00:00`, `P2P Destination MAC 01:80:C2:00:00:0E`, no IP header), the switch never actually heard the TM2000B in any earlier 802.1AS test — it was locking to the ES886 instead, which explained the "excellent" but unpredictable lock quality. Reverting the switch to `ptp mode boundary delay-req` (End-to-End) with **TM2000B = IEEE1588 (`Packet Output = IPv4 UDP`, `Delay Mechanism = End to End`, `Transmission Method = Multicast`)** produced `show ptp parent` grandmaster = the TM2000B's real identity, and both LiDARs Locked. **TM2000B = IEEE1588 is now the confirmed, permanent setting; TM2000B = 802.1AS must not be used with this switch.** |
+| (latest)   | **Final decision: OXTS moved back to a dedicated, isolated `Vlan40` (`10.5.2.0/24`) as its own private CAN/RTK network**,
 | (latest)   | **Corrected the same-VLAN20 OXTS design
 | (latest)   | **Moved OXTS off the routed `Vlan40` design onto a secondary `10.5.2.0/24` subnet on `Vlan20`**, placing it in the same L2 broadcast domain as the LiDAR NIC instead of relying on inter-VLAN routing. This was adopted after the OXTS RT3000 v3's ability to correctly use a gateway for return traffic could not be confirmed (local OXTS rep had no guidance on RT-side gateway configuration). Switch changes: `Vlan40` shut down/unassigned; `Vlan20` SVI gained a secondary address `10.5.2.1/24` alongside its existing primary `100.64.1.177/24`; OXTS physically moved to port `Gi2/0/38`, reconfigured as a VLAN20 access port (previously VLAN40). PC-side: LiDAR NIC given a secondary `10.5.2.x/24` address (e.g. DEV `10.5.2.8`) alongside its existing primary `100.64.1.x/24` address; no route/gateway configured for the `10.5.2.0/24` subnet since it is now a directly-connected secondary on the same NIC. `scripts/Set-LidarNetworkRoutes.ps1` updated to remove the now-stale OXTS routed-gateway repair logic (`OxtsSubnet`/`OxtsSubnetMask`/`OxtsDeviceIp` params and the corresponding `Repair-PersistentRoute` call removed) and replaced with a simple secondary-IP presence check. **Key troubleshooting finding**: OXTS does not respond to ARP or ICMP (ping) on this interface at all — confirmed via switch port counters on `Gi2/0/38` showing zero inbound unicast frames from OXTS during a ping test, both before and after this VLAN change — so `ping`/ARP must not be used to validate OXTS reachability; use NCOM traffic (OXTS NAVdisplay live data and command send/ack, or the app's `OxtsNcomCaptureDevice`) instead. This ping/ARP behavior was observed identically on both the prior routed `Vlan40` design and the current same-VLAN20 design, so it is considered a property of the OXTS device itself rather than a symptom of either topology. **Note: the PC-side secondary IP mentioned here was later found unnecessary — see the entry above.** |
 | (latest)   | **Renumbered the LiDAR alignment subnet from `100.64.20.0/24` to `100.64.1.0/24`**

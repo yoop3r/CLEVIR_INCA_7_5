@@ -28,15 +28,25 @@ Public NotInheritable Class SharedNicCapture
     Private ReadOnly _devices As List(Of LidarDevice)
     Private ReadOnly _ipToDevice As Dictionary(Of String, LidarDevice)
 
+    ' Fast-path routing — keyed on the IPv4 address packed into a UInteger so the
+    ' per-packet fan-out never allocates a string or takes a lock.
+    Private ReadOnly _ipKeyToDevice As Dictionary(Of UInteger, LidarDevice)
+    Private ReadOnly _ipKeyToString As Dictionary(Of UInteger, String)
+    Private ReadOnly _perIpCounters As Dictionary(Of UInteger, PacketCounter)
+
+    ''' <summary>Mutable counter holder allowing lock-free Interlocked increments per known IP.</summary>
+    Private NotInheritable Class PacketCounter
+        Public Value As Long
+    End Class
+
     Private _captureDevice As ICaptureDevice
     Private _eventBridge As PcapEventBridge.PcapEventBridge
     Private _isCapturing As Boolean = False
     Private _disposed As Boolean = False
 
     ' ================================================================
-    ' Diagnostics — per-IP packet counters, unknown-IP rate limiter
+    ' Diagnostics — unknown-IP rate limiter (per-IP counters are in _perIpCounters)
     ' ================================================================
-    Private ReadOnly _perIpCount As New Dictionary(Of String, Long)(StringComparer.OrdinalIgnoreCase)
     Private _unknownIpCount As Long = 0
     Private _unknownIpLastLogged As Long = 0    ' Environment.TickCount64 equivalent via DateTime ticks
     Private _nullIpCount As Long = 0
@@ -64,9 +74,25 @@ Public NotInheritable Class SharedNicCapture
         _adapterGuid = adapterGuid
         _devices = New List(Of LidarDevice)(devices)
         _ipToDevice = New Dictionary(Of String, LidarDevice)(StringComparer.OrdinalIgnoreCase)
+        _ipKeyToDevice = New Dictionary(Of UInteger, LidarDevice)
+        _ipKeyToString = New Dictionary(Of UInteger, String)
+        _perIpCounters = New Dictionary(Of UInteger, PacketCounter)
         For Each d In _devices
             If Not String.IsNullOrWhiteSpace(d.LidarIpAddress) Then
-                _ipToDevice(d.LidarIpAddress.Trim()) = d
+                Dim ipStr As String = d.LidarIpAddress.Trim()
+                _ipToDevice(ipStr) = d
+                Try
+                    Dim b = IPAddress.Parse(ipStr).GetAddressBytes()
+                    If b.Length = 4 Then
+                        Dim key As UInteger = (CUInt(b(0)) << 24) Or (CUInt(b(1)) << 16) Or (CUInt(b(2)) << 8) Or CUInt(b(3))
+                        _ipKeyToDevice(key) = d
+                        _ipKeyToString(key) = ipStr
+                        _perIpCounters(key) = New PacketCounter()
+                    End If
+                Catch ex As Exception
+                    HandleUserMessageLogging("GMRC",
+                        $"[SharedNIC:{_adapterGuid}] Invalid device IP '{ipStr}' for [{d.DeviceId}]: {ex.Message}")
+                End Try
             End If
         Next
         ' Log the routing table so we can confirm both IPs are registered
@@ -84,7 +110,7 @@ Public NotInheritable Class SharedNicCapture
     ''' then begins capture.  pcapFilenames(i) maps to _devices(i).
     ''' </summary>
     Public Sub StartCapture(pcapFilenames As List(Of String), sequence As Integer)
-        If _isCapturing Then
+        If Volatile.Read(_isCapturing) Then
             HandleUserMessageLogging("GMRC", $"[SharedNIC:{_adapterGuid}] Already capturing")
             Return
         End If
@@ -176,7 +202,7 @@ Public NotInheritable Class SharedNicCapture
             _captureDevice.Filter = bpf
             _eventBridge.Subscribe(_captureDevice)
             _captureDevice.StartCapture()
-            _isCapturing = True
+            Volatile.Write(_isCapturing, True)
 
             HandleUserMessageLogging("GMRC",
                 $"[SharedNIC:{_adapterGuid}] NIC opened, BPF: {bpf}")
@@ -196,7 +222,7 @@ Public NotInheritable Class SharedNicCapture
     ''' Stops the shared NIC handle and closes all per-device dump files.
     ''' </summary>
     Public Sub StopCapture()
-        If Not _isCapturing Then Return
+        If Not Volatile.Read(_isCapturing) Then Return
 
         Try
             HandleUserMessageLogging("GMRC", $"[SharedNIC:{_adapterGuid}] Stopping...")
@@ -211,13 +237,11 @@ Public NotInheritable Class SharedNicCapture
                 End Try
             Next
 
-            _isCapturing = False
+            Volatile.Write(_isCapturing, False)
 
-            ' Log per-IP dispatch summary before cleanup
-            Dim perIpSummary As String
-            SyncLock _perIpCount
-                perIpSummary = String.Join(", ", _perIpCount.Select(Function(kv) $"{kv.Key}={kv.Value:N0}"))
-            End SyncLock
+            ' Log per-IP dispatch summary before cleanup (counters are lock-free Interlocked)
+            Dim perIpSummary As String = String.Join(", ",
+                _perIpCounters.Select(Function(kv) $"{_ipKeyToString(kv.Key)}={Interlocked.Read(kv.Value.Value):N0}"))
             HandleUserMessageLogging("GMRC",
                 $"[SharedNIC:{_adapterGuid}] DIAG: NIC totals — " &
                 $"total={_totalNicPackets:N0}, null={_nullIpCount:N0}, unknown={_unknownIpCount:N0}, " &
@@ -244,7 +268,7 @@ Public NotInheritable Class SharedNicCapture
     ''' dispatched to devices with closed dump files (which would cause silent packet loss).
     ''' </summary>
     Public Sub RotateSequence(pcapFilenames As List(Of String), sequence As Integer)
-        If Not _isCapturing Then Return
+        If Not Volatile.Read(_isCapturing) Then Return
 
         Try
             HandleUserMessageLogging("GMRC",
@@ -340,27 +364,25 @@ Public NotInheritable Class SharedNicCapture
             Dim raw As RawCapture = e.Packet
             Interlocked.Increment(_totalNicPackets)
 
-            ' Extract source IP from the Ethernet/IP layers
-            Dim srcIp As String = ExtractSourceIp(raw)
-            If srcIp Is Nothing Then
+            ' Extract source IP as a packed UInt32 — no string allocation per packet
+            Dim ipKey As UInteger
+            If Not TryExtractSourceIpKey(raw, ipKey) Then
                 Interlocked.Increment(_nullIpCount)
                 Return
             End If
 
             ' Route to the correct LidarDevice
             Dim target As LidarDevice = Nothing
-            If _ipToDevice.TryGetValue(srcIp, target) Then
-                SyncLock _perIpCount
-                    Dim c As Long = 0
-                    _perIpCount.TryGetValue(srcIp, c)
-                    _perIpCount(srcIp) = c + 1L
-                End SyncLock
+            If _ipKeyToDevice.TryGetValue(ipKey, target) Then
+                ' Lock-free per-IP diagnostic counter (key set is fixed after construction)
+                Interlocked.Increment(_perIpCounters(ipKey).Value)
                 target.DispatchPacket(raw)
             Else
                 ' Unknown source IP (OXTS, other NIC traffic)
                 Dim total = Interlocked.Increment(_unknownIpCount)
                 ' Rate-limit: log first occurrence, then every 10,000
                 If total = 1 OrElse total Mod 10000 = 0 Then
+                    Dim srcIp As String = $"{(ipKey >> 24) And &HFFUI}.{(ipKey >> 16) And &HFFUI}.{(ipKey >> 8) And &HFFUI}.{ipKey And &HFFUI}"
                     HandleUserMessageLogging("GMRC",
                         $"[SharedNIC:{_adapterGuid}] DIAG: Unknown src IP '{srcIp}' " &
                         $"(total unknown={total:N0}, totalNic={_totalNicPackets:N0}, " &
@@ -374,15 +396,16 @@ Public NotInheritable Class SharedNicCapture
     End Sub
 
     ''' <summary>
-    ''' Returns the IPv4 source address string from a raw Ethernet frame, or Nothing.
+    ''' Extracts the IPv4 source address from a raw Ethernet frame as a packed
+    ''' big-endian UInt32 (no string allocation). Returns False if not IPv4.
     ''' Handles both plain Ethernet II and 802.1Q VLAN-tagged frames (0x8100 / 0x88A8).
     ''' Plain Ethernet II:  IP header starts at byte 14  → src IP at bytes 26-29
     ''' 802.1Q VLAN-tagged: 4-byte tag inserted at byte 12 → IP header at byte 18 → src IP at bytes 30-33
     ''' </summary>
-    Private Shared Function ExtractSourceIp(raw As RawCapture) As String
+    Private Shared Function TryExtractSourceIpKey(raw As RawCapture, ByRef ipKey As UInteger) As Boolean
         Try
             Dim data = raw.Data
-            If data Is Nothing OrElse data.Length < 34 Then Return Nothing
+            If data Is Nothing OrElse data.Length < 34 Then Return False
 
             ' Determine Ethernet payload offset, skipping 802.1Q / 802.1ad VLAN tags
             Dim offset As Integer = 12  ' points at EtherType field
@@ -391,28 +414,32 @@ Public NotInheritable Class SharedNicCapture
                 If etherType = &H8100US OrElse etherType = &H88A8US Then
                     ' Skip 4-byte VLAN tag (2-byte EtherType + 2-byte TCI)
                     offset += 4
-                    If offset + 2 > data.Length Then Return Nothing
+                    If offset + 2 > data.Length Then Return False
                 Else
                     Exit Do
                 End If
             Loop
 
             ' At this point data(offset) and data(offset+1) are the EtherType of the IP layer
-            If data.Length < offset + 22 Then Return Nothing  ' need EtherType(2) + IP hdr src offset(20)
-            If data(offset) <> &H8 OrElse data(offset + 1) <> &H0 Then Return Nothing  ' Not IPv4
+            If data.Length < offset + 22 Then Return False  ' need EtherType(2) + IP hdr src offset(20)
+            If data(offset) <> &H8 OrElse data(offset + 1) <> &H0 Then Return False  ' Not IPv4
 
             ' IP src is at IP-header-start+12 → offset+2 (skip EtherType) +12
             Dim ipBase = offset + 2  ' start of IP header
-            Return $"{data(ipBase + 12)}.{data(ipBase + 13)}.{data(ipBase + 14)}.{data(ipBase + 15)}"
+            ipKey = (CUInt(data(ipBase + 12)) << 24) Or
+                    (CUInt(data(ipBase + 13)) << 16) Or
+                    (CUInt(data(ipBase + 14)) << 8) Or
+                    CUInt(data(ipBase + 15))
+            Return True
         Catch
-            Return Nothing
+            Return False
         End Try
     End Function
 
     Private Sub OnCaptureStopped(sender As Object, e As CaptureStoppedEventStatus)
         HandleUserMessageLogging("GMRC",
             $"[SharedNIC:{_adapterGuid}] DIAG: ⚠️ SharpPcap OnCaptureStopped — " &
-            $"status={e}, isCapturing={_isCapturing}, " &
+            $"status={e}, isCapturing={Volatile.Read(_isCapturing)}, " &
             $"devices={String.Join(",", _devices.Select(Function(d) $"{d.DeviceId}:{d.PacketCount:N0}pkts"))}, " &
             $"ts={DateTime.Now:HH:mm:ss.fff}")
     End Sub
@@ -506,7 +533,7 @@ Public NotInheritable Class SharedNicCapture
 
     Public Sub Dispose() Implements IDisposable.Dispose
         If Not _disposed Then
-            If _isCapturing Then StopCapture()
+            If Volatile.Read(_isCapturing) Then StopCapture()
             Cleanup()
             _disposed = True
         End If

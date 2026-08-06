@@ -49,8 +49,8 @@ Public Class TimeMachineTimeSyncProvider
 
     Public Sub Start() Implements ITimeSyncProvider.Start
         SyncLock _runLock
-            If _running Then Return
-            _running = True
+            If Volatile.Read(_running) Then Return
+            Volatile.Write(_running, True)
         End SyncLock
 
         _workerThread = New Thread(AddressOf PollLoop) With {
@@ -64,7 +64,7 @@ Public Class TimeMachineTimeSyncProvider
 
     Public Sub [Stop]() Implements ITimeSyncProvider.Stop
         SyncLock _runLock
-            _running = False
+            Volatile.Write(_running, False)
         End SyncLock
 
         If _workerThread IsNot Nothing AndAlso _workerThread.IsAlive Then
@@ -123,55 +123,77 @@ Public Class TimeMachineTimeSyncProvider
     End Function
 
     Private Sub PollLoop()
-        While _running
+        ' Reuse one UdpClient across polls — creating and tearing down a socket every
+        ' second is wasteful. The client is recreated only after an error.
+        Dim client As UdpClient = Nothing
+
+        While Volatile.Read(_running)
             Try
-                QueryAndUpdate()
+                If client Is Nothing Then
+                    client = New UdpClient()
+                    ' Do NOT set ReceiveTimeout — that causes SocketException on every poll
+                    ' when no device responds, flooding the VS debug output with
+                    ' first-chance exceptions. We poll Available instead.
+                    client.Client.ReceiveTimeout = 0
+                End If
+                QueryAndUpdate(client)
             Catch ex As Exception
                 HandleUserMessageLogging("GMRC", $"TimeMachine poll error: {ex.Message}")
+                ' Socket may be in a bad state — dispose and recreate on next poll
+                Try
+                    client?.Dispose()
+                Catch
+                End Try
+                client = Nothing
             End Try
 
             Dim sleepMs As Integer = Math.Max(200, PollIntervalMs)
             For i As Integer = 1 To Math.Max(1, sleepMs \ 50)
-                If Not _running Then Exit While
+                If Not Volatile.Read(_running) Then Exit While
                 Thread.Sleep(50)
             Next
         End While
+
+        Try
+            client?.Dispose()
+        Catch
+        End Try
     End Sub
 
-    Private Sub QueryAndUpdate()
-        Using client As New UdpClient()
-            ' Do NOT set ReceiveTimeout — that causes SocketException on every poll when no
-            ' device responds, flooding the VS debug output with first-chance exceptions.
-            ' Instead we poll Available in a short sleep loop and return quietly on timeout.
-            client.Client.ReceiveTimeout = 0
+    Private Sub QueryAndUpdate(client As UdpClient)
+        ' Drain any stale datagrams (late responses from a previous poll) so the
+        ' response we parse below belongs to the query we are about to send.
+        While client.Available > 0
+            Dim staleEp As New IPEndPoint(IPAddress.Any, 0)
+            client.Receive(staleEp)
+        End While
 
-            Dim targetIp As IPAddress = IPAddress.Broadcast
-            If Not String.IsNullOrWhiteSpace(DeviceIpAddress) AndAlso
-               Not String.Equals(DeviceIpAddress, "broadcast", StringComparison.OrdinalIgnoreCase) Then
-                If Not IPAddress.TryParse(DeviceIpAddress, targetIp) Then
-                    targetIp = IPAddress.Broadcast
-                End If
+        Dim targetIp As IPAddress = IPAddress.Broadcast
+        If Not String.IsNullOrWhiteSpace(DeviceIpAddress) AndAlso
+           Not String.Equals(DeviceIpAddress, "broadcast", StringComparison.OrdinalIgnoreCase) Then
+            If Not IPAddress.TryParse(DeviceIpAddress, targetIp) Then
+                targetIp = IPAddress.Broadcast
             End If
+        End If
 
-            client.EnableBroadcast = targetIp.Equals(IPAddress.Broadcast)
+        client.EnableBroadcast = targetIp.Equals(IPAddress.Broadcast)
 
-            Dim ep As New IPEndPoint(targetIp, Port)
-            client.Send(LocatorQuery, LocatorQuery.Length, ep)
+        Dim ep As New IPEndPoint(targetIp, Port)
+        client.Send(LocatorQuery, LocatorQuery.Length, ep)
 
-            ' Poll for a response without blocking — avoids SocketException on timeout.
-            Dim deadline As DateTime = DateTime.UtcNow.AddMilliseconds(Math.Max(200, ReceiveTimeoutMs))
-            While DateTime.UtcNow < deadline
-                If Not _running Then Return
-                If client.Available > 0 Then
-                    Dim remoteEp As New IPEndPoint(IPAddress.Any, 0)
-                    Dim response As Byte() = client.Receive(remoteEp)
-                    ParseLocatorResponse(response)
-                    Return
-                End If
-                Thread.Sleep(20)
-            End While
-            ' No response within timeout — silently return; no exception thrown.
-        End Using
+        ' Poll for a response without blocking — avoids SocketException on timeout.
+        Dim deadline As DateTime = DateTime.UtcNow.AddMilliseconds(Math.Max(200, ReceiveTimeoutMs))
+        While DateTime.UtcNow < deadline
+            If Not Volatile.Read(_running) Then Return
+            If client.Available > 0 Then
+                Dim remoteEp As New IPEndPoint(IPAddress.Any, 0)
+                Dim response As Byte() = client.Receive(remoteEp)
+                ParseLocatorResponse(response)
+                Return
+            End If
+            Thread.Sleep(20)
+        End While
+        ' No response within timeout — silently return; no exception thrown.
     End Sub
 
     Private Sub ParseLocatorResponse(data As Byte())
@@ -227,17 +249,16 @@ Public Class TimeMachineTimeSyncProvider
     Private Shared Function ReadNullTerminatedAscii(data As Byte(), start As Integer, length As Integer) As String
         If data Is Nothing OrElse start < 0 OrElse length <= 0 OrElse start >= data.Length Then Return ""
 
+        ' Find the null terminator in the byte buffer first so we decode exactly
+        ' once — no temp array, no oversized string, no Substring allocation.
         Dim maxLen As Integer = Math.Min(length, data.Length - start)
-        Dim raw As Byte() = New Byte(maxLen - 1) {}
-        Array.Copy(data, start, raw, 0, maxLen)
+        Dim strLen As Integer = 0
+        While strLen < maxLen AndAlso data(start + strLen) <> 0
+            strLen += 1
+        End While
+        If strLen = 0 Then Return ""
 
-        Dim s As String = Encoding.ASCII.GetString(raw)
-        Dim nullIndex As Integer = s.IndexOf(ChrW(0))
-        If nullIndex >= 0 Then
-            s = s.Substring(0, nullIndex)
-        End If
-
-        Return s.Trim()
+        Return Encoding.ASCII.GetString(data, start, strLen).Trim()
     End Function
 
     Private Shared Function ParseUInt16BigEndian(data As Byte(), offset As Integer) As UInteger

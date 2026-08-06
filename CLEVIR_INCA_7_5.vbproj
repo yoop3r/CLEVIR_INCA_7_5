@@ -355,6 +355,11 @@
     <Content Include="SessionMetadata.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Consumed by the WiX installer (CMP_ReadMe in Product.wxs), which sources it
+         from ..\bin\x64\$(Configuration)\ReadMe.txt -->
+    <Content Include="ReadMe.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="CLEVIR_INCA_7_5.sln.DotSettings.user" />
     <Content Include="GM_ResidentClient_256px.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -399,9 +404,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="debug.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="ReadMe.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="TopDownViewConfig30.txt">

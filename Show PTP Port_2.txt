@@ -1,0 +1,885 @@
+FMVSS127_switch#show ptp port GigabitEthernet1/0/20
+FMVSS127_switch#show ptp port
+ PTP PORT DATASET: GigabitEthernet2/0/1
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 97
+  PTP version: 2
+  PTP port number: 1
+  PTP slot number: 2
+  Port state: MASTER
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/2
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 98
+  PTP version: 2
+  PTP port number: 2
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/3
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 99
+  PTP version: 2
+  PTP port number: 3
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/4
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 100
+  PTP version: 2
+  PTP port number: 4
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/5
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 101
+  PTP version: 2
+  PTP port number: 5
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/6
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 102
+  PTP version: 2
+  PTP port number: 6
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/7
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 103
+  PTP version: 2
+  PTP port number: 7
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/8
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 104
+  PTP version: 2
+  PTP port number: 8
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/9
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 105
+  PTP version: 2
+  PTP port number: 9
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/10
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 106
+  PTP version: 2
+  PTP port number: 10
+  PTP slot number: 2
+  Port state: MASTER
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/11
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 107
+  PTP version: 2
+  PTP port number: 11
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/12
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 108
+  PTP version: 2
+  PTP port number: 12
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/13
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 109
+  PTP version: 2
+  PTP port number: 13
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/14
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 110
+  PTP version: 2
+  PTP port number: 14
+  PTP slot number: 2
+  Port state: MASTER
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/15
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 111
+  PTP version: 2
+  PTP port number: 15
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/16
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 112
+  PTP version: 2
+  PTP port number: 16
+  PTP slot number: 2
+  Port state: MASTER
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/17
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 113
+  PTP version: 2
+  PTP port number: 17
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/18
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 114
+  PTP version: 2
+  PTP port number: 18
+  PTP slot number: 2
+  Port state: MASTER
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/19
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 115
+  PTP version: 2
+  PTP port number: 19
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/20
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 116
+  PTP version: 2
+  PTP port number: 20
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/21
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 117
+  PTP version: 2
+  PTP port number: 21
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/22
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 118
+  PTP version: 2
+  PTP port number: 22
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/23
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 119
+  PTP version: 2
+  PTP port number: 23
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/24
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 120
+  PTP version: 2
+  PTP port number: 24
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/25
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 121
+  PTP version: 2
+  PTP port number: 25
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/26
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 122
+  PTP version: 2
+  PTP port number: 26
+  PTP slot number: 2
+  Port state: MASTER
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/27
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 123
+  PTP version: 2
+  PTP port number: 27
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/28
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 124
+  PTP version: 2
+  PTP port number: 28
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/29
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 125
+  PTP version: 2
+  PTP port number: 29
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/30
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 126
+  PTP version: 2
+  PTP port number: 30
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/31
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 127
+  PTP version: 2
+  PTP port number: 31
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/32
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 128
+  PTP version: 2
+  PTP port number: 32
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/33
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 129
+  PTP version: 2
+  PTP port number: 33
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/34
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 130
+  PTP version: 2
+  PTP port number: 34
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/35
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 131
+  PTP version: 2
+  PTP port number: 35
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/36
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 132
+  PTP version: 2
+  PTP port number: 36
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/37
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 133
+  PTP version: 2
+  PTP port number: 37
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/38
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 134
+  PTP version: 2
+  PTP port number: 38
+  PTP slot number: 2
+  Port state: MASTER
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/39
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 135
+  PTP version: 2
+  PTP port number: 39
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/40
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 136
+  PTP version: 2
+  PTP port number: 40
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/41
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 137
+  PTP version: 2
+  PTP port number: 41
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/42
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 138
+  PTP version: 2
+  PTP port number: 42
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/43
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 139
+  PTP version: 2
+  PTP port number: 43
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/44
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 140
+  PTP version: 2
+  PTP port number: 44
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/45
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 141
+  PTP version: 2
+  PTP port number: 45
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/46
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 142
+  PTP version: 2
+  PTP port number: 46
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/47
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 143
+  PTP version: 2
+  PTP port number: 47
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: GigabitEthernet2/0/48
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 144
+  PTP version: 2
+  PTP port number: 48
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: TenGigabitEthernet2/1/1
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 145
+  PTP version: 2
+  PTP port number: 49
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: End to End
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: TenGigabitEthernet2/1/2
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 146
+  PTP version: 2
+  PTP port number: 50
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: TenGigabitEthernet2/1/3
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 147
+  PTP version: 2
+  PTP port number: 51
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled
+
+ PTP PORT DATASET: TenGigabitEthernet2/1/4
+  Port identity: clock identity: 0x90:EB:50:FF:FE:46:DF:80
+  Port identity: port number: 148
+  PTP version: 2
+  PTP port number: 52
+  PTP slot number: 2
+  Port state: FAULTY
+  Delay request interval(log mean): 0
+  Announce receipt time out: 3
+  Peer mean path delay(ns): 0
+  Announce interval(log mean): 0
+  Sync interval(log mean): 0
+  Delay Mechanism: Peer to Peer
+  Peer delay request interval(log mean): 0
+  Sync fault limit: 500000000
+ ptp role primary : Disabled

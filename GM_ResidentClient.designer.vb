@@ -10,28 +10,26 @@ Partial Class GmResidentClient
     ''' </summary>
     <System.Diagnostics.DebuggerNonUserCode()>
     Protected Overrides Sub Dispose(ByVal disposing As Boolean)
-        Try
-            If disposing Then
-                If components IsNot Nothing Then
-                    components.Dispose()
-                End If
-
-                MyOxtsInterface?.Dispose()
-                MyTdGraphicsContainer?.Dispose()
-                MyMainTabControl?.Dispose()
-                MyLogin?.Dispose()
-                MyToolStripMenuItem?.Dispose()
-                _MyMiscInfo?.Dispose()
-                _MyUploadData?.Dispose()
-                _MyRecordPlayback?.Dispose()
-                _MyCreateNewDisplayMenuItem?.Dispose()
-                _recordingMonitorCts?.Dispose()
-                _backgroundTasksCts?.Dispose()
-                _initCts?.Dispose()
+        If disposing Then
+            If components IsNot Nothing Then
+                components.Dispose()
             End If
-        Finally
-            MyBase.Dispose(disposing)
-        End Try
+
+            MyOxtsInterface?.Dispose()
+            MyTdGraphicsContainer?.Dispose()
+            MyMainTabControl?.Dispose()
+            MyLogin?.Dispose()
+            MyToolStripMenuItem?.Dispose()
+            _MyMiscInfo?.Dispose()
+            _MyUploadData?.Dispose()
+            _MyRecordPlayback?.Dispose()
+            _MyCreateNewDisplayMenuItem?.Dispose()
+            _recordingMonitorCts?.Dispose()
+            _backgroundTasksCts?.Dispose()
+            _initCts?.Dispose()
+        End If
+
+        MyBase.Dispose(disposing)
     End Sub
 
     'Required by the Windows Form Designer

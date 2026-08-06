@@ -7250,7 +7250,9 @@ Public Class GmResidentClient
         Return result
     End Function
 
-    Private Sub HandleRecordingDurationRotation(ByVal durationMinutes As Integer)
+    Private _rotationInProgress As Boolean = False
+
+    Private Async Sub HandleRecordingDurationRotation(ByVal durationMinutes As Integer)
         If durationMinutes <= 0 Then
             RecorderStopWatch?.Reset()
             Return
@@ -7258,27 +7260,39 @@ Public Class GmResidentClient
 
         If RecorderStopWatch.Elapsed.TotalMilliseconds < (durationMinutes * 60000) Then Return
 
-        ' ✅ Get current sequence BEFORE rotation
-        Dim currentInfo = GetCurrentRecordingInfo()
-        HandleUserMessageLogging("GMRC",
-                                 $"Record duration ({durationMinutes} min) expired for seq {currentInfo.Sequence:D2}")
+        ' Guard against re-entry: the background loop can fire again while the
+        ' async rotation is still in progress
+        If _rotationInProgress Then Return
+        _rotationInProgress = True
 
-        ' ✅ CRITICAL: Rotate FIRST, then get the new filename
-        MyIncaInterface.StopAndStartRecording()
+        Try
+            ' ✅ Get current sequence BEFORE rotation
+            Dim currentInfo = GetCurrentRecordingInfo()
+            HandleUserMessageLogging("GMRC",
+                                     $"Record duration ({durationMinutes} min) expired for seq {currentInfo.Sequence:D2}")
 
-        ' ✅ NOW get the predicted filename (should return sequence 02 after rotation)
-        Dim predictedNext = GetPredictedRecordingFilename()
-        HandleUserMessageLogging("GMRC", $"Rotation complete - new sequence: {predictedNext}")
-        'EnsureSetLastRecordingFileName(predictedNext)
+            ' ✅ CRITICAL: Rotate FIRST, then get the new filename
+            Await MyIncaInterface.StopAndStartRecordingAsync()
 
-        If Not CheckRecordingFileNameFormat(displayMsg:=False) Then
-            HandleUserMessageLogging("GMRC", "HandleRecordingDurationRotation: Recording file name format check failed", DisplayMsgBox)
-            MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
-                .GetAwaiter().GetResult()
-        End If
+            ' ✅ NOW get the predicted filename (should return sequence 02 after rotation)
+            Dim predictedNext = GetPredictedRecordingFilename()
+            HandleUserMessageLogging("GMRC", $"Rotation complete - new sequence: {predictedNext}")
+            'EnsureSetLastRecordingFileName(predictedNext)
 
-        RecorderStopWatch.Reset()
-        RecorderStopWatch.Start()
+            If Not CheckRecordingFileNameFormat(displayMsg:=False) Then
+                HandleUserMessageLogging("GMRC", "HandleRecordingDurationRotation: Recording file name format check failed", DisplayMsgBox)
+                Await MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6)
+            End If
+
+            RecorderStopWatch.Reset()
+            RecorderStopWatch.Start()
+
+        Catch ex As Exception
+            ' Async Sub — exceptions must be handled here or they crash the process
+            HandleUserMessageLogging("GMRC", $"HandleRecordingDurationRotation: {ex.Message}", DisplayMsgBox)
+        Finally
+            _rotationInProgress = False
+        End Try
     End Sub
     Private Async Sub StartRecordingMonitorTask()
         ' Dispose of any previous CTS and create a new one.

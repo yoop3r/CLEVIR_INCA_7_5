@@ -119,9 +119,9 @@ Sync Quality: Excellent
 ```
 
 **Look for:**
-- **Offset from Master**: Should be < 1 µs (microsecond)
-- **Mean Path Delay**: Should be < 100 µs
-- **Offset Std Dev**: Should be < 10 µs
+- **Offset from Master**: Should be < 1 ?s (microsecond)
+- **Mean Path Delay**: Should be < 100 ?s
+- **Offset Std Dev**: Should be < 10 ?s
 
 ---
 
@@ -163,7 +163,7 @@ Dim oxtsTime = OxtsNcomInterface.GetSynchronizedTimestamp()
 Dim lidarTime = ' Extract from LiDAR point cloud timestamp
 Dim offset = (oxtsTime - lidarTime).TotalMicroseconds
 
-Console.WriteLine($"Time Offset: {offset:F2} µs")
+Console.WriteLine($"Time Offset: {offset:F2} ?s")
 ```
 
 **Target Performance:**
@@ -285,8 +285,8 @@ Sync Quality: 100%
 ```
 PTP Status: ? LOCKED (Slave)
 Master IP: 10.5.55.200
-Time Offset: 0.23 µs
-Mean Path Delay: 45 µs
+Time Offset: 0.23 ?s
+Mean Path Delay: 45 ?s
 Sync Quality: Excellent
 ```
 
@@ -312,11 +312,118 @@ Offset:           0.223 microseconds ?
 5. **Verify spatial accuracy** matches expected RTK precision
 
 **Expected Results:**
-- Positional accuracy: ±2 cm (RTK + LiDAR accuracy)
-- Temporal accuracy: ±1 µs (PTP synchronization)
+- Positional accuracy: ?2 cm (RTK + LiDAR accuracy)
+- Temporal accuracy: ?1 ?s (PTP synchronization)
 - No drift over time
 - Stable synchronization across reboots
 
+---
+
+## PTP Profile Notes - TM2000B / Cisco C9300L Timing Chain
+
+**Final verified configuration for this switch (`FMVSS127_switch`,
+C9300L-48T-4X, IOS-XE 17.6.4)**:
+
+- **Both Hesai LiDARs: `Profile = IEEE1588`** (Default Profile). This is
+  required on this switch â€” setting a LiDAR's own profile to `802.1AS` causes
+  it to go `Frozen`, then `Free Run` after a reboot; it never (re-)acquires
+  sync through this switch.
+- **TM2000B: `Profile = IEEE1588`** (`Packet Output = IPv4 UDP`, `Delay
+  Mechanism = End to End`, `Transmission Method = Multicast`). **Do not set
+  the TM2000B to `802.1AS`.** An earlier finding claimed `802.1AS` gave the
+  tightest lock; this was **disproven** â€” see the "ES886 masquerade" incident
+  in `CISCO_PTP.md`. In `802.1AS` mode the TM2000B transmits native Layer-2
+  gPTP frames this switch's `udp-ipv4`-only PTP engine cannot receive at all,
+  so the switch silently locks to whatever else is reachable over
+  `udp-ipv4` instead â€” in this environment, the **ETAS ES886**, which
+  free-runs to master when no other master is heard. The earlier "excellent
+  lock" was the LiDARs/switch locking to the ES886, not the TM2000B.
+- The LiDAR's own profile does **not** need to match the TM2000B's profile â€”
+  the switch's boundary clock normalizes/re-originates PTP for the
+  LiDAR-facing ports regardless of the TM2000B's upstream profile (when it
+  can actually receive it).
+
+**Do not use `Configure-HesaiPTP-8021AS.ps1` against these LiDARs on this
+switch.** Use the existing `Configure-HesaiPTP.ps1` (IEEE1588) script for
+both LiDARs; only the TM2000B's own profile setting should be `802.1AS`.
+
+### Why a LiDAR set to 802.1AS cannot sync through this switch
+
+This switch's PTP transport is hard-locked to `udp-ipv4` â€” confirmed via
+`ptp transport ?`, which only offers `ipv4` as an option (no pure-L2/Ethernet
+transport exists on this platform/software combination). There is also no
+`ptp profile 802.1as` global command; the closest related feature,
+`ptp dot1as extend property <WORD>`, requires a specific property name that
+was not identified via CLI help and was **not applied** to the live switch to
+avoid risking an unverified change.
+
+`ptp mode boundary` terminates and re-originates PTP messages on every port
+in the switch's own profile (Default Profile / IEEE 1588-2008 over
+`udp-ipv4`), regardless of what is attached on either side. A LiDAR
+configured for IEEE1588 accepts this normalized traffic without issue â€” this
+is why LiDAR=IEEE1588 locks regardless of the TM2000B's profile. A LiDAR
+configured for genuine 802.1AS expects raw L2 Ethernet gPTP frames (multicast
+MAC `01:80:C2:00:00:0E`, ethertype `0x88F7`, no IP/UDP header) â€” traffic this
+switch's boundary clock cannot produce, since it has no native L2/802.1AS
+transport. This is why a LiDAR set to 802.1AS goes Frozen then Free Run: it
+never receives anything it recognizes as valid 802.1AS traffic.
+
+Achieving genuine end-to-end 802.1AS (a LiDAR itself reporting locked under
+the 802.1AS profile) would require either a switch with true L2-native gPTP
+boundary/transparent clock support, or removing this switch from the timing
+path entirely for that LiDAR â€” both larger changes, out of scope unless
+specifically required later.
+
+### Switch-side prerequisites (recap; see `CISCO_PTP.md` for full detail)
+
+1. Confirm the correct physical interface names first via `show switch` and
+   `show interfaces status | include LIDAR|TIMEMACHINE` â€” do not assume
+   interface numbering matches device port labels (a phantom stack-member-1
+   interface can silently accept config with zero real effect on this
+   platform).
+2. Apply `ptp enable` to each real LiDAR port and the TM2000B-facing port;
+   verify with `show ptp port <interface>` (this command does not show up
+   via `show run interface`).
+3. Confirm PTP domain number matches across LiDAR, switch, and TM2000B
+   (CLEVIR default: `0`).
+
+### Expected Output (final working configuration)
+
+```
+PTP Status: Locked
+PTP Profile: IEEE 1588-2008
+Master IP/Identity: TM2000B grandmaster clock identity (via switch boundary clock)
+Sync Status: Synchronized
+Time Offset: single-digit nanoseconds when TM2000B Profile = 802.1AS
+			 (looser, double/triple-digit ns, when TM2000B Profile = IEEE1588)
+```
+
+### If a LiDAR shows "Frozen" or "Free Run"
+
+- First confirm `ptp enable` is actually applied to the correct, real
+  physical interface â€” verify via `show switch` and `show interfaces status`
+  before assuming a profile issue.
+- Confirm the LiDAR's own `Profile` is set to `IEEE1588`, not `802.1AS` â€” on
+  this switch, `802.1AS` on the LiDAR itself will not sync.
+- Re-check `show ptp clock` / `show ptp port <interface>` on the C9300L for
+  port state (`MASTER`/`SLAVE`/`FAULTY`) and `show ptp parent` for the
+  grandmaster identity (should match the TM2000B, not the switch's own
+  identity).
+- If the grandmaster identity is already correct (TM2000B, `Steps Removed:
+  1`+) but the LiDARs are still Free Run, check the global delay mechanism:
+  `show ptp port <interface>` â†’ `Delay Mechanism` must be `End to End`
+  (`ptp mode boundary delay-req`), not `Peer to Peer` (`pdelay-req`). This has
+  been observed to drift on its own and causes the TM2000B-facing port to
+  hang at `Port state: UNCALIBRATED` with `Peer mean path delay(ns): 0`. Fix
+  with `no ptp mode` then `ptp mode boundary delay-req` (delay mechanism
+  cannot be changed while `ptp mode` is already configured).
+- Always run `copy running-config startup-config` after any working PTP fix
+  â€” an unsaved config fully reverts on the next switch reboot/power-cycle,
+  which has caused both `ptp enable` loss and delay-mechanism drift to recur
+  in this environment. See `CISCO_PTP.md` "Incident" section for the full
+  writeup.
+
+---
 ---
 
 ## ?? Reference Documents
