@@ -181,11 +181,11 @@ Public NotInheritable Class OxtsNcomInterface
     ''' </summary>
     Public Sub OxtsStartListening()
         SyncLock _syncRoot
-            If _isRunning Then
+            If Volatile.Read(_isRunning) Then
                 HandleUserMessageLogging("GMRC", $"⚠️ OXTS listener already running on instance {Me.GetHashCode()} - ignoring duplicate start")
                 Return
             End If
-            _isRunning = True
+            Volatile.Write(_isRunning, True)
             HandleUserMessageLogging("GMRC", $"🔧 OXTS: Starting listener on instance {Me.GetHashCode()}")
         End SyncLock
 
@@ -207,14 +207,14 @@ Public NotInheritable Class OxtsNcomInterface
             _listenerThread.Start()
 
         Catch ex As SocketException
-            _isRunning = False
+            Volatile.Write(_isRunning, False)
             HandleUserMessageLogging("GMRC",
                                      $"❌ Socket error binding to port {NcomPort}: {ex.Message} (Error: {ex.ErrorCode}){Environment.NewLine}" &
                                      $"💡 Port may be in use by another process.",
                                      DisplayMsgBox)
 
         Catch ex As Exception
-            _isRunning = False
+            Volatile.Write(_isRunning, False)
             HandleUserMessageLogging("GMRC", $"Failed to start NCOM listener: {ex.Message}")
         End Try
     End Sub
@@ -249,16 +249,42 @@ Public NotInheritable Class OxtsNcomInterface
     End Function
 
     Public Sub OxtsStopListening()
-        _isRunning = False
+        ' Signal the loop to exit BEFORE touching the socket so the listener sees the
+        ' stop request rather than an exception from a closed/null client.
+        Volatile.Write(_isRunning, False)
 
-        If _udpClient IsNot Nothing Then
-            _udpClient.Close()
+        Dim threadToJoin As Thread
+        Dim clientToClose As UdpClient
+
+        SyncLock _syncRoot
+            clientToClose = _udpClient
+            threadToJoin = _listenerThread
+        End SyncLock
+
+        ' Closing the socket unblocks a pending Receive. The field is NOT cleared here -
+        ' ListenLoop captured its own reference, and nulling it mid-loop caused a
+        ' NullReferenceException on the listener thread during shutdown.
+        If clientToClose IsNot Nothing Then
+            Try
+                clientToClose.Close()
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", $"OXTS: Error closing UDP client: {ex.Message}")
+            End Try
+        End If
+
+        ' Never join from the listener thread itself - that would deadlock for the full timeout.
+        If threadToJoin IsNot Nothing AndAlso threadToJoin.IsAlive AndAlso
+           threadToJoin.ManagedThreadId <> Thread.CurrentThread.ManagedThreadId Then
+            If Not threadToJoin.Join(2000) Then
+                HandleUserMessageLogging("GMRC", "OXTS: Listener thread did not exit within 2000ms")
+            End If
+        End If
+
+        ' Safe to clear only after the listener has stopped.
+        SyncLock _syncRoot
             _udpClient = Nothing
-        End If
-
-        If _listenerThread IsNot Nothing AndAlso _listenerThread.IsAlive Then
-            _listenerThread.Join(2000)
-        End If
+            _listenerThread = Nothing
+        End SyncLock
 
         HandleUserMessageLogging("GMRC", "OXTS NCOM listener stopped")
     End Sub
@@ -274,6 +300,18 @@ Public NotInheritable Class OxtsNcomInterface
         Dim remoteEndPoint As New IPEndPoint(IPAddress.Any, 0)
         Static lastStatsLogTime As DateTime = DateTime.MinValue
 
+        ' Capture our own reference: OxtsStopListening closes the socket during shutdown,
+        ' so reading the shared field on every iteration risks a null/torn read.
+        Dim client As UdpClient
+        SyncLock _syncRoot
+            client = _udpClient
+        End SyncLock
+
+        If client Is Nothing Then
+            HandleUserMessageLogging("GMRC", "OXTS: Listener started with no UDP client - exiting")
+            Return
+        End If
+
         ' ✅ NEW: Connection health tracking
         Dim connectionEstablished As Boolean = False
         Dim lastPacketReceived As DateTime = DateTime.UtcNow
@@ -282,13 +320,13 @@ Public NotInheritable Class OxtsNcomInterface
 
         HandleUserMessageLogging("GMRC", $"OXTS: Waiting {InitialConnectionTimeout}ms for initial packet...")
 
-        While _isRunning
+        While Volatile.Read(_isRunning)
             Try
                 ' ✅ Check for graceful shutdown request
-                If Not _isRunning Then Exit While
+                If Not Volatile.Read(_isRunning) Then Exit While
 
-                If _udpClient.Available > 0 Then
-                    Dim ncomData As Byte() = _udpClient.Receive(remoteEndPoint)
+                If client.Available > 0 Then
+                    Dim ncomData As Byte() = client.Receive(remoteEndPoint)
                     LastPacketTime = DateTime.UtcNow
                     lastPacketReceived = DateTime.UtcNow
 
@@ -376,7 +414,7 @@ Public NotInheritable Class OxtsNcomInterface
                                 HandleUserMessageLogging("GMRC",
                                                          $"⚠️ OXTS: Connection lost (no packets for {OngoingConnectionTimeout}ms). Stopping listener.")
                             End If
-                            _isRunning = False
+                            Volatile.Write(_isRunning, False)
                             Exit While
                         End If
                     End If
@@ -384,12 +422,19 @@ Public NotInheritable Class OxtsNcomInterface
 
                 ' ✅ Break sleep into 100ms chunks for faster shutdown response
                 For i As Integer = 0 To 10 Step 1
-                    If Not _isRunning Then Exit While
+                    If Not Volatile.Read(_isRunning) Then Exit While
                     Thread.Sleep(10)
                 Next
 
+            Catch ex As ObjectDisposedException
+                ' Expected: OxtsStopListening closed the socket out from under us.
+                If Volatile.Read(_isRunning) Then
+                    HandleUserMessageLogging("GMRC", $"❌ OXTS socket disposed unexpectedly: {ex.Message}")
+                End If
+                Exit While
+
             Catch ex As SocketException
-                If _isRunning Then
+                If Volatile.Read(_isRunning) Then
                     HandleUserMessageLogging("GMRC", $"❌ OXTS socket error: {ex.Message}")
                 End If
                 Exit While
@@ -657,7 +702,7 @@ Public NotInheritable Class OxtsNcomInterface
 
     Public Sub TestOxtsIntegration()
         HandleUserMessageLogging("GMRC", "=== OXTS Integration Test ===")
-        HandleUserMessageLogging("GMRC", $"Listening: {_isRunning}")
+        HandleUserMessageLogging("GMRC", $"Listening: {Volatile.Read(_isRunning)}")
 
         SyncLock _stats
             HandleUserMessageLogging("GMRC", $"Packets: {_stats.GetSummary()}")
