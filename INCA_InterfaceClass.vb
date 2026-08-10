@@ -65,6 +65,11 @@ Public Class INCA_InterfaceClass
     Private _Recording As Boolean
     Private _MeasurementStarted As Boolean
     Private _StopRecordingRequested As Boolean
+    ' Set while StopAndStartRecordingAsync is mid-flight. Because that method is now
+    ' asynchronous, MyBackgroundTasks keeps polling INCA during the rotation and would
+    ' otherwise mistake the transient stop/start for a manual INCA button press.
+    ' Written/read from both the UI thread and background loop, hence Volatile.
+    Private _SequenceRotationInProgress As Boolean
     Private _Devices() As IGM_INCA_Comm.INCADeviceStatus
     Private _DeviceAcquisitionRates(,) As String
     Private _MeasureElementNamesInDevice(,) As String
@@ -122,6 +127,17 @@ Public Class INCA_InterfaceClass
         Set(ByVal value As Boolean)
             _Recording = value
         End Set
+    End Property
+
+    ''' <summary>
+    ''' True while a record-duration sequence rotation (stop followed by start) is in
+    ''' progress. Callers polling INCA state must not treat state changes during this
+    ''' window as user-initiated INCA button presses.
+    ''' </summary>
+    Public ReadOnly Property SequenceRotationInProgress() As Boolean
+        Get
+            Return Volatile.Read(_SequenceRotationInProgress)
+        End Get
     End Property
 
     Property MeasurementStarted() As Boolean
@@ -286,8 +302,9 @@ Public Class INCA_InterfaceClass
             InSession = True
         End If
 
-        ' Move blocking INCA call to background thread
-        Await Task.Run(Sub() MyIncaInterface.StartMeasurement())
+        ' STA COM: StartMeasurement must run on the UI thread that created
+        ' MyGmIncaComm. See the note in StartRecordingAsync.
+        MyIncaInterface.StartMeasurement()
 
         Dim measurementButton = TryCast(sender, Button)
         If measurementButton IsNot Nothing Then
@@ -1201,14 +1218,20 @@ Public Class INCA_InterfaceClass
     End Function
     ' ===================================================================
     ' Modified StartRecording() method
-    ' ✅ REFACTORED: Async — blocking INCA/GPS calls run off the UI thread
+    ' ✅ REFACTORED: Async — the long settle delay no longer blocks the UI thread
     ' ===================================================================
     Private Async Function StartRecordingAsync() As Task
         'Sends the Start Record command to INCA
 
         HandleUserMessageLogging("GMRC", "StartRecording: Start Recording Requested...")
 
-        _Recording = Await Task.Run(Function() MyGmIncaComm.StartRecording())
+        ' NOTE: MyGmIncaComm is an STA COM object (GM_INCA_CommClass, created on the
+        ' STAThread UI thread in InitForm.InitializeIncaInterface). It must be called
+        ' from that same thread. Marshalling this onto a thread-pool thread via
+        ' Task.Run causes the call to be proxied/serviced unreliably: INCA itself
+        ' starts recording, but the return value comes back False, leaving _Recording
+        ' False so the UI never updates and LiDAR capture never starts.
+        _Recording = MyGmIncaComm.StartRecording()
 
         If _Recording Then
             ' ================================================================
@@ -1711,11 +1734,11 @@ Public Class INCA_InterfaceClass
                 Dim collision As Boolean = False
 
                 If Directory.Exists(sessionFolderFullPath) Then
-                        Dim files() As String = Directory.GetFiles(sessionFolderFullPath, recordingBaseName & "*.mf4")
-                        If files IsNot Nothing AndAlso files.Length > 0 Then
-                            collision = True
-                        End If
+                    Dim files() As String = Directory.GetFiles(sessionFolderFullPath, recordingBaseName & "*.mf4")
+                    If files IsNot Nothing AndAlso files.Length > 0 Then
+                        collision = True
                     End If
+                End If
 
                 If Not collision Then Exit Do
 
@@ -1758,6 +1781,23 @@ Public Class INCA_InterfaceClass
                             GmResidentClient.Label4.Text = "Invalid Record Filename, Exiting..."
                             HandleUserMessageLogging("GMRC", response, DisplayMsgBox)
                             GmResidentClient.ExitApp("Complete")
+                        Case DataPathUnavailableToken
+                            ' Recoverable: the drive was unplugged or the share went offline.
+                            ' Let the operator fix it at the console and retry rather than
+                            ' forcing a full restart (re-login, re-init INCA, cameras, LiDAR).
+                            Dim retryResult = MsgBox(
+                                LastDataPathErrorMessage & vbCrLf & vbCrLf &
+                                "Reconnect the drive, then click Retry." & vbCrLf & vbCrLf &
+                                "Note: if you changed config.xml, CLEVIR must be restarted for that to take effect.",
+                                vbRetryCancel Or MsgBoxStyle.Exclamation,
+                                "CLEVIR - Data Path Unavailable")
+
+                            If retryResult = vbCancel Then
+                                HandleUserMessageLogging("GMRC", "User cancelled at unavailable data path. Exiting...")
+                                GmResidentClient.ExitApp("Complete")
+                            Else
+                                HandleUserMessageLogging("GMRC", "User retrying after data path unavailable...")
+                            End If
                         Case Else
                             HandleUserMessageLogging("GMRC", "SetupDataLogging ERROR: " & response, DisplayMsgBox)
                             GmResidentClient.ExitApp("Complete")
@@ -2037,6 +2077,7 @@ Public Class INCA_InterfaceClass
         Const RetryDelayMs As Integer = 1000
 
         Try
+            Volatile.Write(_SequenceRotationInProgress, True)
             HandleUserMessageLogging("GMRC", "StopAndStartRecording: Beginning sequence change...")
 
             ' Verify we're in a valid state before proceeding
@@ -2086,33 +2127,33 @@ Public Class INCA_InterfaceClass
                         If ZipTheMF4Files Then
                             ' ✅ ASYNC FIX: Don't block on compression (intentional fire-and-forget)
                             Dim compressionTask As Task = Task.Run(Sub()
-                                         Try
-                                             Dim compressionStopwatch As New Stopwatch()
-                                             compressionStopwatch.Start()
+                                                                       Try
+                                                                           Dim compressionStopwatch As New Stopwatch()
+                                                                           compressionStopwatch.Start()
 
-                                             Dim compressedCount = CompressFilesWithLockDetection(
-                                        FinalPathToSaveData,
-                                        maxRetries:=5,
-                                        retryDelaySeconds:=10,
-                                        deleteOriginal:=False
-                                        )
+                                                                           Dim compressedCount = CompressFilesWithLockDetection(
+                                                                      FinalPathToSaveData,
+                                                                      maxRetries:=5,
+                                                                      retryDelaySeconds:=10,
+                                                                      deleteOriginal:=False
+                                                                      )
 
-                                             compressionStopwatch.Stop()
+                                                                           compressionStopwatch.Stop()
 
-                                             HandleUserMessageLogging("GMRC",
-                                                             $"✅ Background compression: {compressedCount} files in {compressionStopwatch.ElapsedMilliseconds}ms")
+                                                                           HandleUserMessageLogging("GMRC",
+                                                                                           $"✅ Background compression: {compressedCount} files in {compressionStopwatch.ElapsedMilliseconds}ms")
 
-                                             ' Only warn if compression is taking excessive time
-                                             If compressionStopwatch.ElapsedMilliseconds > 30000 Then
-                                                 HandleUserMessageLogging("GMRC",
-                                                                 "⚠️ Compression took >30 seconds - disk may be slow")
-                                             End If
+                                                                           ' Only warn if compression is taking excessive time
+                                                                           If compressionStopwatch.ElapsedMilliseconds > 30000 Then
+                                                                               HandleUserMessageLogging("GMRC",
+                                                                                               "⚠️ Compression took >30 seconds - disk may be slow")
+                                                                           End If
 
-                                         Catch ex As Exception
-                                             HandleUserMessageLogging("GMRC",
-                                                             $"❌ Background compression failed - {ex.Message}")
-                                         End Try
-                                     End Sub)
+                                                                       Catch ex As Exception
+                                                                           HandleUserMessageLogging("GMRC",
+                                                                                           $"❌ Background compression failed - {ex.Message}")
+                                                                       End Try
+                                                                   End Sub)
 
                             ' Don't wait - log and continue immediately
                             HandleUserMessageLogging("GMRC",
@@ -2231,6 +2272,10 @@ Public Class INCA_InterfaceClass
                 HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Emergency recovery also failed: {recoveryEx.Message}", DisplayMsgBox)
             End Try
         End If
+
+        ' Cleared only after every stop/start/recovery path has settled, so the background
+        ' watchdog never observes the intermediate state.
+        Volatile.Write(_SequenceRotationInProgress, False)
     End Function
 
     ' This subroutine starts the measurement process in INCA.
