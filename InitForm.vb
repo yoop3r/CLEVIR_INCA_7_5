@@ -700,6 +700,16 @@ Public Class InitForm
 
                 If Not cfgOk Then
                     splash.Hide()  ' ✅ Hide before modal dialog
+
+                    ' The user already saw a specific message and chose to abort (e.g. cancelled
+                    ' at the unavailable data-collection drive prompt). Exit quietly - offering
+                    ' the Configuration Editor here would be misleading and cannot fix it.
+                    If StartupAbortRequested Then
+                        HandleUserMessageLogging("GMRC", "Startup aborted by user. Exiting...")
+                        Close()
+                        End
+                    End If
+
                     Try
                         ' ✅ DefaultConfiguration is deprecated; offer the Configuration Editor instead.
                         Dim openEditor = MsgBox(

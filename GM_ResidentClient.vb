@@ -2935,9 +2935,57 @@ Public Class GmResidentClient
 
             ' Base data collection path validation
             BaseDataCollectionPath = ReadStringConfig(root, "BaseDataCollectionPath", My.Application.Info.DirectoryPath)
-            If BaseDataCollectionPath.Contains(" ") Then
-                HandleUserMessageLogging("GMRC", "BaseDataCollectionPath cannot contain spaces. Exiting...", DisplayMsgBox)
-                Return False
+
+            ' Fail fast: verify the drive is present, the folder exists (create it if the
+            ' drive is ready) and that we can actually write there. Catching this now avoids
+            ' the user discovering a dead drive only after INCA/cameras/LiDAR are fully loaded.
+            '
+            ' A transient failure (drive unplugged) is NOT a malformed-config problem, so it
+            ' loops here with Retry/Cancel rather than returning False - returning False makes
+            ' the caller offer the Configuration Editor, which is both misleading and unable
+            ' to fix a disconnected drive.
+            Dim dataPathStatus As DataPathStatus
+
+            Do
+                dataPathStatus = ValidateDataCollectionPath(BaseDataCollectionPath,
+                                                            createIfMissing:=True,
+                                                            testWritable:=True)
+
+                If dataPathStatus.IsValid Then Exit Do
+
+                HandleUserMessageLogging("GMRC", dataPathStatus.Message)
+
+                If Not dataPathStatus.IsRecoverable Then
+                    ' Genuine configuration error (empty, spaces, not rooted, not writable).
+                    ' Returning False is correct here - the Configuration Editor CAN fix it.
+                    Return False
+                End If
+
+                ' MsgBoxSetForeground: this runs on the background thread started by
+                ' InitForm's Task.Run(ReadConfigFile) while the topmost splash screen is
+                ' still up - without it the prompt can appear behind the splash and look
+                ' like a hang.
+                Dim retryChoice = MsgBox(
+                    dataPathStatus.Message & vbCrLf & vbCrLf &
+                    "Click Retry once the drive is connected." & vbCrLf & vbCrLf &
+                    "Note: if you edit config.xml instead, CLEVIR must be restarted for the change to take effect.",
+                    MsgBoxStyle.RetryCancel Or MsgBoxStyle.Exclamation Or MsgBoxStyle.MsgBoxSetForeground,
+                    "CLEVIR - Data Collection Drive Unavailable")
+
+                If retryChoice = MsgBoxResult.Cancel Then
+                    HandleUserMessageLogging("GMRC", "User cancelled at unavailable data collection drive. Exiting...")
+                    StartupAbortRequested = True
+                    Return False
+                End If
+
+                HandleUserMessageLogging("GMRC", "Retrying data collection path validation...")
+            Loop
+
+            HandleUserMessageLogging("GMRC",
+                $"BaseDataCollectionPath validated: {BaseDataCollectionPath} - {dataPathStatus.SpaceSummary}")
+
+            If dataPathStatus.Severity <> DataPathSeverity.Ok Then
+                HandleUserMessageLogging("GMRC", dataPathStatus.Message)
             End If
 
             ' Network drive configuration
@@ -7071,7 +7119,16 @@ Public Class GmResidentClient
             ' ==================================================================
             ' SECTION 2: **OPTIMIZED FILENAME CACHING WITH SEQUENCE NUMBER**
             ' ==================================================================
-            If OnVehicleScreen.Label5.Visible = True Then
+            ' Skipped while a sequence rotation is in flight. StopAndStartRecordingAsync
+            ' awaits between the stop and the start, so this loop keeps running during
+            ' the window where INCA has closed sequence N but not yet opened N+1.
+            ' GetActualRecordingTimeMs/GetCurrentRecordingInfo are unreliable in that
+            ' window, and caching a wrong value here would mis-stamp the sequence number
+            ' written into LiDAR/OXTS event markers - a silent, post-process-only
+            ' failure. StartRecordingAsync repopulates the cache authoritatively once
+            ' the rotation completes.
+            If OnVehicleScreen.Label5.Visible = True AndAlso
+               Not (MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.SequenceRotationInProgress) Then
                 Dim shouldUpdateFilename As Boolean = False
 
                 ' ──────────────────────────────────────────────────────────────

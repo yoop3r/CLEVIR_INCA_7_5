@@ -4383,6 +4383,29 @@ Implements IGM_INCA_Comm.InitINCA
             Dim sessionFolder As String = DateTime.Now.ToString("yyyyMMdd_HHmmss") & "_" & LoginIDStr
             Dim recordingBaseName As String = sessionFolder & "_" & VehicleNumber
 
+            ' Pre-flight: the config can be edited after login and removable drives can drop
+            ' between login and record, so re-validate before committing to a session.
+            Dim dataPathStatus = ValidateDataCollectionPath(BaseDataCollectionPath,
+                                                            createIfMissing:=True,
+                                                            testWritable:=True)
+            If Not dataPathStatus.IsValid Then
+                ActiveIncaApiCall = String.Empty
+                HandleUserMessageLogging("COMM", $"SetupDataLogging: ❌ {dataPathStatus.Message}")
+
+                ' Transient failures (drive unplugged / share offline) return a distinct
+                ' token so the caller can offer retry instead of exiting the application.
+                If dataPathStatus.IsRecoverable Then
+                    LastDataPathErrorMessage = dataPathStatus.Message
+                    Return DataPathUnavailableToken
+                End If
+
+                Return "GM_INCA_CommClass.SetupDataLogging: " & dataPathStatus.Message
+            End If
+
+            If dataPathStatus.Severity = DataPathSeverity.Critical Then
+                HandleUserMessageLogging("COMM", $"SetupDataLogging: ⚠️ {dataPathStatus.Message}")
+            End If
+
             ' Determine and create base data directories
             Dim sessionFolderPath As String = Path.Combine(BaseDataCollectionPath, "Data")
             Dim vehicleSubfolderPath As String = Path.Combine(sessionFolderPath, "gmcsv" & VehicleNumber)

@@ -472,6 +472,20 @@ Public Class LoginForm
         rows.Add(New KeyValuePair(Of String, String)("Data Collection Path:",
                  If(String.IsNullOrWhiteSpace(BaseDataCollectionPath), "(not set)", BaseDataCollectionPath)))
 
+        ' Disk Space (colour-coded below)
+        Dim diskStatus = ValidateDataCollectionPath(BaseDataCollectionPath)
+        Dim diskRowIndex As Integer = rows.Count
+        Dim diskText As String
+        If Not diskStatus.IsValid Then
+            diskText = "UNAVAILABLE - " & diskStatus.Message
+        Else
+            diskText = diskStatus.SpaceSummary
+            If diskStatus.Severity <> DataPathSeverity.Ok Then
+                diskText &= "  ⚠ " & diskStatus.Message
+            End If
+        End If
+        rows.Add(New KeyValuePair(Of String, String)("Disk Space:", diskText))
+
         ' Compression
         Dim compTypes As New List(Of String)()
         If CompressMF4 Then compTypes.Add("MF4")
@@ -539,6 +553,23 @@ Public Class LoginForm
                 .Anchor = AnchorStyles.Left Or AnchorStyles.Top,
                 .Margin = New Padding(0, 2, 0, 1)
             }
+
+            ' Colour-code the disk space row by severity
+            If i = diskRowIndex Then
+                Select Case diskStatus.Severity
+                    Case DataPathSeverity.Invalid
+                        valLbl.ForeColor = System.Drawing.Color.Firebrick
+                        valLbl.Font = New System.Drawing.Font(rowFont, System.Drawing.FontStyle.Bold)
+                    Case DataPathSeverity.Critical
+                        valLbl.ForeColor = System.Drawing.Color.Firebrick
+                        valLbl.Font = New System.Drawing.Font(rowFont, System.Drawing.FontStyle.Bold)
+                    Case DataPathSeverity.Low
+                        valLbl.ForeColor = System.Drawing.Color.DarkOrange
+                    Case Else
+                        valLbl.ForeColor = System.Drawing.Color.ForestGreen
+                End Select
+            End If
+
             tlp.Controls.Add(keyLbl, 0, i)
             tlp.Controls.Add(valLbl, 1, i)
         Next

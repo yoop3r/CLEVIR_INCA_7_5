@@ -827,6 +827,240 @@ Public Module Module1
         End Try
     End Function
 
+    ' ════════════════════════════════════════════════════════════════════
+    ' DATA COLLECTION PATH VALIDATION
+    ' Single implementation used at three severities:
+    '   1. ReadConfiguration  - hard fail at startup (drive missing/not writable)
+    '   2. LoginForm          - display free space + colour-coded warning
+    '   3. SetupDataLogging   - pre-flight re-check before recording starts
+    ' ════════════════════════════════════════════════════════════════════
+
+    ''' <summary>
+    ''' Warn when free space drops below this percentage of total drive capacity.
+    ''' </summary>
+    Public Const DataPathWarnFreePercent As Double = 15.0
+
+    ''' <summary>
+    ''' Warn when free space drops below this absolute floor, regardless of percentage.
+    ''' Percentage alone is misleading on very large or very small drives.
+    ''' </summary>
+    Public Const DataPathWarnFreeGB As Double = 20.0
+
+    ''' <summary>
+    ''' Below this absolute floor the drive is considered critical - a recording
+    ''' session (MF4 + PCAP + camera + LiDAR) is likely to fill the disk mid-test.
+    ''' </summary>
+    Public Const DataPathCriticalFreeGB As Double = 5.0
+
+    Public Enum DataPathSeverity
+        Ok = 0
+        Low = 1
+        Critical = 2
+        Invalid = 3
+    End Enum
+
+    ''' <summary>
+    ''' Sentinel returned by GM_INCA_CommClass.SetupDataLogging when the data path is
+    ''' temporarily unavailable, signalling the caller to offer retry rather than exit.
+    ''' </summary>
+    Public Const DataPathUnavailableToken As String = "Data Path Unavailable"
+
+    ''' <summary>
+    ''' Detail text accompanying the most recent DataPathUnavailableToken result.
+    ''' </summary>
+    Public LastDataPathErrorMessage As String = String.Empty
+
+    ''' <summary>
+    ''' Set when startup fails for a reason the user has already been told about and has
+    ''' explicitly chosen to abort (e.g. cancelled at the "drive unavailable" prompt).
+    ''' Distinguishes a deliberate abort from a malformed config.xml, so callers can exit
+    ''' quietly instead of offering the Configuration Editor.
+    ''' </summary>
+    Public StartupAbortRequested As Boolean = False
+
+    ''' <summary>
+    ''' Result of validating the base data collection path.
+    ''' </summary>
+    Public Class DataPathStatus
+        Public Property IsValid As Boolean
+        Public Property IsWritable As Boolean
+        Public Property Severity As DataPathSeverity
+        Public Property FreeBytes As Long
+        Public Property TotalBytes As Long
+        Public Property DriveName As String
+        Public Property Message As String
+
+        ''' <summary>
+        ''' True when the failure is transient and the operator can fix it at the console
+        ''' (drive unplugged / share offline). False for config errors that need a
+        ''' config.xml edit and a restart.
+        ''' </summary>
+        Public Property IsRecoverable As Boolean
+
+        Public ReadOnly Property FreeGB As Double
+            Get
+                Return FreeBytes / (1024.0 ^ 3)
+            End Get
+        End Property
+
+        Public ReadOnly Property TotalGB As Double
+            Get
+                Return TotalBytes / (1024.0 ^ 3)
+            End Get
+        End Property
+
+        Public ReadOnly Property FreePercent As Double
+            Get
+                If TotalBytes <= 0 Then Return 0
+                Return (FreeBytes / CDbl(TotalBytes)) * 100.0
+            End Get
+        End Property
+
+        ''' <summary>
+        ''' Short summary suitable for a UI row, e.g. "142.6 GB free of 931.5 GB (15.3%)".
+        ''' </summary>
+        Public ReadOnly Property SpaceSummary As String
+            Get
+                If Not IsValid OrElse TotalBytes <= 0 Then Return "(unavailable)"
+                Return $"{FreeGB:F1} GB free of {TotalGB:F1} GB ({FreePercent:F1}%)"
+            End Get
+        End Property
+    End Class
+
+    ''' <summary>
+    ''' Validates the base data collection path: drive readiness, folder existence,
+    ''' write permission and free space. Does not display any UI - callers decide
+    ''' how to react based on the returned severity.
+    ''' </summary>
+    ''' <param name="targetPath">Path to validate (normally BaseDataCollectionPath)</param>
+    ''' <param name="createIfMissing">Create the directory if the drive is ready but the folder is absent</param>
+    ''' <param name="testWritable">Probe write access with a temporary file</param>
+    Public Function ValidateDataCollectionPath(targetPath As String,
+                                               Optional createIfMissing As Boolean = False,
+                                               Optional testWritable As Boolean = False) As DataPathStatus
+
+        Dim status As New DataPathStatus With {
+            .IsValid = False,
+            .IsWritable = False,
+            .Severity = DataPathSeverity.Invalid,
+            .DriveName = String.Empty,
+            .Message = String.Empty
+        }
+
+        Try
+            If String.IsNullOrWhiteSpace(targetPath) Then
+                status.Message = "BaseDataCollectionPath is not set in config.xml."
+                Return status
+            End If
+
+            If targetPath.Contains(" ") Then
+                status.Message = $"BaseDataCollectionPath ({targetPath}) cannot contain spaces."
+                Return status
+            End If
+
+            Dim pathRoot As String = Path.GetPathRoot(targetPath)
+            If String.IsNullOrWhiteSpace(pathRoot) Then
+                status.Message = $"BaseDataCollectionPath ({targetPath}) is not a rooted path. " &
+                                 "Use a full path such as E:\HB."
+                Return status
+            End If
+
+            status.DriveName = pathRoot
+
+            ' UNC paths have no DriveInfo - probe existence with a timeout so a dead
+            ' share does not stall startup for ~20 seconds.
+            If pathRoot.StartsWith("\\", StringComparison.Ordinal) Then
+                Dim probe = Task.Run(Function() Directory.Exists(targetPath))
+                If Task.WhenAny(probe, Task.Delay(3000)).Result IsNot probe Then
+                    status.IsRecoverable = True
+                    status.Message = $"Network share {pathRoot} did not respond within 3 seconds."
+                    Return status
+                End If
+
+                If Not probe.Result Then
+                    If Not createIfMissing Then
+                        status.IsRecoverable = True
+                        status.Message = $"BaseDataCollectionPath ({targetPath}) was not found on {pathRoot}."
+                        Return status
+                    End If
+                    Directory.CreateDirectory(targetPath)
+                End If
+
+                status.IsValid = True
+                status.Severity = DataPathSeverity.Ok
+            Else
+                Dim drive As New DriveInfo(pathRoot)
+
+                If Not drive.IsReady Then
+                    status.IsRecoverable = True
+                    status.Message = $"Drive {pathRoot} is not available." & vbCrLf &
+                                     $"Please connect the drive, or correct <BaseDataCollectionPath> " &
+                                     $"in config.xml (currently {targetPath})."
+                    Return status
+                End If
+
+                If Not Directory.Exists(targetPath) Then
+                    If Not createIfMissing Then
+                        status.IsRecoverable = True
+                        status.Message = $"BaseDataCollectionPath ({targetPath}) does not exist on drive {pathRoot}."
+                        Return status
+                    End If
+                    Directory.CreateDirectory(targetPath)
+                    HandleUserMessageLogging("GMRC", $"ValidateDataCollectionPath: Created {targetPath}")
+                End If
+
+                status.IsValid = True
+                status.FreeBytes = drive.AvailableFreeSpace
+                status.TotalBytes = drive.TotalSize
+            End If
+
+            ' Write permission probe - a drive can be present but read-only, which
+            ' passes every existence check and still fails at record time.
+            If testWritable Then
+                Try
+                    Dim probeFile As String = Path.Combine(targetPath, $".clevir_write_{Guid.NewGuid():N}.tmp")
+                    File.WriteAllText(probeFile, "clevir")
+                    File.Delete(probeFile)
+                    status.IsWritable = True
+                Catch ex As Exception
+                    status.IsValid = False
+                    status.Severity = DataPathSeverity.Invalid
+                    status.Message = $"BaseDataCollectionPath ({targetPath}) is not writable: {ex.Message}"
+                    Return status
+                End Try
+            Else
+                status.IsWritable = True
+            End If
+
+            ' Severity from free space (percentage OR absolute floor)
+            If status.TotalBytes > 0 Then
+                If status.FreeGB < DataPathCriticalFreeGB Then
+                    status.Severity = DataPathSeverity.Critical
+                    status.Message = $"CRITICAL: only {status.FreeGB:F1} GB free on {pathRoot}. " &
+                                     "Upload and purge data before recording."
+                ElseIf status.FreePercent < DataPathWarnFreePercent OrElse status.FreeGB < DataPathWarnFreeGB Then
+                    status.Severity = DataPathSeverity.Low
+                    status.Message = $"Low disk space: {status.FreeGB:F1} GB " &
+                                     $"({status.FreePercent:F1}%) free on {pathRoot}. Consider uploading/purging data."
+                Else
+                    status.Severity = DataPathSeverity.Ok
+                    status.Message = "OK"
+                End If
+            Else
+                status.Severity = DataPathSeverity.Ok
+                status.Message = "OK"
+            End If
+
+            Return status
+
+        Catch ex As Exception
+            status.IsValid = False
+            status.Severity = DataPathSeverity.Invalid
+            status.Message = $"BaseDataCollectionPath ({targetPath}) could not be validated: {ex.Message}"
+            Return status
+        End Try
+    End Function
+
     Public Sub DeleteUnusedDirectories(ByVal DirectoryName As String)
 
         'Called prior to uploading data.  Deletes any directory under the vehicle name directory path
