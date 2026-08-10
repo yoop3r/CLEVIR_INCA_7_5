@@ -1,0 +1,402 @@
+{
+  "reportConfigHash": "63fdb4e1",
+  "createdAtUtc": "2026-07-02T14:47:14.2356263Z",
+  "entries": [
+    {
+      "packageName": "Azure.Core",
+      "packageVersion": "1.57.0",
+      "insightsName": "Azure.Core",
+      "insightsCurrentVersion": "1.57.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "Microsoft.Extensions.DependencyInjection.Abstractions",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "Microsoft.Extensions.DependencyInjection.Abstractions",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "Microsoft.Extensions.Logging.Abstractions",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "Microsoft.Extensions.Logging.Abstractions",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "Microsoft.NETCore.Platforms",
+      "packageVersion": "8.0.0-preview.7.23375.6",
+      "insightsName": "Microsoft.NETCore.Platforms",
+      "insightsCurrentVersion": "8.0.0-preview.7.23375.6",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "Microsoft.NETCore.Targets",
+      "packageVersion": "6.0.0-preview.4.21253.7",
+      "insightsName": "Microsoft.NETCore.Targets",
+      "insightsCurrentVersion": "6.0.0-preview.4.21253.7",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "NAudio",
+      "packageVersion": "2.3.0",
+      "insightsName": "NAudio",
+      "insightsCurrentVersion": "2.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "NAudio.Asio",
+      "packageVersion": "2.3.0",
+      "insightsName": "NAudio.Asio",
+      "insightsCurrentVersion": "2.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "NAudio.Core",
+      "packageVersion": "2.3.0",
+      "insightsName": "NAudio.Core",
+      "insightsCurrentVersion": "2.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "NAudio.Midi",
+      "packageVersion": "2.3.0",
+      "insightsName": "NAudio.Midi",
+      "insightsCurrentVersion": "2.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "NAudio.Wasapi",
+      "packageVersion": "2.3.0",
+      "insightsName": "NAudio.Wasapi",
+      "insightsCurrentVersion": "2.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "NAudio.WinForms",
+      "packageVersion": "2.3.0",
+      "insightsName": "NAudio.WinForms",
+      "insightsCurrentVersion": "2.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "NAudio.WinMM",
+      "packageVersion": "2.3.0",
+      "insightsName": "NAudio.WinMM",
+      "insightsCurrentVersion": "2.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "Newtonsoft.Json",
+      "packageVersion": "13.0.5-beta1",
+      "insightsName": "Newtonsoft.Json",
+      "insightsCurrentVersion": "13.0.5-beta1",
+      "insightsNewVersion": "13.0.4",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "PacketDotNet",
+      "packageVersion": "1.4.9-pre53",
+      "insightsName": "PacketDotNet",
+      "insightsCurrentVersion": "1.4.9-pre53",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "SharpPcap",
+      "packageVersion": "6.3.1",
+      "insightsName": "SharpPcap",
+      "insightsCurrentVersion": "6.3.1",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "runtime.native.System.IO.Compression",
+      "packageVersion": "4.3.2",
+      "insightsName": "runtime.native.System.IO.Compression",
+      "insightsCurrentVersion": "4.3.2",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "SharpZipLib",
+      "packageVersion": "1.4.2",
+      "insightsName": "SharpZipLib",
+      "insightsCurrentVersion": "1.4.2",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "System.Buffers",
+      "packageVersion": "4.6.1",
+      "insightsName": "System.Buffers",
+      "insightsCurrentVersion": "4.6.1",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.ClientModel",
+      "packageVersion": "1.13.0",
+      "insightsName": "System.ClientModel",
+      "insightsCurrentVersion": "1.13.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "System.Diagnostics.DiagnosticSource",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "System.Diagnostics.DiagnosticSource",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.IO.Compression",
+      "packageVersion": "4.3.0",
+      "insightsName": "System.IO.Compression",
+      "insightsCurrentVersion": "4.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.IO.Compression.ZipFile",
+      "packageVersion": "4.3.0",
+      "insightsName": "System.IO.Compression.ZipFile",
+      "insightsCurrentVersion": "4.3.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.IO.Pipelines",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "System.IO.Pipelines",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Memory",
+      "packageVersion": "4.6.3",
+      "insightsName": "System.Memory",
+      "insightsCurrentVersion": "4.6.3",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Memory.Data",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "System.Memory.Data",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Numerics.Vectors",
+      "packageVersion": "4.6.1",
+      "insightsName": "System.Numerics.Vectors",
+      "insightsCurrentVersion": "4.6.1",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Runtime.CompilerServices.Unsafe",
+      "packageVersion": "6.1.2",
+      "insightsName": "System.Runtime.CompilerServices.Unsafe",
+      "insightsCurrentVersion": "6.1.2",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "System.Security.AccessControl",
+      "packageVersion": "6.0.1",
+      "insightsName": "System.Security.AccessControl",
+      "insightsCurrentVersion": "6.0.1",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "System.Security.Principal.Windows",
+      "packageVersion": "5.0.0",
+      "insightsName": "System.Security.Principal.Windows",
+      "insightsCurrentVersion": "5.0.0",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Text.Encoding.CodePages",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "System.Text.Encoding.CodePages",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Text.Encodings.Web",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "System.Text.Encodings.Web",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Text.Json",
+      "packageVersion": "11.0.0-preview.4.26230.115",
+      "insightsName": "System.Text.Json",
+      "insightsCurrentVersion": "11.0.0-preview.4.26230.115",
+      "insightsNewVersion": "10.0.9",
+      "insightsDescription": "NuGet package upgrade is recommended",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.Threading.Tasks.Extensions",
+      "packageVersion": "4.6.3",
+      "insightsName": "System.Threading.Tasks.Extensions",
+      "insightsCurrentVersion": "4.6.3",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "System.ValueTuple",
+      "packageVersion": "4.6.2",
+      "insightsName": "System.ValueTuple",
+      "insightsCurrentVersion": "4.6.2",
+      "insightsNewVersion": "",
+      "insightsDescription": "NuGet package functionality is included with framework reference",
+      "insightsIsCompatible": true,
+      "insightsProjects": [
+        "CLEVIR_INCA_7_5.vbproj"
+      ]
+    },
+    {
+      "packageName": "WixToolset.Netfx.wixext",
+      "packageVersion": "6.0.2",
+      "insightsName": "WixToolset.Netfx.wixext",
+      "insightsCurrentVersion": "6.0.2",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    },
+    {
+      "packageName": "WixToolset.UI.wixext",
+      "packageVersion": "6.0.2",
+      "insightsName": "WixToolset.UI.wixext",
+      "insightsCurrentVersion": "6.0.2",
+      "insightsNewVersion": "",
+      "insightsDescription": "",
+      "insightsIsCompatible": true,
+      "insightsProjects": []
+    }
+  ]
+}

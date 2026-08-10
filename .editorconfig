@@ -1,0 +1,24 @@
+root = true
+
+[*]
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.vb]
+indent_style = space
+indent_size = 4
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Analyzer configuration
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# CA1063 ("Implement IDisposable Correctly") fires on WinForms Form-derived
+# classes even though they inherit a correct Dispose pattern from
+# System.Windows.Forms.Form and only override Dispose(Boolean).
+#
+# The diagnostic is reported at the CLASS DECLARATION, which for these forms lives
+# in the hand-written .vb file rather than the .designer.vb file - so a
+# [*.designer.vb] scope here would NOT suppress it. Targeted, documented
+# suppressions live in GlobalSuppressions.vb instead, which keeps CA1063 active
+# for types that genuinely implement IDisposable (OxtsNcomInterface, LidarDevice).
