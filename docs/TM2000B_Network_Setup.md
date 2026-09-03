@@ -10,17 +10,32 @@ LiDAR Health Detail form.
 ```
 PC (LiDAR NIC) --- VLAN 20 (100.64.1.0/24) --- Catalyst switch (routed, ip routing enabled)
 													  |
-												VLAN 30 (192.168.10.0/24)
-													  |
-												 TM2000B (192.168.10.20)
+												 TM2000B (100.64.1.20) -- same broadcast domain as LiDAR NIC
 
 OXTS RT, Hunter, Intrepid GigaStar --- VLAN 40 (10.5.2.0/24) --- Catalyst switch
 (isolated CAN/RTK data-extraction network, separate from LiDAR/VLAN20; ETAS consumes
  CAN/RTK data from this VLAN)
 ```
 
-- Switch SVIs: `Vlan20 = 100.64.1.177/24`, `Vlan30 = 192.168.10.254/24`, `Vlan40 = 10.5.2.1/24`
-- TM2000B: `192.168.10.20`, gateway `192.168.10.254`
+> **PLANNED MIGRATION (not yet performed as of this revision):** the TM2000B is moving from
+> its own routed `Vlan30` (`192.168.10.0/24`) onto the LiDAR NIC's `Vlan20` (`100.64.1.0/24`)
+> broadcast domain, at address `100.64.1.20`. This eliminates the routed hop (and the
+> associated persistent-route/gateway fragility that caused every TM outage documented in this
+> file's revision history) since the TM will be directly reachable on the same L2 segment as
+> the LiDAR NIC — no route, gateway, or Vlan30 SVI dependency remains once this is done. See
+> "Revision history" for the rationale and rollout checklist. **Until the physical move and
+> switch port reassignment are actually performed on-site, the `Vlan30`/`192.168.10.20`
+> configuration described elsewhere in this document remains the live, correct state — do not
+> apply `config.xml`/script changes for the new address until the switch-side move is
+> confirmed complete.**
+
+- Switch SVIs: `Vlan20 = 100.64.1.177/24`, `Vlan40 = 10.5.2.1/24`. (`Vlan30 =
+  192.168.10.254/24` is being retired as part of the TM migration above; see revision history
+  — leave the SVI configured but unused until the migration is confirmed complete and no other
+  device depends on it, then remove it.)
+- TM2000B (planned): `100.64.1.20`, gateway `100.64.1.177` (Vlan20 SVI) — no routed hop, same
+  subnet as the LiDAR NIC. (Current/live until migration: `192.168.10.20`, gateway
+  `192.168.10.254`.)
 - Vlan20 was renumbered from `100.64.20.0/24` to `100.64.1.0/24` to satisfy a hard
   requirement of the LiDAR alignment tool, which is used broadly across the organization and
   expects LiDAR 1/2 on `100.64.1.2/24` and `100.64.1.3/24`. See "Revision history" in the
@@ -111,6 +126,13 @@ confirm:
 
 
 ## Switch-side prerequisites (already configured on the shared switch; verify only)
+
+> **Note:** the steps below describe the current, live `Vlan30`-routed TM design. Once the
+> planned TM migration to `Vlan20`/`100.64.1.20` (see "Revision history") is actually performed
+> on-site, this whole section — and the "Per-PC setup" persistent-route steps that follow —
+> becomes unnecessary for the TM specifically, since there will no longer be a routed hop to
+> verify or repair. Leave this section as-is for now; it will be rewritten once the migration
+> is confirmed complete.
 
 1. `ip routing` must be enabled globally.
    ```
@@ -379,7 +401,7 @@ uniquely per machine (see step 1 of "Per-PC setup" above) rather than being a fi
 | ETAS NIC  | *(per-PC, on 192.168.40.0/24)* | 255.255.255.0  | 192.168.40.254 (Vlan10 SVI) |
 | LiDAR 1   | 100.64.1.2                    | 255.255.255.0   | 100.64.1.177 (Vlan20 SVI) |
 | LiDAR 2   | 100.64.1.3                    | 255.255.255.0   | 100.64.1.177 (Vlan20 SVI) |
-| TM2000B   | 192.168.10.20                 | 255.255.255.0   | 192.168.10.254 (Vlan30 SVI) |
+| TM2000B   | 100.64.1.20 *(planned; currently 192.168.10.20 until migration is performed)* | 255.255.255.0 | 100.64.1.177 (Vlan20 SVI) *(currently 192.168.10.254/Vlan30 SVI)* |
 | OXTS      | 10.5.2.30                     | 255.255.255.0   | 10.5.2.1 (Vlan40 SVI) — isolated private VLAN, not reachable from VLAN20 |
 
 Notes:
@@ -424,12 +446,18 @@ Notes:
   `show mac address-table vlan 20` (look up the PC's LiDAR NIC MAC address, shown by
   `Get-NetAdapter -Name "*LiDAR*"` on the PC) before adding/moving any static IGMP
   registration — port assignments can shift between test sessions if cabling changes.
-- **TM2000B**: from `config.xml` `<TimeMachineConfiguration><DeviceIp>`, reachable via VLAN 30
-  (`192.168.10.0/24`). **The Vlan30 SVI address changed from `192.168.10.1` to
-  `192.168.10.254`.** The TM2000B's own web configuration (System Settings > Gateway) must be
-  updated to `192.168.10.254` to match, or it will lose its route out once the old `.1`
-  address is removed/renumbered on the switch. Verify this on the TM before relying on
-  reachability again.
+- **TM2000B**: from `config.xml` `<TimeMachineConfiguration><DeviceIp>`. **Planned migration:**
+  moving from routed `Vlan30` (`192.168.10.0/24`) onto the LiDAR NIC's `Vlan20`
+  (`100.64.1.0/24`) broadcast domain at `100.64.1.20`, gateway `100.64.1.177` — see revision
+  history for rationale. This removes the routed hop entirely (no gateway/persistent-route
+  dependency), which was the root cause of every prior TM reachability outage documented in
+  this file. **Until the physical port move and TM web-config IP change are performed
+  on-site, the TM remains live on `192.168.10.20`/Vlan30** (gateway `192.168.10.254`, changed
+  from the earlier `192.168.10.1` — the TM2000B's own web configuration, System Settings >
+  Gateway, must match whichever SVI address is currently authoritative). Do not update
+  `config.xml`'s `DeviceIp` to `100.64.1.20` until the TM has actually been moved to Vlan20
+  and reachability is reconfirmed — doing so early will break the app's TM connection against
+  the still-on-Vlan30 device.
 - **OXTS**: from `config.xml` `<OxtsConfiguration><NcomIpAddress>` /
   `<OxtsCapture><IpAddress>`, address `10.5.2.30`. **Final design (per end-user decision):**
   OXTS Sync Omni, Hunter, and Intrepid GigaStar live together on a dedicated, isolated `Vlan40`
@@ -465,6 +493,7 @@ Notes:
 
 | Date       | Change                                                                 |
 |------------|------------------------------------------------------------------------|
+| (latest)   | **PLANNED — Move TM2000B from routed `Vlan30` (`192.168.10.0/24`) onto the LiDAR NIC's `Vlan20` (`100.64.1.0/24`) broadcast domain, at `100.64.1.20`.** Decision driven by repeated, difficult-to-manage TM reachability failures on the routed `Vlan30` design — every prior TM outage documented in this file's history traced back to Windows persistent-route/gateway fragility (stale gateway after an SVI renumber, phantom `0.0.0.0/0` override, wrong-interface routing) rather than the switch or the TM itself. Putting the TM in the same L2 segment as the LiDAR NIC removes the routed hop entirely: no persistent route, no gateway dependency, no Vlan30 SVI to keep in sync. `100.64.1.20` chosen to keep the "10/20" naming continuity from the retiring `192.168.10.20` address; does not conflict with LiDAR 1/2 (`.2`/`.3`), the LiDAR NIC (`.8`), or the Vlan20 SVI (`.177`). TM Locator UDP 7372 traffic (3-byte query / 80-byte response) and PTP are both low-overhead and expected to coexist with the LiDARs' UDP data streams on the same Gigabit segment without impact. **Rollout checklist (perform on-site, in order):** (1) move the TM2000B's physical cable to a Vlan20-access switch port and reconfigure that port from `switchport access vlan 30` to `switchport access vlan 20`; (2) on the TM2000B's own web UI, change its IP to `100.64.1.20`, subnet `255.255.255.0`, gateway `100.64.1.177`; (3) update `config.xml`'s `<TimeMachineConfiguration><DeviceIp>` (repo root and every per-PC runtime copy) from `192.168.10.20` to `100.64.1.20`; (4) update `scripts/Set-LidarNetworkRoutes.ps1`'s default `-TmDeviceIp`/subnet handling (now unnecessary once TM is on Vlan20 — the whole `Repair-PersistentRoute` call for the TM subnet can be retired, since there is no longer a routed hop to maintain); (5) re-verify with the UDP 7372 probe and `LidarHealthDetailForm`/`TimeMachineTimeSyncProvider`; (6) once confirmed stable, decide whether to decommission the now-unused `Vlan30` SVI (`192.168.10.254/24`) or leave it configured-but-idle. **Until this checklist is executed on the Vehicle System, the TM remains live at `192.168.10.20`/Vlan30 — do not apply the `config.xml`/script changes early, since the TM will still physically be on Vlan30 until steps (1)-(2) are done.** |
 | (latest)   | **RESOLVED — Hesai LiDAR "Frozen"/"Free Run" PTP status.** Two findings, in order: (1) `ptp enable` was never applied to the real, physically-cabled LiDAR/TM2000B interfaces — all earlier config attempts targeted a phantom interface `GigabitEthernet1/0/20` which does not physically exist (`show switch` revealed stack member `1` has MAC `0000.0000.0000` and state `Provisioned`/not present; switch is a single active unit at member `2`). Real ports: `GigabitEthernet2/0/14` (LiDAR #1), `GigabitEthernet2/0/16` (LiDAR #2), `GigabitEthernet2/0/18` (PC LiDAR NIC), `GigabitEthernet2/0/26` (TM2000B). After applying `ptp enable` to `Gi2/0/14`, `Gi2/0/16`, and `Gi2/0/26`, both LiDARs locked **when each LiDAR's own `Profile` was `IEEE1588`**. (2) Setting a LiDAR's own `Profile` to `802.1AS` produced `Frozen`, then `Free Run` after a LiDAR reboot — root cause: this switch's PTP transport is hard-locked to `udp-ipv4` (confirmed via `ptp transport ?`, no pure-L2/Ethernet transport option exists), and `ptp mode boundary` terminates/re-originates PTP on every port as Default Profile regardless of what's attached, so a genuinely 802.1AS-only LiDAR client never receives traffic it recognizes as valid gPTP. **Final working configuration: both Hesai LiDARs set to `Profile = IEEE1588`; TM2000B set to `Profile = 802.1AS`** (gives tightest lock, single-digit ns offset on both LiDARs; TM2000B set to `IEEE1588` also works but with looser double/triple-digit ns offset). The LiDAR's own profile does not need to match the TM2000B's. See `CISCO_PTP.md` for the full investigation and verified commands. `Configure-HesaiPTP-8021AS.ps1` is retained in the repo for reference but should **not** be used against these LiDARs on this switch — use the existing `Configure-HesaiPTP.ps1` (IEEE1588) script for both LiDARs instead. |
 | (later)    | **RECURRENCE AND SECOND FIX — both LiDARs found in Free Run again, independent of TM2000B profile.** Live diagnosis found two compounding problems, both from the switch config never having been saved: (1) `ptp enable` had been lost again on `Gi2/0/14` and `Gi2/0/16` (switch reboot/power-cycle reverted to the old `startup-config`); `Gi2/0/26` still had it, so the switch could still elect the TM2000B as grandmaster (`Steps Removed: 1`) but the LiDAR-facing ports were dark to PTP — fixed by re-applying `ptp enable` and this time saving with `copy running-config startup-config`. (2) The switch's global delay mechanism had drifted from `ptp mode boundary delay-req` (End-to-End, the original working baseline) to `pdelay-req` (Peer-to-Peer) — symptom was `Gi2/0/26` stuck at `Port state: UNCALIBRATED` with `Peer mean path delay(ns): 0` even after the grandmaster was correctly the TM2000B; fixed with `no ptp mode` then `ptp mode boundary delay-req`, then saved. After both fixes, both LiDARs achieved **Locked** status. See `CISCO_PTP.md` "Incident" section for the full writeup. **Lesson: always `copy running-config startup-config` immediately after any verified PTP fix on this switch.** |
 | (correction) | **CORRECTED — "TM2000B=802.1AS gives tightest lock" was a false correlation ("ES886 masquerade").** Re-testing (switch=`pdelay-req`+TM2000B=802.1AS/Peer-to-Peer, matching the original "best lock" recipe) showed `show ptp parent` grandmaster identity was `0x0:60:34:FF:FE:1D:C3:47` — **not** the TM2000B (`0xC:AE:7D:FF:FE:25:19:F6`) — identified as the **ETAS ES886**, which free-runs to master when no other master is heard over `udp-ipv4`. Because the switch's PTP transport is hard-locked to `udp-ipv4` and the TM2000B in `802.1AS` mode transmits only native Layer-2 gPTP frames (confirmed via its UI: `PTP Destination MAC 01:1B:19:00:00:00`, `P2P Destination MAC 01:80:C2:00:00:0E`, no IP header), the switch never actually heard the TM2000B in any earlier 802.1AS test — it was locking to the ES886 instead, which explained the "excellent" but unpredictable lock quality. Reverting the switch to `ptp mode boundary delay-req` (End-to-End) with **TM2000B = IEEE1588 (`Packet Output = IPv4 UDP`, `Delay Mechanism = End to End`, `Transmission Method = Multicast`)** produced `show ptp parent` grandmaster = the TM2000B's real identity, and both LiDARs Locked. **TM2000B = IEEE1588 is now the confirmed, permanent setting; TM2000B = 802.1AS must not be used with this switch.** |

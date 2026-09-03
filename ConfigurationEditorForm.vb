@@ -97,6 +97,19 @@ Public Class ConfigurationEditorForm
         AddHandler btnSignalReg.Click, AddressOf ButtonSignalRegMode_Click
         Me.Controls.Add(btnSignalReg)
 
+        ' ✅ NEW: Generate Manifest Button
+        ' Produces sidecar manifest JSON for each configured LiDAR by querying
+        ' the device over the Hesai HTTP API, without needing a capture session.
+        Dim btnGenerateManifest As New Button With {
+            .Name = "btnGenerateManifest",
+            .Text = "📋 Generate Manifest",
+            .Location = New Point(710, yPos),
+            .Size = New Size(160, 30),
+            .BackColor = Color.LightCyan
+        }
+        AddHandler btnGenerateManifest.Click, AddressOf ButtonGenerateManifest_Click
+        Me.Controls.Add(btnGenerateManifest)
+
         ' Search controls at bottom
         Dim lblSearch As New Label With {
         .Text = "Search:",
@@ -381,6 +394,261 @@ Public Class ConfigurationEditorForm
         End Try
     End Sub
 
+    ''' <summary>
+    ''' ✅ NEW: Generates sidecar manifest JSON for each configured LiDAR device by
+    ''' querying it live over the Hesai HTTP JSON API (pandar.cgi).
+    '''
+    ''' This is the on-demand counterpart to the manifest written automatically at
+    ''' capture stop. It lets an operator verify device reachability and capture
+    ''' the exact identity/config/calibration metadata that downstream ROS 2
+    ''' conversion needs, without having to run a recording first.
+    '''
+    ''' Devices are read straight from the loaded config.xml rather than from live
+    ''' LidarDevice instances, so this works before capture has ever been started.
+    ''' </summary>
+    Private Sub ButtonGenerateManifest_Click(sender As Object, e As EventArgs)
+        Try
+            HandleUserMessageLogging("GMRC", "Generate Manifest button pressed...")
+
+            If _xmlDoc Is Nothing Then
+                MessageBox.Show("Please load a configuration file first.", "No Configuration",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
+            End If
+
+            If _isDirty Then
+                If MessageBox.Show(
+                    "You have unsaved configuration changes. The manifest will be generated using the SAVED configuration." &
+                    vbCrLf & vbCrLf & "Continue anyway?",
+                    "Unsaved Changes", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) <> DialogResult.Yes Then
+                    Return
+                End If
+            End If
+
+            ' ── Collect configured LiDAR devices ──────────────────────────
+            Dim lidarNodes As XmlNodeList = _xmlDoc.SelectNodes("//LidarDevices/Lidar")
+            If lidarNodes Is Nothing OrElse lidarNodes.Count = 0 Then
+                MessageBox.Show("No LiDAR devices are configured in config.xml.", "No Devices",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information)
+                Return
+            End If
+
+            ' Shared <HesaiConfig> sibling supplies the HTTP port and the
+            ' calibration file fallbacks used when a live query is unavailable.
+            Dim sharedHesaiNode As XmlNode = _xmlDoc.SelectSingleNode("//LidarDevices/HesaiConfig")
+
+            ' ── Choose output folder ──────────────────────────────────────
+            Dim outputDirectory As String
+            Using folderDialog As New FolderBrowserDialog With {
+                .Description = "Select a folder for the generated manifest files",
+                .UseDescriptionForTitle = True
+            }
+                If folderDialog.ShowDialog(Me) <> DialogResult.OK Then Return
+                outputDirectory = folderDialog.SelectedPath
+            End Using
+
+            ' ── Generate one manifest per device ──────────────────────────
+            Dim results As New StringBuilder()
+            Dim successCount As Integer = 0
+            Dim skippedCount As Integer = 0
+
+            Dim previousCursor As Cursor = Me.Cursor
+            Me.Cursor = Cursors.WaitCursor
+            Try
+                For Each lidarNode As XmlNode In lidarNodes
+                    ' Device identity and enablement are attributes on <Lidar>,
+                    ' matching how GM_ResidentClient constructs devices.
+                    Dim deviceId As String = lidarNode.Attributes("id")?.Value
+                    Dim enabledAttr As String = lidarNode.Attributes("enabled")?.Value
+                    Dim enabled As Boolean = True
+                    If Not String.IsNullOrEmpty(enabledAttr) Then Boolean.TryParse(enabledAttr, enabled)
+
+                    Dim ipAddress As String = lidarNode.SelectSingleNode("IpAddress")?.InnerText
+
+                    If Not enabled Then
+                        skippedCount += 1
+                        results.AppendLine($"⏭️ {If(deviceId, "(unnamed)")}: disabled in config - skipped")
+                        Continue For
+                    End If
+
+                    If String.IsNullOrWhiteSpace(ipAddress) Then
+                        skippedCount += 1
+                        results.AppendLine($"⚠️ {If(deviceId, "(unnamed)")}: no IP address configured - skipped")
+                        Continue For
+                    End If
+
+                    If String.IsNullOrWhiteSpace(deviceId) Then deviceId = ipAddress
+
+                    ' Per-device <HesaiConfig> overrides the shared sibling node.
+                    Dim hesaiNode As XmlNode = If(lidarNode.SelectSingleNode("HesaiConfig"), sharedHesaiNode)
+
+                    Dim httpPort As Integer = HesaiHttpApi.DefaultHttpPort
+                    Dim parsedPort As Integer
+                    If hesaiNode IsNot Nothing AndAlso
+                       Integer.TryParse(hesaiNode.SelectSingleNode("HttpPort")?.InnerText, parsedPort) AndAlso
+                       parsedPort > 0 Then
+                        httpPort = parsedPort
+                    End If
+
+                    Dim manifestPath As String = GenerateManifestForDevice(
+                        deviceId, ipAddress, httpPort, hesaiNode, lidarNode, outputDirectory)
+
+                    If String.IsNullOrEmpty(manifestPath) Then
+                        results.AppendLine($"❌ {deviceId} ({ipAddress}): unreachable - no manifest written")
+                    Else
+                        successCount += 1
+                        results.AppendLine($"✅ {deviceId} ({ipAddress}): {Path.GetFileName(manifestPath)}")
+                    End If
+                Next
+            Finally
+                Me.Cursor = previousCursor
+            End Try
+
+            ' ── Report ────────────────────────────────────────────────────
+            Dim attemptedCount As Integer = lidarNodes.Count - skippedCount
+            Dim summary As String =
+                $"Generated {successCount} of {attemptedCount} manifest(s) in:{vbCrLf}{outputDirectory}{vbCrLf}{vbCrLf}{results}"
+
+            HandleUserMessageLogging("GMRC", $"Manifest generation complete: {successCount}/{attemptedCount} succeeded")
+
+            MessageBox.Show(summary, "Generate Manifest", MessageBoxButtons.OK,
+                            If(successCount = attemptedCount AndAlso successCount > 0,
+                               MessageBoxIcon.Information, MessageBoxIcon.Warning))
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"GenerateManifest failed: {ex.Message}")
+            MessageBox.Show($"Failed to generate manifest: {ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' Builds and writes one on-demand manifest for a single configured device.
+    ''' Live identity/config/status/angle-correction come from the HTTP API;
+    ''' angle correction falls back to the configured file if the live query
+    ''' fails, and firetimes are always file-sourced (no HTTP object exposes them).
+    ''' </summary>
+    ''' <returns>Path of the written manifest, or Nothing if the device was unreachable</returns>
+    Private Function GenerateManifestForDevice(deviceId As String,
+                                               ipAddress As String,
+                                               httpPort As Integer,
+                                               hesaiNode As XmlNode,
+                                               lidarNode As XmlNode,
+                                               outputDirectory As String) As String
+        Try
+            Dim metadata = HesaiHttpApi.GetMetadata(ipAddress, httpPort)
+            If metadata Is Nothing Then Return Nothing
+
+            Dim manifest As New PcapEventBridge.CaptureManifest With {
+                .DeviceId = deviceId,
+                .DeviceIpAddress = ipAddress,
+                .GenerationTrigger = "OnDemand",
+                .Device = metadata.Device,
+                .Configuration = metadata.Configuration,
+                .StatusAtCaptureStart = metadata.Status
+            }
+
+            If Not String.IsNullOrEmpty(metadata.AngleCorrectionCsv) Then
+                manifest.AngleCorrection = PcapEventBridge.CalibrationBlob.FromHttp(metadata.AngleCorrectionCsv)
+            End If
+
+            ' ── Calibration file fallbacks ────────────────────────────────
+            If hesaiNode IsNot Nothing Then
+                Dim correctionPath As String = hesaiNode.SelectSingleNode("CorrectionFilePath")?.InnerText
+                If manifest.AngleCorrection Is Nothing AndAlso
+                   Not String.IsNullOrWhiteSpace(correctionPath) AndAlso File.Exists(correctionPath) Then
+                    manifest.AngleCorrection = PcapEventBridge.CalibrationBlob.FromFile(
+                        correctionPath, File.ReadAllBytes(correctionPath))
+                End If
+
+                Dim firetimesPath As String = hesaiNode.SelectSingleNode("FiretimesPath")?.InnerText
+                If Not String.IsNullOrWhiteSpace(firetimesPath) AndAlso File.Exists(firetimesPath) Then
+                    manifest.Firetimes = PcapEventBridge.CalibrationBlob.FromFile(
+                        firetimesPath, File.ReadAllBytes(firetimesPath))
+                End If
+            End If
+
+            ' ── Extrinsic / mount alignment, if configured for this device ──
+            Dim extrinsicNode As XmlNode = lidarNode.SelectSingleNode("Extrinsic")
+            If extrinsicNode IsNot Nothing Then
+                manifest.Extrinsic = ParseExtrinsicNode(extrinsicNode)
+            End If
+
+            Dim safeDeviceId As String = deviceId
+            For Each invalidChar In Path.GetInvalidFileNameChars()
+                safeDeviceId = safeDeviceId.Replace(invalidChar, "_"c)
+            Next
+
+            Directory.CreateDirectory(outputDirectory)
+            Dim manifestPath As String = Path.Combine(
+                outputDirectory, $"{safeDeviceId}_{DateTime.Now:yyyyMMdd_HHmmss}.manifest.json")
+
+            manifest.WriteToFile(manifestPath)
+            Return manifestPath
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"GenerateManifestForDevice({deviceId}): {ex.Message}")
+            Return Nothing
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' Parses an &lt;Extrinsic&gt; config node into an ExtrinsicRecord, mirroring the
+    ''' parsing performed by GM_ResidentClient when devices are constructed.
+    ''' </summary>
+    Private Function ParseExtrinsicNode(extrinsicNode As XmlNode) As PcapEventBridge.ExtrinsicRecord
+        Dim record As New PcapEventBridge.ExtrinsicRecord With {
+            .CalibrationId = extrinsicNode.SelectSingleNode("CalibrationId")?.InnerText,
+            .Method = extrinsicNode.SelectSingleNode("Method")?.InnerText
+        }
+
+        ' IsCalibrated is an attribute on <Extrinsic>, not a child element.
+        Dim isCalibrated As Boolean
+        If Boolean.TryParse(extrinsicNode.Attributes("IsCalibrated")?.Value, isCalibrated) Then
+            record.IsCalibrated = isCalibrated
+        End If
+
+        Dim datePerformed As DateTime
+        If DateTime.TryParse(extrinsicNode.SelectSingleNode("DatePerformed")?.InnerText, datePerformed) Then
+            record.DatePerformed = datePerformed
+        End If
+
+        Dim residual As Double
+        If Double.TryParse(extrinsicNode.SelectSingleNode("ResidualError")?.InnerText, residual) Then
+            record.ResidualError = residual
+        End If
+
+        Dim translation = ParseDoubleVector(extrinsicNode.SelectSingleNode("Translation")?.InnerText, 3)
+        If translation IsNot Nothing Then record.TranslationMeters = translation
+
+        Dim rotation = ParseDoubleVector(extrinsicNode.SelectSingleNode("RotationQuaternion")?.InnerText, 4)
+        If rotation IsNot Nothing Then record.RotationQuaternion = rotation
+
+        Return record
+    End Function
+
+    ''' <summary>
+    ''' Parses a comma/space separated numeric vector of the expected length.
+    ''' Returns Nothing if the text is absent or does not have exactly that many
+    ''' parseable components, so the caller keeps its default.
+    ''' </summary>
+    Private Function ParseDoubleVector(text As String, expectedLength As Integer) As Double()
+        If String.IsNullOrWhiteSpace(text) Then Return Nothing
+
+        Dim parts = text.Split({","c, " "c, ";"c}, StringSplitOptions.RemoveEmptyEntries)
+        If parts.Length <> expectedLength Then Return Nothing
+
+        Dim values(expectedLength - 1) As Double
+        For i As Integer = 0 To expectedLength - 1
+            If Not Double.TryParse(parts(i).Trim(), Globalization.NumberStyles.Float,
+                                   Globalization.CultureInfo.InvariantCulture, values(i)) Then
+                Return Nothing
+            End If
+        Next
+
+        Return values
+    End Function
+
     Private Sub LoadConfiguration()
         Try
             _configData.Clear()
@@ -533,16 +801,45 @@ Public Class ConfigurationEditorForm
                     End If
                 End If
 
-            Case "OxtsEnabled", "WaitForLockOnStart", "LidarCaptureEnabled", "enabled"
+            Case "OxtsEnabled", "WaitForLockOnStart", "LidarCaptureEnabled", "enabled",
+                 "MuteVoiceRecordingMessages", "AudioToTextConversion", "AlternateRecordEnabled",
+                 "EnableAltRecReStartAfterRecordStop", "OxtsCaptureEnabled", "EnableTimeSync",
+                 "Enabled", "PtpAssumeLocked", "SaveCalSnapshotEnabled", "SkipSubscriptionOnCacheHit",
+                 "CompressMF4", "CompressPCAP", "CompressASC", "CompressVSB", "DeleteAfterCompression",
+                 "ZipMF4Files"
                 If Not (value.Equals("True", StringComparison.OrdinalIgnoreCase) OrElse
                         value.Equals("False", StringComparison.OrdinalIgnoreCase)) Then
                     Return New ValidationResult(False, "Must be 'True' or 'False'")
                 End If
 
-            Case "NcomPort", "DataPort", "ImuPort", "LidarDataPort", "LidarImuPort"
+            Case "APICommErrorMsgDelayTime"
+                Dim delaySeconds As Integer
+                If Not Integer.TryParse(value, delaySeconds) OrElse delaySeconds < 0 Then
+                    Return New ValidationResult(False, "Must be a non-negative integer (seconds)")
+                End If
+
+            Case "MaxRetries", "RetryDelaySeconds", "FileLockTimeoutSeconds", "CompressionLevel"
+                Dim numericValue As Integer
+                If Not Integer.TryParse(value, numericValue) OrElse numericValue < 0 Then
+                    Return New ValidationResult(False, "Must be a non-negative integer")
+                End If
+
+            Case "Provider"
+                If Not (value.Equals("OXTS", StringComparison.OrdinalIgnoreCase) OrElse
+                        value.Equals("TimeMachine", StringComparison.OrdinalIgnoreCase)) Then
+                    Return New ValidationResult(False, "Must be 'OXTS' or 'TimeMachine'")
+                End If
+
+            Case "NcomPort", "DataPort", "ImuPort", "LidarDataPort", "LidarImuPort", "Port", "PtcPort", "HttpPort"
                 Dim port As Integer
                 If Not Integer.TryParse(value, port) OrElse port < 1 OrElse port > 65535 Then
                     Return New ValidationResult(False, "Must be between 1 and 65535")
+                End If
+
+            Case "PollMs"
+                Dim pollMs As Integer
+                If Not Integer.TryParse(value, pollMs) OrElse pollMs < 1 Then
+                    Return New ValidationResult(False, "Must be a positive integer (milliseconds)")
                 End If
 
             Case "GpsLockTimeout", "OxtsGpsLockTimeout"
@@ -569,6 +866,13 @@ Public Class ConfigurationEditorForm
             Case "RecordFileDurationMinutes" : Return "Max recording duration (-1 = unlimited)"
             Case "MuteVoiceRecordingMessages" : Return "Suppress voice recording notifications (True/False)"
             Case "AudioToTextConversion" : Return "Enable speech-to-text conversion (True/False)"
+            Case "AudioToTextConfiguration.PythonPath" : Return "Path to Python executable used for audio-to-text conversion"
+            Case "AudioToTextConfiguration.ScriptName" : Return "Python script name to execute for audio-to-text conversion"
+            Case "AudioToTextConfiguration.WorkingDirectory" : Return "Working directory for the audio-to-text Python script"
+            Case "AudioToTextConfiguration.IntakeDir" : Return "Input directory containing audio files to convert"
+            Case "AudioToTextConfiguration.ConfigPath" : Return "Path to the Driver_Log_Tools configuration spreadsheet"
+            Case "AudioToTextConfiguration.ConfigSheetName" : Return "Sheet name within the configuration spreadsheet"
+            Case "AudioToTextConfiguration.RunValue" : Return "Comma-separated run stages passed to the Python script (--RUN)"
 
             ' Alternate Recording
             Case "AlternateRecordEnabled" : Return "Enable CANalyzer/VehicleSpy recording (True/False)"
@@ -578,14 +882,23 @@ Public Class ConfigurationEditorForm
             Case "BaseDataCollectionPath" : Return "Base directory for data collection"
             Case "NetworkDriveLetter" : Return "Network drive letter (e.g., Q:)"
             Case "NetworkDriveMapping" : Return "Network drive UNC path"
+            Case "NetworkAdapterDescription" : Return "Preferred network adapter description filter (optional)"
 
             ' OXTS Configuration
             Case "OxtsConfiguration" : Return "OXTS GPS/INS device settings"
             Case "OxtsConfiguration.OxtsEnabled" : Return "Enable OXTS GPS/INS synchronization (True/False)"
+            Case "OxtsConfiguration.NetworkAdapterGuid" : Return "Network adapter GUID for OXTS NCOM listener (Vlan40)"
             Case "OxtsConfiguration.NcomIpAddress" : Return "OXTS NCOM listener IP address (e.g., 10.5.55.200)"
             Case "OxtsConfiguration.NcomPort" : Return "OXTS NCOM UDP port (default: 3000)"
             Case "OxtsConfiguration.GpsLockTimeout" : Return "GPS lock wait timeout in milliseconds (default: 30000)"
             Case "OxtsConfiguration.WaitForLockOnStart" : Return "Wait for GPS lock before starting capture (True/False)"
+
+            ' OXTS NCOM PCAP Capture Configuration
+            Case "OxtsCaptureEnabled" : Return "Enable raw NCOM UDP packet capture to PCAP (True/False)"
+            Case "OxtsCapture" : Return "OXTS NCOM PCAP capture settings"
+            Case "OxtsCapture.NetworkAdapterGuid" : Return "Network adapter GUID for NCOM PCAP capture (Vlan40)"
+            Case "OxtsCapture.IpAddress" : Return "OXTS device IP address for NCOM PCAP capture"
+            Case "OxtsCapture.NcomPort" : Return "NCOM UDP port for PCAP capture (same as NCOM interface)"
 
             ' Time Sync Provider Configuration
             Case "TimeSyncConfiguration" : Return "Global time synchronization source selection"
@@ -619,6 +932,9 @@ Public Class ConfigurationEditorForm
             Case "Compression.CompressVSB" : Return "Compress VSB files (True/False)"
             Case "Compression.DeleteAfterCompression" : Return "Delete original after compression (True/False)"
             Case "Compression.CompressionLevel" : Return "7-Zip compression level (1=Fastest, 9=Best)"
+            Case "Compression.MaxRetries" : Return "Max retry attempts if a file is locked during compression"
+            Case "Compression.RetryDelaySeconds" : Return "Delay between compression retry attempts (seconds)"
+            Case "Compression.FileLockTimeoutSeconds" : Return "Total time to wait for a file lock to clear before giving up (seconds)"
 
             ' Hardware
             Case "MaxCameras" : Return "Maximum number of cameras supported"
@@ -633,6 +949,13 @@ Public Class ConfigurationEditorForm
             Case "CLEVIRFilesPath" : Return "Network path to CLEVIR signal/workspace files (e.g. Current\ACP3)"
             Case "ZipMF4Files" : Return "Zip MF4 files after recording (True/False)"
             Case "ConfigName" : Return "Workspace config name (e.g. ACP3_1P1C)"
+
+            ' Global Application Settings
+            Case "CurrentVehicleUsage" : Return "Current usage mode (e.g. VALIDATION)"
+            Case "SelectedVehicleNumber" : Return "Currently active vehicle number from the Vehicles list"
+            Case "SaveCalSnapshotEnabled" : Return "Save a calibration snapshot on session start (True/False)"
+            Case "APICommErrorMsgDelayTime" : Return "Delay before showing API communication error messages (seconds)"
+            Case "SkipSubscriptionOnCacheHit" : Return "Skip re-subscribing signals when cached subscription is valid (True/False)"
 
             Case Else
                 Return ""

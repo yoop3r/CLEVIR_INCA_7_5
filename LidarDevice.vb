@@ -125,6 +125,22 @@ Public NotInheritable Class LidarDevice
 
     Private ReadOnly _markerQueue As New Concurrent.ConcurrentQueue(Of EventMarker)
 
+    ' ✅ NEW: Tracks the active PCAP path so the sidecar manifest can be written
+    ' next to it at StopCapture/StopCaptureShared time.
+    Private _currentPcapFilename As String = Nothing
+    Private ReadOnly _manifestMarkers As New Concurrent.ConcurrentQueue(Of PcapEventBridge.EventMarkerRecord)
+
+    ' ✅ NEW: Manifest generation runs off the capture-stop path. The HTTP metadata
+    ' queries (8 endpoints, 5s timeout each) plus the PCAP SHA-256 were adding
+    ' 20-30s to the gap between sequences, because StopCapture/StopCaptureShared
+    ' blocked until the manifest was on disk. The work is now handed to a
+    ' background task using a snapshot of state taken synchronously at stop time,
+    ' so the next sequence can start immediately. The task is tracked so shutdown
+    ' can wait for an in-flight write rather than losing the manifest.
+    Private _pendingManifestTask As Task = Nothing
+    Private ReadOnly _manifestTaskLock As New Object()
+    Private Const ManifestShutdownWaitMs As Integer = 30000
+
     ' Configuration constants
     Private Const CaptureBufferSize As Integer = 16 * 1024 * 1024  ' 16MB — Npcap kernel ring buffer (64MB caused silent fallback to 1MB on this system)
     Private Const ReadTimeoutMs As Integer = 1000    ' 1 second read timeout for capture device
@@ -156,6 +172,18 @@ Public NotInheritable Class LidarDevice
     Public Property HesaiConfig As HesaiInterop.HesaiDeviceConfig
     Public Property HasHesaiConfig As Boolean = False
     Public Property IsHesaiRegistered As Boolean = False
+
+    ' ✅ NEW: TCP port for the Hesai HTTP JSON API (pandar.cgi), used to source
+    ' manifest metadata. This is a managed-only setting, so it is kept off the
+    ' HesaiDeviceConfig interop struct (whose layout must match the native
+    ' HesaiWrapper.h definition). Defaults to the standard HTTP port.
+    Public Property HesaiHttpPort As Integer = 80
+
+    ' ✅ NEW: Versioned sensor-to-vehicle mount transform, parsed from the
+    ' optional <Extrinsic> config.xml element. Nothing/HasExtrinsicConfig=False
+    ' means alignment has not been configured for this device yet.
+    Public Property ExtrinsicConfig As PcapEventBridge.ExtrinsicRecord = Nothing
+    Public Property HasExtrinsicConfig As Boolean = False
 
     Public ReadOnly Property CurrentFrameNumber As Long
         Get
@@ -541,6 +569,7 @@ Public NotInheritable Class LidarDevice
             ' ═══════════════════════════════════════════════════════════════════
             _dumpFile = New CaptureFileWriterDevice(pcapFilename, FileMode.Create)
             _dumpFile.Open()
+            _currentPcapFilename = pcapFilename
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 6: Create Event Logger
@@ -566,6 +595,11 @@ Public NotInheritable Class LidarDevice
             _gateDeniedCount = 0
             _handlerErrorCount = 0
             LastPacketTimestamp = Nothing  ' Reset so alerts don't fire with stale timestamp from prior sequence
+
+            ' ✅ NEW: Clear manifest marker history from any prior sequence
+            Dim discardedManifestMarker As PcapEventBridge.EventMarkerRecord = Nothing
+            While _manifestMarkers.TryDequeue(discardedManifestMarker)
+            End While
 
             ' Drain any leftover markers from a previous capture
             Dim discardedMarker As EventMarker = Nothing
@@ -902,6 +936,11 @@ Public NotInheritable Class LidarDevice
             End If
 
             ' ═══════════════════════════════════════════════════════════════════
+            ' ✅ NEW: Write sidecar capture manifest (JSON) next to the PCAP
+            ' ═══════════════════════════════════════════════════════════════════
+            WriteCaptureManifest(logPrefix)
+
+            ' ═══════════════════════════════════════════════════════════════════
             ' Log Final Statistics
             ' ═══════════════════════════════════════════════════════════════════
             HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Stopped - {_packetCount:N0} pkts, {_droppedPackets:N0} drops, {_markerCounter} markers")
@@ -943,6 +982,7 @@ Public NotInheritable Class LidarDevice
             ' Open dump file
             _dumpFile = New CaptureFileWriterDevice(pcapFilename, FileMode.Create)
             _dumpFile.Open()
+            _currentPcapFilename = pcapFilename
 
             ' Create event logger
             Try
@@ -974,6 +1014,11 @@ Public NotInheritable Class LidarDevice
             If drainedCount > 0 Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Drained {drainedCount} stale marker(s) from prior sequence")
             End If
+
+            ' ✅ NEW: Clear manifest marker history from any prior sequence
+            Dim discardedManifestMarker As PcapEventBridge.EventMarkerRecord = Nothing
+            While _manifestMarkers.TryDequeue(discardedManifestMarker)
+            End While
 
             Volatile.Write(_isCapturing, True)
             Interlocked.Exchange(_captureStartedAt, DateTime.Now.Ticks)
@@ -1083,6 +1128,9 @@ Public NotInheritable Class LidarDevice
                 _dumpFile = Nothing
             End If
 
+            ' ✅ NEW: Write sidecar capture manifest (JSON) next to the PCAP
+            WriteCaptureManifest(logPrefix)
+
             HandleUserMessageLogging("GMRC",
                 $"{logPrefix}: ✅ Stopped — {_packetCount:N0} pkts, {_droppedPackets:N0} drops, {_markerCounter} markers")
 
@@ -1093,6 +1141,282 @@ Public NotInheritable Class LidarDevice
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Error: {ex.Message}")
         End Try
     End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Assembles and writes the sidecar capture manifest JSON next to the
+    ''' just-finished PCAP file. Live device metadata (identity/config/status/angle
+    ''' correction) is queried over the Hesai HTTP JSON API; any failure degrades
+    ''' gracefully (missing/null fields) rather than blocking capture shutdown.
+    ''' Firetimes have no HTTP object, so they are always sourced from the
+    ''' configured file path, if present.
+    ''' </summary>
+    ''' <summary>
+    ''' ✅ NEW: Assembles and writes the sidecar capture manifest JSON next to the
+    ''' just-finished PCAP file. Live device metadata (identity/config/status/angle
+    ''' correction) is queried over the Hesai HTTP JSON API; any failure degrades
+    ''' gracefully (missing/null fields) rather than blocking capture shutdown.
+    ''' Firetimes have no HTTP object, so they are always sourced from the
+    ''' configured file path, if present.
+    '''
+    ''' ✅ CHANGED: Only the cheap state snapshot happens on the caller's thread.
+    ''' The expensive work — HTTP metadata queries and the PCAP SHA-256 — is
+    ''' dispatched to a background task so the inter-sequence gap is not stalled.
+    ''' Everything the background task needs is captured into locals here, because
+    ''' StartCapture/StartCaptureShared reset the live counters and drain
+    ''' _manifestMarkers as soon as the next sequence begins.
+    ''' </summary>
+    Private Sub WriteCaptureManifest(logPrefix As String)
+        Try
+            If String.IsNullOrEmpty(_currentPcapFilename) Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest skipped - no PCAP filename recorded")
+                Return
+            End If
+
+            ' ── Snapshot everything volatile BEFORE the next sequence resets it ──
+            Dim pcapFilename As String = _currentPcapFilename
+
+            Dim integrity As New PcapEventBridge.IntegrityCounters With {
+                .PacketCount = Interlocked.Read(_packetCount),
+                .DroppedPackets = Interlocked.Read(_droppedPackets),
+                .ChecksumErrors = Interlocked.Read(_checksumErrors),
+                .OutOfOrderPackets = Interlocked.Read(_outOfOrderPackets)
+            }
+
+            ' Drain markers now — StartCaptureShared clears this queue.
+            Dim markers As New List(Of PcapEventBridge.EventMarkerRecord)
+            Dim markerRecord As PcapEventBridge.EventMarkerRecord = Nothing
+            While _manifestMarkers.TryDequeue(markerRecord)
+                markers.Add(markerRecord)
+            End While
+
+            ' Time sync reflects state at stop time, so read it here rather than
+            ' letting the background task observe a later (post-restart) value.
+            Dim timeSync As PcapEventBridge.TimeSyncSnapshot = Nothing
+            If _timeSyncProvider IsNot Nothing Then
+                timeSync = New PcapEventBridge.TimeSyncSnapshot With {
+                    .ProviderName = _timeSyncProvider.ProviderName,
+                    .IsSynchronized = _timeSyncProvider.IsSynchronized(),
+                    .IsPtpSynchronized = _timeSyncProvider.IsPtpSynchronized(),
+                    .PtpStatusText = _timeSyncProvider.GetPtpStatusText(),
+                    .NtpStatusText = _timeSyncProvider.GetNtpStatusText(),
+                    .LastUpdateUtc = _timeSyncProvider.LastUpdateUtc
+                }
+            End If
+
+            ' ── Dispatch the slow work (HTTP + SHA-256 + file write) ──
+            Dim manifestTask As Task = Task.Run(
+                Sub() BuildAndWriteManifest(logPrefix, pcapFilename, integrity, markers, timeSync))
+
+            SyncLock _manifestTaskLock
+                ' Chain onto any still-running manifest so a slow write from an
+                ' earlier sequence is never dropped, and shutdown waits for all.
+                Dim previous As Task = _pendingManifestTask
+                _pendingManifestTask = If(previous Is Nothing OrElse previous.IsCompleted,
+                                          manifestTask,
+                                          Task.WhenAll(previous, manifestTask))
+            End SyncLock
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest dispatch failed: {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Background worker for the capture-stop manifest. Runs off the
+    ''' capture-stop path and operates purely on the snapshot passed in, so it is
+    ''' safe even once the next sequence has started and reset the live counters.
+    ''' </summary>
+    Private Sub BuildAndWriteManifest(logPrefix As String,
+                                      pcapFilename As String,
+                                      integrity As PcapEventBridge.IntegrityCounters,
+                                      markers As List(Of PcapEventBridge.EventMarkerRecord),
+                                      timeSync As PcapEventBridge.TimeSyncSnapshot)
+        Try
+            Dim manifest As New PcapEventBridge.CaptureManifest()
+            manifest.GenerationTrigger = "CaptureStop"
+
+            ' ── Live device metadata over HTTP + calibration file fallbacks ──
+            PopulateDeviceMetadata(manifest, logPrefix)
+
+            manifest.TimeSync = timeSync
+            manifest.Integrity = integrity
+            manifest.EventMarkers.AddRange(markers)
+
+            ' ── PCAP linkage ──
+            Try
+                Dim fileInfo As New FileInfo(pcapFilename)
+                Dim checksum As String = Nothing
+                If fileInfo.Exists Then
+                    Using sha256 As System.Security.Cryptography.SHA256 = System.Security.Cryptography.SHA256.Create()
+                        Using stream = File.OpenRead(pcapFilename)
+                            checksum = Convert.ToHexString(sha256.ComputeHash(stream))
+                        End Using
+                    End Using
+                End If
+
+                manifest.Pcap = New PcapEventBridge.PcapLinkage With {
+                    .FileName = Path.GetFileName(pcapFilename),
+                    .FileSizeBytes = If(fileInfo.Exists, fileInfo.Length, 0L),
+                    .Sha256Checksum = checksum
+                }
+            Catch linkEx As Exception
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest PCAP linkage failed: {linkEx.Message}")
+            End Try
+
+            Dim manifestPath As String = Path.ChangeExtension(pcapFilename, ".manifest.json")
+            manifest.WriteToFile(manifestPath)
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Manifest written: {Path.GetFileName(manifestPath)}")
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest write failed: {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Blocks until any background manifest generation has finished, so a
+    ''' manifest in flight is not lost when the application shuts down.
+    ''' </summary>
+    Public Sub WaitForPendingManifest(logPrefix As String)
+        Dim pending As Task
+        SyncLock _manifestTaskLock
+            pending = _pendingManifestTask
+        End SyncLock
+
+        If pending Is Nothing OrElse pending.IsCompleted Then Return
+
+        Try
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Waiting for background manifest write...")
+            If Not pending.Wait(ManifestShutdownWaitMs) Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: ⚠️ Manifest write did not finish within {ManifestShutdownWaitMs}ms")
+            End If
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest wait error: {ex.Message}")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Populates the device-derived portion of a manifest — identity,
+    ''' configuration, live status, angle correction, firetimes, and extrinsics.
+    '''
+    ''' Shared by the capture-stop path (WriteCaptureManifest) and the on-demand
+    ''' path (GenerateManifestNow), so both produce identical device metadata.
+    '''
+    ''' Live values come from the Hesai HTTP JSON API (pandar.cgi). This replaced
+    ''' the previous PTC/TCP-9347 approach, which failed consistently against live
+    ''' units: the PTC server permits only one session at a time and returned
+    ''' "invalid input parameter" / ret=-1 for effectively all commands. HTTP is
+    ''' stateless, needs no native interop, and exposes strictly more metadata.
+    '''
+    ''' Every query is best-effort — failures leave fields null rather than
+    ''' throwing, so a manifest is always produced.
+    ''' </summary>
+    Private Sub PopulateDeviceMetadata(manifest As PcapEventBridge.CaptureManifest, logPrefix As String)
+        manifest.DeviceId = DeviceId
+        manifest.DeviceIpAddress = LidarIpAddress
+
+        ' ── Live metadata over HTTP (best-effort) ───────────────────────────
+        Try
+            Dim metadata = HesaiHttpApi.GetMetadata(LidarIpAddress, HesaiHttpPort)
+            If metadata IsNot Nothing Then
+                manifest.Device = metadata.Device
+                manifest.Configuration = metadata.Configuration
+                manifest.StatusAtCaptureStart = metadata.Status
+
+                If Not String.IsNullOrEmpty(metadata.AngleCorrectionCsv) Then
+                    manifest.AngleCorrection = PcapEventBridge.CalibrationBlob.FromHttp(metadata.AngleCorrectionCsv)
+                End If
+            End If
+        Catch httpEx As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest HTTP query failed: {httpEx.Message}")
+        End Try
+
+        ' ── Fallback: angle correction from configured file, if HTTP didn't provide one ──
+        If manifest.AngleCorrection Is Nothing AndAlso HasHesaiConfig AndAlso Not String.IsNullOrEmpty(HesaiConfig.correction_file_path) Then
+            Try
+                If File.Exists(HesaiConfig.correction_file_path) Then
+                    manifest.AngleCorrection = PcapEventBridge.CalibrationBlob.FromFile(
+                        HesaiConfig.correction_file_path, File.ReadAllBytes(HesaiConfig.correction_file_path))
+                End If
+            Catch fileEx As Exception
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest angle-correction file read failed: {fileEx.Message}")
+            End Try
+        End If
+
+        ' ── Firetimes: always file-based (no HTTP object exposes it) ──
+        If HasHesaiConfig AndAlso Not String.IsNullOrEmpty(HesaiConfig.firetimes_path) Then
+            Try
+                If File.Exists(HesaiConfig.firetimes_path) Then
+                    manifest.Firetimes = PcapEventBridge.CalibrationBlob.FromFile(
+                        HesaiConfig.firetimes_path, File.ReadAllBytes(HesaiConfig.firetimes_path))
+                End If
+            Catch fileEx As Exception
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest firetimes file read failed: {fileEx.Message}")
+            End Try
+        End If
+
+        ' ── Extrinsic / mount alignment ──
+        If HasExtrinsicConfig Then
+            manifest.Extrinsic = ExtrinsicConfig
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' ✅ NEW: Generates a standalone manifest for this device on demand, without
+    ''' an associated PCAP recording. Intended for the "Generate Manifest" action
+    ''' on the configuration screen, so operators can capture and verify device
+    ''' metadata (and confirm HTTP reachability) outside a capture session.
+    '''
+    ''' Unlike the capture-stop manifest, this contains no PCAP linkage, integrity
+    ''' counters, or event markers — only device-derived metadata.
+    ''' </summary>
+    ''' <param name="outputDirectory">Folder to write the manifest JSON into</param>
+    ''' <returns>Full path of the written manifest, or Nothing if generation failed</returns>
+    Public Function GenerateManifestNow(outputDirectory As String) As String
+        Dim logPrefix As String = $"LiDAR {DeviceId}"
+        Try
+            If String.IsNullOrWhiteSpace(outputDirectory) Then
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest generation skipped - no output directory")
+                Return Nothing
+            End If
+
+            Directory.CreateDirectory(outputDirectory)
+
+            Dim manifest As New PcapEventBridge.CaptureManifest With {
+                .GenerationTrigger = "OnDemand"
+            }
+
+            PopulateDeviceMetadata(manifest, logPrefix)
+
+            ' Include time-sync provenance when a provider is attached; it is
+            ' still meaningful outside a capture (reflects current sync state).
+            If _timeSyncProvider IsNot Nothing Then
+                manifest.TimeSync = New PcapEventBridge.TimeSyncSnapshot With {
+                    .ProviderName = _timeSyncProvider.ProviderName,
+                    .IsSynchronized = _timeSyncProvider.IsSynchronized(),
+                    .IsPtpSynchronized = _timeSyncProvider.IsPtpSynchronized(),
+                    .PtpStatusText = _timeSyncProvider.GetPtpStatusText(),
+                    .NtpStatusText = _timeSyncProvider.GetNtpStatusText(),
+                    .LastUpdateUtc = _timeSyncProvider.LastUpdateUtc
+                }
+            End If
+
+            Dim safeDeviceId As String = DeviceId
+            For Each invalidChar In Path.GetInvalidFileNameChars()
+                safeDeviceId = safeDeviceId.Replace(invalidChar, "_"c)
+            Next
+
+            Dim manifestPath As String = Path.Combine(
+                outputDirectory, $"{safeDeviceId}_{DateTime.Now:yyyyMMdd_HHmmss}.manifest.json")
+
+            manifest.WriteToFile(manifestPath)
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ On-demand manifest written: {Path.GetFileName(manifestPath)}")
+            Return manifestPath
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"{logPrefix}: On-demand manifest generation failed: {ex.Message}")
+            Return Nothing
+        End Try
+    End Function
 
     ''' <summary>
     ''' ✅ NEW: Fully shuts down the device, including unregistering from Hesai SDK.
@@ -1110,6 +1434,10 @@ Public NotInheritable Class LidarDevice
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Stopping active capture first...")
                 StopCapture()
             End If
+
+            ' Manifest generation is now backgrounded, so make sure any in-flight
+            ' write completes before the process tears down.
+            WaitForPendingManifest(logPrefix)
 
             ' Now unregister from Hesai SDK
             If HesaiInterop.IsAvailable() AndAlso IsHesaiRegistered Then
@@ -1394,6 +1722,15 @@ Public NotInheritable Class LidarDevice
             Interlocked.Increment(_frameCounter)
             _eventLogger?.LogEvent(_frameCounter, timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
 
+            ' ✅ NEW: Also record for the sidecar manifest written at StopCapture
+            _manifestMarkers.Enqueue(New PcapEventBridge.EventMarkerRecord With {
+                .FrameNumber = _frameCounter,
+                .Timestamp = timestamp,
+                .EventType = marker.EventType,
+                .Message = marker.Message,
+                .SequenceNumber = marker.SequenceNumber
+            })
+
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Marker injected: Frame {_frameCounter} - {marker.EventType}")
 
         Catch ex As Exception
@@ -1535,6 +1872,9 @@ Public NotInheritable Class LidarDevice
         Catch
             ' Ignore errors from an already-degraded capture session during disposal
         End Try
+
+        ' Don't discard a manifest that is still being written in the background.
+        WaitForPendingManifest($"[{DeviceId}] Dispose")
 
         CleanupResources()
 

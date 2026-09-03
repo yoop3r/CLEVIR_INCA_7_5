@@ -41,9 +41,9 @@ Partial Class LoginForm
         Label4.BackColor = Color.White
         Label4.BorderStyle = BorderStyle.Fixed3D
         Label4.Font = New Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
-        Label4.Location = New Point(27, 452)
+        Label4.Location = New Point(27, 517)
         Label4.Name = "Label4"
-        Label4.Size = New Size(408, 50)
+        Label4.Size = New Size(408, 16)
         Label4.TabIndex = 6
         Label4.TextAlign = ContentAlignment.MiddleCenter
         ' 
@@ -79,7 +79,7 @@ Partial Class LoginForm
         GroupBox_SessionMetadata.Controls.Add(Label_Email)
         GroupBox_SessionMetadata.Controls.Add(TextBox_Email)
         GroupBox_SessionMetadata.Font = New Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
-        GroupBox_SessionMetadata.Location = New Point(12, 331)
+        GroupBox_SessionMetadata.Location = New Point(12, 348)
         GroupBox_SessionMetadata.Name = "GroupBox_SessionMetadata"
         GroupBox_SessionMetadata.Size = New Size(442, 140)
         GroupBox_SessionMetadata.TabIndex = 20
@@ -147,7 +147,7 @@ Partial Class LoginForm
         AllowDrop = True
         AutoScaleMode = AutoScaleMode.None
         BackColor = Color.LightGray
-        ClientSize = New Size(470, 529)
+        ClientSize = New Size(470, 554)
         Controls.Add(GroupBox_SessionMetadata)
         Controls.Add(Button43)
         Controls.Add(Label4)

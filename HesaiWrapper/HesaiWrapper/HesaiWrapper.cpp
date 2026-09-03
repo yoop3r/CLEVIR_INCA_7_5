@@ -8,9 +8,12 @@
 #include <thread>
 #include <future>
 #include <cstdio>
+#include <cstring>
+#include <algorithm>
 
 // ✅ Include actual Hesai SDK headers
 #include "../../HesaiLidar_SDK_2.0-master/driver/hesai_lidar_sdk.hpp"
+#include "../../HesaiLidar_SDK_2.0-master/libhesai/PtcClient/include/ptc_client.h"
 
 // ✅ For debug output - use multiple methods
 #include <Windows.h>
@@ -572,6 +575,426 @@ extern "C" {
             return 0;
 
         } catch (const std::exception& ex) {
+            return -1;
+        }
+    }
+
+    // ================================================================
+    // PTC Manifest Queries
+    // Each helper opens a short-lived standalone PtcClient (independent of
+    // any registered ManagedDevice / HesaiLidarSdk), issues one query, and
+    // tears the connection down. Works even when the device is registered
+    // in validation_only mode, since no SDK instance is required.
+    // ================================================================
+
+    namespace {
+        // Waits (bounded) for the PtcClient's background connect thread to
+        // finish opening the TCP socket. TryOpen() runs on its own thread in
+        // the SDK, so IsOpen() may briefly report false right after
+        // construction even when the connection succeeds quickly.
+        bool WaitForPtcOpen(hesai::lidar::PtcClient& client, int timeoutMs) {
+            auto start = std::chrono::steady_clock::now();
+            while (!client.IsOpen()) {
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - start).count() >= timeoutMs) {
+                    return false;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+            return true;
+        }
+
+        uint16_t ResolvePtcPort(int ptcPort) {
+            return (ptcPort > 0) ? static_cast<uint16_t>(ptcPort) : 9347;
+        }
+
+        void CopyFixedField(char* dest, size_t destSize, const uint8_t* src, size_t srcLen) {
+            size_t n = (std::min)(destSize - 1, srcLen);
+            memcpy(dest, src, n);
+            dest[n] = '\0';
+        }
+    }
+
+    HESAI_API int hesai_get_inventory_info(const char* ipAddress, int ptcPort, HesaiInventoryInfo* outInfo) {
+        if (!ipAddress || !outInfo) return -1;
+        HESAI_LOG("hesai_get_inventory_info: connecting to " << ipAddress << ":" << ResolvePtcPort(ptcPort));
+
+        try {
+            hesai::lidar::PtcClient client(ipAddress, ResolvePtcPort(ptcPort));
+            if (!WaitForPtcOpen(client, 3000)) {
+                HESAI_LOG("hesai_get_inventory_info: PTC connection timed out");
+                return -1;
+            }
+
+            hesai::lidar::u8Array_t in;
+            hesai::lidar::u8Array_t out;
+            int ret = client.QueryCommand(in, out, hesai::lidar::kPTCGetInventoryInfo);
+            if (ret != 0 || out.size() < 228) {
+                HESAI_LOG("hesai_get_inventory_info: QueryCommand failed, ret=" << ret << " size=" << out.size());
+                return -1;
+            }
+
+            const uint8_t* p = out.data();
+            memset(outInfo, 0, sizeof(HesaiInventoryInfo));
+
+            CopyFixedField(outInfo->sn, sizeof(outInfo->sn), p, 18); p += 18;
+            CopyFixedField(outInfo->date_of_manufacture, sizeof(outInfo->date_of_manufacture), p, 16); p += 16;
+            memcpy(outInfo->mac, p, 6); p += 6;
+            CopyFixedField(outInfo->sw_ver, sizeof(outInfo->sw_ver), p, 16); p += 16;
+            CopyFixedField(outInfo->hw_ver, sizeof(outInfo->hw_ver), p, 16); p += 16;
+            CopyFixedField(outInfo->control_fw_ver, sizeof(outInfo->control_fw_ver), p, 16); p += 16;
+            CopyFixedField(outInfo->sensor_fw_ver, sizeof(outInfo->sensor_fw_ver), p, 16); p += 16;
+            outInfo->angle_offset = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2; // big-endian on wire
+            outInfo->model = p[0]; p += 1;
+            outInfo->motor_type = p[0]; p += 1;
+            outInfo->num_of_lines = p[0]; p += 1;
+            CopyFixedField(outInfo->pn, sizeof(outInfo->pn), p, 32); p += 32;
+            outInfo->customer_pn_enable = p[0]; p += 1;
+            CopyFixedField(outInfo->customer_pn, sizeof(outInfo->customer_pn), p, 20); p += 20;
+            CopyFixedField(outInfo->duns, sizeof(outInfo->duns), p, 9); p += 9;
+            CopyFixedField(outInfo->vpps, sizeof(outInfo->vpps), p, 14); p += 14;
+            CopyFixedField(outInfo->boot_ver, sizeof(outInfo->boot_ver), p, 16); p += 16;
+            CopyFixedField(outInfo->cruise_pn, sizeof(outInfo->cruise_pn), p, 8); p += 8;
+            CopyFixedField(outInfo->gm_sw_pn, sizeof(outInfo->gm_sw_pn), p, 8); p += 8;
+            CopyFixedField(outInfo->gm_hw_pn, sizeof(outInfo->gm_hw_pn), p, 8); p += 8;
+            // remaining 3 reserved bytes intentionally ignored
+
+            HESAI_LOG("hesai_get_inventory_info: success, sn=" << outInfo->sn << " model=" << (int)outInfo->model);
+            return 0;
+        } catch (const std::exception& ex) {
+            HESAI_LOG("hesai_get_inventory_info: EXCEPTION " << ex.what());
+            return -1;
+        } catch (...) {
+            HESAI_LOG("hesai_get_inventory_info: UNKNOWN EXCEPTION");
+            return -1;
+        }
+    }
+
+    HESAI_API int hesai_get_config_info(const char* ipAddress, int ptcPort, HesaiConfigInfo* outInfo) {
+        if (!ipAddress || !outInfo) return -1;
+        HESAI_LOG("hesai_get_config_info: connecting to " << ipAddress << ":" << ResolvePtcPort(ptcPort));
+
+        try {
+            hesai::lidar::PtcClient client(ipAddress, ResolvePtcPort(ptcPort));
+            if (!WaitForPtcOpen(client, 3000)) {
+                HESAI_LOG("hesai_get_config_info: PTC connection timed out");
+                return -1;
+            }
+
+            hesai::lidar::u8Array_t in;
+            hesai::lidar::u8Array_t out;
+            // 0x08 (GET_CONFIG_INFO) has no named SDK constant / wrapper method;
+            // issue the raw command byte via the generic QueryCommand primitive.
+            const uint8_t kPTCGetConfigInfo = 0x08;
+            int ret = client.QueryCommand(in, out, kPTCGetConfigInfo);
+            if (ret != 0 || out.size() < 34) {
+                HESAI_LOG("hesai_get_config_info: QueryCommand failed, ret=" << ret << " size=" << out.size());
+                return -1;
+            }
+
+            const uint8_t* p = out.data();
+            memset(outInfo, 0, sizeof(HesaiConfigInfo));
+
+            memcpy(outInfo->ipaddr, p, 4); p += 4;
+            memcpy(outInfo->mask, p, 4); p += 4;
+            memcpy(outInfo->gateway, p, 4); p += 4;
+            memcpy(outInfo->dest_ipaddr, p, 4); p += 4;
+            outInfo->dest_lidar_udp_port = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            outInfo->dest_gps_udp_port = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            outInfo->spin_rate = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            outInfo->sync = p[0]; p += 1;
+            outInfo->sync_angle = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            outInfo->start_angle = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            outInfo->stop_angle = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            outInfo->clock_source = p[0]; p += 1;
+            // reserved_1 (1 byte) skipped
+            p += 1;
+            outInfo->trigger_method = p[0]; p += 1;
+            outInfo->return_mode = p[0]; p += 1;
+            outInfo->standby_mode = p[0]; p += 1;
+            outInfo->motor_status = p[0]; p += 1;
+            outInfo->vlan_flag = p[0]; p += 1;
+            outInfo->vlan_id = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            outInfo->clock_data_fmt = p[0]; p += 1;
+            outInfo->noise_filtering = p[0]; p += 1;
+            outInfo->reflectivity_mapping = p[0]; p += 1;
+            // trailing 6 reserved bytes intentionally ignored
+
+            HESAI_LOG("hesai_get_config_info: success, return_mode=" << (int)outInfo->return_mode
+                << " clock_source=" << (int)outInfo->clock_source);
+            return 0;
+        } catch (const std::exception& ex) {
+            HESAI_LOG("hesai_get_config_info: EXCEPTION " << ex.what());
+            return -1;
+        } catch (...) {
+            HESAI_LOG("hesai_get_config_info: UNKNOWN EXCEPTION");
+            return -1;
+        }
+    }
+
+    HESAI_API int hesai_get_lidar_status(const char* ipAddress, int ptcPort, HesaiLidarStatus* outStatus) {
+        if (!ipAddress || !outStatus) return -1;
+        HESAI_LOG("hesai_get_lidar_status: connecting to " << ipAddress << ":" << ResolvePtcPort(ptcPort));
+
+        try {
+            hesai::lidar::PtcClient client(ipAddress, ResolvePtcPort(ptcPort));
+            if (!WaitForPtcOpen(client, 3000)) {
+                HESAI_LOG("hesai_get_lidar_status: PTC connection timed out");
+                return -1;
+            }
+
+            hesai::lidar::u8Array_t in;
+            hesai::lidar::u8Array_t out;
+            int ret = client.QueryCommand(in, out, hesai::lidar::kPTCGetLidarStatus);
+            if (ret != 0 || out.size() < 54) {
+                HESAI_LOG("hesai_get_lidar_status: QueryCommand failed, ret=" << ret << " size=" << out.size());
+                return -1;
+            }
+
+            const uint8_t* p = out.data();
+            memset(outStatus, 0, sizeof(HesaiLidarStatus));
+
+            outStatus->system_uptime = (static_cast<unsigned int>(p[0]) << 24) | (static_cast<unsigned int>(p[1]) << 16)
+                | (static_cast<unsigned int>(p[2]) << 8) | static_cast<unsigned int>(p[3]); p += 4;
+            outStatus->motor_speed = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+            for (int i = 0; i < 8; ++i) {
+                int32_t raw = (static_cast<int32_t>(p[0]) << 24) | (static_cast<int32_t>(p[1]) << 16)
+                    | (static_cast<int32_t>(p[2]) << 8) | static_cast<int32_t>(p[3]);
+                outStatus->temperature[i] = raw / 100.0f; // 0.01 deg C units
+                p += 4;
+            }
+            outStatus->gps_pps_lock = p[0]; p += 1;
+            outStatus->gps_gprmc_status = p[0]; p += 1;
+            outStatus->startup_times = (static_cast<unsigned int>(p[0]) << 24) | (static_cast<unsigned int>(p[1]) << 16)
+                | (static_cast<unsigned int>(p[2]) << 8) | static_cast<unsigned int>(p[3]); p += 4;
+            outStatus->total_operation_time = (static_cast<unsigned int>(p[0]) << 24) | (static_cast<unsigned int>(p[1]) << 16)
+                | (static_cast<unsigned int>(p[2]) << 8) | static_cast<unsigned int>(p[3]); p += 4;
+            outStatus->ptp_clock_status = p[0]; p += 1;
+            {
+                int32_t raw = (static_cast<int32_t>(p[0]) << 24) | (static_cast<int32_t>(p[1]) << 16)
+                    | (static_cast<int32_t>(p[2]) << 8) | static_cast<int32_t>(p[3]);
+                outStatus->humidity = raw / 10.0f; // 0.1 %rh units
+                p += 4;
+            }
+            // trailing reserved byte intentionally ignored
+
+            HESAI_LOG("hesai_get_lidar_status: success, motor_speed=" << outStatus->motor_speed
+                << " ptp_clock_status=" << (int)outStatus->ptp_clock_status);
+            return 0;
+        } catch (const std::exception& ex) {
+            HESAI_LOG("hesai_get_lidar_status: EXCEPTION " << ex.what());
+            return -1;
+        } catch (...) {
+            HESAI_LOG("hesai_get_lidar_status: UNKNOWN EXCEPTION");
+            return -1;
+        }
+    }
+
+    HESAI_API int hesai_get_correction_info(const char* ipAddress, int ptcPort, char* outBuffer, int bufferLength, int* outLength) {
+        if (!ipAddress || !outBuffer || bufferLength <= 0 || !outLength) return -1;
+        HESAI_LOG("hesai_get_correction_info: connecting to " << ipAddress << ":" << ResolvePtcPort(ptcPort));
+
+        try {
+            hesai::lidar::PtcClient client(ipAddress, ResolvePtcPort(ptcPort));
+            if (!WaitForPtcOpen(client, 3000)) {
+                HESAI_LOG("hesai_get_correction_info: PTC connection timed out");
+                *outLength = 0;
+                return -1;
+            }
+
+            hesai::lidar::u8Array_t in;
+            hesai::lidar::u8Array_t out;
+            int ret = client.QueryCommand(in, out, hesai::lidar::kPTCGetLidarCalibration);
+            if (ret != 0 || out.empty()) {
+                HESAI_LOG("hesai_get_correction_info: QueryCommand failed, ret=" << ret << " size=" << out.size());
+                *outLength = 0;
+                return -1;
+            }
+
+            if (static_cast<int>(out.size()) > bufferLength) {
+                HESAI_LOG("hesai_get_correction_info: buffer too small, need=" << out.size() << " have=" << bufferLength);
+                *outLength = static_cast<int>(out.size());
+                return -2;
+            }
+
+            memcpy(outBuffer, out.data(), out.size());
+            *outLength = static_cast<int>(out.size());
+            HESAI_LOG("hesai_get_correction_info: success, " << out.size() << " bytes");
+            return 0;
+        } catch (const std::exception& ex) {
+            HESAI_LOG("hesai_get_correction_info: EXCEPTION " << ex.what());
+            *outLength = 0;
+            return -1;
+        } catch (...) {
+            HESAI_LOG("hesai_get_correction_info: UNKNOWN EXCEPTION");
+            *outLength = 0;
+            return -1;
+        }
+    }
+
+    HESAI_API int hesai_get_manifest_info(
+        const char* ipAddress, int ptcPort,
+        HesaiInventoryInfo* outInventory, int* hasInventory,
+        HesaiConfigInfo* outConfig, int* hasConfig,
+        HesaiLidarStatus* outStatus, int* hasStatus,
+        char* correctionBuffer, int correctionBufferLength, int* correctionLength, int* hasCorrection) {
+
+        if (!ipAddress || !outInventory || !hasInventory || !outConfig || !hasConfig
+            || !outStatus || !hasStatus || !correctionBuffer || !correctionLength || !hasCorrection) {
+            return -1;
+        }
+
+        *hasInventory = 0;
+        *hasConfig = 0;
+        *hasStatus = 0;
+        *hasCorrection = 0;
+        *correctionLength = 0;
+        memset(outInventory, 0, sizeof(HesaiInventoryInfo));
+        memset(outConfig, 0, sizeof(HesaiConfigInfo));
+        memset(outStatus, 0, sizeof(HesaiLidarStatus));
+
+        HESAI_LOG("hesai_get_manifest_info: connecting to " << ipAddress << ":" << ResolvePtcPort(ptcPort));
+
+        try {
+            // ✅ Single persistent PtcClient shared across all four queries.
+            // The Pandar128E3X PTC TCP server only accepts one connection at a
+            // time and does not tolerate the connect/query/disconnect churn of
+            // four independent short-lived clients; reusing one open session
+            // for all queries avoids the "invalid input parameter" failures
+            // seen when each query opened/closed its own connection.
+            hesai::lidar::PtcClient client(ipAddress, ResolvePtcPort(ptcPort));
+            if (!WaitForPtcOpen(client, 3000)) {
+                HESAI_LOG("hesai_get_manifest_info: PTC connection timed out");
+                return -1;
+            }
+
+            // ── Inventory (0x07) ──
+            {
+                hesai::lidar::u8Array_t in, out;
+                int ret = client.QueryCommand(in, out, hesai::lidar::kPTCGetInventoryInfo);
+                if (ret == 0 && out.size() >= 228) {
+                    const uint8_t* p = out.data();
+                    CopyFixedField(outInventory->sn, sizeof(outInventory->sn), p, 18); p += 18;
+                    CopyFixedField(outInventory->date_of_manufacture, sizeof(outInventory->date_of_manufacture), p, 16); p += 16;
+                    memcpy(outInventory->mac, p, 6); p += 6;
+                    CopyFixedField(outInventory->sw_ver, sizeof(outInventory->sw_ver), p, 16); p += 16;
+                    CopyFixedField(outInventory->hw_ver, sizeof(outInventory->hw_ver), p, 16); p += 16;
+                    CopyFixedField(outInventory->control_fw_ver, sizeof(outInventory->control_fw_ver), p, 16); p += 16;
+                    CopyFixedField(outInventory->sensor_fw_ver, sizeof(outInventory->sensor_fw_ver), p, 16); p += 16;
+                    outInventory->angle_offset = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outInventory->model = p[0]; p += 1;
+                    outInventory->motor_type = p[0]; p += 1;
+                    outInventory->num_of_lines = p[0]; p += 1;
+                    CopyFixedField(outInventory->pn, sizeof(outInventory->pn), p, 32); p += 32;
+                    outInventory->customer_pn_enable = p[0]; p += 1;
+                    CopyFixedField(outInventory->customer_pn, sizeof(outInventory->customer_pn), p, 20); p += 20;
+                    CopyFixedField(outInventory->duns, sizeof(outInventory->duns), p, 9); p += 9;
+                    CopyFixedField(outInventory->vpps, sizeof(outInventory->vpps), p, 14); p += 14;
+                    CopyFixedField(outInventory->boot_ver, sizeof(outInventory->boot_ver), p, 16); p += 16;
+                    CopyFixedField(outInventory->cruise_pn, sizeof(outInventory->cruise_pn), p, 8); p += 8;
+                    CopyFixedField(outInventory->gm_sw_pn, sizeof(outInventory->gm_sw_pn), p, 8); p += 8;
+                    CopyFixedField(outInventory->gm_hw_pn, sizeof(outInventory->gm_hw_pn), p, 8); p += 8;
+                    *hasInventory = 1;
+                    HESAI_LOG("hesai_get_manifest_info: inventory success, sn=" << outInventory->sn);
+                } else {
+                    HESAI_LOG("hesai_get_manifest_info: inventory QueryCommand failed, ret=" << ret << " size=" << out.size());
+                }
+            }
+
+            // ── Config (0x08) ──
+            {
+                hesai::lidar::u8Array_t in, out;
+                const uint8_t kPTCGetConfigInfo = 0x08;
+                int ret = client.QueryCommand(in, out, kPTCGetConfigInfo);
+                if (ret == 0 && out.size() >= 34) {
+                    const uint8_t* p = out.data();
+                    memcpy(outConfig->ipaddr, p, 4); p += 4;
+                    memcpy(outConfig->mask, p, 4); p += 4;
+                    memcpy(outConfig->gateway, p, 4); p += 4;
+                    memcpy(outConfig->dest_ipaddr, p, 4); p += 4;
+                    outConfig->dest_lidar_udp_port = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outConfig->dest_gps_udp_port = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outConfig->spin_rate = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outConfig->sync = p[0]; p += 1;
+                    outConfig->sync_angle = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outConfig->start_angle = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outConfig->stop_angle = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outConfig->clock_source = p[0]; p += 1;
+                    p += 1; // reserved_1
+                    outConfig->trigger_method = p[0]; p += 1;
+                    outConfig->return_mode = p[0]; p += 1;
+                    outConfig->standby_mode = p[0]; p += 1;
+                    outConfig->motor_status = p[0]; p += 1;
+                    outConfig->vlan_flag = p[0]; p += 1;
+                    outConfig->vlan_id = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    outConfig->clock_data_fmt = p[0]; p += 1;
+                    outConfig->noise_filtering = p[0]; p += 1;
+                    outConfig->reflectivity_mapping = p[0]; p += 1;
+                    *hasConfig = 1;
+                    HESAI_LOG("hesai_get_manifest_info: config success, return_mode=" << (int)outConfig->return_mode);
+                } else {
+                    HESAI_LOG("hesai_get_manifest_info: config QueryCommand failed, ret=" << ret << " size=" << out.size());
+                }
+            }
+
+            // ── Status (0x09) ──
+            {
+                hesai::lidar::u8Array_t in, out;
+                int ret = client.QueryCommand(in, out, hesai::lidar::kPTCGetLidarStatus);
+                if (ret == 0 && out.size() >= 54) {
+                    const uint8_t* p = out.data();
+                    outStatus->system_uptime = (static_cast<unsigned int>(p[0]) << 24) | (static_cast<unsigned int>(p[1]) << 16)
+                        | (static_cast<unsigned int>(p[2]) << 8) | static_cast<unsigned int>(p[3]); p += 4;
+                    outStatus->motor_speed = static_cast<unsigned short>((p[0] << 8) | p[1]); p += 2;
+                    for (int i = 0; i < 8; ++i) {
+                        int32_t raw = (static_cast<int32_t>(p[0]) << 24) | (static_cast<int32_t>(p[1]) << 16)
+                            | (static_cast<int32_t>(p[2]) << 8) | static_cast<int32_t>(p[3]);
+                        outStatus->temperature[i] = raw / 100.0f;
+                        p += 4;
+                    }
+                    outStatus->gps_pps_lock = p[0]; p += 1;
+                    outStatus->gps_gprmc_status = p[0]; p += 1;
+                    outStatus->startup_times = (static_cast<unsigned int>(p[0]) << 24) | (static_cast<unsigned int>(p[1]) << 16)
+                        | (static_cast<unsigned int>(p[2]) << 8) | static_cast<unsigned int>(p[3]); p += 4;
+                    outStatus->total_operation_time = (static_cast<unsigned int>(p[0]) << 24) | (static_cast<unsigned int>(p[1]) << 16)
+                        | (static_cast<unsigned int>(p[2]) << 8) | static_cast<unsigned int>(p[3]); p += 4;
+                    outStatus->ptp_clock_status = p[0]; p += 1;
+                    {
+                        int32_t raw = (static_cast<int32_t>(p[0]) << 24) | (static_cast<int32_t>(p[1]) << 16)
+                            | (static_cast<int32_t>(p[2]) << 8) | static_cast<int32_t>(p[3]);
+                        outStatus->humidity = raw / 10.0f;
+                    }
+                    *hasStatus = 1;
+                    HESAI_LOG("hesai_get_manifest_info: status success, motor_speed=" << outStatus->motor_speed);
+                } else {
+                    HESAI_LOG("hesai_get_manifest_info: status QueryCommand failed, ret=" << ret << " size=" << out.size());
+                }
+            }
+
+            // ── Angle correction (0x05) ──
+            {
+                hesai::lidar::u8Array_t in, out;
+                int ret = client.QueryCommand(in, out, hesai::lidar::kPTCGetLidarCalibration);
+                if (ret == 0 && !out.empty()) {
+                    if (static_cast<int>(out.size()) <= correctionBufferLength) {
+                        memcpy(correctionBuffer, out.data(), out.size());
+                        *correctionLength = static_cast<int>(out.size());
+                        *hasCorrection = 1;
+                        HESAI_LOG("hesai_get_manifest_info: correction success, " << out.size() << " bytes");
+                    } else {
+                        HESAI_LOG("hesai_get_manifest_info: correction buffer too small, need=" << out.size() << " have=" << correctionBufferLength);
+                    }
+                } else {
+                    HESAI_LOG("hesai_get_manifest_info: correction QueryCommand failed, ret=" << ret << " size=" << out.size());
+                }
+            }
+
+            return 0;
+        } catch (const std::exception& ex) {
+            HESAI_LOG("hesai_get_manifest_info: EXCEPTION " << ex.what());
+            return -1;
+        } catch (...) {
+            HESAI_LOG("hesai_get_manifest_info: UNKNOWN EXCEPTION");
             return -1;
         }
     }

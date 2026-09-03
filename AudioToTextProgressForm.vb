@@ -87,24 +87,38 @@ Public Class AudioToTextProgressForm
     Private Sub AudioToText()
         Try
             ' Define paths and parameters.
-            Dim configFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, "AudioTotextConfig.xml")
-            ' Ensure the file exists.
-            If Not File.Exists(configFilePath) Then
-                Throw New FileNotFoundException($"Configuration file '{configFilePath}' not found.")
+            ' Preferred source: <AudioToTextConfiguration> section in config.xml.
+            ' Legacy fallback: standalone AudioTotextConfig.xml (retained for backward compatibility
+            ' with older installs that have not yet migrated their config.xml).
+            Dim mainConfigFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+            Dim legacyConfigFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, "AudioTotextConfig.xml")
+
+            Dim xmlDoc As New XmlDocument()
+            Dim configSectionNode As XmlNode = Nothing
+
+            If File.Exists(mainConfigFilePath) Then
+                xmlDoc.Load(mainConfigFilePath)
+                configSectionNode = xmlDoc.SelectSingleNode("//AudioToTextConfiguration")
             End If
 
-            ' Load the configuration XML.
-            Dim xmlDoc As New XmlDocument()
-            xmlDoc.Load(configFilePath)
+            If configSectionNode Is Nothing Then
+                If Not File.Exists(legacyConfigFilePath) Then
+                    Throw New FileNotFoundException($"Audio-to-text configuration not found in '{mainConfigFilePath}' or '{legacyConfigFilePath}'.")
+                End If
 
-            ' Read parameters from the XML file.
-            Dim pythonPath As String = xmlDoc.SelectSingleNode("//PythonPath")?.InnerText
-            Dim scriptName As String = xmlDoc.SelectSingleNode("//ScriptName")?.InnerText
-            Dim workingDirectory As String = xmlDoc.SelectSingleNode("//WorkingDirectory")?.InnerText
-            Dim intakeDir As String = xmlDoc.SelectSingleNode("//IntakeDir")?.InnerText
-            Dim configPath As String = xmlDoc.SelectSingleNode("//ConfigPath")?.InnerText
-            Dim configSheetName As String = xmlDoc.SelectSingleNode("//ConfigSheetName")?.InnerText
-            Dim runValue As String = xmlDoc.SelectSingleNode("//RunValue")?.InnerText
+                xmlDoc = New XmlDocument()
+                xmlDoc.Load(legacyConfigFilePath)
+                configSectionNode = xmlDoc.DocumentElement
+            End If
+
+            ' Read parameters from the resolved configuration section.
+            Dim pythonPath As String = configSectionNode.SelectSingleNode("PythonPath")?.InnerText
+            Dim scriptName As String = configSectionNode.SelectSingleNode("ScriptName")?.InnerText
+            Dim workingDirectory As String = configSectionNode.SelectSingleNode("WorkingDirectory")?.InnerText
+            Dim intakeDir As String = configSectionNode.SelectSingleNode("IntakeDir")?.InnerText
+            Dim configPath As String = configSectionNode.SelectSingleNode("ConfigPath")?.InnerText
+            Dim configSheetName As String = configSectionNode.SelectSingleNode("ConfigSheetName")?.InnerText
+            Dim runValue As String = configSectionNode.SelectSingleNode("RunValue")?.InnerText
 
             ' Construct the command-line arguments.
             Dim arguments As String = $"{scriptName} --intake_dir={intakeDir} --config_path={configPath} --Configsheet_name={configSheetName} --RUN={runValue}"

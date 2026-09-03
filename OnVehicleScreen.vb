@@ -140,6 +140,7 @@ Public Class OnVehicleScreen
         Finally
             SetButtonsEnabled(True)
             Cursor = Cursors.Arrow
+            Me.Refresh() ' Force UI update to reflect new button states immediately
         End Try
     End Sub
 

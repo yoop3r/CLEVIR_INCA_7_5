@@ -273,7 +273,7 @@ Public Class LoginForm
                 .Text = "System Configuration",
                 .Font = New System.Drawing.Font("Segoe UI", 9.0F, System.Drawing.FontStyle.Bold),
                 .Location = New Point(12, 143),
-                .Size = New Size(442, 180),
+                .Size = New Size(442, 200),
                 .BackColor = System.Drawing.Color.White
             }
             Dim tlp As New TableLayoutPanel With {
@@ -343,8 +343,24 @@ Public Class LoginForm
         Try
             HandleUserMessageLogging("GMRC", "LoginForm: Configuration Editor button pressed...")
 
+            ' LoginForm is TopMost, which would keep it painted over the editor.
+            ' Drop TopMost and push this form back so the config dialog is in front.
+            Dim wasTopMost As Boolean = Me.TopMost
+            Me.TopMost = False
+            Me.SendToBack()
+
             Dim editor As New ConfigurationEditorForm()
-            If editor.ShowDialog(Me) = DialogResult.OK Then
+            Dim editorResult As DialogResult
+            Try
+                editor.StartPosition = FormStartPosition.CenterParent
+                editorResult = editor.ShowDialog(Me)
+            Finally
+                Me.TopMost = wasTopMost
+                Me.BringToFront()
+                Me.Activate()
+            End Try
+
+            If editorResult = DialogResult.OK Then
                 If MsgBox("Configuration updated. Reload settings now?", vbYesNo + vbQuestion) = vbYes Then
                     ReadConfigFile()
 

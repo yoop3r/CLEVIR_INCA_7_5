@@ -79,6 +79,81 @@ Public Class HesaiInterop
         <MarshalAs(UnmanagedType.Bool)> Public validation_only As Boolean
     End Structure
 
+    ''' <summary>
+    ''' Native struct matching HesaiWrapper.h HesaiInventoryInfo (PTC command 0x07).
+    ''' Field lengths match the P128 TCP API v1.9 PTC_COMMAND_GET_INVENTORY_INFO
+    ''' response payload (228 bytes on the wire; the strings here are NUL-padded
+    ''' fixed-width buffers, one byte larger than the wire field to guarantee
+    ''' termination).
+    ''' </summary>
+    <StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Ansi)>
+    Public Structure HesaiInventoryInfo
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=19)> Public sn As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=17)> Public date_of_manufacture As String
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=6)> Public mac As Byte()
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=17)> Public sw_ver As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=17)> Public hw_ver As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=17)> Public control_fw_ver As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=17)> Public sensor_fw_ver As String
+        Public angle_offset As UShort
+        Public model As Byte
+        Public motor_type As Byte
+        Public num_of_lines As Byte
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=33)> Public pn As String
+        Public customer_pn_enable As Byte
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=21)> Public customer_pn As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=10)> Public duns As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=15)> Public vpps As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=17)> Public boot_ver As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=9)> Public cruise_pn As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=9)> Public gm_sw_pn As String
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=9)> Public gm_hw_pn As String
+    End Structure
+
+    ''' <summary>
+    ''' Native struct matching HesaiWrapper.h HesaiConfigInfo (PTC command 0x08).
+    ''' </summary>
+    <StructLayout(LayoutKind.Sequential)>
+    Public Structure HesaiConfigInfo
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=4)> Public ipaddr As Byte()
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=4)> Public mask As Byte()
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=4)> Public gateway As Byte()
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=4)> Public dest_ipaddr As Byte()
+        Public dest_lidar_udp_port As UShort
+        Public dest_gps_udp_port As UShort
+        Public spin_rate As UShort
+        Public sync As Byte
+        Public sync_angle As UShort
+        Public start_angle As UShort
+        Public stop_angle As UShort
+        Public clock_source As Byte
+        Public trigger_method As Byte
+        Public return_mode As Byte
+        Public standby_mode As Byte
+        Public motor_status As Byte
+        Public vlan_flag As Byte
+        Public vlan_id As UShort
+        Public clock_data_fmt As Byte
+        Public noise_filtering As Byte
+        Public reflectivity_mapping As Byte
+    End Structure
+
+    ''' <summary>
+    ''' Native struct matching HesaiWrapper.h HesaiLidarStatus (PTC command 0x09).
+    ''' </summary>
+    <StructLayout(LayoutKind.Sequential)>
+    Public Structure HesaiLidarStatus
+        Public system_uptime As UInteger
+        Public motor_speed As UShort
+        <MarshalAs(UnmanagedType.ByValArray, SizeConst:=8)> Public temperature As Single()
+        Public gps_pps_lock As Byte
+        Public gps_gprmc_status As Byte
+        Public startup_times As UInteger
+        Public total_operation_time As UInteger
+        Public ptp_clock_status As Byte
+        Public humidity As Single
+    End Structure
+
     ' DLL path - use relative name so it finds the DLL in the same directory
     Private Const LibHesaiDll As String = "HesaiWrapper.dll"
 
@@ -150,6 +225,61 @@ Public Class HesaiInterop
         <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
         Public Shared Sub hesai_shutdown()
         End Sub
+
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_get_inventory_info(
+            <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
+            ptcPort As Integer,
+            ByRef outInfo As HesaiInventoryInfo
+        ) As Integer
+        End Function
+
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_get_config_info(
+            <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
+            ptcPort As Integer,
+            ByRef outInfo As HesaiConfigInfo
+        ) As Integer
+        End Function
+
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_get_lidar_status(
+            <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
+            ptcPort As Integer,
+            ByRef outStatus As HesaiLidarStatus
+        ) As Integer
+        End Function
+
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_get_correction_info(
+            <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
+            ptcPort As Integer,
+            outBuffer As Byte(),
+            bufferLength As Integer,
+            ByRef outLength As Integer
+        ) As Integer
+        End Function
+
+        ''' <summary>
+        ''' ✅ Combined manifest query (0x07/0x08/0x09/0x05) issued over a
+        ''' single persistent PTC session. See HesaiWrapper.h for rationale.
+        ''' </summary>
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function hesai_get_manifest_info(
+            <MarshalAs(UnmanagedType.LPStr)> ipAddress As String,
+            ptcPort As Integer,
+            ByRef outInventory As HesaiInventoryInfo,
+            ByRef hasInventory As Integer,
+            ByRef outConfig As HesaiConfigInfo,
+            ByRef hasConfig As Integer,
+            ByRef outStatus As HesaiLidarStatus,
+            ByRef hasStatus As Integer,
+            correctionBuffer As Byte(),
+            correctionBufferLength As Integer,
+            ByRef correctionLength As Integer,
+            ByRef hasCorrection As Integer
+        ) As Integer
+        End Function
     End Class
 
     ' ====================================================================
@@ -329,6 +459,186 @@ Public Class HesaiInterop
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"HesaiInterop.ResetDeviceStats: {ex.Message}")
             Return False
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' ✅ NEW: Queries PTC command 0x07 (inventory info) directly from the LiDAR.
+    ''' Opens a short-lived PTC connection independent of device registration state,
+    ''' so this works even when the device is registered in validation-only mode.
+    ''' </summary>
+    ''' <param name="ipAddress">LiDAR IP address</param>
+    ''' <param name="ptcPort">PTC TCP port (0 = default 9347)</param>
+    ''' <returns>Inventory info, or Nothing if the query failed</returns>
+    Public Shared Function GetInventoryInfo(ipAddress As String, Optional ptcPort As Integer = 0) As HesaiInventoryInfo?
+        Try
+            Dim info As New HesaiInventoryInfo()
+            Dim result As Integer = NativeMethods.hesai_get_inventory_info(ipAddress, ptcPort, info)
+            If result <> 0 Then
+                HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetInventoryInfo failed for {ipAddress} (error code: {result})")
+                Return Nothing
+            End If
+            Return info
+        Catch ex As DllNotFoundException
+            Return Nothing
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"HesaiInterop.GetInventoryInfo: {ex.Message}")
+            Return Nothing
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' ✅ NEW: Queries PTC command 0x08 (config info, incl. return_mode/clock_source)
+    ''' directly from the LiDAR.
+    ''' </summary>
+    ''' <param name="ipAddress">LiDAR IP address</param>
+    ''' <param name="ptcPort">PTC TCP port (0 = default 9347)</param>
+    ''' <returns>Config info, or Nothing if the query failed</returns>
+    Public Shared Function GetConfigInfo(ipAddress As String, Optional ptcPort As Integer = 0) As HesaiConfigInfo?
+        Try
+            Dim info As New HesaiConfigInfo()
+            Dim result As Integer = NativeMethods.hesai_get_config_info(ipAddress, ptcPort, info)
+            If result <> 0 Then
+                HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetConfigInfo failed for {ipAddress} (error code: {result})")
+                Return Nothing
+            End If
+            Return info
+        Catch ex As DllNotFoundException
+            Return Nothing
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"HesaiInterop.GetConfigInfo: {ex.Message}")
+            Return Nothing
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' ✅ NEW: Queries PTC command 0x09 (live status: motor speed, PTP lock,
+    ''' temperature, humidity) directly from the LiDAR.
+    ''' </summary>
+    ''' <param name="ipAddress">LiDAR IP address</param>
+    ''' <param name="ptcPort">PTC TCP port (0 = default 9347)</param>
+    ''' <returns>Live status, or Nothing if the query failed</returns>
+    Public Shared Function GetLidarStatus(ipAddress As String, Optional ptcPort As Integer = 0) As HesaiLidarStatus?
+        Try
+            Dim status As New HesaiLidarStatus()
+            Dim result As Integer = NativeMethods.hesai_get_lidar_status(ipAddress, ptcPort, status)
+            If result <> 0 Then
+                HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetLidarStatus failed for {ipAddress} (error code: {result})")
+                Return Nothing
+            End If
+            Return status
+        Catch ex As DllNotFoundException
+            Return Nothing
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"HesaiInterop.GetLidarStatus: {ex.Message}")
+            Return Nothing
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' ✅ NEW: Queries PTC command 0x05 (angle correction file) directly from
+    ''' the LiDAR. The response is a plain-text CSV
+    ''' ("Laser id,Elevation,Azimuth" header followed by one row per channel).
+    ''' Prefer this live value over the configured CorrectionFilePath on disk
+    ''' when available, since it reflects the exact unit connected rather than
+    ''' a potentially stale file.
+    ''' </summary>
+    ''' <param name="ipAddress">LiDAR IP address</param>
+    ''' <param name="ptcPort">PTC TCP port (0 = default 9347)</param>
+    ''' <returns>CSV text, or Nothing if the query failed</returns>
+    Public Shared Function GetCorrectionInfo(ipAddress As String, Optional ptcPort As Integer = 0) As String
+        Try
+            ' Angle correction payloads observed around ~2.2KB for a 128-channel unit;
+            ' 16KB gives comfortable headroom without being wasteful.
+            Const bufferSize As Integer = 16384
+            Dim buffer(bufferSize - 1) As Byte
+            Dim actualLength As Integer = 0
+
+            Dim result As Integer = NativeMethods.hesai_get_correction_info(ipAddress, ptcPort, buffer, bufferSize, actualLength)
+
+            If result = -2 Then
+                HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetCorrectionInfo buffer too small for {ipAddress} (needed {actualLength} bytes)")
+                Return Nothing
+            ElseIf result <> 0 Then
+                HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetCorrectionInfo failed for {ipAddress} (error code: {result})")
+                Return Nothing
+            End If
+
+            Return System.Text.Encoding.ASCII.GetString(buffer, 0, actualLength)
+        Catch ex As DllNotFoundException
+            Return Nothing
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"HesaiInterop.GetCorrectionInfo: {ex.Message}")
+            Return Nothing
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' Bundled result of a single combined PTC manifest query (0x07/0x08/0x09/0x05)
+    ''' issued over one persistent connection. Each Has* flag indicates whether
+    ''' the corresponding field is populated.
+    ''' </summary>
+    Public Class HesaiManifestQueryResult
+        Public Property Inventory As HesaiInventoryInfo?
+        Public Property Configuration As HesaiConfigInfo?
+        Public Property Status As HesaiLidarStatus?
+        Public Property CorrectionCsv As String
+    End Class
+
+    ''' <summary>
+    ''' ✅ Queries inventory (0x07), config (0x08), status (0x09), and angle
+    ''' correction (0x05) over a SINGLE persistent PTC session, instead of
+    ''' four independent short-lived connections. The Pandar128E3X PTC TCP
+    ''' server only accepts one connection at a time and does not tolerate
+    ''' rapid reconnects between queries; issuing all manifest queries over
+    ''' one open connection avoids "invalid input parameter" (return code 1)
+    ''' failures observed when each query opened its own connection.
+    ''' </summary>
+    ''' <param name="ipAddress">LiDAR IP address</param>
+    ''' <param name="ptcPort">PTC TCP port (0 = default 9347)</param>
+    ''' <returns>Result bundle with whichever fields succeeded populated, or Nothing if the connection itself failed</returns>
+    Public Shared Function GetManifestInfo(ipAddress As String, Optional ptcPort As Integer = 0) As HesaiManifestQueryResult
+        Try
+            Dim inventory As New HesaiInventoryInfo()
+            Dim hasInventory As Integer = 0
+            Dim config As New HesaiConfigInfo()
+            Dim hasConfig As Integer = 0
+            Dim status As New HesaiLidarStatus()
+            Dim hasStatus As Integer = 0
+            Const bufferSize As Integer = 16384
+            Dim correctionBuffer(bufferSize - 1) As Byte
+            Dim correctionLength As Integer = 0
+            Dim hasCorrection As Integer = 0
+
+            Dim result As Integer = NativeMethods.hesai_get_manifest_info(
+                ipAddress, ptcPort,
+                inventory, hasInventory,
+                config, hasConfig,
+                status, hasStatus,
+                correctionBuffer, bufferSize, correctionLength, hasCorrection)
+
+            If result <> 0 Then
+                HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetManifestInfo connection failed for {ipAddress} (error code: {result})")
+                Return Nothing
+            End If
+
+            Dim manifestResult As New HesaiManifestQueryResult()
+            If hasInventory <> 0 Then manifestResult.Inventory = inventory
+            If hasConfig <> 0 Then manifestResult.Configuration = config
+            If hasStatus <> 0 Then manifestResult.Status = status
+            If hasCorrection <> 0 Then manifestResult.CorrectionCsv = System.Text.Encoding.ASCII.GetString(correctionBuffer, 0, correctionLength)
+
+            If hasInventory = 0 Then HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetManifestInfo inventory query failed for {ipAddress}")
+            If hasConfig = 0 Then HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetManifestInfo config query failed for {ipAddress}")
+            If hasStatus = 0 Then HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetManifestInfo status query failed for {ipAddress}")
+            If hasCorrection = 0 Then HandleUserMessageLogging("GMRC", $"⚠️ Hesai PTC: GetManifestInfo correction query failed for {ipAddress}")
+
+            Return manifestResult
+        Catch ex As DllNotFoundException
+            Return Nothing
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"HesaiInterop.GetManifestInfo: {ex.Message}")
+            Return Nothing
         End Try
     End Function
 

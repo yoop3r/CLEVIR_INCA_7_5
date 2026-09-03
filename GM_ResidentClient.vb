@@ -3153,6 +3153,31 @@ Public Class GmResidentClient
         End Try
     End Sub
 
+    ''' <summary>
+    ''' ✅ NEW: Parses a whitespace-separated vector of doubles (e.g. "0 0 0") from
+    ''' config.xml, falling back to the provided default if the text is missing,
+    ''' malformed, or the wrong length.
+    ''' </summary>
+    Private Function ParseDoubleVector(text As String, expectedLength As Integer, fallback As Double()) As Double()
+        If String.IsNullOrWhiteSpace(text) Then
+            Return fallback
+        End If
+
+        Dim parts As String() = text.Split(New Char() {" "c, ","c}, StringSplitOptions.RemoveEmptyEntries)
+        If parts.Length <> expectedLength Then
+            Return fallback
+        End If
+
+        Dim result(expectedLength - 1) As Double
+        For i As Integer = 0 To expectedLength - 1
+            If Not Double.TryParse(parts(i), result(i)) Then
+                Return fallback
+            End If
+        Next
+
+        Return result
+    End Function
+
     Private Sub ReadLidarConfiguration(root As XmlNode)
         Try
             ' ================================================================
@@ -3214,10 +3239,89 @@ Public Class GmResidentClient
                     HandleUserMessageLogging("GMRC", $"✅ Loaded LiDAR: {deviceId} [{orientLabel}] at {ipAddress}:{dataPort}")
 
                     ' ================================================================
+                    ' ✅ NEW: Parse optional <Extrinsic> mount-transform config
+                    ' Absence or IsCalibrated="False" means alignment hasn't been
+                    ' performed yet; downstream manifest consumers must be able to
+                    ' distinguish that from a genuine identity-transform result.
+                    ' ================================================================
+                    Try
+                        Dim extrinsicNode As XmlNode = lidarNode.SelectSingleNode("Extrinsic")
+                        If extrinsicNode IsNot Nothing Then
+                            Dim isCalibratedAttr As String = extrinsicNode.Attributes("IsCalibrated")?.Value
+                            Dim isCalibrated As Boolean = If(String.IsNullOrEmpty(isCalibratedAttr), False, Boolean.Parse(isCalibratedAttr))
+
+                            Dim translationText As String = extrinsicNode.SelectSingleNode("Translation")?.InnerText
+                            Dim rotationText As String = extrinsicNode.SelectSingleNode("RotationQuaternion")?.InnerText
+                            Dim residualText As String = extrinsicNode.SelectSingleNode("ResidualError")?.InnerText
+                            Dim dateText As String = extrinsicNode.SelectSingleNode("DatePerformed")?.InnerText
+
+                            Dim translation As Double() = ParseDoubleVector(translationText, 3, {0.0, 0.0, 0.0})
+                            Dim rotation As Double() = ParseDoubleVector(rotationText, 4, {0.0, 0.0, 0.0, 1.0})
+
+                            Dim residual As Double? = Nothing
+                            Dim residualParsed As Double
+                            If Double.TryParse(residualText, residualParsed) Then
+                                residual = residualParsed
+                            End If
+
+                            Dim datePerformed As DateTime? = Nothing
+                            Dim dateParsed As DateTime
+                            If DateTime.TryParse(dateText, dateParsed) Then
+                                datePerformed = dateParsed
+                            End If
+
+                            device.ExtrinsicConfig = New PcapEventBridge.ExtrinsicRecord With {
+                                .CalibrationId = extrinsicNode.SelectSingleNode("CalibrationId")?.InnerText,
+                                .datePerformed = datePerformed,
+                                .Method = extrinsicNode.SelectSingleNode("Method")?.InnerText,
+                                .TranslationMeters = translation,
+                                .RotationQuaternion = rotation,
+                                .ResidualError = residual,
+                                .isCalibrated = isCalibrated
+                            }
+                            device.HasExtrinsicConfig = True
+
+                            If isCalibrated Then
+                                HandleUserMessageLogging("GMRC", $"✅ Extrinsic loaded for {deviceId} (calibration ID: {device.ExtrinsicConfig.CalibrationId})")
+                            Else
+                                HandleUserMessageLogging("GMRC", $"⚠️ Extrinsic for {deviceId} is uncalibrated (identity placeholder)")
+                            End If
+                        Else
+                            HandleUserMessageLogging("GMRC", $"⚠️ No <Extrinsic> node for {deviceId} - manifest will flag as uncalibrated")
+                        End If
+                    Catch ex As Exception
+                        HandleUserMessageLogging("GMRC", $"Failed to parse Extrinsic for {deviceId}: {ex.Message}")
+                    End Try
+
+                    ' ================================================================
+                    ' ✅ NEW: Hesai HTTP JSON API port (pandar.cgi), used to source
+                    ' capture-manifest metadata. Parsed outside the SDK-availability
+                    ' gate below because the HTTP path is pure managed code and does
+                    ' not require HesaiWrapper.dll to be present.
+                    ' ================================================================
+                    Dim httpPortNode As XmlNode = lidarNode.SelectSingleNode("HesaiConfig")
+                    If httpPortNode Is Nothing Then
+                        httpPortNode = lidarDevicesNode.SelectSingleNode("HesaiConfig")
+                    End If
+                    If httpPortNode IsNot Nothing Then
+                        Dim parsedHttpPort As Integer
+                        If Integer.TryParse(httpPortNode.SelectSingleNode("HttpPort")?.InnerText, parsedHttpPort) AndAlso parsedHttpPort > 0 Then
+                            device.HesaiHttpPort = parsedHttpPort
+                        End If
+                    End If
+
+                    ' ================================================================
                     ' ✅ NEW: Register with Hesai SDK (simple or extended config)
                     ' ================================================================
                     If HesaiInterop.IsAvailable() Then
+                        ' ✅ FIX: <HesaiConfig> may be nested per-<Lidar> (device-specific
+                        ' override) or a single sibling node shared by all devices under
+                        ' <LidarDevices> (the common case in config.xml today). Prefer the
+                        ' per-device node when present, otherwise fall back to the shared one.
                         Dim hesaiConfigNode As XmlNode = lidarNode.SelectSingleNode("HesaiConfig")
+                        If hesaiConfigNode Is Nothing Then
+                            hesaiConfigNode = lidarDevicesNode.SelectSingleNode("HesaiConfig")
+                        End If
 
                         If hesaiConfigNode IsNot Nothing Then
                             device.HesaiConfig = New HesaiInterop.HesaiDeviceConfig With {

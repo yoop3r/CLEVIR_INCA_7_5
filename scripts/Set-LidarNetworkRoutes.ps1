@@ -14,8 +14,17 @@
 
 	Both silently cause traffic to the TM2000B (192.168.10.20) to be routed out the wrong
 	interface (typically Wi-Fi) instead of the LiDAR NIC, even though the switch itself routes
-	the subnet correctly. Re-run this script any time the switch's Vlan20 SVI address changes,
+	Re-run this script any time the switch's Vlan20 SVI address changes,
 	or any time `Find-NetRoute -RemoteIPAddress <device>` shows the wrong interface/next hop.
+
+	PLANNED CHANGE (not yet in effect): the TM2000B is planned to move from its own routed
+	Vlan30 (192.168.10.0/24) onto the LiDAR NIC's Vlan20 (100.64.1.0/24) broadcast domain, at
+	100.64.1.20. Once that physical/switch-side move is confirmed complete, this script's
+	entire TM-subnet Repair-PersistentRoute call becomes unnecessary (no routed hop = no
+	persistent route to maintain) and should be removed along with the -TmSubnet/
+	-TmSubnetMask/-TmDeviceIp parameters. Do not remove it before the migration is actually
+	performed on-site, or this script will stop repairing the still-live Vlan30 route. See
+	docs/TM2000B_Network_Setup.md "Revision history" for the full rollout checklist.
 
 	NOTE: OXTS is intentionally NOT handled by this script. Per the end users' final decision,
 	OXTS Sync Omni, Hunter, and Intrepid GigaStar live together on their own dedicated, isolated

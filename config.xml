@@ -16,6 +16,15 @@
   <RecordFileDurationMinutes>5</RecordFileDurationMinutes>
   <MuteVoiceRecordingMessages>False</MuteVoiceRecordingMessages>
   <AudioToTextConversion>False</AudioToTextConversion>
+  <AudioToTextConfiguration>
+    <PythonPath>C:\Python\Python310\python.exe</PythonPath>
+    <ScriptName>__main__.py</ScriptName>
+    <WorkingDirectory>C:\Data\Robustness\Driver_Log_Tools\</WorkingDirectory>
+    <IntakeDir>C:\HB\Data\</IntakeDir>
+    <ConfigPath>C:\Data\Robustness\Common_Data\Common_Configs\DLconfig.xlsx</ConfigPath>
+    <ConfigSheetName>Sheet1</ConfigSheetName>
+    <RunValue>Conso,EventLabel,AudioToText,ANNOcat</RunValue>
+  </AudioToTextConfiguration>
   <!-- ================================================================ -->
   <!-- Alternate Recording (CANalyzer/VehicleSpy) -->
   <!-- ================================================================ -->
@@ -139,6 +148,20 @@
       <DataPort>2368</DataPort>
       <ImuPort>8308</ImuPort>
       <Orientation>FRONT</Orientation>
+      <!-- Optional: sensor-to-vehicle mount transform, from a per-vehicle
+           alignment procedure. Omit or leave IsCalibrated=False until a real
+           alignment result exists; downstream tooling should treat an
+           uncalibrated extrinsic as identity with reduced trust. -->
+      <Extrinsic IsCalibrated="False">
+        <CalibrationId></CalibrationId>
+        <DatePerformed></DatePerformed>
+        <Method></Method>
+        <!-- Translation in meters, vehicle frame: x y z -->
+        <Translation>0 0 0</Translation>
+        <!-- Rotation as quaternion: x y z w -->
+        <RotationQuaternion>0 0 0 1</RotationQuaternion>
+        <ResidualError></ResidualError>
+      </Extrinsic>
     </Lidar>
     <Lidar id="2" enabled="True">
       <AdapterGuid>{238526F8-A6BB-490E-87AD-641077474537}</AdapterGuid>
@@ -146,6 +169,14 @@
       <DataPort>2369</DataPort>
       <ImuPort>8308</ImuPort>
       <Orientation>REAR</Orientation>
+      <Extrinsic IsCalibrated="False">
+        <CalibrationId></CalibrationId>
+        <DatePerformed></DatePerformed>
+        <Method></Method>
+        <Translation>0 0 0</Translation>
+        <RotationQuaternion>0 0 0 1</RotationQuaternion>
+        <ResidualError></ResidualError>
+      </Extrinsic>
     </Lidar>
     <!-- Optional Hesai SDK parameters -->
     <HesaiConfig>
@@ -156,6 +187,10 @@
       <HostIpAddress>100.64.1.8</HostIpAddress>
       <MulticastIpAddress>239.192.20.10</MulticastIpAddress>
       <PtcPort>9347</PtcPort>
+      <!-- Port for the Hesai HTTP JSON API (pandar.cgi). Used to source capture
+           manifest metadata (device info, config, status, angle correction).
+           Standard HTTP port 80 unless the unit has been reconfigured. -->
+      <HttpPort>80</HttpPort>
       <UsePtcConnected>false</UsePtcConnected>
       <EnableParserThread>True</EnableParserThread>
       <EnableUdpThread>True</EnableUdpThread>

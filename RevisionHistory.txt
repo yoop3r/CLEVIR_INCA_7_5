@@ -1,6 +1,78 @@
 CLEVIR_INCA_7_5 - Revision History
 ===================================
 
+Version 7.5.3.0
+----------------
+- Button14_Click (Start/Stop Record) has a Finally block that calls Me.Refresh() after re-enabling buttons and resetting the cursor, forcing an immediate repaint of the form. Button6_Click (Start/Stop Measurement) had the same pattern of re-enabling buttons and resetting the cursor in its Finally block, but was missing the Me.Refresh() call — so after Stop Measurement, the button text/color changes (set deep inside StopMeasurementRoutine/UpdateButtonStates) weren't flushed to the screen immediately.
+  Fix: Added Me.Refresh() to Button6_Click's Finally block in OnVehicleScreen.vb, matching the existing pattern used by Button14_Click.
+- Merged AudioTotextConfig.xml into config.xml under a new AudioToTextConfiguration section (PythonPath, ScriptName,
+  WorkingDirectory, IntakeDir, ConfigPath, ConfigSheetName, RunValue),
+  eliminating redundant configuration files.
+- Updated AudioToTextProgressForm to read audio-to-text parameters from
+  config.xml first, falling back to the legacy standalone
+  AudioTotextConfig.xml for backward compatibility with older installs.
+- Removed the standalone AudioTotextConfig.xml component from the WiX
+  installer (Product.wxs) since its settings now ship as part of
+  config.xml.
+- Expanded the Configuration Editor to describe and validate the new
+  AudioToTextConfiguration parameters, plus several previously
+  undocumented/unvalidated config.xml settings: OxtsCaptureEnabled and
+  OxtsCapture (NetworkAdapterGuid, IpAddress, NcomPort),
+  OxtsConfiguration.NetworkAdapterGuid, Compression.MaxRetries,
+  Compression.RetryDelaySeconds, Compression.FileLockTimeoutSeconds,
+  NetworkAdapterDescription, CurrentVehicleUsage,
+  SelectedVehicleNumber, SaveCalSnapshotEnabled,
+  APICommErrorMsgDelayTime, and SkipSubscriptionOnCacheHit.
+- Added True/False validation for additional boolean settings
+  (MuteVoiceRecordingMessages, AudioToTextConversion,
+  AlternateRecordEnabled, EnableAltRecReStartAfterRecordStop,
+  OxtsCaptureEnabled, EnableTimeSync, TimeMachineConfiguration.Enabled,
+  PtpAssumeLocked, SaveCalSnapshotEnabled, SkipSubscriptionOnCacheHit,
+  the Compression file-type/DeleteAfterCompression flags, and
+  ZipMF4Files) and range/format validation for additional numeric and
+  enum settings (TimeMachineConfiguration.Port, OxtsCapture.PtcPort,
+  HesaiConfig.HttpPort, TimeMachineConfiguration.PollMs,
+  APICommErrorMsgDelayTime, Compression.MaxRetries/RetryDelaySeconds/
+  FileLockTimeoutSeconds, and TimeSyncConfiguration.Provider).
+- Replaced the native Hesai PTC/TCP-9347 interop path for capture
+  manifest metadata with a managed HTTP client (HesaiHttpApi.vb)
+  querying the device's pandar.cgi JSON API (device_info, lidar_config,
+  lidar_data, lidar_sync, lidar_monitor, TimeStatistic,
+  PTP_lock_offset, lidar_calibration). The PTC path was unreliable
+  against live units, repeatedly failing with "invalid input
+  parameter" / ret=-1 errors; HTTP is stateless and requires no native
+  interop. Added HttpPort parsing to config.xml/GM_ResidentClient.vb so
+  the HTTP path works independently of the native SDK.
+- Upgraded the sidecar capture manifest (PcapEventBridge.CaptureManifest)
+  to schema version 2, with device identity, live configuration/status
+  snapshots, angle-correction and firetimes calibration blobs, and
+  extrinsic mounting data populated from the new HTTP metadata source.
+  Fields are nullable where the device does not report them, so
+  missing data serializes as absent rather than a misleading default
+  such as 0 or false.
+- Added an on-demand "Generate Manifest" button to the Configuration
+  Editor, allowing operators to produce and verify a device manifest
+  (and confirm HTTP reachability) outside of an active capture
+  session.
+- Extended the Hesai HTTP-based capture manifest schema with decoded,
+  human-readable companion fields alongside the existing raw codes:
+  ReturnModeName, RotateDirectionName, PtpProfileName, and
+  MotorTypeName. Documented LidarDataFormat as reported by the device
+  but not used by downstream tooling.
+- Fixed the Configuration Editor opening behind the always-on-top
+  Login screen; the Login form now temporarily relinquishes topmost
+  status and is sent to the back while the editor is displayed, then
+  restored afterward.
+- Moved sidecar capture manifest generation off the capture-stop path
+  and onto a background task, removing a 20-30 second delay between
+  recording sequences that was caused by blocking on Hesai HTTP
+  metadata queries and PCAP checksum computation during capture stop.
+  Manifest state (integrity counters, event markers, time-sync status)
+  is snapshotted synchronously before the background write so it is
+  not lost when the next sequence starts. Pending manifest writes are
+  now awaited during device shutdown/dispose to avoid losing an
+  in-flight manifest.
+
 Version 7.5.2.0
 ----------------
 - Fixed an issue where a malformed entry in config.xml (an invalid XML

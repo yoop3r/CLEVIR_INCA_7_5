@@ -6,6 +6,7 @@
 ## Migration Instructions
 - For the WinForms-to-WPF migration of CLEVIR_INCA_7_5, always ask for explicit per-form confirmation before starting migration work on any individual form. Some forms may not need migration at all, and each form should be scoped and approved individually rather than batch-migrating a phase.
 - Prioritize validating a completed .NET Framework 4.8 → .NET 10 migration (deep runtime smoke test) before resuming further modernization work (WPF migration away from WinForms). Confidence in the upgraded baseline matters more than migration speed.
+- Status: The .NET 10 migration smoke test has been completed (confirmed by the user). WPF migration work may now be considered, subject to per-form confirmation as noted above.
 
 ## Code Access Guidelines
 - For cross-thread boolean state flags in this codebase (e.g., _isCapturing in LidarDevice.vb / OxtsNcomCaptureDevice.vb) that are read/written across threads, always use Volatile.Read/Volatile.Write (or Interlocked) instead of plain field access, matching the existing pattern used for other counters like _packetCount.

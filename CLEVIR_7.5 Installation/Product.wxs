@@ -101,9 +101,7 @@
         <Component Id="CMP_ConfigXML" Guid="*">
           <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\config.xml" KeyPath="yes" />
         </Component>
-        <Component Id="CMP_AudioToTextConfig" Guid="*">
-          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\AudioTotextConfig.xml" KeyPath="yes" />
-        </Component>
+        <!-- CMP_AudioToTextConfig removed: AudioTotextConfig.xml merged into config.xml's AudioToTextConfiguration section -->
         <!-- ONVIFSystemConfigurationDialog.exe.config removed: no build source; not part of current deployment -->
         <!-- Driver XML files (DRVR00.xml-DRVR05.xml) removed: deprecated in favor of config.xml -->
         <!-- TXT configuration files -->
