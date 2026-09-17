@@ -54,7 +54,7 @@ Module ZipStuff
 
         If InStr(My.Application.Info.AssemblyName, "CLEVIR_INCA_7_5") Then
             Dim test As String = My.Application.Info.AssemblyName
-            _zipDir = "C:\Program Files\7-Zip\"
+            _zipDir = SevenZipPath
             _zipExe = "7z.exe"
             _zipInstallFile = "7z2501-x64.exe"
             _sevenZipLibraryPath = _zipDir & "7z.dll"

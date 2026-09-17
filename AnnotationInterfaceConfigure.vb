@@ -79,7 +79,7 @@ Public Class AnnotationInterfaceConfigure
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "AnnotationInterfaceConfigure: " & ex.Message, DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"AnnotationInterfaceConfigure ({ex.GetType().Name}): " & ex.Message, DisplayMsgBox)
         End Try
 
 
@@ -195,7 +195,7 @@ Public Class AnnotationInterfaceConfigure
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "AnnotationInterfaceConfigure: " & ex.Message, DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"AnnotationInterfaceConfigure ({ex.GetType().Name}): " & ex.Message, DisplayMsgBox)
         End Try
 
     End Sub

@@ -1,8 +1,9 @@
-﻿Option Strict Off
+Option Strict Off
 
 'Imports SevenZip
 Imports System.Diagnostics
 Imports System.IO
+Imports System.Runtime.InteropServices
 Imports System.Speech.Synthesis
 Imports System.Threading
 Imports System.Threading.Tasks
@@ -10,6 +11,7 @@ Imports System.Windows.Forms.DataVisualization.Charting
 Imports System.Xml
 Imports de.etas.cebra.toolAPI.Inca
 Imports NAudio.Wave
+Imports VB = Microsoft.VisualBasic
 
 'Imports CLEVIR_INCA_7_4.DataDictionarySingleton
 
@@ -141,7 +143,6 @@ Public Module Module1
     Public ReadOnly FlashParameters(0 To 5) As FlashInfo 'Set in HandleWorkspace, used in FlashingStatus form when flashing
     Public AlternateRecordingMode As String 'FlexrayAndFO, FlexrayOnly, NoCanalyzer or VehicleSpy - Set during initialization, used during recording
     Public ReadOnly DriveLetters As String() = {"A", "B", "D", "E", "F", "G"} 'Used in InitForm_Load when determining if external flash drive is being used
-    Public UsingFlashDrive As Boolean       'Set in InitForm_Load if we determine that external flash drive is being used - affects various aspects of CLEVIR behavior
     Public SelectedTestName As String       'Set in SetupDataLogging based on vehiclenumber, date, time, etc.  Used for naming the various recorded files
     Public SaveSelectedTestName As String   'Set in SetupDataLogging.  Used in conjunction with SelectedTestName
     Public SaveLoginID As String = ""            'Set as part of login process, either from LoginForm or in SetupDataLogging
@@ -207,7 +208,6 @@ Public Module Module1
 
     Public OperatingMode As OperatingModes
     Public NetworkAdapterDescription As String
-    Public EnableDataUpload As Boolean
 
     Public ReadOnly myDGs As New List(Of GridDataClass)
     Public ReadNewDataFile As Boolean
@@ -220,9 +220,11 @@ Public Module Module1
     Public CheckForNewINCAProjects As Boolean
 
     Public NetworkDriveLetter As String
-    Public SaveNetworkDriveLetter As String
 
     Public NetworkDriveMapping As String = ""
+
+    Public CSVScriptsPath As String = "C:\CSVScripts"
+    Public SevenZipPath As String = "C:\Program Files\7-Zip\"
 
     Public UnzipPath As String
     Public UnzipSubDir As String
@@ -280,7 +282,6 @@ Public Module Module1
     Public VideoCameraNotUpdating As Boolean
 
     Public WhatToDo As String
-    Public ReadOnly BaseLocalDataPath As String = "C:\HB\"
 
     Public SaveSignalRegistrationMode As String
     Public SignalRegistrationMode As String
@@ -341,14 +342,32 @@ Public Module Module1
     ''' <summary>
     ''' ✅ Global flag indicating the application is exiting.
     ''' Used to prevent re-entrant calls to ExitApp and suppress UI operations during shutdown.
+    ''' Backed by Volatile.Read/Write since it is read/written across threads.
     ''' </summary>
-    Public exitInProgress As Boolean = False
+    Private _exitInProgress As Boolean = False
+    Public Property exitInProgress As Boolean
+        Get
+            Return Volatile.Read(_exitInProgress)
+        End Get
+        Set(value As Boolean)
+            Volatile.Write(_exitInProgress, value)
+        End Set
+    End Property
 
     ''' <summary>
     ''' ✅ Global flag indicating Initialize() is currently running.
     ''' Prevents recursive initialization calls during form lifecycle events.
+    ''' Backed by Volatile.Read/Write since it is read/written across threads.
     ''' </summary>
-    Public initializationInProgress As Boolean = False
+    Private _initializationInProgress As Boolean = False
+    Public Property initializationInProgress As Boolean
+        Get
+            Return Volatile.Read(_initializationInProgress)
+        End Get
+        Set(value As Boolean)
+            Volatile.Write(_initializationInProgress, value)
+        End Set
+    End Property
 
     Public Property CompressMF4 As Boolean = True
     Public Property CompressPCAP As Boolean = True
@@ -430,13 +449,31 @@ Public Module Module1
     ' LiDAR Capture - N-Device Scalable Architecture
     ' =====================================================================
     ' Global master switch for LiDAR capture functionality
-    Public LidarCaptureEnabled As Boolean = False
+    ' Backed by Volatile.Read/Write since it is read/written across threads.
+    Private _lidarCaptureEnabled As Boolean = False
+    Public Property LidarCaptureEnabled As Boolean
+        Get
+            Return Volatile.Read(_lidarCaptureEnabled)
+        End Get
+        Set(value As Boolean)
+            Volatile.Write(_lidarCaptureEnabled, value)
+        End Set
+    End Property
 
     ' Collection of configured LiDAR devices (supports multiple sensors)
     Public LidarDevices As New List(Of LidarDevice)
 
     ' Global flag indicating if any LiDAR device is currently capturing
-    Public LidarCaptureStarted As Boolean = False
+    ' Backed by Volatile.Read/Write since it is read/written across threads.
+    Private _lidarCaptureStarted As Boolean = False
+    Public Property LidarCaptureStarted As Boolean
+        Get
+            Return Volatile.Read(_lidarCaptureStarted)
+        End Get
+        Set(value As Boolean)
+            Volatile.Write(_lidarCaptureStarted, value)
+        End Set
+    End Property
 
     ' Active SharedNicCapture instances (one per unique adapter GUID that hosts
     ' more than one LiDAR device).  Keyed by upper-case adapter GUID.
@@ -1160,7 +1197,7 @@ Public Module Module1
         'Note:  Only used when running CLEVIR using a flash drive onto which the files will be copied...
 
         Dim myProcess As Process
-        Dim ExecutableFile As String = "C:\csvscripts\robocopy.exe"
+        Dim ExecutableFile As String = Path.Combine(CSVScriptsPath, "robocopy.exe")
         Dim p As New ProcessStartInfo
 
         Dim RoboParams As String
@@ -2540,16 +2577,12 @@ Public Module Module1
         ' 6. CLEVIRFilesPath
         CLEVIRFilesPath = v.CLEVIRFilesPath
 
-        ' 7. ZipTheMF4Files (may be overridden by CurrentVehicleUsage / UsingFlashDrive)
+        ' 7. ZipTheMF4Files (may be overridden by CurrentVehicleUsage)
         ZipTheMF4Files = v.ZipMF4Files
         Select Case CurrentVehicleUsage.ToUpper()
             Case "DEVELOPMENT" : ZipTheMF4Files = True
             Case "VALIDATION" : ZipTheMF4Files = False
         End Select
-        If UsingFlashDrive Then
-            CurrentVehicleUsage = "DEVELOPMENT"
-            ZipTheMF4Files = True
-        End If
 
         ' 8. FCMConfigName
         FCMConfigName = v.ConfigName
@@ -2828,13 +2861,6 @@ Public Module Module1
                 HandleUserMessageLogging("GMRC",
                     $"ReadVehicleConfigsFile OriginalVehicleConfiguration = {OriginalVehicleConfiguration} CurrentVehicleUsage = {CurrentVehicleUsage} ZipTheMF4Files = {ZipTheMF4Files}")
 
-                If UsingFlashDrive Then
-                    CurrentVehicleUsage = "DEVELOPMENT"
-                    ZipTheMF4Files = True
-                    HandleUserMessageLogging("GMRC",
-                        $"ReadVehicleConfigsFile UsingFlashDrive = True. CurrentVehicleUsage = {CurrentVehicleUsage} ZipTheMF4Files set to True")
-                End If
-
             Case CONFIG_NAME
                 FCMConfigName = lineItems(currentIndex)
         End Select
@@ -2865,11 +2891,9 @@ Public Module Module1
         If cPath = "CURRENT" AndAlso proc <> "IP" Then mismatch = True
 
         If mismatch Then
-            If VehicleStatDashboard.Visible = False Then
-                HandleUserMessageLogging("GMRC",
-                    $"ReadVehicleConfigsFile: CLEVIR Files Path {lineItems(CLEVIR_FILES_PATH)} does Not match controller type {lineItems(PROC_START)} For Vehicle Number {lineItems(0)}",
-                    DisplayMsgBox, )
-            End If
+            HandleUserMessageLogging("GMRC",
+                $"ReadVehicleConfigsFile: CLEVIR Files Path {lineItems(CLEVIR_FILES_PATH)} does Not match controller type {lineItems(PROC_START)} For Vehicle Number {lineItems(0)}",
+                DisplayMsgBox, )
         End If
     End Sub
 
@@ -2880,13 +2904,9 @@ Public Module Module1
                                        ByRef vehicleID As String,
                                        ByRef ReadVehicleConfigsFile As Boolean)
         ' Log or display a message if the vehicle number is not found
-        If Not VehicleStatDashboard.Visible Then
-            HandleUserMessageLogging("GMRC",
-            $"Vehicle Number {vehicleNumber} Not found In Vehicle Configurations File...",
-            DisplayMsgBox, )
-        Else
-            VehicleStatDashboard.ListBox9.Items.Add($"Vehicle Number {vehicleNumber} Not found In Vehicle Configurations File...")
-        End If
+        HandleUserMessageLogging("GMRC",
+        $"Vehicle Number {vehicleNumber} Not found In Vehicle Configurations File...",
+        DisplayMsgBox, )
         ' Update the vehicle ID and number to "UNDEFINED"
         vehicleID = "UNDEFINED"
         vehicleNumber = "UNDEFINED"
@@ -6063,5 +6083,876 @@ Public Module Module1
         Next
     End Sub
 
+
+    ' ================================================================
+    ' Merged from GenericAnyCLEVIRToolSuiteApp.vb (module removed; content
+    ' relocated here since Module1 is the shared/generic module).
+    ' ================================================================
+
+
+    'This module contains routines shared across the CLEVIR application.
+
+    Public LocalVehicleConfigFileModifyDate As Date
+
+    Public ReadOnly DisplayMsgBox As Boolean = True
+    Public SendLiveUpdate As Boolean = True
+    Public ReadOnly FlashMsgOn As Short = 0
+    Public ReadOnly FlashMsg1Sec As Short = 1000
+    Public ReadOnly FlashMsg2Sec As Short = 2000
+    Public ReadOnly FlashMsg3Sec As Short = 3000
+    Public ReadOnly FlashMsg4Sec As Short = 4000
+    Public ReadOnly FlashMsg5Sec As Short = 5000
+
+    ' Error Constants:
+
+    Public Const ERROR_BAD_DEV_TYPE = 66&
+    Public Const ERROR_BAD_DEVICE = 1200&
+    Public Const ERROR_BAD_NET_NAME = 67&
+    Public Const ERROR_BAD_PROFILE = 1206&
+    Public Const ERROR_BAD_PROVIDER = 1204&
+    Public Const ERROR_BUSY = 170&
+    Public Const ERROR_CANCELLED = 1223&
+    Public Const ERROR_CANNOT_OPEN_PROFILE = 1205&
+    Public Const ERROR_DEVICE_ALREADY_REMEMBERED = 1202&
+    Public Const ERROR_EXTENDED_ERROR = 1208&
+    Public Const ERROR_NO_NET_OR_BAD_PATH = 1203&
+
+    Public Const ERROR_BAD_NETPATH As Long = 53&
+    Public Const ERROR_NETWORK_ACCESS_DENIED As Long = 65&
+    Public Const ERROR_NETWORK_BUSY As Long = 54&
+
+    Public Const EWX_LOGOFF As Long = &H0
+    Public Const EwxShutdown As Long = &H1
+    Public Const EWX_REBOOT As Long = &H2
+    Public Const EwxForce As Long = &H4
+    Public Const EwxPoweroff As Long = &H8
+    Public Const EwxForceIFHUNG As Long = &H10
+
+    Const ANYSIZE_ARRAY As Integer = 1
+    Const TOKEN_QUERY As Integer = &H8
+    Const TOKEN_ADJUST_PRIVILEGES As Integer = &H20
+    Const SE_SHUTDOWN_NAME As String = "SeShutdownPrivilege"
+    Const SE_PRIVILEGE_ENABLED As Integer = &H2
+
+    <System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)>
+    Friend Structure LUID
+        Public LowPart As UInt32
+        Public HighPart As UInt32
+    End Structure
+
+    <System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)>
+    Friend Structure LUID_AND_ATTRIBUTES
+        Public Luid As LUID
+        Public Attributes As UInt32
+    End Structure
+
+    <System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)>
+    Friend Structure TOKEN_PRIVILEGES
+        Public PrivilegeCount As UInt32
+        <System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValArray, SizeConst:=ANYSIZE_ARRAY)>
+        Public Privileges() As LUID_AND_ATTRIBUTES
+    End Structure
+
+    ''' <summary>
+    ''' P/Invoke declarations isolated per CA1060 (native methods must live in a
+    ''' type whose name ends in NativeMethods/SafeNativeMethods/UnsafeNativeMethods).
+    ''' Kept Friend (not Private) because ExitWindows is called from other files
+    ''' in this project (GM_ResidentClient.vb, UploadDataScreen.vb).
+    ''' </summary>
+    Friend NotInheritable Class NativeMethods
+        Private Sub New()
+        End Sub
+
+        <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Friend Shared Function LookupPrivilegeValue(
+         <MarshalAs(UnmanagedType.LPStr)> ByVal lpSystemName As String,
+         <MarshalAs(UnmanagedType.LPStr)> ByVal lpName As String,
+         ByRef lpLuid As LUID
+          ) As Boolean
+        End Function
+
+        <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True)>
+        Friend Shared Function OpenProcessToken(
+         ByVal ProcessHandle As IntPtr,
+         ByVal DesiredAccess As Integer,
+         ByRef TokenHandle As IntPtr
+          ) As Boolean
+        End Function
+
+        <System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError:=True)>
+        Friend Shared Function CloseHandle(ByVal hHandle As IntPtr) As Boolean
+        End Function
+
+        <System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError:=True)>
+        Friend Shared Function AdjustTokenPrivileges(
+           ByVal TokenHandle As IntPtr,
+           ByVal DisableAllPrivileges As Boolean,
+           ByRef NewState As TOKEN_PRIVILEGES,
+           ByVal BufferLength As Integer,
+           ByRef PreviousState As TOKEN_PRIVILEGES,
+           ByRef ReturnLength As IntPtr
+         ) As Boolean
+        End Function
+
+        Public Declare Function ExitWindows _
+            Lib "User32" Alias "ExitWindowsEx" _
+            (ByVal dwOptions As Long, ByVal dwReserved As Long) As Long
+
+        <DllImport("winmm.dll", EntryPoint:="mciSendStringA", CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function mciSendString(<MarshalAs(UnmanagedType.LPStr)> ByVal lpstrCommand As String, <MarshalAs(UnmanagedType.LPStr)> ByVal lpstrReturnString As String, ByVal uReturnLength As Integer, ByVal hwndCallback As Integer) As Integer
+        End Function
+
+        <DllImport("user32.dll")>
+        Public Shared Function SetForegroundWindow(ByVal hWnd As IntPtr) As <MarshalAs(UnmanagedType.Bool)> Boolean
+        End Function
+
+        <DllImport("user32.dll", EntryPoint:="FindWindowA", CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
+        Public Shared Function FindWindow(<MarshalAs(UnmanagedType.LPStr)> ByVal lpClassName As String, <MarshalAs(UnmanagedType.LPStr)> ByVal lpWindowName As String) As Integer
+        End Function
+
+        Public Declare Function GetWindowPlacement Lib "user32" (ByVal hwnd As Integer, ByRef lpwndpl As WINDOWPLACEMENT) As Integer
+
+        Public Declare Function SetWindowPlacement Lib "user32" (ByVal hwnd As Integer, ByRef lpwndpl As WINDOWPLACEMENT) As Integer
+    End Class
+
+    Public Structure POINTAPI
+
+        Dim X As Integer
+        Dim Y As Integer
+
+    End Structure
+
+    Public Structure RECT
+
+        Dim Left_Renamed As Integer
+        Dim Top_Renamed As Integer
+        Dim Right_Renamed As Integer
+        Dim Bottom_Renamed As Integer
+
+    End Structure
+
+    Public Structure WINDOWPLACEMENT
+
+        Dim length As Integer
+
+        Dim flags As Integer
+
+        Dim showCmd As Integer
+
+        Dim ptMinPosition As POINTAPI
+
+        Dim ptMaxPosition As POINTAPI
+
+        Dim rcNormalPosition As RECT
+
+    End Structure
+
+    Public Const SW_SHOWMINIMIZED As Short = 2
+
+    Public Const SW_SHOWMAXIMIZED As Short = 3
+
+    Public Const SW_SHOWNORMAL As Short = 1
+
+    Public Username As String
+
+    Private Sub HandleProfsFiles(ByVal ProfsFile1 As String, ByVal ProfsFile2 As String)
+
+        'Handles unzipping primary profs file in c:\temp folder and copying profs override files
+        'over originally unzipped files, this for new ACP3 Profs...
+
+        Dim dir As New DirectoryInfo("C:\Temp")
+        Dim files As FileInfo()
+        Dim dirs As DirectoryInfo() = dir.GetDirectories()
+        Dim dirlist As ArrayList
+        Dim x As Integer
+        Dim OverrideFile As String
+        Dim NewProfsDirectory As String = Nothing
+
+        Try
+
+            dirlist = New ArrayList
+
+            For x = 0 To UBound(dirs)
+                dirlist.Add(dirs(x).Name)
+            Next
+
+            HandleUserMessageLogging("GMRC", "HandleProfsFiles: Unzipping Profs Folder in C:\temp...",, )
+
+            'If InStr(ProfsFile1, "Override_Files") = 1 Then
+            If InStr(ProfsFile1, "_Override") > 0 Then 'changed in 5.6.6 - seemed to work, but not correct code, also changed instr compare based to accomodate new name of override file.
+                OverrideFile = ProfsFile1
+                UnzipFolder(ProfsFile2)
+
+            Else
+                OverrideFile = ProfsFile2
+                UnzipFolder(ProfsFile1)
+            End If
+
+            dirs = dir.GetDirectories
+
+            For x = 0 To UBound(dirs)
+                If dirlist.Contains(dirs(x).Name) = False Then
+                    NewProfsDirectory = dirs(x).FullName
+                    Exit For
+                End If
+            Next
+
+            HandleUserMessageLogging("GMRC", "HandleProfsFiles: Copying and unzipping Profs Override File...",, )
+
+            File.Copy(OverrideFile, NewProfsDirectory & "\" & Path.GetFileName(OverrideFile))
+
+            UnzipFile(NewProfsDirectory & "\" & Path.GetFileName(OverrideFile))
+
+            dir = New DirectoryInfo(NewProfsDirectory)
+
+            files = dir.GetFiles
+
+            HandleUserMessageLogging("GMRC", "HandleProfsFiles: Replacing Profs files with Unzipped Override files...",, )
+
+            For Each file In files
+                If InStr(file.Name, ".zip") = 0 And InStr(file.Name, ".ini") = 0 Then
+                    If Directory.Exists(NewProfsDirectory & "\Prof\Profe") Then
+                        System.IO.File.Copy(file.FullName, NewProfsDirectory & "\Prof\Profe\" & file.Name, True)
+                    ElseIf Directory.Exists(NewProfsDirectory & "\Profe") Then
+                        System.IO.File.Copy(file.FullName, NewProfsDirectory & "\Profe\" & file.Name, True)
+                    Else
+                        HandleUserMessageLogging("GMRC", "HandleProfsFiles: Replacing Profs files with Unzipped Override files Failed, Directory not found...",, )
+                    End If
+                End If
+            Next
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"HandleProfsFiles ({ex.GetType().Name}): " & ex.Message,, )
+        End Try
+
+    End Sub
+
+    Public Sub RunNotepad(ByVal filename As String)
+
+        'Displays the specified file contents in notepad...
+
+        Dim Notepadprocess As New Process With {
+            .StartInfo = New ProcessStartInfo("notepad.exe", filename)
+        }
+        Notepadprocess.Start()
+    End Sub
+
+    Public Sub HandleUserMessageLogging(ByVal LogFileType As String, ByVal MessageText As String, Optional DisplayMessageBox As Boolean = False, Optional ByVal SendUpdateVehicleStatus As Boolean = False, Optional ByVal UserStatusInfoTimeSec As Integer = -1, Optional ByVal myListBox As ListBox = Nothing, Optional ByVal MessageLogNumber As Integer = 0, Optional ByVal myLabel As Label = Nothing)
+        'This routine is called any time we need to log information one of the CLEVIR log files, or if we want to display information to the user.
+        'There are various mechanisms used to display information to the user, Message Box, Write into a list box on a form for status update, or display a user status info pop up
+        'window for a set period of time.  Based on the arguments sent to this routine, we display the text passed in any or all of these ways.
+
+        'Most user information and logging information is handled by this HandleUserMessageLogging routine.  User information is always logged to a
+        'log file but can also be displayed as described above. Logging information may also be copied up to a file on the share drive that can be read
+        'by CLEVIR on the CLEVIR administrators PC for live updates.
+
+        Try
+
+            'log file type passed in can be either "COMM" which will write to the GM_INCA_Comm.log file, or "GMRC" which will write to the GM_ResidentClient.log file...
+
+            If LogFileType = "COMM" Then
+                CopyToCOMMLog(MessageText)
+            Else
+
+                'If SendUpdateVehicleStatus = True Then
+                'UpdateVehicleStatus(MessageText)
+                'End If
+
+                If myListBox IsNot Nothing Then
+                    myListBox.Items.Add(MessageText)
+                    myListBox.SelectedIndex = myListBox.Items.Count - 1
+                    myListBox.Refresh()
+                End If
+
+                If myLabel IsNot Nothing Then
+                    myLabel.Text = MessageText
+                    myLabel.Refresh()
+                End If
+
+                CopyToLog(MessageText, MessageLogNumber)
+
+                If UserStatusInfoTimeSec <> -1 Then
+                    UserStatusInfo.Label1.Text = MessageText
+                    If UserStatusInfoTimeSec <> 0 Then
+                        System.Threading.Thread.Sleep(UserStatusInfoTimeSec)
+                        UserStatusInfo.Hide()
+                    End If
+                End If
+
+                If DisplayMessageBox = True Then
+                    MsgBox(MessageText)
+                    UserStatusInfo.Hide()
+                End If
+
+                If RecorderStopWatch IsNot Nothing AndAlso RecorderStopWatch.IsRunning Then
+                    ' Use elapsed time for logging
+                    Dim elapsed = RecorderStopWatch.Elapsed.TotalSeconds
+                End If
+
+            End If
+
+        Catch ex As Exception
+            CopyToLog($"HandleUserMessageLogging ({ex.GetType().Name}): " & MessageText & " - " & ex.Message)
+        End Try
+
+
+    End Sub
+
+    Sub RoboCopyFile(ByVal sourcefile As String, ByVal destDir As String, Optional ByVal Elevate As Boolean = False)
+
+        'Called from numerous places...
+        'Uses RoboCopy to copy source file to destdir - keeps the same filename in new location...
+
+        Dim myprocess As Process
+        Dim ExecutableFile As String = Path.Combine(CSVScriptsPath, "robocopy.exe")
+        Dim p As New ProcessStartInfo
+        'Dim sourcefile As String
+        Dim destfile As String
+        'Dim destdir As String
+        Dim sourcedir As String
+
+        Dim RoboParams As String
+
+        sourcedir = Path.GetDirectoryName(sourcefile)
+
+        destfile = Path.GetFileName(sourcefile)
+
+        'run robocopy routine
+
+        p.WindowStyle = ProcessWindowStyle.Normal '.Hidden
+        p.FileName = ExecutableFile
+
+        If Elevate = True Then
+            p.Verb = "runas"
+        End If
+
+
+        'RoboParams = " /R:1 /move /s"
+        'RoboParams = " /R:1 /mov"
+        RoboParams = " /R:1"
+
+
+        'p.Arguments = sourcedir & " " & """" & destDir & """" & " " & destfile & RoboParams
+
+        p.Arguments = """" & sourcedir & """" & " " & """" & destDir & """" & " " & destfile & RoboParams
+
+        myprocess = Process.Start(p)
+        'If AllFiles = True Then
+        myprocess.WaitForExit()
+        'End If
+
+    End Sub
+
+    ' MapDrive/UnMapDrive (WNetAddConnection2/WNetCancelConnection2) removed - network drive mapping is no longer
+    ' supported. Upload paths are expected to be directly accessible (e.g. a UNC path); see
+    ' UploadDataScreen.VerifyNetworkMapping for the corresponding caller-side behavior.
+
+    Public Sub DirectoryCopy(
+            ByVal sourceDirName As String,
+            ByVal destDirName As String,
+            ByVal copySubDirs As Boolean)
+
+        'This is called out of GmResidentClient.AddCustomINCASetup which is not currently supported. 
+        'This routine is retained in case we need to use this functionality later for a different purpose...
+
+        'Creates a New directory and copyies the contents of
+        'the source directory into the new directory.
+
+        ' Get the subdirectories for the specified directory. 
+        Dim dir As New DirectoryInfo(sourceDirName)
+        Dim dirs As DirectoryInfo() = dir.GetDirectories()
+
+        If Not dir.Exists Then
+            Throw New DirectoryNotFoundException(
+                "Source directory does not exist or could not be found: " _
+                + sourceDirName)
+        End If
+
+        ' If the destination directory doesn't exist, create it. 
+        If Not Directory.Exists(destDirName) Then
+            Directory.CreateDirectory(destDirName)
+
+            ' Get the files in the directory and copy them to the new location. 
+            Dim files As FileInfo() = dir.GetFiles()
+            For Each file In files
+                Dim temppath As String = Path.Combine(destDirName, file.Name)
+                file.CopyTo(temppath, False)
+            Next file
+
+            ' If copying subdirectories, copy them and their contents to new location. 
+            If copySubDirs Then
+                For Each subdir In dirs
+                    Dim temppath As String = Path.Combine(destDirName, subdir.Name)
+                    DirectoryCopy(subdir.FullName, temppath, copySubDirs)
+                Next subdir
+            End If
+        Else
+            MsgBox(destDirName & " already exists.")
+        End If
+
+    End Sub
+    Public Function CheckForRoboCopyFolder() As Boolean
+
+        'Changed instances of NetworkDriveLetter to NetworkDriveMapping 02/14/2021
+
+        'Called from InitForm_Load...
+
+        'CLEVIR requires robocopy to be available on the computer.  Robocopy runs out of the CSVScripts folder.  If this folder
+        'does not exist, we copy it and its contents to the user PC.
+
+
+        Dim Failed As Boolean
+
+        Try
+
+            If Not System.IO.Directory.Exists(CSVScriptsPath) Then
+
+                If NetworkDrivePermission = False Then
+                    HandleUserMessageLogging("GMRC", "CheckForRoboCopyFolder: Could not access " & NetworkDriveMapping & CLEVIRBaseDir, DisplayMsgBox)
+                    'CheckForRoboCopyFolder = False
+                    Failed = True
+                    Exit Function
+                End If
+
+                If System.IO.Directory.Exists(NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\Misc Support Files\CSVScripts") Then
+
+                    HandleUserMessageLogging("GMRC", "CheckForRoboCopyFolder: Copying CSVScripts directory from Q drive to C drive...",, )
+                    My.Computer.FileSystem.CopyDirectory(NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\Misc Support Files\CSVScripts", CSVScriptsPath)
+                Else
+                    HandleUserMessageLogging("GMRC", "CheckForRoboCopyFolder: Could not find " & NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\Misc Support Files\CSVScripts.", DisplayMsgBox, )
+                    Failed = True
+                End If
+
+            ElseIf System.IO.File.Exists(Path.Combine(CSVScriptsPath, "Robocopy.exe")) = False Then
+
+                If NetworkDrivePermission = False Then
+                    HandleUserMessageLogging("GMRC", "CheckForRoboCopyFolder: Could not access " & NetworkDriveMapping & CLEVIRBaseDir, DisplayMsgBox)
+                    'CheckForRoboCopyFolder = False
+                    Failed = True
+                    Exit Function
+                End If
+
+                If System.IO.Directory.Exists(NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\Misc Support Files\CSVScripts") Then
+
+                    HandleUserMessageLogging("GMRC", "CheckForRoboCopyFolder: Copying CSVScripts files from Q drive to C drive...",, )
+                    My.Computer.FileSystem.CopyDirectory(NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\Misc Support Files\CSVScripts", CSVScriptsPath, True)
+                Else
+                    HandleUserMessageLogging("GMRC", "CheckForRoboCopyFolder: Could not find " & NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\Misc Support Files\CSVScripts.", DisplayMsgBox, )
+                    Failed = True
+                End If
+
+            End If
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"CheckForRoboCopyFolder ({ex.GetType().Name}): " & ex.Message, DisplayMsgBox, )
+            Failed = True
+
+        Finally
+            CheckForRoboCopyFolder = Not Failed
+        End Try
+
+    End Function
+    Public Sub DeleteDirectory(path As String)
+
+        'Called from DeleteDirectory and CopyINCADatabase...
+
+        'Recursively deletes files in directories and subdirectories so "path" directory can be deleted.
+        'At the time of implementing this, could not find a way of deleting a directory without first
+        'deleting its contents...
+
+        Try
+
+            If Directory.Exists(path) Then
+
+                'Delete all files from the Directory
+
+                For Each filepath As String In Directory.GetFiles(path)
+
+                    Try
+                        File.SetAttributes(filepath, FileAttributes.Normal)
+                        File.Delete(filepath)
+                    Catch ex As Exception
+                        HandleUserMessageLogging("GMRC", $"DeleteDirectory: Files For Loop ({ex.GetType().Name}): " & ex.Message)
+                    End Try
+
+                Next
+
+                'Delete all child Directories
+
+                For Each dir As String In Directory.GetDirectories(path)
+
+                    Try
+                        DeleteDirectory(dir)
+                    Catch ex As Exception
+                        HandleUserMessageLogging("GMRC", $"DeleteDirectory: For Loop ({ex.GetType().Name}): " & ex.Message)
+                        'Continue For
+                    End Try
+
+                Next
+
+                'Delete a Directory
+
+                Directory.Delete(path)
+
+            End If
+
+        Catch ex As Exception
+
+            HandleUserMessageLogging("GMRC", $"DeleteDirectory ({ex.GetType().Name}): " & ex.Message)
+        End Try
+
+    End Sub
+
+    Public Sub AcquireShutdownPrivilege()
+
+        'Called from UploadDataScreen and GmResidentClient.ExitApp
+
+        'This routine enables the Shutdown privilege for the current process, 
+        'which is necessary if you want to call ExitWindowsEx.
+
+        Dim lastWin32Error As Integer = 0
+
+        'Get the LUID that corresponds to the Shutdown privilege, if it exists.
+        Dim luid_Shutdown As LUID
+        If Not NativeMethods.LookupPrivilegeValue(Nothing, SE_SHUTDOWN_NAME, luid_Shutdown) Then
+            lastWin32Error = System.Runtime.InteropServices.Marshal.GetLastWin32Error()
+            Throw New System.ComponentModel.Win32Exception(lastWin32Error,
+             "LookupPrivilegeValue failed with error " & lastWin32Error.ToString & ".")
+        End If
+
+        'Get the current process's token.
+        Dim hProc As IntPtr = Process.GetCurrentProcess().Handle
+        Dim hToken As IntPtr
+        If Not NativeMethods.OpenProcessToken(hProc, TOKEN_ADJUST_PRIVILEGES Or TOKEN_QUERY, hToken) Then
+            lastWin32Error = System.Runtime.InteropServices.Marshal.GetLastWin32Error()
+            Throw New System.ComponentModel.Win32Exception(lastWin32Error,
+             "OpenProcessToken failed with error " & lastWin32Error.ToString & ".")
+        End If
+
+        Try
+
+            'Set up a LUID_AND_ATTRIBUTES structure containing the Shutdown privilege, marked as enabled.
+            Dim luaAttr As New LUID_AND_ATTRIBUTES With {
+                .Luid = luid_Shutdown,
+                .Attributes = SE_PRIVILEGE_ENABLED
+            }
+
+            'Set up a TOKEN_PRIVILEGES structure containing only the shutdown privilege.
+            Dim newState As New TOKEN_PRIVILEGES With {
+                .PrivilegeCount = 1,
+                .Privileges = New LUID_AND_ATTRIBUTES() {luaAttr}
+            }
+
+            'Set up a TOKEN_PRIVILEGES structure for the returned (modified) privileges.
+            Dim prevState As New TOKEN_PRIVILEGES
+            ReDim prevState.Privileges(CInt(newState.PrivilegeCount))
+
+            'Apply the TOKEN_PRIVILEGES structure to the current process's token.
+            Dim returnLength As IntPtr
+            If Not NativeMethods.AdjustTokenPrivileges(hToken, False, newState, System.Runtime.InteropServices.Marshal.SizeOf(prevState), prevState, returnLength) Then
+                lastWin32Error = System.Runtime.InteropServices.Marshal.GetLastWin32Error()
+                Throw New System.ComponentModel.Win32Exception(lastWin32Error,
+                 "AdjustTokenPrivileges failed with error " & lastWin32Error.ToString & ".")
+            End If
+
+        Finally
+            NativeMethods.CloseHandle(hToken)
+        End Try
+
+    End Sub
+
+    'Public Function FileInUse(ByVal sFile As String) As Boolean
+
+    '    'Called from multiple routines...
+    '    'Checks if file in use, returns true if in use...
+
+    '    FileInUse = False
+
+    '    If System.IO.File.Exists(sFile) Then
+    '        Try
+    '            Dim F As Short = FreeFile()
+    '            FileOpen(F, sFile, OpenMode.Binary, OpenAccess.ReadWrite, OpenShare.LockReadWrite)
+    '            FileClose(F)
+    '        Catch ex As Exception
+    '            Return True
+    '        End Try
+    '    End If
+
+    'End Function
+
+    Public Function FileInUse(filePath As String) As Boolean
+
+        'Called from multiple routines...
+        'Checks if file in use, returns true if in use...
+        Try
+            Using fs As FileStream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None)
+                ' If we can open exclusively, the file is not in use.
+            End Using
+            Return False
+        Catch
+            Return True
+        End Try
+    End Function
+
+    Public Function GetRandom(ByVal Min As Integer, ByVal Max As Integer) As Integer
+
+        'Called from various places, typically used for testing in the design environment...
+
+        'Gets a random number between min and max...
+
+        ' by making Generator static, we preserve the same instance '
+        ' (i.e., do not create new instances with the same seed over and over) '
+        ' between calls '
+        Static Generator As New Random()
+        Return Generator.Next(Min, Max)
+    End Function
+
+    Public Sub CheckForNewerSoftwareVersions()
+
+        'Called when Save Vehicle Number Change button is pressed on InitForm and HandleWirelessConnection...
+
+        'Checks the share drive to see if there are newer versions of the current application executables and support files.
+        'If new support files are found they are copied.  If an updated .exe is found, it shells
+        'out autoupdater.exe and terminates the current app.  The autoupdater then copies the new executables and shells
+        'new version of the current app and kills itself...
+
+        Dim dir As DirectoryInfo
+        Dim files As FileInfo()
+        Dim AppShortName As String
+        Dim UpdatedFilesFullPath As String = ""
+        Dim UpdatedFilesLocation As String = ""
+        Dim NumberOfPasses As Integer
+        Dim TargetPath As String
+        Dim FileType As String = ""
+        Dim x As Integer
+        Dim y As Integer
+        Dim ProfsFilesCopied() As String = Nothing
+        Dim z As Integer
+
+        Try
+
+            TargetPath = NetworkDriveMapping
+
+            If NetworkDrivePermission = False Then
+                HandleUserMessageLogging("GMRC", "CheckForNewerSoftwareVersions: Could not access " & NetworkDriveMapping & CLEVIRBaseDir & ". Exiting...")
+                Exit Sub
+            End If
+
+            If System.IO.Directory.Exists(TargetPath) Then
+                HandleUserMessageLogging("GMRC", "CheckForNewerSoftwareVersions: Found " & TargetPath & "...",,, FlashMsg1Sec)
+
+                AppShortName = My.Application.Info.AssemblyName
+
+                Select Case AppShortName
+                    Case "CLEVIR_INCA_7_2", "CLEVIR_INCA_7_3", "CLEVIR_INCA_7_4", "CLEVIR_INCA_7_5"
+                        NumberOfPasses = 4
+                    Case "THE_ANNOTATOR_INCA_7_2", "THE_ANNOTATOR_INCA_7_3", "THE_ANNOTATOR_INCA_7_4", "THE_ANNOTATOR_INCA_7_5"
+                        NumberOfPasses = 7
+                        FileType = "DataDictionary"
+                    Case "CLEVIR_File_Transfer_Utility", "CameraCheck"
+                        NumberOfPasses = 0
+                End Select
+
+                HandleUserMessageLogging("GMRC", "Checking for applicable vehicle type specific Support Files...",,, FlashMsgOn)
+
+                For y = 1 To NumberOfPasses
+
+                    If NumberOfPasses = 7 Then
+                        UpdatedFilesLocation = "Updated CLEVIR Files for Vehicles\Vehicle Type Specific Support Files"
+                        Select Case y
+                            Case 1
+                                UpdatedFilesLocation = UpdatedFilesLocation & "\CSAV2\" & FileType
+                            Case 2
+                                UpdatedFilesLocation = UpdatedFilesLocation & "\LowContent\" & FileType
+                            Case 3
+                                UpdatedFilesLocation = UpdatedFilesLocation & "\HighContent\" & FileType
+                            Case 4
+                                UpdatedFilesLocation = UpdatedFilesLocation & "\ACP2\" & FileType
+                            Case 5
+                                UpdatedFilesLocation = UpdatedFilesLocation & "\ACP3\" & FileType
+                            Case 6
+                                UpdatedFilesLocation = UpdatedFilesLocation & "\ACP4\" & FileType
+                            Case 7
+                                UpdatedFilesLocation = UpdatedFilesLocation & "\FCM\" & FileType
+                        End Select
+
+                    Else
+                        UpdatedFilesLocation = "Updated CLEVIR Files for Vehicles\Vehicle Type Specific Support Files\" & ProjectName
+                        Select Case y
+                            Case 1
+                                UpdatedFilesLocation &= "\WorkspaceTemplates"
+                            Case 2
+                                UpdatedFilesLocation &= "\EnumerationFiles"
+                            Case 3
+                                UpdatedFilesLocation &= "\DataDictionary"
+                            Case 4
+                                UpdatedFilesLocation &= "\VehicleSpy"
+                        End Select
+
+                    End If
+
+                    UpdatedFilesFullPath = TargetPath & CLEVIRBaseDir & "\" & UpdatedFilesLocation
+
+                    If InStr(UpdatedFilesFullPath, "WorkspaceTemplates") > 0 And MaxCameras = 8 Then
+                        UpdatedFilesFullPath &= "\8Camera_Templates"
+                    End If
+
+                    If System.IO.Directory.Exists(UpdatedFilesFullPath) Then
+
+                        dir = New DirectoryInfo(UpdatedFilesFullPath)
+                        files = dir.GetFiles
+
+                        'Search for files other than the main exe that may have been updated and copy them over the existing files
+
+                        For x = 0 To UBound(files)
+
+                            If InStr(UpdatedFilesFullPath, "VehicleSpy") = 0 Then
+
+                                If System.IO.File.Exists(My.Application.Info.DirectoryPath & "\" & files(x).Name) Then
+                                    If System.IO.File.GetLastWriteTime(files(x).FullName) > System.IO.File.GetLastWriteTime(My.Application.Info.DirectoryPath & "\" & files(x).Name).AddMinutes(1) Then
+                                        HandleUserMessageLogging("GMRC", "Copying " & files(x).Name & " to " & My.Application.Info.DirectoryPath,,, FlashMsgOn)
+                                        System.IO.File.Copy(files(x).FullName, My.Application.Info.DirectoryPath & "\" & files(x).Name, True)
+                                    End If
+
+                                Else
+                                    HandleUserMessageLogging("GMRC", "Copying new file " & files(x).Name & " to " & My.Application.Info.DirectoryPath,,, FlashMsgOn)
+                                    System.IO.File.Copy(files(x).FullName, My.Application.Info.DirectoryPath & "\" & files(x).Name, True)
+                                End If
+
+                            Else
+
+                                If System.IO.File.Exists(My.Application.Info.DirectoryPath & "\VehicleSpy\" & files(x).Name) Then
+                                    If System.IO.File.GetLastWriteTime(files(x).FullName) > System.IO.File.GetLastWriteTime(My.Application.Info.DirectoryPath & "\VehicleSpy\" & files(x).Name).AddMinutes(1) Then
+                                        HandleUserMessageLogging("GMRC", "Copying " & files(x).Name & " to " & My.Application.Info.DirectoryPath & "\VehicleSpy",,, FlashMsgOn)
+                                        System.IO.File.Copy(files(x).FullName, My.Application.Info.DirectoryPath & "\VehicleSpy\" & files(x).Name, True)
+                                    End If
+
+                                Else
+                                    HandleUserMessageLogging("GMRC", "Copying new file " & files(x).Name & " to " & My.Application.Info.DirectoryPath & "\VehicleSpy",,, FlashMsgOn)
+                                    System.IO.File.Copy(files(x).FullName, My.Application.Info.DirectoryPath & "\VehicleSpy\" & files(x).Name, True)
+                                End If
+
+                            End If
+
+                        Next
+
+                    End If
+
+                Next y
+
+                If InStr(AppShortName, "_INCA") = 0 Then
+                    UpdatedFilesLocation = AppShortName
+                Else
+                    If InStr(AppShortName, "CLEVIR") = 0 Then
+                        UpdatedFilesLocation = Mid(AppShortName, 1, InStr(AppShortName, "_INCA") - 1)
+                    Else
+                        UpdatedFilesLocation = "Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files"
+                    End If
+
+                End If
+
+                UpdatedFilesFullPath = TargetPath & CLEVIRBaseDir & "\" & UpdatedFilesLocation & "\UpdatedFiles"
+
+                HandleUserMessageLogging("GMRC", "Checking for Updated Executable Files and " & My.Application.Info.AssemblyName & " Support Files...",,, FlashMsgOn)
+
+                If System.IO.Directory.Exists(UpdatedFilesFullPath) Then
+
+                    dir = New DirectoryInfo(UpdatedFilesFullPath)
+                    files = dir.GetFiles
+
+                    'Search for files other than the main exe that may have been updated and copy them over the existing files
+
+                    For x = 0 To UBound(files)
+
+                        If InStr(files(x).Name, My.Application.Info.AssemblyName & ".exe") = 0 Then
+
+                            If System.IO.File.Exists(My.Application.Info.DirectoryPath & "\" & files(x).Name) Then
+                                If System.IO.File.GetLastWriteTime(files(x).FullName) > System.IO.File.GetLastWriteTime(My.Application.Info.DirectoryPath & "\" & files(x).Name).AddMinutes(1) Then
+                                    HandleUserMessageLogging("GMRC", "Copying " & files(x).Name & " to " & My.Application.Info.DirectoryPath,,, FlashMsgOn)
+                                    System.IO.File.Copy(files(x).FullName, My.Application.Info.DirectoryPath & "\" & files(x).Name, True)
+                                Else
+                                    'Added this to handle copying of new profs files for ACP3 to temp folder, and copying modified profs files after initial profs files are unzipped.
+                                    If (InStr(files(x).Name, "_Prof") > 0 Or InStr(files(x).Name, "_Override") > 0) And InStr(files(x).Name, ".zip") > 0 Then
+
+                                        If Not File.Exists("C:\Temp\" & files(x).Name) Then
+                                            File.Copy(files(x).FullName, "C:\temp\" & files(x).Name, True)
+                                            ReDim Preserve ProfsFilesCopied(z)
+                                            ProfsFilesCopied(z) = "C:\temp\" & files(x).Name
+                                            z += 1
+                                        End If
+
+                                    End If
+                                End If
+
+                            Else
+                                If InStr(files(x).Name, "_INCA_7_") = 0 Or InStr(files(x).Name, My.Application.Info.AssemblyName & ".exe.config") > 0 Then
+                                    HandleUserMessageLogging("GMRC", "Copying new file " & files(x).Name & " to " & My.Application.Info.DirectoryPath,,, FlashMsgOn)
+                                    System.IO.File.Copy(files(x).FullName, My.Application.Info.DirectoryPath & "\" & files(x).Name, True)
+
+                                    'Added this to handle copying of new profs files for ACP3 to temp folder, and copying modified profs files after initial profs files are unzipped.
+                                    If (InStr(files(x).Name, "_Prof") > 0 Or InStr(files(x).Name, "_Override") > 0) And InStr(files(x).Name, ".zip") > 0 Then
+                                        If Not File.Exists("C:\Temp\" & files(x).Name) Then
+                                            File.Copy(files(x).FullName, "C:\temp\" & files(x).Name, True)
+                                            ReDim Preserve ProfsFilesCopied(z)
+                                            ProfsFilesCopied(z) = "C:\temp\" & files(x).Name
+                                            z += 1
+                                        End If
+
+                                    End If
+
+                                End If
+
+                            End If
+
+                        End If
+                    Next
+
+                    'Added this to handle copying of new profs files for ACP3 to temp folder, and copying modified profs files after initial profs files are unzipped.
+                    If ProfsFilesCopied IsNot Nothing Then
+                        If UBound(ProfsFilesCopied) = 0 Then
+                            UnzipFolder(ProfsFilesCopied(0))
+                        Else
+                            HandleProfsFiles(ProfsFilesCopied(0), ProfsFilesCopied(1))
+                        End If
+                    End If
+
+                End If
+
+                'If we found a new exe, then we need to shell out the autoupdater and exit the app so we can update to a new exe...
+
+                If System.IO.File.GetLastWriteTime(UpdatedFilesFullPath & "\" & My.Application.Info.AssemblyName & ".exe") _
+                    > System.IO.File.GetLastWriteTime(My.Application.Info.DirectoryPath & "\" & My.Application.Info.AssemblyName & ".exe").AddMinutes(1) Then
+
+                    HandleUserMessageLogging("GMRC", "Found Newer " & My.Application.Info.AssemblyName & ".exe file...",,, FlashMsgOn)
+                    If MsgBox("Found updated " & My.Application.Info.AssemblyName & " software version.  Update to new version Now?", vbYesNo) = vbYes Then
+                        HandleUserMessageLogging("GMRC", "User chose to update to new version.",,, FlashMsgOn)
+                        HandleUserMessageLogging("GMRC", "Found updated CLEVIR software, Launching AutoUpdater...",,, FlashMsg1Sec)
+
+                        Shell(My.Application.Info.DirectoryPath & "\AutoUpdater.exe")
+                        End
+
+                    Else
+                        HandleUserMessageLogging("GMRC", "User chose NOT to update to new version.",, )
+                        UserStatusInfo.Hide()
+                    End If
+
+                Else
+                    HandleUserMessageLogging("GMRC", "Currently running the latest available " & My.Application.Info.AssemblyName & " version...",,, FlashMsgOn)
+                    UserStatusInfo.Hide()
+                End If
+
+            Else
+                HandleUserMessageLogging("GMRC", TargetPath & " not found, no files copied...",,, FlashMsg1Sec)
+            End If
+
+        Catch ex As Exception
+
+            HandleUserMessageLogging("GMRC", $"CheckForNewerSoftwareVersions ({ex.GetType().Name}): " & ex.Message, DisplayMsgBox, )
+
+        Finally
+            UserStatusInfo.Hide()
+        End Try
+
+    End Sub
 End Module
 

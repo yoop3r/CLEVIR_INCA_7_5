@@ -416,7 +416,7 @@ Public Class AddRecordOnlySignals
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "AddRecordOnlySignals - Listbox1.SelectedIndexChanged: " & ex.Message, DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"AddRecordOnlySignals - Listbox1.SelectedIndexChanged ({ex.GetType().Name}): " & ex.Message, DisplayMsgBox)
 
         Finally
 

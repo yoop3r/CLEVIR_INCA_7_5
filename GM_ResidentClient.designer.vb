@@ -21,7 +21,6 @@ Partial Class GmResidentClient
             MyLogin?.Dispose()
             MyToolStripMenuItem?.Dispose()
             _MyMiscInfo?.Dispose()
-            _MyUploadData?.Dispose()
             _MyRecordPlayback?.Dispose()
             _MyCreateNewDisplayMenuItem?.Dispose()
             _recordingMonitorCts?.Dispose()

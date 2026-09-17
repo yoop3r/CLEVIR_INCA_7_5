@@ -135,11 +135,7 @@ Module ImportSoftwareAndCalsFunctions
 
             'NETWORK DRIVE MAPPING 5.6.2
 
-            If UsingFlashDrive = True Then
-                dirname = NetworkDriveLetter & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\Signal Files And Experiments\" & CLEVIRFilesPath
-            Else
-                dirname = NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\Signal Files And Experiments\" & CLEVIRFilesPath
-            End If
+            dirname = NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\Signal Files And Experiments\" & CLEVIRFilesPath
 
             If System.IO.Directory.Exists(dirname) Then
 
@@ -404,18 +400,12 @@ Module ImportSoftwareAndCalsFunctions
 
             Next
 
-            'Here we need to determine where to look for updated files, we will either be looking on the share drive, or on the flash drive
-            'if it is in play...
-            If UsingFlashDrive = True Then
-                dirname = NetworkDriveLetter & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\Signal Files And Experiments\" & CLEVIRFilesPath
-            Else
-                dirname = NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\Signal Files And Experiments\" & CLEVIRFilesPath
+            'Here we need to determine where to look for updated files on the share drive...
+            dirname = NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\Signal Files And Experiments\" & CLEVIRFilesPath
 
-                If NetworkDrivePermission = False Then
-                    HandleUserMessageLogging("GMRC", "CheckForNewerSignalListNEW: Could not access " & NetworkDriveMapping & CLEVIRBaseDir & ". Exiting...")
-                    Exit Sub
-                End If
-
+            If NetworkDrivePermission = False Then
+                HandleUserMessageLogging("GMRC", "CheckForNewerSignalListNEW: Could not access " & NetworkDriveMapping & CLEVIRBaseDir & ". Exiting...")
+                Exit Sub
             End If
 
             'CKEVIRFilesPath determines where we will start looking.  This is based on the information in the VehicleConfigurations.csv file that corresponds to
@@ -2836,56 +2826,48 @@ Module ImportSoftwareAndCalsFunctions
 
         'Sets the initial inca project directory based on ProjectName...
 
-        'If there is a properly configured flash drive connected, CLEVIR will go to this drive, defined by
-        'NetworkDriveLetter, to look for a2l and ptp files rather than the network share drive...
+        'We determine default folder based on project name.
+        'this takes user to a location from which they can drill down to find the proper model year and
+        'software version folder which contains a2l and ptp files...
 
-        If UsingFlashDrive = True Then
-            initialDirectory = NetworkDriveLetter & "\INCA Projects"
+        If PATAC = True Then
+            initialDirectory = My.Application.Info.DirectoryPath & "\INCAProjects"
+            Exit Sub
+        End If
+
+        If NetworkDrivePermission = False Then
+            HandleUserMessageLogging("GMRC", "DetermineInitINCAProjectDir: Could not access " & NetworkDriveMapping & CLEVIRBaseDir & ". Exiting...")
+            initialDirectory = My.Application.Info.DirectoryPath
+            Exit Sub
+        End If
+
+        If Len(ProjectName) > 0 Then 'And FlashingStatus.RadioButton3.Checked = False Then
+
+            'NETWORK DRIVE MAPPING
+
+            Select Case ProjectName
+                    'HC CHANGE
+                Case "HighContent"
+                    initialDirectory = NetworkDriveMapping & "\EOCM3_HC\Calibration\INCA_Projects"
+                    'FCM CHANGE - Added FCM case here to set up InitialDirectory for FCM projects...
+                Case "FCM", "FCM100"
+                    initialDirectory = NetworkDriveMapping & "\FCM\Calibration\INCA_Projects" 'Need to add this folder to share drive...
+                Case "LowContent"
+                    initialDirectory = NetworkDriveMapping & "\EOCM3_lo\Calibration\INCA_Projects"
+                Case "CSAV2"
+                    initialDirectory = NetworkDriveMapping & "\Calibration\INCA Projects"
+                Case "ACP2"
+                    initialDirectory = NetworkDriveMapping & "\ACP2\Calibration\INCA_Projects"
+                Case "ACP3"
+                    initialDirectory = NetworkDriveMapping & "\ACP3\Calibration\INCA_Projects"
+                Case "ACP4"
+                    initialDirectory = NetworkDriveMapping & "\ACP4\Calibration\INCA_Projects"
+                Case Else
+                    initialDirectory = My.Application.Info.DirectoryPath
+            End Select
+
         Else
-            'If we are looking on network share drive, we determine default folder based on project name.
-            'this takes user to a location from which they can drill down to find the proper model year and
-            'software version folder which contains a2l and ptp files...
-
-            If PATAC = True Then
-                initialDirectory = My.Application.Info.DirectoryPath & "\INCAProjects"
-                Exit Sub
-            End If
-
-            If NetworkDrivePermission = False Then
-                HandleUserMessageLogging("GMRC", "DetermineInitINCAProjectDir: Could not access " & NetworkDriveMapping & CLEVIRBaseDir & ". Exiting...")
-                initialDirectory = My.Application.Info.DirectoryPath
-                Exit Sub
-            End If
-
-            If Len(ProjectName) > 0 Then 'And FlashingStatus.RadioButton3.Checked = False Then
-
-                'NETWORK DRIVE MAPPING
-
-                Select Case ProjectName
-                        'HC CHANGE
-                    Case "HighContent"
-                        initialDirectory = NetworkDriveMapping & "\EOCM3_HC\Calibration\INCA_Projects"
-                        'FCM CHANGE - Added FCM case here to set up InitialDirectory for FCM projects...
-                    Case "FCM", "FCM100"
-                        initialDirectory = NetworkDriveMapping & "\FCM\Calibration\INCA_Projects" 'Need to add this folder to share drive...
-                    Case "LowContent"
-                        initialDirectory = NetworkDriveMapping & "\EOCM3_lo\Calibration\INCA_Projects"
-                    Case "CSAV2"
-                        initialDirectory = NetworkDriveMapping & "\Calibration\INCA Projects"
-                    Case "ACP2"
-                        initialDirectory = NetworkDriveMapping & "\ACP2\Calibration\INCA_Projects"
-                    Case "ACP3"
-                        initialDirectory = NetworkDriveMapping & "\ACP3\Calibration\INCA_Projects"
-                    Case "ACP4"
-                        initialDirectory = NetworkDriveMapping & "\ACP4\Calibration\INCA_Projects"
-                    Case Else
-                        initialDirectory = My.Application.Info.DirectoryPath
-                End Select
-
-            Else
-                initialDirectory = My.Application.Info.DirectoryPath
-            End If
-
+            initialDirectory = My.Application.Info.DirectoryPath
         End If
 
     End Sub

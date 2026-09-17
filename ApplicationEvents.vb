@@ -61,7 +61,7 @@ Namespace My
             Catch ex As Exception
                 ' Best-effort — do not re-throw during process teardown
                 HandleUserMessageLogging("GMRC",
-                    $"ApplicationEvents.Shutdown: {ex.Message}")
+                    $"ApplicationEvents.Shutdown ({ex.GetType().Name}): {ex.Message}")
             End Try
         End Sub
 
@@ -99,7 +99,7 @@ Namespace My
                 ShutdownAllLidarDevices()
             Catch ex As Exception
                 HandleUserMessageLogging("GMRC",
-                    $"ApplicationEvents.UnhandledException: LiDAR shutdown error — {ex.Message}")
+                    $"ApplicationEvents.UnhandledException: LiDAR shutdown error ({ex.GetType().Name}) — {ex.Message}")
             End Try
 
             ' Show a user-friendly message before the crash dialog appears

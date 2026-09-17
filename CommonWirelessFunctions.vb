@@ -249,7 +249,7 @@ Module CommonWirelessFunctions
 
         Catch ex As Exception
 
-            HandleUserMessageLogging("GMRC", "EnableWirelessNetworkConnection: - " & ex.Message)
+            HandleUserMessageLogging("GMRC", $"EnableWirelessNetworkConnection ({ex.GetType().Name}): - " & ex.Message)
             EnableWirelessNetworkConnection = False
             WirelessUnavailable = True
             GMLANConnectionUnavailable = True
@@ -306,7 +306,7 @@ Module CommonWirelessFunctions
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "DisableWirelessNetworkConnection - " & ex.Message)
+            HandleUserMessageLogging("GMRC", $"DisableWirelessNetworkConnection ({ex.GetType().Name}) - " & ex.Message)
         Finally
 
             UserStatusInfo.Hide()
@@ -346,10 +346,6 @@ Module CommonWirelessFunctions
             HandleUserMessageLogging("GMRC", "HandleWirelessConnection: Called...")
             HandleWirelessConnection = True
             WirelessUnavailable = True
-            If UsingFlashDrive Then
-                CheckForNewerSoftwareAndFiles = True
-                Return True
-            End If
             If NetworkAdapterDescription = "GM_LAN" Then
                 ' Handle GM_LAN-specific logic
                 HandleUserMessageLogging("GMRC", "HandleWirelessConnection: Verifying Connection to Network Drive, Please wait...",,, FlashMsgOn)
@@ -403,7 +399,7 @@ Module CommonWirelessFunctions
             'CheckForNewerSoftwareVersions()
             'End If
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"HandleWirelessConnection - {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"HandleWirelessConnection ({ex.GetType().Name}) - {ex.Message}")
             HandleUserMessageLogging("GMRC", "Unable to Connect to Wireless, no Data Upload Capability at this time. You may still use CLEVIR to record data...", FlashMsg2Sec)
             Return False
         End Try

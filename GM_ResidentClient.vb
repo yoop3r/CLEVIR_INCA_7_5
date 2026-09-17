@@ -201,7 +201,6 @@ Public Class GmResidentClient
     Private _saveNotificationFlag As Integer
     Private _saveColprsysbrkprfreq_Ped As Integer
     Private _MyMiscInfo As ToolStripMenuItem
-    Private _MyUploadData As ToolStripMenuItem
     Private _MyRecordPlayback As ToolStripMenuItem
     Private _lccActiveStartingMileage As Double
     Private _lccActiveMileageTotal As Double  ' Total LCC Active
@@ -234,7 +233,6 @@ Public Class GmResidentClient
     Private _killInca As Boolean
     Private _killProcesses As Boolean
     Private _enableMyBackgroundTasks As Boolean
-    Public SaveBaseDataCollectionPath As String
     Private _initializing As Boolean
     Private _MyCreateNewDisplayMenuItem As ToolStripMenuItem
     Private _topDownSignalsRegistered As Boolean
@@ -1999,7 +1997,7 @@ Public Class GmResidentClient
     ''' Handles any logic necessary for development flavor, connecting to INCA, enumerating experiments, etc.
     ''' </summary>
     Private Sub HandleDevelopmentMode()
-        If UCase(CLEVIRFlavor) = "DEVELOPMENT" AndAlso Not FlashingStatus.Visible Then
+        If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then
             ' In Dev Mode, parse enumerations
             ParseA2lFile(Path.Combine(My.Application.Info.DirectoryPath, "Enumerations.txt"))
 
@@ -2859,6 +2857,10 @@ Public Class GmResidentClient
             ETAS_USER_PATH = ReadStringConfig(root, "ETAS_USER_PATH", "")
             BaseDataCollectionPath = ReadStringConfig(root, "BaseDataCollectionPath", "C:\HB")
 
+            ' Local tool & script paths
+            CSVScriptsPath = ReadStringConfig(root, "CSVScriptsPath", CSVScriptsPath)
+            SevenZipPath = ReadStringConfig(root, "SevenZipPath", SevenZipPath)
+
             ' File path handling
             INCAVariableFile = ReadStringConfig(root, "INCAVariableFile", "")
             If Not INCAVariableFile.Contains("\") Then
@@ -3272,12 +3274,12 @@ Public Class GmResidentClient
 
                             device.ExtrinsicConfig = New PcapEventBridge.ExtrinsicRecord With {
                                 .CalibrationId = extrinsicNode.SelectSingleNode("CalibrationId")?.InnerText,
-                                .datePerformed = datePerformed,
+                                .DatePerformed = datePerformed,
                                 .Method = extrinsicNode.SelectSingleNode("Method")?.InnerText,
                                 .TranslationMeters = translation,
                                 .RotationQuaternion = rotation,
                                 .ResidualError = residual,
-                                .isCalibrated = isCalibrated
+                                .IsCalibrated = isCalibrated
                             }
                             device.HasExtrinsicConfig = True
 
@@ -3467,20 +3469,21 @@ Public Class GmResidentClient
                 writer.WriteComment(" Data Storage & Network ")
                 writer.WriteComment(" ================================================================ ")
 
-                ' Handle BaseDataCollectionPath logic
-                If BaseDataCollectionPath = NetworkDriveLetter AndAlso Not SaveBaseDataCollectionPath.Contains(NetworkDriveLetter) Then
-                    BaseDataCollectionPath = SaveBaseDataCollectionPath
-                End If
                 writer.WriteElementString("BaseDataCollectionPath", BaseDataCollectionPath)
 
-                ' Handle NetworkDriveLetter logic
-                If UsingFlashDrive AndAlso Not SaveNetworkDriveLetter.Contains(NetworkDriveLetter) Then
-                    writer.WriteElementString("NetworkDriveLetter", SaveNetworkDriveLetter)
-                Else
-                    writer.WriteElementString("NetworkDriveLetter", NetworkDriveLetter)
-                End If
+                writer.WriteElementString("NetworkDriveLetter", NetworkDriveLetter)
 
                 writer.WriteElementString("NetworkDriveMapping", NetworkDriveMapping)
+
+                ' ════════════════════════════════════════════════════════════
+                ' LOCAL TOOL & SCRIPT PATHS SECTION
+                ' ════════════════════════════════════════════════════════════
+                writer.WriteComment(" ================================================================ ")
+                writer.WriteComment(" Local Tool & Script Paths ")
+                writer.WriteComment(" ================================================================ ")
+
+                writer.WriteElementString("CSVScriptsPath", CSVScriptsPath)
+                writer.WriteElementString("SevenZipPath", SevenZipPath)
 
                 ' ════════════════════════════════════════════════════════════
                 ' COMPRESSION CONFIGURATION SECTION (NESTED)
@@ -5309,16 +5312,6 @@ Public Class GmResidentClient
 
                 'Add new custom screens above this...
 
-                _MyUploadData = New ToolStripMenuItem("Upload Data", Nothing, Nothing, "Upload Data")
-
-                _MyUploadData.Font = New Font(_MyUploadData.Font.FontFamily, MenuFontSize - 2)
-                _MyUploadData.Font = New Font(_MyUploadData.Font, FontStyle.Bold)
-
-                _MyMenuStrip.Items.Add(_MyUploadData)
-                AddHandler _MyUploadData.Click, AddressOf MyUploadData_Click
-                'End If
-
-
                 _MyRecordPlayback = New ToolStripMenuItem("Record/PlayBack", Nothing, Nothing, "Record/PlayBack")
 
                 _MyRecordPlayback.Font = New Font(_MyRecordPlayback.Font.FontFamily, MenuFontSize - 2)
@@ -5513,15 +5506,6 @@ Public Class GmResidentClient
 
         RecordPlayback.Show()
         RecordPlayback.BringToFront()
-
-    End Sub
-
-    Private Sub MyUploadData_Click(ByVal sender As System.Object, ByVal e As EventArgs)
-
-        'MyUploadData is dynamically created by CreateMenus as is its handler.  This is one of the
-        'menu selections in the Configuration Environment on the GmResidentClient screen.
-
-        'UploadDataScreen.UploadData()
 
     End Sub
 
@@ -11292,7 +11276,6 @@ Public Class GmResidentClient
                             updateInterval = 2000 ' Slower when idle
                         End If
 
-                        'HandleBackgroundEncryption()
                     Else
                         ' Background tasks not enabled yet - just monitor health counter
                         If _healthMonitor = saveHealthMonitor Then
@@ -11597,21 +11580,6 @@ Public Class GmResidentClient
 
     End Sub
 
-    Private Sub HandleBackgroundEncryption()
-        Static saveEncryptElapseTime As DateTime = DateTime.Now
-        If Not UsingFlashDrive OrElse ExitPressed Then Return
-
-        If DateTime.Now.Subtract(saveEncryptElapseTime).Seconds >= 10 Then
-            If Directory.Exists(NetworkDriveLetter & "\CSAV2 Tools") Then
-                EncryptFilesInDirectory(Path.Combine(BaseDataCollectionPath, "Data", "gmcsv" & VehicleNumber))
-            Else
-                HandleUserMessageLogging("GMRC", "No Valid CLEVIR Flash Drive Found. Files are no longer being encrypted...",,, FlashMsg5Sec)
-                UsingFlashDrive = False
-                NetworkDriveLetter = SaveNetworkDriveLetter
-            End If
-            saveEncryptElapseTime = DateTime.Now
-        End If
-    End Sub
 
     ''' <summary>
     ''' ✅ REFACTORED: Safely terminates INCA and related processes

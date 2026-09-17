@@ -1129,21 +1129,17 @@ Public Class OnVehicleScreen
             Else ' Color Red...
                 HandleUserMessageLogging("GMRC", "OnVehicleScreen.Button9 Pressed. Processing Escalations Not Available...",, )
 
-                If UsingFlashDrive = False Then
-                    If IO.Directory.Exists(NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\UpdatedFiles\ProcessEscalationFiles") Then
+                If IO.Directory.Exists(NetworkDriveMapping & CLEVIRBaseDir & "\Updated CLEVIR Files for Vehicles\CLEVIR Executables - Installs - Support Files\UpdatedFiles\ProcessEscalationFiles") Then
 
-                        If MsgBox("Escalation Processing functionality is not available on this PC. Would you like to make it available?", vbYesNo) = vbYes Then
-                            HandleUserMessageLogging("GMRC", "User Chose to enable Escalation Processing...",, )
-                            HandleUserMessageLogging("GMRC", "Copying Files...",,, FlashMsgOn)
+                    If MsgBox("Escalation Processing functionality is not available on this PC. Would you like to make it available?", vbYesNo) = vbYes Then
+                        HandleUserMessageLogging("GMRC", "User Chose to enable Escalation Processing...",, )
+                        HandleUserMessageLogging("GMRC", "Copying Files...",,, FlashMsgOn)
 
-                            ' Use async file copying with proper UI feedback
-                            Await CopyEscalationFilesAsync()
+                        ' Use async file copying with proper UI feedback
+                        Await CopyEscalationFilesAsync()
 
-                            Button9.BackColor = Color.Yellow
-                            HandleUserMessageLogging("GMRC", "Processing Escalations PENDING",,, FlashMsg2Sec)
-                        End If
-                    Else
-                        MsgBox("Escalation Processing functionality is not available on this PC.")
+                        Button9.BackColor = Color.Yellow
+                        HandleUserMessageLogging("GMRC", "Processing Escalations PENDING",,, FlashMsg2Sec)
                     End If
                 Else
                     MsgBox("Escalation Processing functionality is not available on this PC.")

@@ -371,33 +371,7 @@ Public Class InitForm
         GmResidentClient.Text = GmResidentClient.Text & " - ON VEHICLE MODE"
 
     End Sub
-    Private Sub CheckForFlashDrivePresent()
 
-        'Called from InitForm_Load...
-
-        'Here we are checking to see if a properly configured flash drive has been inserted. If so, CLEVIR will behave differently in terms of dynamic
-        'handling of recorded files.  It will also look to the flash drive for any updated support files, etc.  It is assumed that the user has run
-        'the Clevir File Transfer Utility to update the contents of the flash drive prior to inserting it into the CLEVIR PC.
-        'Files will be encrypted and copied to the flash drive during recording.  Also, there will be no upload functionality
-        'since it is not applicable if we are saving directly to the flash drive.
-
-        Dim x As Integer
-
-        For x = 0 To UBound(DriveLetters)
-
-            If Directory.Exists(DriveLetters(x) & ":\CSAV2 Tools") = True Then
-
-                SaveNetworkDriveLetter = NetworkDriveLetter
-                NetworkDriveLetter = DriveLetters(x) & ":"
-                HandleUserMessageLogging("GMRC", "CheckForFlashDrivePresent: Flash Drive present...")
-                UsingFlashDrive = True 'This global variable dictates how CLEVIR will behave based on whether or not a flash drive has been inserted...
-                Exit For
-
-            End If
-
-        Next x
-
-    End Sub
 
     Private Function CheckForCLEVIRRunning() As Boolean
 
@@ -929,17 +903,7 @@ Public Class InitForm
                            End If
                        End Sub)
 
-        ' Handle Vehicle Status Dashboard for administrators
-        If ClevirAdministrator AndAlso Not PATAC AndAlso Directory.Exists(VehicleStatDashboard.mySavepathprefix) Then
-            If MsgBox("Display Vehicle Status Dashboard?", vbYesNo) = vbYes Then
-                VehicleStatDashboard.ShowDialog()
-                If MsgBox("Launch CLEVIR?", vbYesNo) = vbNo Then
-                    Close()
-                    End
-                End If
-            End If
-        End If
-    End Function
+        End Function
 
     Private Sub LogInitializationStart()
         HandleUserMessageLogging("GMRC", " ")
@@ -956,7 +920,7 @@ Public Class InitForm
         Dim has7Zip As Boolean = Await Task.Run(Function() CheckFor7Zip())
 
         If Not has7Zip Then
-            HandleUserMessageLogging("GMRC", "CLEVIR Requires 7-Zip be installed into the C:\Program Files\7-Zip directory before continuing.  Exiting CLEVIR...", DisplayMsgBox, )
+            HandleUserMessageLogging("GMRC", $"CLEVIR Requires 7-Zip be installed into the {SevenZipPath} directory before continuing.  Exiting CLEVIR...", DisplayMsgBox, )
             Close()
             End
         End If
@@ -965,7 +929,7 @@ Public Class InitForm
         Dim hasRoboCopy As Boolean = Await Task.Run(Function() CheckForRoboCopyFolder())
 
         If Not hasRoboCopy Then
-            HandleUserMessageLogging("GMRC", "C:\CSVScripts folder is required to run CLEVIR, Exiting...", DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"{CSVScriptsPath} folder is required to run CLEVIR, Exiting...", DisplayMsgBox)
             Close()
             End
         End If

@@ -1,4 +1,4 @@
-﻿Option Strict On
+Option Strict On
 
 Imports System.Diagnostics
 Imports System.IO
@@ -174,7 +174,7 @@ Public Class INCA_InterfaceClass
         Catch ex As Exception
             IsTargetOnWorkingPage = "Unknown"
             Retries += 1
-            HandleUserMessageLogging("GMRC", "IsTargetOnWorkingPage: MyGmIncaComm.IsTargetOnWorkingPage Call FAILED - Retries = " & Retries & " Exception: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "IsTargetOnWorkingPage: MyGmIncaComm.IsTargetOnWorkingPage Call FAILED - Retries = " & Retries & " Exception: " & ex.GetType().Name & ": " & ex.Message)
             If Retries > MaxRetries Then
                 HandleUserMessageLogging("GMRC", "IsTargetOnWorkingPage: MyGmIncaComm.IsTargetOnWorkingPage Call FAILED - Retries = " & Retries)
             End If
@@ -246,7 +246,7 @@ Public Class INCA_InterfaceClass
 
         Catch ex As Exception
             ' ❌ Log all other unexpected errors (including during shutdown wait)
-            HandleUserMessageLogging("GMRC", $"CloseINCA unexpected error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"CloseINCA unexpected error: {ex.GetType().Name}: {ex.Message}")
         End Try
     End Sub
 
@@ -271,7 +271,7 @@ Public Class INCA_InterfaceClass
             OnVehicleScreen.Button1.Enabled = True
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "StartStopMeasurement: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "StartStopMeasurement: " & ex.GetType().Name & ": " & ex.Message)
         Finally
             ' Restore the cursor even when an exception occurs — previously a failure
             ' left the UI stuck on WaitCursor
@@ -396,7 +396,7 @@ Public Class INCA_InterfaceClass
             OnVehicleScreen.BringToFront()
             OnVehicleScreen.Refresh()
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "StopRecordingProcess: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "StopRecordingProcess: " & ex.GetType().Name & ": " & ex.Message)
         End Try
     End Sub
 
@@ -434,7 +434,7 @@ Public Class INCA_InterfaceClass
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "StartStopRecord: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "StartStopRecord: " & ex.GetType().Name & ": " & ex.Message)
         Finally
             If button.Parent IsNot Nothing Then
                 button.Parent.Cursor = Cursors.Default
@@ -490,7 +490,7 @@ Public Class INCA_InterfaceClass
         Catch ex As Exception
             ' Async Sub — an unhandled exception here (after the first Await) is not
             ' observable by the caller's Try/Catch and would crash the process
-            HandleUserMessageLogging("GMRC", "HandleStartRecording: " & ex.Message, DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", "HandleStartRecording: " & ex.GetType().Name & ": " & ex.Message, DisplayMsgBox)
         End Try
     End Sub
 
@@ -662,7 +662,7 @@ Public Class INCA_InterfaceClass
             DeviceDataRetrieved = True
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "GetDeviceAcquisitonRates: " & ex.Message, DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", "GetDeviceAcquisitonRates: " & ex.GetType().Name & ": " & ex.Message, DisplayMsgBox)
         End Try
     End Function
 
@@ -792,7 +792,7 @@ Public Class INCA_InterfaceClass
             End If
         Catch ex As Exception
             If Failed = False Then
-                HandleUserMessageLogging("GMRC", "GetSignalDataWithTime: MyIncaInterface.GetSignalDataWithTime Exception: " & ex.Message)
+                HandleUserMessageLogging("GMRC", "GetSignalDataWithTime: MyIncaInterface.GetSignalDataWithTime Exception: " & ex.GetType().Name & ": " & ex.Message)
                 Failed = True
             End If
 
@@ -842,7 +842,7 @@ Public Class INCA_InterfaceClass
             Return _Devices
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "GetAvailableDevicesAsync Exception: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "GetAvailableDevicesAsync Exception: " & ex.GetType().Name & ": " & ex.Message)
             Return Nothing
         End Try
     End Function
@@ -868,7 +868,7 @@ Public Class INCA_InterfaceClass
                     Next
                 End Using
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", "HandleDeviceListFileAsync: Failed to create device list file. " & ex.Message)
+                HandleUserMessageLogging("GMRC", "HandleDeviceListFileAsync: Failed to create device list file. " & ex.GetType().Name & ": " & ex.Message)
             End Try
         End If
     End Function
@@ -1088,7 +1088,7 @@ Public Class INCA_InterfaceClass
             Exit Sub
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "PerformDeviceSignalRetrieval: " & ex.Message, DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", "PerformDeviceSignalRetrieval: " & ex.GetType().Name & ": " & ex.Message, DisplayMsgBox)
         End Try
     End Sub
 
@@ -1211,7 +1211,7 @@ Public Class INCA_InterfaceClass
             SaveCalSnapShot = teststring
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: SaveCalSnapshot: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: SaveCalSnapshot: " & ex.GetType().Name & ": " & ex.Message)
             SaveCalSnapShot = teststring
         End Try
 
@@ -1366,7 +1366,7 @@ Public Class INCA_InterfaceClass
                         HandleUserMessageLogging("GMRC", $"StartRecording: GPS start markers injected into {LidarDevices.Count} devices")
                     End If
                 Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"StartRecording: LiDAR startup failed - {ex.Message}")
+                    HandleUserMessageLogging("GMRC", $"StartRecording: LiDAR startup failed - {ex.GetType().Name}: {ex.Message}")
                 End Try
             End If
 
@@ -1391,7 +1391,7 @@ Public Class INCA_InterfaceClass
                     End If
 
                 Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"StartRecording: OXTS NCOM capture failed - {ex.Message}")
+                    HandleUserMessageLogging("GMRC", $"StartRecording: OXTS NCOM capture failed - {ex.GetType().Name}: {ex.Message}")
                 End Try
             End If
 
@@ -1461,7 +1461,7 @@ Public Class INCA_InterfaceClass
                 LastFilenameUpdateTime = DateTime.Now
 
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StartRecording: Filename query error - {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"StartRecording: Filename query error - {ex.GetType().Name}: {ex.Message}")
                 OnVehicleScreen.Label5.Text = "Recording Filename: [Pending...]"
                 OnVehicleScreen.Label5.BackColor = SystemColors.Control
             End Try
@@ -1494,7 +1494,7 @@ Public Class INCA_InterfaceClass
             Try
                 StopCanalyzer()
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StopRecording: CANalyzer failed to stop - {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"StopRecording: CANalyzer failed to stop - {ex.GetType().Name}: {ex.Message}")
             End Try
         End If
 
@@ -1502,7 +1502,7 @@ Public Class INCA_InterfaceClass
             Try
                 StopVehicleSpy()
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StopRecording: VehicleSpy failed to stop - {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"StopRecording: VehicleSpy failed to stop - {ex.GetType().Name}: {ex.Message}")
             End Try
         End If
 
@@ -1547,7 +1547,7 @@ Public Class INCA_InterfaceClass
                 End If
 
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StopRecording: Capture stop failed - {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"StopRecording: Capture stop failed - {ex.GetType().Name}: {ex.Message}")
             End Try
         End If
 
@@ -1581,7 +1581,7 @@ Public Class INCA_InterfaceClass
             End If
             Return If(result, String.Empty)
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "GetLastRecordingFileName: Exception - " & ex.Message)
+            HandleUserMessageLogging("GMRC", "GetLastRecordingFileName: Exception - " & ex.GetType().Name & ": " & ex.Message)
             Return String.Empty
         End Try
     End Function
@@ -1594,12 +1594,12 @@ Public Class INCA_InterfaceClass
                     Return MyGmIncaComm.SetLastRecordingFileName(filename)
                 Catch ex As Exception
                     ' Centralized logging; this helper is used across project
-                    HandleUserMessageLogging("GMRC", "INCA_InterfaceClass.SetLastRecordingFileName: " & ex.Message)
+                    HandleUserMessageLogging("GMRC", "INCA_InterfaceClass.SetLastRecordingFileName: " & ex.GetType().Name & ": " & ex.Message)
                     Return False
                 End Try
             End If
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass.SetLastRecordingFileName: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass.SetLastRecordingFileName: " & ex.GetType().Name & ": " & ex.Message)
         End Try
         Return False
     End Function
@@ -1660,7 +1660,7 @@ Public Class INCA_InterfaceClass
             CheckRecordingFileNameFormat(displayMsg:=True)
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: StopMeasurement: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: StopMeasurement: " & ex.GetType().Name & ": " & ex.Message)
         End Try
 
     End Sub
@@ -1839,7 +1839,7 @@ Public Class INCA_InterfaceClass
             Return isSetupSuccessful
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: SetupDataLogging: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: SetupDataLogging: " & ex.GetType().Name & ": " & ex.Message)
             Return False
         End Try
     End Function
@@ -1971,7 +1971,7 @@ Public Class INCA_InterfaceClass
             Return True
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"INCA_InterfaceClass.RegisterSignals: {ex.Message}", DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"INCA_InterfaceClass.RegisterSignals: {ex.GetType().Name}: {ex.Message}", DisplayMsgBox)
             Return False
         End Try
     End Function
@@ -1997,7 +1997,7 @@ Public Class INCA_InterfaceClass
             Return MyGmIncaComm.GetRecordingState
         Catch ex As Exception
             ' Log the exception and return False as a default value
-            HandleUserMessageLogging("GMRC", "GetRecordingState: Exception - " & ex.Message)
+            HandleUserMessageLogging("GMRC", "GetRecordingState: Exception - " & ex.GetType().Name & ": " & ex.Message)
             Return False
         End Try
     End Function
@@ -2022,7 +2022,7 @@ Public Class INCA_InterfaceClass
 
             GetMeasurementStatus = SaveMeasurementStatus
             Retries += 1
-            HandleUserMessageLogging("GMRC", "GetMeasurementStatus: MyGmIncaComm.GetMeasurementStatus Call FAILED - Retries = " & Retries & " Exception: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "GetMeasurementStatus: MyGmIncaComm.GetMeasurementStatus Call FAILED - Retries = " & Retries & " Exception: " & ex.GetType().Name & ": " & ex.Message)
             If Retries > MaxRetries Then
                 HandleUserMessageLogging("GMRC", "GetMeasurementStatus: MyGmIncaComm.GetMeasurementStatus Call FAILED - Retries = " & Retries & " INCA Communication Failure Returned")
                 GetMeasurementStatus = "INCA Communication Failure"
@@ -2092,7 +2092,7 @@ Public Class INCA_InterfaceClass
                 wasRecording = GetRecordingState()
                 HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Current recording state: {wasRecording}")
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: WARNING - Could not verify recording state: {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: WARNING - Could not verify recording state: {ex.GetType().Name}: {ex.Message}")
                 ' Continue anyway as we may still need to attempt the sequence
             End Try
 
@@ -2151,7 +2151,7 @@ Public Class INCA_InterfaceClass
 
                                                                        Catch ex As Exception
                                                                            HandleUserMessageLogging("GMRC",
-                                                                                           $"❌ Background compression failed - {ex.Message}")
+                                                                                           $"❌ Background compression failed - {ex.GetType().Name}: {ex.Message}")
                                                                        End Try
                                                                    End Sub)
 
@@ -2165,7 +2165,7 @@ Public Class INCA_InterfaceClass
                     End If
 
                 Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Exception during stop operation (attempt {retryCount + 1}): {ex.Message}")
+                    HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Exception during stop operation (attempt {retryCount + 1}): {ex.GetType().Name}: {ex.Message}")
                 End Try
 
                 retryCount += 1
@@ -2188,7 +2188,7 @@ Public Class INCA_InterfaceClass
                 End If
 
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: WARNING - Stopwatch reset failed: {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: WARNING - Stopwatch reset failed: {ex.GetType().Name}: {ex.Message}")
             End Try
 
             ' Check recording file name format
@@ -2198,7 +2198,7 @@ Public Class INCA_InterfaceClass
                     Return
                 End If
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Exception during file name format check: {ex.Message}", DisplayMsgBox)
+                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Exception during file name format check: {ex.GetType().Name}: {ex.Message}", DisplayMsgBox)
                 Return
             End Try
 
@@ -2223,7 +2223,7 @@ Public Class INCA_InterfaceClass
                     End If
 
                 Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Exception during start operation (attempt {retryCount + 1}): {ex.Message}")
+                    HandleUserMessageLogging("GMRC", $"StopAndStartRecording: Exception during start operation (attempt {retryCount + 1}): {ex.GetType().Name}: {ex.Message}")
                 End Try
 
                 retryCount += 1
@@ -2245,13 +2245,13 @@ Public Class INCA_InterfaceClass
                     End If
                 End If
             Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: WARNING - Final stopwatch reset failed: {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"StopAndStartRecording: WARNING - Final stopwatch reset failed: {ex.GetType().Name}: {ex.Message}")
             End Try
 
             HandleUserMessageLogging("GMRC", "StopAndStartRecording: Sequence change completed successfully")
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"StopAndStartRecording: CRITICAL EXCEPTION - {ex.Message}", DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"StopAndStartRecording: CRITICAL EXCEPTION - {ex.GetType().Name}: {ex.Message}", DisplayMsgBox)
             ' 'Await' is not allowed in a Catch block — flag recovery and run it below
             needsRecovery = True
         End Try
@@ -2339,7 +2339,7 @@ Public Class INCA_InterfaceClass
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: StartMeasurement: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "INCA_InterfaceClass: StartMeasurement: " & ex.GetType().Name & ": " & ex.Message)
         End Try
 
     End Sub

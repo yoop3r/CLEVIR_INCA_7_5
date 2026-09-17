@@ -261,9 +261,6 @@
     <Compile Update="TopDownViewConfiguration.designer.vb">
       <DependentUpon>TopDownViewConfiguration.vb</DependentUpon>
     </Compile>
-    <Compile Update="UploadDataScreen.designer.vb">
-      <DependentUpon>UploadDataScreen.vb</DependentUpon>
-    </Compile>
     <Compile Update="UserStatusInfo.designer.vb">
       <DependentUpon>UserStatusInfo.vb</DependentUpon>
     </Compile>

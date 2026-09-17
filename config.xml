@@ -38,6 +38,11 @@
   <NetworkDriveLetter>Q:</NetworkDriveLetter>
   <NetworkDriveMapping />
   <!-- ================================================================ -->
+  <!-- Local Tool & Script Paths -->
+  <!-- ================================================================ -->
+  <CSVScriptsPath>C:\CSVScripts</CSVScriptsPath>
+  <SevenZipPath>C:\Program Files\7-Zip\</SevenZipPath>
+  <!-- ================================================================ -->
   <!-- Compression Configuration -->
   <!-- ================================================================ -->
   <Compression>
