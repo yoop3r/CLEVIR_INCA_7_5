@@ -903,7 +903,7 @@ Public Class InitForm
                            End If
                        End Sub)
 
-        End Function
+    End Function
 
     Private Sub LogInitializationStart()
         HandleUserMessageLogging("GMRC", " ")
