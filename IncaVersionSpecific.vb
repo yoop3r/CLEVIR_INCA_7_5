@@ -3,9 +3,8 @@ Imports System.Threading.Tasks
 
 Module IncaVersionSpecific
 
-    'This module is used to differentiate INCA 7.1 Version from INCA 7.2 Version. If there are any version specific code differences that would not allow the
-    'use of the same code interchangeably between versions, they would be contained in this module.  There is a specific IncaVersionSpecific.vb file for each
-    'version.  All other modules and forms are used by both versions and are found in the CommonFiles folder in W:\CLEVIR VS 2017 NET 4.6.1.
+    'This module contains shared constants and helper functions related to INCA recording behavior, including
+    'monitor/init delay timings and validation/auto-increment handling for recording file names.
 
     Public ReadOnly InitMonitorSleepTime As Integer = 1500
     Public ReadOnly DelayForFirstInvalidTime As Integer = 1500
