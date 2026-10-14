@@ -42,11 +42,11 @@ Module VehicleSpyStuff
 
     Private sock As Socket
     Private myVSPYprocess As Process
-    Private ReadOnly VSpyDefaultConfigFileName As String = "IntrepidTest.vs3" ' Default config file that should come with the application - If this file is present, it indicates that the DID Pull functionality is available and properly configured.
+    Private ReadOnly VSpyDefaultConfigFileName As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleSpy", "IntrepidTest.vs3")
     Private EnableDIDPullFunctionality As Boolean '= True
 
-    Public VSpySelectedConfigFileName As String = VSpyDefaultConfigFileName
-    Public VehicleSpyCaptureStarted As Boolean 'Set to True when VehicleSpy is first launched...
+    Public VSpySelectedConfigFileName As String = String.Empty
+    Public VehicleSpyCaptureStarted As Boolean
     Public CheckVSpyMessageDisplayed As Boolean
     Public MAX_NUM_DID_PULL_FILES As Integer = 81
     'Public Const MAX_NUM_DID_PULL_FILES As Integer = 2
@@ -390,6 +390,7 @@ Module VehicleSpyStuff
         ' Handles the sequence for starting VehicleSpy when the process is not yet running.
         If Not StartVSpyProcess() Then Return False
         If Not ConnectToVSpy() Then Return False
+        If Not LoadVSpyConfiguration() Then Return False
         If Not VerifyVSpyCommunication() Then Return False
         Return True
     End Function
@@ -809,14 +810,14 @@ Module VehicleSpyStuff
     End Function
 
     Private Function LoadVSpyConfiguration() As Boolean
-        ' Loads the selected configuration file into Vehicle Spy.
-        Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleSpy", VSpySelectedConfigFileName)
-        If Not File.Exists(configPath) Then
+        Dim configPath As String = VSpySelectedConfigFileName
+        If String.IsNullOrWhiteSpace(configPath) OrElse Not File.Exists(configPath) Then
+            HandleUserMessageLogging("GMRC", "Missing VehicleSpy setup file. Check config.xml <VehicleSpySetup>: " & configPath, DisplayMsgBox)
             Return False
         End If
 
         HandleUserMessageLogging("GMRC", "Loading VehicleSpy configuration: " & configPath)
-        SendVSpyCommand("loadfile " & configPath)
+        If Not SendVSpyCommand("loadfile " & configPath) Then Return False
         ' The loadfile command does not provide a reliable status return, so a delay is necessary.
         Threading.Thread.Sleep(5000)
         Return True

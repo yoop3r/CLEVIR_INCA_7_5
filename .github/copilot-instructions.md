@@ -10,3 +10,4 @@
 
 ## Code Access Guidelines
 - For cross-thread boolean state flags in this codebase (e.g., _isCapturing in LidarDevice.vb / OxtsNcomCaptureDevice.vb) that are read/written across threads, always use Volatile.Read/Volatile.Write (or Interlocked) instead of plain field access, matching the existing pattern used for other counters like _packetCount.
+- In CLEVIR_INCA_7_5, avoid investing new changes in ImportSoftwareAndCalsFunctions.vb as it is slated to be sunsetted. Processor identity should be derived from config.xml <Processors> rather than hardcoded processor names.

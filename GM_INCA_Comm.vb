@@ -2910,18 +2910,11 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
         myinca = New Inca
         CurrentINCAVersion = myinca.GetCurrentVersion
 
-        If Not VerifyCorrectIncaVersion(CurrentINCAVersion) Then
-            myinca.UnlockTool()
-            myinca.CloseTool()
-            InitForm.Close()
-            End ' Terminates the application
+        If Not VerifyCorrectIncaVersion(CurrentINCAVersion, displayError:=False) Then
+            Return $"INCA version '{CurrentINCAVersion}' is unavailable or incompatible with {My.Application.Info.AssemblyName}. Correct the INCA installation and retry."
         End If
 
         'myinca.LockTool() ' If locking is required
-        InitForm.Show()
-        InitForm.BringToFront()
-        InitForm.Refresh()
-
         Dim dbResult As String = HandleDatabase()
 
         If dbResult = "True" Then
@@ -2945,11 +2938,8 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
             ' We already have a reference to an INCA instance
             CurrentINCAVersion = myinca.GetCurrentVersion
 
-            If Not VerifyCorrectIncaVersion(CurrentINCAVersion) Then
-                myinca.UnlockTool()
-                myinca.CloseTool()
-                InitForm.Close()
-                End
+            If Not VerifyCorrectIncaVersion(CurrentINCAVersion, displayError:=False) Then
+                Return $"INCA version '{CurrentINCAVersion}' is unavailable or incompatible with {My.Application.Info.AssemblyName}. Correct the INCA installation and retry."
             End If
 
             HandleUserMessageLogging("GMRC", "ConnectToInca: Using Existing INCA Connection...")
@@ -2970,11 +2960,8 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
             myinca = New Inca
             CurrentINCAVersion = myinca.GetCurrentVersion
 
-            If Not VerifyCorrectIncaVersion(CurrentINCAVersion) Then
-                myinca.UnlockTool()
-                myinca.CloseTool()
-                InitForm.Close()
-                End
+            If Not VerifyCorrectIncaVersion(CurrentINCAVersion, displayError:=False) Then
+                Return $"INCA version '{CurrentINCAVersion}' is unavailable or incompatible with {My.Application.Info.AssemblyName}. Correct the INCA installation and retry."
             End If
 
             'CheckForAndInstallINCAVideoAddon()
@@ -3761,8 +3748,10 @@ Implements IGM_INCA_Comm.InitINCA
 
             ' 5) Optionally create experiment from template
             If RegisterIntoNewBlankExp Then
-                If Len(CanTemplateExperimentName) = 0 Then
-                    CanTemplateExperimentName = GProjectAbbreviation & "_CAN_Template_Exp"
+                If String.IsNullOrWhiteSpace(CanTemplateExperimentName) Then
+                    returnstring = "Missing config.xml <INCAExperimentTemplate>. Set an existing INCA experiment template before using NEW FULL."
+                    HandleUserMessageLogging("GMRC", returnstring, DisplayMsgBox)
+                    Return returnstring
                 End If
 
                 OnVehicleScreen.TopMost = True
@@ -4100,11 +4089,7 @@ Implements IGM_INCA_Comm.InitINCA
                             End If
                         End If
 
-                        ' Device-specific flash parameter logic - consolidated; deviceName already cached above
-                        If InStr(deviceName, "FCM") > 0 OrElse InStr(deviceName, "FCM100") > 0 OrElse
-                           InStr(deviceName, "ACP2_MCU") > 0 OrElse InStr(deviceName, "ACP3_MCU") > 0 OrElse InStr(deviceName, "ACP4_MCU") > 0 OrElse
-                           InStr(deviceName, "HCF") > 0 OrElse InStr(deviceName, "HCS") > 0 OrElse InStr(deviceName, "ASE37") > 0 OrElse
-                           InStr(deviceName, "XETK:1") > 0 OrElse InStr(deviceName, "LC") > 0 OrElse InStr(deviceName, "ASE34") > 0 Then
+                        If IsConfiguredProcessorDevice(deviceName) Then
                             cnt = x
                             FlashParameters(cnt).FlashType = "Flash_NONE"
                             FlashParameters(cnt).DeviceName = deviceName
@@ -4312,20 +4297,8 @@ Implements IGM_INCA_Comm.InitINCA
         End Try
     End Function
 
-    ''' <summary>
-    ''' Returns True if <paramref name="deviceName"/> contains at least one token from
-    ''' <see cref="ActiveProcessorNames"/> (case-insensitive Contains match), meaning it
-    ''' is one of the processor devices configured for this vehicle.
-    ''' Falls back to True when ActiveProcessorNames is Nothing or empty so that
-    ''' behaviour is identical to the pre-filter code on unconfigured vehicles.
-    ''' </summary>
     Private Function IsKnownProcessorDevice(deviceName As String) As Boolean
-        If ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then Return True
-        Dim upper As String = UCase(deviceName)
-        For Each token As String In ActiveProcessorNames
-            If InStr(upper, UCase(token)) > 0 Then Return True
-        Next
-        Return False
+        Return IsConfiguredProcessorDevice(deviceName)
     End Function
 
     Private Function BrowseExperimentElementsInDevice(ByVal mySearchString As String, ByVal myDevice As ExperimentDevice) As ExperimentElement()

@@ -609,6 +609,12 @@ Public Class INCA_InterfaceClass
                              ByVal RegisterIntoNewBlankExp As Boolean,
                              Optional ByVal showToasts As Boolean = True) As IGM_INCA_Comm.INIT_STATUS
 
+        If ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then
+            ErrorMsg = "No valid selected vehicle processors in config.xml. Select a vehicle before initializing INCA."
+            HandleUserMessageLogging("GMRC", ErrorMsg, DisplayMsgBox)
+            Return IGM_INCA_Comm.INIT_STATUS.INIT_UNSUCCESSFUL
+        End If
+
         If showToasts Then
             'HandleUserMessageLogging("GMRC", "Initializing INCA...")
             'StatusNotifier.Toast("Initializing INCA...", "INCA", 2000)

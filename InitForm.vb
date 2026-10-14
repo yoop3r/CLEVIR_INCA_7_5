@@ -120,10 +120,13 @@ Public Class InitForm
                 If xmlVehicles IsNot Nothing Then
                     For Each v As VehicleConfig In xmlVehicles
                         If Not String.IsNullOrWhiteSpace(v.VehicleNumber) Then
-                            Dim projectName As String = GetProjectNameFromProcessor(
-                                If(v.Processors IsNot Nothing AndAlso v.Processors.Length > 0,
-                                   v.Processors(0).Trim(), ""))
-                            AddVehicleToList(v.VehicleNumber, projectName)
+                            Try
+                                Dim processors As ProcessorIdentity() = ProcessorIdentity.ParseList(v.Processors, v.VehicleNumber)
+                                AddVehicleToList(v.VehicleNumber, processors(0).VariantName)
+                            Catch ex As FormatException
+                                HandleUserMessageLogging("GMRC", ex.Message)
+                                AddVehicleToList(v.VehicleNumber, "Invalid")
+                            End Try
                         End If
                     Next
                     loadedFromXml = True
@@ -132,60 +135,17 @@ Public Class InitForm
                 End If
             Catch ex As Exception
                 HandleUserMessageLogging("GMRC",
-                    "PopulateVehicleNumbersList: XML read failed, falling back to CSV: " & ex.Message)
+                    "PopulateVehicleNumbersList: XML read failed: " & ex.Message)
             End Try
         End If
 
-        ' ── Legacy CSV fallback ─────────────────────────────────────────────
         If Not loadedFromXml Then
-            Dim filename As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleConfigurationsNF.csv")
-            ReadVehicleConfigurationFile(filename)
+            HandleUserMessageLogging("GMRC", "PopulateVehicleNumbersList: no <Vehicles> section found in config.xml.")
         End If
 
-        VehicleNumbersList.Add(" VEHICLE ID NOT IN LIST")
         VehicleNumbersList.Sort()
     End Sub
 
-
-    Private Sub ReadVehicleConfigurationFile(ByVal filename As String)
-        Try
-            Using reader As New StreamReader(filename)
-                ' Skip header row
-                reader.ReadLine()
-
-                ' Process each line in the file
-                While Not reader.EndOfStream
-                    Dim textline As String = reader.ReadLine()
-                    If Not String.IsNullOrEmpty(textline) Then
-                        ProcessVehicleLine(textline)
-                    End If
-                End While
-            End Using
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "Error reading vehicle configurations file: " & ex.Message, DisplayMsgBox)
-        End Try
-    End Sub
-
-    Private Sub ProcessVehicleLine(ByVal textline As String)
-        Dim lineitems() As String = Split(textline, ",")
-        Dim vehicleNumber As String = lineitems(0)
-        Dim processorName As String = lineitems(2)
-
-        ' Get the project name from the processor
-        Dim projectName As String = GetProjectNameFromProcessor(processorName)
-
-        ' Add this vehicle to our list
-        AddVehicleToList(vehicleNumber, projectName)
-    End Sub
-
-    Private Function GetProjectNameFromProcessor(ByVal processorName As String) As String
-        Select Case processorName
-            Case "ACP2_MCU", "ACP3_MCU", "ACP4_MCU"
-                Return Mid(processorName, 1, 4)
-            Case Else
-                Return "Invalid"
-        End Select
-    End Function
 
     Private Sub AddVehicleToList(ByVal vehicleNumber As String, ByVal projectName As String)
         Dim added As Boolean = False
@@ -222,8 +182,9 @@ Public Class InitForm
             HandleUserMessageLogging("GMRC", "GetVehicleNumber: Vehicle number 6LDN4666 is not a valid number. You must select a valid vehicle number to continue.", DisplayMsgBox, )
             Button1.Enabled = False
         ElseIf String.IsNullOrEmpty(VehicleNumber) OrElse
-               String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
-            ' No vehicle selected yet — keep DRIVE disabled until user picks one
+               String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase) OrElse
+               ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then
+            ' No valid vehicle selected yet.
             Button1.Enabled = False
         Else
             Button1.Enabled = True
@@ -287,36 +248,15 @@ Public Class InitForm
 
     Public Sub Drive()
         Try
-            HandleUserMessageLogging("GMRC", "Drive: Connecting to INCA...")
-
-            Dim connectResult As String = MyIncaInterface.ConnectToInca()
-            If connectResult <> "True" Then
-                HandleUserMessageLogging("GMRC", $"Drive: INCA connection failed - {connectResult}", DisplayMsgBox)
+            If Not RunInitializationStage("INCA configuration", AddressOf ValidateIncaStartup) Then
+                Button3_Click(Me, EventArgs.Empty)
                 Return
             End If
-
             MinimizeInca()
-
-            ' ═══════════════════════════════════════════════════════════════
-            ' ✅ NEW: Centralized configuration verification
-            ' ═══════════════════════════════════════════════════════════════
-            HandleUserMessageLogging("GMRC", "Drive: Verifying CLEVIR configuration...")
-
-            If Not VerifyConfigFiles("InitForm.Drive") Then
-                HandleUserMessageLogging("GMRC", "Drive: Configuration verification FAILED", DisplayMsgBox)
-                Return
-            End If
-
-            HandleUserMessageLogging("GMRC", "Drive: ✓ Configuration verified")
-            ' ═══════════════════════════════════════════════════════════════
-
-            ' ✅ FIX: Reload configuration before showing GmResidentClient
-            ' This ensures GmResidentClient instance has correct config values
-            HandleUserMessageLogging("GMRC", "Drive: Reloading configuration for GmResidentClient...")
-            ReadConfigFile()
+            GetVehicleNumber()
 
             ' Continue with normal Drive flow...
-            Me.ShowInTaskbar = True
+            Me.ShowInTaskbar = False
             Me.WindowState = FormWindowState.Minimized
             Me.Hide()
 
@@ -329,11 +269,12 @@ Public Class InitForm
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "InitForm.Drive: " & ex.Message, DisplayMsgBox)
+            ReportInitializationFailure("InitForm.Drive: " & ex.Message)
+            Button3_Click(Me, EventArgs.Empty)
         End Try
     End Sub
 
-    Private Sub ButtonConfigEditor_Click(sender As Object, e As EventArgs) Handles ButtonConfigEditor.Click
+    Private Sub ButtonConfigEditor_Click()
         Try
             HandleUserMessageLogging("GMRC", "Configuration Editor button pressed...")
 
@@ -341,8 +282,10 @@ Public Class InitForm
             If editor.ShowDialog(Me) = DialogResult.OK Then
                 ' User saved changes - offer to reload
                 If MsgBox("Configuration updated successfully. Reload settings now?", vbYesNo + vbQuestion) = vbYes Then
-                    ReadConfigFile()
-                    HandleUserMessageLogging("GMRC", "Configuration reloaded after editing")
+                    If ReadConfigFile() Then
+                        GetVehicleNumber()
+                        HandleUserMessageLogging("GMRC", "Configuration reloaded after editing")
+                    End If
                 End If
             End If
 
@@ -356,7 +299,7 @@ Public Class InitForm
         ' Called from the Save and continue button on InitForm.
         If l_VehicleNumber <> " VEHICLE ID NOT IN LIST" Then
             HandleUserMessageLogging("GMRC", "SaveVehicleNumber: Vehicle Number changed from " & VehicleNumber & " to " & l_VehicleNumber)
-            SaveSelectedVehicleNumber(l_VehicleNumber)
+            If Not SaveSelectedVehicleNumber(l_VehicleNumber) Then Return
         End If
 
         VehicleNumber = l_VehicleNumber
@@ -591,7 +534,8 @@ Public Class InitForm
                 AddHandler splash.CancelRequested, Sub()
                                                        Try
                                                            cts?.Cancel()
-                                                       Catch
+                                                       Catch exCancel As Exception
+                                                           HandleUserMessageLogging("GMRC", $"InitProgressSplash CancelRequested: {exCancel.Message}")
                                                        End Try
                                                    End Sub
             End If
@@ -607,21 +551,6 @@ Public Class InitForm
             splash.SetStatus("Complete.")
             Await Task.Delay(300)
             splash.Close()
-
-        Catch ex As OperationCanceledException
-            For Each f As Form In Application.OpenForms
-                If TypeOf f Is InitProgressSplash Then
-                    Try : f.Close() : Catch : End Try
-                End If
-            Next
-            Close() : End
-        Catch ex As Exception
-            For Each f As Form In Application.OpenForms
-                If TypeOf f Is InitProgressSplash Then
-                    Try : f.Close() : Catch : End Try
-                End If
-            Next
-            HandleUserMessageLogging("GMRC", $"InitForm Load: {ex.Message}", DisplayMsgBox, )
 
         Finally
             cts?.Dispose()
@@ -670,69 +599,58 @@ Public Class InitForm
                 Await InitializeAdminAndPatacSettingsAsync()
 
                 splash.SetStatus("Reading configuration files...")
-                Dim cfgOk As Boolean = Await Task.Run(Function() ReadConfigFile())
-
-                If Not cfgOk Then
-                    splash.Hide()  ' ✅ Hide before modal dialog
-
-                    ' The user already saw a specific message and chose to abort (e.g. cancelled
-                    ' at the unavailable data-collection drive prompt). Exit quietly - offering
-                    ' the Configuration Editor here would be misleading and cannot fix it.
-                    If StartupAbortRequested Then
-                        HandleUserMessageLogging("GMRC", "Startup aborted by user. Exiting...")
-                        Close()
-                        End
-                    End If
-
-                    Try
-                        ' ✅ DefaultConfiguration is deprecated; offer the Configuration Editor instead.
-                        Dim openEditor = MsgBox(
-                            "The configuration file (config.xml) could not be loaded. It may be missing or malformed." & vbCrLf & vbCrLf &
-                            "Would you like to open the Configuration Editor to fix it now?",
-                            vbYesNo + vbQuestion, "Configuration Error")
-
-                        If openEditor = vbYes Then
-                            Dim editor As New ConfigurationEditorForm()
-                            editor.ShowDialog()
-                            ReadConfigFile()
-                        End If
-
-                        If String.IsNullOrEmpty(INCADatabase) Then
-                            HandleUserMessageLogging("GMRC", "Invalid INCA Database Entered, Exiting...", DisplayMsgBox)
-                            Close()
-                            End
-                        End If
-                    Finally
-                        splash.Show()  ' ✅ Show again after dialog
-                        splash.BringToFront()
-                    End Try
-                Else
-                    ' ✅ FIX: Capture initial config state for change detection
-                    CaptureInitialConfigState()
+                splash.Hide()
+                If Not RunInitializationStage("Load configuration", Function(report) ReadConfigFile(report)) Then
+                    Throw New OperationCanceledException("Startup cancelled during configuration loading.")
                 End If
+                CaptureInitialConfigState()
+                splash.Show()
 
                 splash.SetStatus("Starting timers, reading vehicle info...")
                 ' ✅ DELETED: StartTimerThread() call - obsolete timer thread removed
                 GetVehicleNumber()
 
                 splash.SetStatus("Validating dependencies...")
-                Await ValidateRequiredDependenciesAsync()
+                splash.Hide()
+                If Not RunInitializationStage("Required tools",
+                    Function(report)
+                        If Not ReadConfigFile(report) Then Return False
+                        If PATAC Then Return True
+                        If Not CheckFor7Zip() Then
+                            Return ReportInitializationFailure($"7-Zip is required at '{SevenZipPath}'. Install it or correct the configured path.", report)
+                        End If
+                        If Not CheckForRoboCopyFolder() Then
+                            Return ReportInitializationFailure($"RoboCopy is required in '{CSVScriptsPath}'. Restore it or correct the configured path.", report)
+                        End If
+                        Return True
+                    End Function) Then
+                    Throw New OperationCanceledException("Startup cancelled during dependency validation.")
+                End If
+                splash.Show()
 
                 splash.SetStatus("Determining operating mode...")
-                ' ✅ Run synchronous blocking operations on background thread
-                Await Task.Run(Sub()
-                                   CheckCLEVIRFlavor()
-                                   If Not ReadVehicleConfigsFile() Then
-                                       ' Handle error on UI thread
-                                       Me.Invoke(Sub()
-                                                     Close()
-                                                     End
-                                                 End Sub)
-                                   End If
-                               End Sub)
+                splash.Hide()
+                If Not RunInitializationStage("Operating mode",
+                    Function(report)
+                        CheckCLEVIRFlavor()
+                        Return True
+                    End Function, allowConfigEditing:=False) Then
+                    Throw New OperationCanceledException("Startup cancelled during operating mode setup.")
+                End If
+                If Not RunInitializationStage("Vehicle configuration",
+                    Function(report) ReadConfigFile(report) AndAlso ReadVehicleConfigsFile(report)) Then
+                    Throw New OperationCanceledException("Startup cancelled during vehicle setup.")
+                End If
 
                 splash.SetStatus("Initializing INCA interface...")
-                InitializeIncaInterface()
+                If Not RunInitializationStage("INCA interface",
+                    Function(report)
+                        InitializeIncaInterface()
+                        Return True
+                    End Function, allowConfigEditing:=False) Then
+                    Throw New OperationCanceledException("Startup cancelled during INCA interface setup.")
+                End If
+                splash.Show()
 
                 splash.SetStatus("Finalizing INCA...")
                 ConfigureOperatingMode()
@@ -741,20 +659,19 @@ Public Class InitForm
             anchor:=InitProgressSplash.SplashAnchor.BottomRight
         )
 
-            ' Show InitForm after initialization
+            ' Continue to login or the configured datalogging mode.
             InitFormAfterInitialization()
 
         Catch ex As OperationCanceledException
-            Close()
-            End
+            Button3_Click(Me, EventArgs.Empty)
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"InitForm Load: {ex.Message}", DisplayMsgBox)
+            ReportInitializationFailure($"InitForm Load: {ex.Message}")
+            Button3_Click(Me, EventArgs.Empty)
         End Try
     End Function
 
     ''' <summary>
-    ''' ✅ SIMPLIFIED: Shows InitForm after initialization completes
-    ''' Bypasses InitForm ONLY for actual DATALOGGING mode
+    ''' Continues startup without exposing InitForm.
     ''' </summary>
     Private Sub InitFormAfterInitialization()
         Try
@@ -770,72 +687,11 @@ Public Class InitForm
 
             ' For DEVELOPMENT/VALIDATION, auto-drive directly to LoginForm
             HandleUserMessageLogging("GMRC", "Initialization complete - attempting auto-drive to LoginForm")
-            AutoDriveOrFallback()
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"InitFormAfterInitialization: {ex.Message}", DisplayMsgBox)
-            ' Fallback - try to show form anyway
-            ShowInitFormInteractive("Initialization completed with warnings.")
-        End Try
-    End Sub
-
-    ''' <summary>
-    ''' ✅ Helper method to show InitForm centered and interactive
-    ''' </summary>
-    Private Sub ShowInitFormInteractive(statusMessage As String)
-        Try
-            ' Ensure form is properly positioned and visible
-            StartPosition = FormStartPosition.CenterScreen
-            ShowInTaskbar = True
-            Opacity = 1
-
-            ' ✅ ADD THIS: Set TopMost to ensure it stays above INCA
-            TopMost = True
-
-            ' Show the form
-            Show()
-            BringToFront()
-            Activate()
-            Refresh()
-
-            ' Log status
-            HandleUserMessageLogging("GMRC", $"InitForm: {statusMessage}")
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"ShowInitFormInteractive: {ex.Message}")
-        End Try
-    End Sub
-
-    ''' <summary>
-    ''' Auto-calls Drive() after initialization completes, bypassing the InitForm button window.
-    ''' Falls back to showing InitForm interactively if Drive is not possible or fails.
-    ''' </summary>
-    Private Sub AutoDriveOrFallback()
-        Try
-            ' If DRIVE would be disabled (vehicle not configured or UNDEFINED), show InitForm instead
-            If Not Button1.Enabled Then
-                Dim reason As String = If(String.IsNullOrEmpty(VehicleNumber) OrElse
-                                          String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase),
-                                          "no vehicle number selected",
-                                          "vehicle not configured")
-                HandleUserMessageLogging("GMRC", $"AutoDrive: DRIVE disabled ({reason}) - showing InitForm")
-                ShowInitFormInteractive("Please select your vehicle number to continue.")
-                Return
-            End If
-
-            HandleUserMessageLogging("GMRC", "AutoDrive: Calling Drive() automatically...")
             Drive()
 
-            ' If Drive() failed (INCA not ready, config issue), GmResidentClient will not be visible.
-            ' Fall back to the InitForm button window so the user can retry.
-            If Not GmResidentClient.Visible Then
-                HandleUserMessageLogging("GMRC", "AutoDrive: Drive() did not reach GmResidentClient - falling back to InitForm")
-                ShowInitFormInteractive("INCA not ready. Press DRIVE when INCA is running.")
-            End If
-
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"AutoDriveOrFallback: {ex.Message}", DisplayMsgBox)
-            ShowInitFormInteractive("Initialization error - please retry or check configuration.")
+            ReportInitializationFailure($"InitFormAfterInitialization: {ex.Message}")
+            Button3_Click(Me, EventArgs.Empty)
         End Try
     End Sub
 
@@ -852,6 +708,11 @@ Public Class InitForm
 
             ' ✅ DELETED: myThread cleanup (obsolete timer thread removed)
             TerminateInitThread = True
+
+            If Not RunInitializationStage("INCA configuration", AddressOf ValidateIncaStartup) Then
+                Button3_Click(Me, EventArgs.Empty)
+                Return
+            End If
 
             ' Show main client form
             GmResidentClient.Show()
@@ -910,30 +771,6 @@ Public Class InitForm
         HandleUserMessageLogging("GMRC", $"{hostname} Initializing {My.Application.Info.AssemblyName}{Mid(Text, InStr(Text, " "), InStr(Text, ")"))}")
         HandleUserMessageLogging("GMRC", " ")
     End Sub
-
-    Private Async Function ValidateRequiredDependenciesAsync() As Task
-        'CLEVIR requires 7-zip and robocopy to be available on the computer.
-        ' PATAC no longer has configurable optional features; only non-PATAC builds require these tools.
-        If PATAC Then Return
-
-        ' Check for 7-Zip on background thread
-        Dim has7Zip As Boolean = Await Task.Run(Function() CheckFor7Zip())
-
-        If Not has7Zip Then
-            HandleUserMessageLogging("GMRC", $"CLEVIR Requires 7-Zip be installed into the {SevenZipPath} directory before continuing.  Exiting CLEVIR...", DisplayMsgBox, )
-            Close()
-            End
-        End If
-
-        ' Check for RoboCopy folder on background thread
-        Dim hasRoboCopy As Boolean = Await Task.Run(Function() CheckForRoboCopyFolder())
-
-        If Not hasRoboCopy Then
-            HandleUserMessageLogging("GMRC", $"{CSVScriptsPath} folder is required to run CLEVIR, Exiting...", DisplayMsgBox)
-            Close()
-            End
-        End If
-    End Function
 
     Private Async Function InitializeVehiclePtpLookupAsync() As Task
         'Here we are reading in the VehiclePTPLookup.csv file and putting its contents into the VehiclePTPLookupInfo string array for future use...

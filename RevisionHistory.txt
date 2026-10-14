@@ -3,7 +3,29 @@ CLEVIR_INCA_7_5 - Revision History
 
 Version 7.5.3.0
 ----------------
-- Button14_Click (Start/Stop Record) has a Finally block that calls Me.Refresh() after re-enabling buttons and resetting the cursor, forcing an immediate repaint of the form. Button6_Click (Start/Stop Measurement) had the same pattern of re-enabling buttons and resetting the cursor in its Finally block, but was missing the Me.Refresh() call — so after Stop Measurement, the button text/color changes (set deep inside StopMeasurementRoutine/UpdateButtonStates) weren't flushed to the screen immediately.
+- Made config.xml authoritative for INCA database, workspace, experiment,
+  selected vehicle, and generic Variant_Controller processor identities.
+  Removed variant aliases and hardcoded identity allowlists; all configured
+  processors use exact case-insensitive device matching and monitoring.
+- Added explicit DataDictionary and VehicleSpySetup resource selections,
+  plus INCAExperimentTemplate for NEW FULL registration. Runtime saves and
+  vehicle edits preserve fleet selections and unknown XML metadata.
+- Added persistent startup recovery with Edit Configuration, Retry, and
+  Exit while keeping InitForm hidden. Saved edits reload and revalidate;
+  cancelled edits return to the original failure. LoginForm reuses INCA
+  preflight and blocks login with saved-but-unvalidated changes. Changes
+  to initialized session identity/resources still require restart.
+- Validation: project build, 79 deterministic configuration checks, and
+  11 recovery/error-propagation checks passed. End-to-end INCA/editor
+  recovery testing remains pending. See forward.md for the checklist.
+- Updated the installer bundle to detect installed .NET 10 desktop
+  runtimes and include the 10.0.12 x64 redistributable. MSI runtime assets
+  are harvested from application output, including runtime metadata and
+  the runtimes subdirectory.
+- Removed retired import/vehicle-configuration editor sources and INCA
+  communication backups. Added diagnostic logging to LiDAR/CANalyzer
+  error paths and structured exception handling to signal comparison.
+- Button14_Click (Start/Stop Record) has a Finally block that calls Me.Refresh() after re-enabling buttons and resetting the cursor, forcing an immediate repaint of the form.
   Fix: Added Me.Refresh() to Button6_Click's Finally block in OnVehicleScreen.vb, matching the existing pattern used by Button14_Click.
 - Merged AudioTotextConfig.xml into config.xml under a new AudioToTextConfiguration section (PythonPath, ScriptName,
   WorkingDirectory, IntakeDir, ConfigPath, ConfigSheetName, RunValue),

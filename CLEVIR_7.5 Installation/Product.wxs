@@ -72,22 +72,18 @@
         <!-- PcapDotNet.Core/Packets/Base removed — obsolete, replaced by SharpPcap 6.3.1 + PacketDotNet.
              The Pcap.Net.x64 NuGet package is no longer referenced; DLLs dated Jul 2016 were
              stale artefacts from the original design. Active capture uses SharpPcap natively. -->
-        <Component Id="CMP_NAudio_Core" Guid="*">
-          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\NAudio.Core.dll" KeyPath="yes" />
-        </Component>
-        <Component Id="CMP_NAudio_WinMM" Guid="*">
-          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\NAudio.WinMM.dll" KeyPath="yes" />
-        </Component>
-        <Component Id="CMP_IncaCOM" Guid="*">
-          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\incacom.dll" KeyPath="yes" />
-        </Component>
-        <Component Id="CMP_IncaRci2" Guid="*">
-          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\incaRci2.dll" KeyPath="yes" />
-        </Component>
-        <Component Id="CMP_RCI2dotNet" Guid="*">
-          <File Source="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\RCI2dotNet.dll" KeyPath="yes" />
-        </Component>
         <!-- Etas.Base.ComSupport.dll removed: no code references; vdproj artifact -->
+
+        <!-- Harvest runtime assets from the app build output (root DLLs, .deps.json, .runtimeconfig.json, runtimes tree
+             so System.Speech.dll lands at runtimes\win\lib\net10.0). HesaiWrapper/NCOMdecoder are installed separately. -->
+        <Files Include="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\*.dll">
+          <Exclude Files="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\HesaiWrapper.dll" />
+          <Exclude Files="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\NCOMdecoder.dll" />
+        </Files>
+        <Files Include="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\*.deps.json" />
+        <Files Include="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\*.runtimeconfig.json" />
+        <Files Include="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\*.dll.config" />
+        <Files Include="$(var.ProjectDir)..\bin\x64\$(var.Configuration)\runtimes\**" Subdirectory="runtimes" />
       </ComponentGroup>
     </Fragment>
 

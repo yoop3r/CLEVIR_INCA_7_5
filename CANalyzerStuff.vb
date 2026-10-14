@@ -116,7 +116,8 @@ Module CaNalyzerStuff
                 ' If we can open exclusively, the file is not in use.
             End Using
             Return False
-        Catch
+        Catch exInUse As Exception
+            HandleUserMessageLogging("GMRC", $"FileInUse: {filePath} is locked - {exInUse.Message}")
             Return True
         End Try
     End Function

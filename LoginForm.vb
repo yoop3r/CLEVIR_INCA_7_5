@@ -9,6 +9,7 @@ Public Class LoginForm
 
     Private _isExitButtonClick As Boolean = False
     Private _isInitializing As Boolean = True
+    Private _configurationReady As Boolean = True
     Private _loginSubmitButton As Button = Nothing ' Reference to the LOGIN button
 
     ''' <summary>
@@ -16,6 +17,10 @@ Public Class LoginForm
     ''' </summary>
     Private Sub LoginSubmit_Click(sender As Object, e As EventArgs)
         Try
+            If Not _configurationReady Then
+                ReportInitializationFailure("Configuration changes have not been validated. Use Config to correct/reload settings, or restart CLEVIR.")
+                Return
+            End If
             ' ═══════════════════════════════════════════════════════════════════
             ' GUARD 2: Validate Required Session Metadata Fields
             ' ═══════════════════════════════════════════════════════════════════
@@ -349,52 +354,30 @@ Public Class LoginForm
             Me.TopMost = False
             Me.SendToBack()
 
-            Dim editor As New ConfigurationEditorForm()
             Dim editorResult As DialogResult
             Try
-                editor.StartPosition = FormStartPosition.CenterParent
-                editorResult = editor.ShowDialog(Me)
+                Using editor As New ConfigurationEditorForm With {.StartPosition = FormStartPosition.CenterParent}
+                    editorResult = editor.ShowDialog(Me)
+                End Using
             Finally
                 Me.TopMost = wasTopMost
                 Me.BringToFront()
                 Me.Activate()
             End Try
 
-            If editorResult = DialogResult.OK Then
-                If MsgBox("Configuration updated. Reload settings now?", vbYesNo + vbQuestion) = vbYes Then
-                    ReadConfigFile()
-
-                    ' ── Lightweight validation on the freshly reloaded globals ─────
-                    ' (VerifyConfigFiles is cached; this targets only what a user can
-                    '  change in the editor and checks it before INCA initialization.)
-                    Dim issues As New List(Of String)()
-                    If String.IsNullOrWhiteSpace(INCADatabase) Then
-                        issues.Add("INCA database path is empty")
+            If editorResult = DialogResult.OK OrElse Not _configurationReady Then
+                _configurationReady = False
+                If MsgBox("Reload and validate configuration now?", vbYesNo + vbQuestion) = vbYes Then
+                    If Initialized Then
+                        ' The loader retains the live-session restart guard for identity/resource edits.
+                        If Not ReadConfigFile() Then Return
+                    ElseIf Not RunInitializationStage("INCA configuration", AddressOf ValidateIncaStartup, owner:=Me) Then
+                        GmResidentClient.ExitApp("User Initiated")
+                        Return
                     End If
-                    If String.IsNullOrWhiteSpace(INCAExperiment) Then
-                        issues.Add("INCA experiment is not set")
-                    End If
-                    If String.IsNullOrWhiteSpace(INCAVariableFile) OrElse Not File.Exists(INCAVariableFile) Then
-                        issues.Add($"Signal list file not found:{vbCrLf}  {INCAVariableFile}")
-                    End If
-
-                    ' Refresh the read-only config summary panel with reloaded values
+                    _configurationReady = True
                     RefreshConfigSummary()
-
-                    If issues.Count > 0 Then
-                        Dim issueList As String = String.Join(vbCrLf & "  • ", issues)
-                        StatusNotifier.Warn(
-                            $"Configuration reloaded but the following issues were found:{vbCrLf}" &
-                            $"  • {issueList}{vbCrLf}{vbCrLf}" &
-                            "Please correct these before logging in.",
-                            "Configuration Warning")
-                        HandleUserMessageLogging("GMRC", $"LoginForm: Config reload issues: {String.Join("; ", issues)}")
-                    Else
-                        StatusNotifier.Toast(
-                            "Configuration updated. All changes take effect when INCA initializes after you log in.",
-                            "Config", durationMs:=4000, ensureMainOnTop:=False)
-                        HandleUserMessageLogging("GMRC", "LoginForm: Configuration reloaded - all files verified, changes take effect after login")
-                    End If
+                    StatusNotifier.Toast("Configuration reloaded and verified.", "Config", durationMs:=4000, ensureMainOnTop:=False)
                 End If
             End If
         Catch ex As Exception

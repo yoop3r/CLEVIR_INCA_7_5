@@ -46,130 +46,129 @@ Public Class SignalListCompare
         Dim fnum As Long
         Dim textline() As String
 
-        On Error GoTo handleit
+        Try
 
-        If Me.Label1.Text <> Me.Label2.Text Then
+            If Me.Label1.Text <> Me.Label2.Text Then
 
-            iRowJump_A = 0
-            iRowJump_B = 0
+                iRowJump_A = 0
+                iRowJump_B = 0
 
-            Me.Cursor = Cursors.WaitCursor
+                Me.Cursor = Cursors.WaitCursor
 
-            excelApp = New Excel.Application  'launch the excel app
+                excelApp = New Excel.Application  'launch the excel app
 
-            excelApp.Visible = True
+                excelApp.Visible = True
 
-            wrkbk_1 = excelApp.Workbooks.Open(Me.Label1.Text) 'This is the A file - compare newest version A to previous version B
-            wrkbk_2 = excelApp.Workbooks.Open(Me.Label2.Text) 'This is the B file - B is compared to A
+                wrkbk_1 = excelApp.Workbooks.Open(Me.Label1.Text) 'This is the A file - compare newest version A to previous version B
+                wrkbk_2 = excelApp.Workbooks.Open(Me.Label2.Text) 'This is the B file - B is compared to A
 
-            'create worksheet object and establish the maximum range within which to work
-            myWorkSheet_1 = wrkbk_1.Sheets(1)
-            Dim NameFind_1 As Excel.Range = myWorkSheet_1.Range("$A$1", "$W$20000")
-            myWorkSheet_2 = wrkbk_2.Sheets(1)
-            Dim NameFind_2 As Excel.Range = myWorkSheet_2.Range("$A$1", "$W$20000")
+                'create worksheet object and establish the maximum range within which to work
+                myWorkSheet_1 = wrkbk_1.Sheets(1)
+                Dim NameFind_1 As Excel.Range = myWorkSheet_1.Range("$A$1", "$W$20000")
+                myWorkSheet_2 = wrkbk_2.Sheets(1)
+                Dim NameFind_2 As Excel.Range = myWorkSheet_2.Range("$A$1", "$W$20000")
 
-            Dim currentfind_F As Excel.Range
-            Dim currentfind_B As Excel.Range
-            Dim findstring As String = ""
+                Dim currentfind_F As Excel.Range
+                Dim currentfind_B As Excel.Range
+                Dim findstring As String = ""
 
 
-            'determine the actual range of data contained in each spreadsheet
-            varSheetA = myWorkSheet_1.UsedRange.Value
-            varSheetB = myWorkSheet_2.UsedRange.Value
+                'determine the actual range of data contained in each spreadsheet
+                varSheetA = myWorkSheet_1.UsedRange.Value
+                varSheetB = myWorkSheet_2.UsedRange.Value
 
-            'maxRow is whichever spreadsheet has the most rows.
+                'maxRow is whichever spreadsheet has the most rows.
 
-            A_MaxRow = UBound(varSheetA, 1)
-            B_MaxRow = UBound(varSheetB, 1)
+                A_MaxRow = UBound(varSheetA, 1)
+                B_MaxRow = UBound(varSheetB, 1)
 
-            'set MaxCol for each spreadsheet
+                'set MaxCol for each spreadsheet
 
-            A_MaxCol = UBound(varSheetA, 2)
-            B_MaxCol = UBound(varSheetB, 2)
+                A_MaxCol = UBound(varSheetA, 2)
+                B_MaxCol = UBound(varSheetB, 2)
 
-            'just a print statement for reference
+                'just a print statement for reference
 
-            If UBound(varSheetA, 2) > UBound(varSheetB, 2) Then
-                maxCol = UBound(varSheetA, 2)
-                Me.List1.Items.Add("A has more cols than B")
-            ElseIf UBound(varSheetA, 2) < UBound(varSheetB, 2) Then
-                maxCol = UBound(varSheetB, 2)
-                Me.List1.Items.Add("B has more cols than A")
-            Else
-                maxCol = UBound(varSheetA, 2)
-                Me.List1.Items.Add("Same number of columns in A and B")
-            End If
-
-            For iRow = 2 To A_MaxRow
-
-                findstring = CStr(varSheetA(iRow, 1))
-                currentfind_F = NameFind_2.Find(findstring, , Excel.XlFindLookIn.xlValues, Excel.XlLookAt.xlWhole, Excel.XlSearchOrder.xlByRows, Excel.XlSearchDirection.xlNext, False)
-
-                If currentfind_F Is Nothing Then
-
-                    List1.Items.Add("A not Found in B " & varSheetA(iRow, 1))
-                    List1.SelectedIndex = List1.Items.Count - 1
-                    List1.Refresh()
-
+                If UBound(varSheetA, 2) > UBound(varSheetB, 2) Then
+                    maxCol = UBound(varSheetA, 2)
+                    Me.List1.Items.Add("A has more cols than B")
+                ElseIf UBound(varSheetA, 2) < UBound(varSheetB, 2) Then
+                    maxCol = UBound(varSheetB, 2)
+                    Me.List1.Items.Add("B has more cols than A")
                 Else
-                    Dim A_Content As String = ""
-                    Dim B_Content As String = ""
+                    maxCol = UBound(varSheetA, 2)
+                    Me.List1.Items.Add("Same number of columns in A and B")
+                End If
 
-                    For x = 2 To maxCol
-                        If varSheetA(iRow, x) <> varSheetB(currentfind_F.Row, x) Then
-                            A_Content = A_Content & "-" & varSheetA(iRow, x)
-                            B_Content = B_Content & "-" & varSheetB(currentfind_F.Row, x)
-                        End If
-                    Next
+                For iRow = 2 To A_MaxRow
 
-                    If Len(A_Content) > 0 Then
-                        List1.Items.Add(" ")
-                        List1.Items.Add(varSheetA(iRow, 1) & ": " & A_Content)
-                        List1.Items.Add(varSheetB(currentfind_F.Row, 1) & ": " & B_Content)
+                    findstring = CStr(varSheetA(iRow, 1))
+                    currentfind_F = NameFind_2.Find(findstring, , Excel.XlFindLookIn.xlValues, Excel.XlLookAt.xlWhole, Excel.XlSearchOrder.xlByRows, Excel.XlSearchDirection.xlNext, False)
+
+                    If currentfind_F Is Nothing Then
+
+                        List1.Items.Add("A not Found in B " & varSheetA(iRow, 1))
                         List1.SelectedIndex = List1.Items.Count - 1
                         List1.Refresh()
+
+                    Else
+                        Dim A_Content As String = ""
+                        Dim B_Content As String = ""
+
+                        For x = 2 To maxCol
+                            If varSheetA(iRow, x) <> varSheetB(currentfind_F.Row, x) Then
+                                A_Content = A_Content & "-" & varSheetA(iRow, x)
+                                B_Content = B_Content & "-" & varSheetB(currentfind_F.Row, x)
+                            End If
+                        Next
+
+                        If Len(A_Content) > 0 Then
+                            List1.Items.Add(" ")
+                            List1.Items.Add(varSheetA(iRow, 1) & ": " & A_Content)
+                            List1.Items.Add(varSheetB(currentfind_F.Row, 1) & ": " & B_Content)
+                            List1.SelectedIndex = List1.Items.Count - 1
+                            List1.Refresh()
+                        End If
+
                     End If
 
-                End If
+                Next
 
-            Next
+                For iRow = 2 To B_MaxRow
 
-            For iRow = 2 To B_MaxRow
+                    findstring = CStr(varSheetB(iRow, 1))
+                    currentfind_F = NameFind_1.Find(findstring, , Excel.XlFindLookIn.xlValues, Excel.XlLookAt.xlWhole, Excel.XlSearchOrder.xlByRows, Excel.XlSearchDirection.xlNext, False)
 
-                findstring = CStr(varSheetB(iRow, 1))
-                currentfind_F = NameFind_1.Find(findstring, , Excel.XlFindLookIn.xlValues, Excel.XlLookAt.xlWhole, Excel.XlSearchOrder.xlByRows, Excel.XlSearchDirection.xlNext, False)
+                    If currentfind_F Is Nothing Then
 
-                If currentfind_F Is Nothing Then
+                        List1.Items.Add("B not Found in A " & varSheetA(iRow, 1))
+                        List1.SelectedIndex = List1.Items.Count - 1
+                        List1.Refresh()
 
-                    List1.Items.Add("B not Found in A " & varSheetA(iRow, 1))
-                    List1.SelectedIndex = List1.Items.Count - 1
-                    List1.Refresh()
+                    Else
 
-                Else
+                    End If
 
-                End If
+                Next
 
-            Next
+                filename = TextBox1.Text
+                fnum = FreeFile()
 
-            filename = TextBox1.Text
-            fnum = FreeFile()
+                FileOpen(fnum, filename, OpenMode.Output)
 
-            FileOpen(fnum, filename, OpenMode.Output)
+                For x = 0 To List1.Items.Count - 1
+                    PrintLine(fnum, List1.Items(x).ToString)
+                Next
 
-            For x = 0 To List1.Items.Count - 1
-                PrintLine(fnum, List1.Items(x).ToString)
-            Next
+                FileClose(fnum)
 
-            FileClose(fnum)
+                MsgBox("done")
 
-            MsgBox("done")
+            End If
 
-        End If
-
-        Exit Sub
-
-handleit:
-        MsgBox("CompareSignalLists: " & Err.Number & " - " & Err.Description)
+        Catch ex As Exception
+            MsgBox("CompareSignalLists: " & ex.Message)
+        End Try
 
     End Sub
 

@@ -10,7 +10,7 @@ Module CommonIncaFunctions
 
     'Public CurrentIncaVersion As String
 
-    Public Function VerifyCorrectIncaVersion(ByVal CurrentIncaVersion As String) As Boolean
+    Public Function VerifyCorrectIncaVersion(ByVal CurrentIncaVersion As String, Optional displayError As Boolean = True) As Boolean
         Dim requiredIncaVersion As String = ""
 
         If Not CurrentIncaVersion Is Nothing Then
@@ -26,14 +26,14 @@ Module CommonIncaFunctions
             End If
 
             If Len(requiredIncaVersion) > 0 Then
-                HandleUserMessageLogging("GMRC", CurrentIncaVersion & " is currently running. " & My.Application.Info.AssemblyName & " requires a " & requiredIncaVersion & " version. Closing INCA and Exiting...", DisplayMsgBox, )
+                HandleUserMessageLogging("GMRC", CurrentIncaVersion & " is currently running. " & My.Application.Info.AssemblyName & " requires a " & requiredIncaVersion & " version. Correct the INCA installation before retrying.", displayError)
                 VerifyCorrectIncaVersion = False
             Else
                 VerifyCorrectIncaVersion = True
             End If
 
         Else
-            HandleUserMessageLogging("GMRC", "Unable to connect to INCA. This may be due to an incomplete shutdown of INCA from a previous session.  Please check the task manager and kill any INCA related process or applications (or shut down and restart the PC), then relaunch " & My.Application.Info.AssemblyName, DisplayMsgBox, )
+            HandleUserMessageLogging("GMRC", "Unable to connect to INCA. This may be due to an incomplete shutdown of INCA from a previous session.  Please check the task manager and kill any INCA related process or applications (or shut down and restart the PC), then relaunch " & My.Application.Info.AssemblyName, displayError)
             VerifyCorrectIncaVersion = False
         End If
 

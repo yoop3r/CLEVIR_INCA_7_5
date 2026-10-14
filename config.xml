@@ -6,9 +6,11 @@
   <INCADatabase>C:\Users\Public\Documents\ETAS\INCA7.5\Database\clevirdb</INCADatabase>
   <INCAWorkspace>184_MY26_ACP3_1P</INCAWorkspace>
   <INCAExperiment>184_25927_MY26_ACP3</INCAExperiment>
+  <INCAExperimentTemplate />
   <INCAVariableFile>C:\DEV\CLEVIR\CLEVIR_INCA_7_5\bin\x64\Debug\SignalLists\184_25927_MY26_ACP3.csv</INCAVariableFile>
   <ETAS_USER_PATH>C:\Users\Public\Documents\ETAS\INCA7.5\User</ETAS_USER_PATH>
   <SignalRegistrationMode>DISPLAYS</SignalRegistrationMode>
+  <DataDictionary>VALIDATION_DataDictionary.csv</DataDictionary>
   <!-- ================================================================ -->
   <!-- Recording Configuration -->
   <!-- ================================================================ -->
@@ -30,6 +32,7 @@
   <!-- ================================================================ -->
   <AlternateRecordEnabled>True</AlternateRecordEnabled>
   <AlternateRecordConfig>VehicleSpy</AlternateRecordConfig>
+  <VehicleSpySetup>VehicleSpy\IntrepidTest.vs3</VehicleSpySetup>
   <EnableAltRecReStartAfterRecordStop>False</EnableAltRecReStartAfterRecordStop>
   <!-- ================================================================ -->
   <!-- Data Storage & Network -->
@@ -210,11 +213,7 @@
       <VehicleNumber>6SME5384</VehicleNumber>
       <Processors>ACP3_MCU,NA,NA,NA,NA,NA</Processors>
       <CameraPositions>FRONT,REAR,NA,NA,NA,NA,NA,NA,NA</CameraPositions>
-      <CanMonitors>886,886,886,886</CanMonitors>
-      <DataUploadPath>ACP3\VehicleData\</DataUploadPath>
-      <CLEVIRFilesPath>Current\ACP3</CLEVIRFilesPath>
       <ZipMF4Files>False</ZipMF4Files>
-      <ConfigName>ACP3_1P1C</ConfigName>
     </Vehicle>
   </Vehicles>
   <CurrentVehicleUsage>VALIDATION</CurrentVehicleUsage>

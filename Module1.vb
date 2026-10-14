@@ -1,4 +1,4 @@
-Option Strict Off
+﻿Option Strict Off
 
 'Imports SevenZip
 Imports System.Diagnostics
@@ -9,6 +9,7 @@ Imports System.Threading
 Imports System.Threading.Tasks
 Imports System.Windows.Forms.DataVisualization.Charting
 Imports System.Xml
+Imports de.etas.cebra.toolAPI.Common
 Imports de.etas.cebra.toolAPI.Inca
 Imports NAudio.Wave
 Imports VB = Microsoft.VisualBasic
@@ -59,7 +60,6 @@ End Class
 
 ''' <summary>
 ''' Holds all vehicle-specific configuration values read from the &lt;Vehicles&gt; section of config.xml.
-''' Replaces the column-indexed row from VehicleConfigurationsNF.csv.
 ''' </summary>
 Public Class VehicleConfig
     Public Property VehicleNumber As String = ""
@@ -67,18 +67,33 @@ Public Class VehicleConfig
     Public Property Processors As String() = {"NA", "NA", "NA", "NA", "NA", "NA"}
     ''' <summary>Up to 9 camera positions (e.g. "FRONT,REAR,NA,NA,NA,NA,NA,NA,NA")</summary>
     Public Property CameraPositions As String() = {"NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"}
-    ''' <summary>4 CAN-monitor IDs corresponding to CSV columns 17-20 (e.g. "886,886,886,886")</summary>
-    Public Property CanMonitors As String() = {"", "", "", ""}
-    Public Property DataUploadPath As String = ""
-    Public Property CLEVIRFilesPath As String = "Current"
     Public Property ZipMF4Files As Boolean = True
-    Public Property ConfigName As String = ""
 End Class
 
 Public Module Module1
 
     'This is the code module which contains global variable definitions, routines and functions that are shared by multiple forms or are not specific to any particular
     'form.
+
+    ' ═══════════════════════════════════════════════════════════════════════════════════════════
+    ' KNOWN TECHNICAL DEBT: High Fan-Out Global State
+    ' ═══════════════════════════════════════════════════════════════════════════════════════════
+    ' The fields below are referenced across many files (GM_ResidentClient.vb, INCA_InterfaceClass.vb,
+    ' GM_INCA_Comm.vb, AddRecordOnlySignals.vb, and multiple forms). They are NOT candidates for
+    ' encapsulation/relocation in an incremental pass because doing so would require updating every
+    ' call site at once, reintroducing the exact risk this cleanup is trying to avoid. Any future
+    ' attempt to reduce global state should target these first, but only as part of a dedicated,
+    ' carefully-scoped refactor (ideally paired with the GM_ResidentClient.vb decomposition effort),
+    ' not as a side effect of routine changes.
+    '   - MyIncaInterface        (INCA_InterfaceClass instance - used throughout INCA comm/session code)
+    '   - VehicleNumber          (used throughout for file naming, config lookups, UI display)
+    '   - INCARunning            (impacts startup/connection behavior across init and comm code)
+    '   - myinca / myActualDatabase / MyHWC (core INCA API objects used throughout INCA interaction code)
+    '   - SelectedTestName / SaveSelectedTestName (used across recording/session/file naming logic)
+    '   - LidarDevices / LidarCaptureEnabled / LidarCaptureStarted (used across LiDAR capture lifecycle code)
+    ' ═══════════════════════════════════════════════════════════════════════════════════════════
+
+#Region "Signal / Calibration / Annotation Metadata"
 
     Public Structure SavedCustomAnnotations
         Dim Filename As String
@@ -119,6 +134,10 @@ Public Module Module1
         Dim DeviceType As String
     End Structure
 
+#End Region
+
+#Region "INCA Session / Communication State"
+
     Public MyIncaInterface As INCA_InterfaceClass 'Set in HandleWirelessConnection. This is the instance of INCA_InterfaceClass which interfaces to GM_INCA_CommClass
 
     'INCA_InterfaceClass and GM_INCA_CommClass --- This implementation is based on the original client / Server architecture which is no longer used in this application.
@@ -143,17 +162,20 @@ Public Module Module1
     Public ReadOnly FlashParameters(0 To 5) As FlashInfo 'Set in HandleWorkspace, used in FlashingStatus form when flashing
     Public AlternateRecordingMode As String 'FlexrayAndFO, FlexrayOnly, NoCanalyzer or VehicleSpy - Set during initialization, used during recording
     Public ReadOnly DriveLetters As String() = {"A", "B", "D", "E", "F", "G"} 'Used in InitForm_Load when determining if external flash drive is being used
+
+#End Region
+
+#Region "Recording Session / File Paths"
+
     Public SelectedTestName As String       'Set in SetupDataLogging based on vehiclenumber, date, time, etc.  Used for naming the various recorded files
     Public SaveSelectedTestName As String   'Set in SetupDataLogging.  Used in conjunction with SelectedTestName
     Public SaveLoginID As String = ""            'Set as part of login process, either from LoginForm or in SetupDataLogging
     Public VehicleNumber As String          'Holds the vehicle number read from <SelectedVehicleNumber> in config.xml.  Used when setting up file names for record files etc.
     Public ANNOFileName As String           'Set in SetupDataLogging, holds the annotation file name for the current recording session.  Used when saving data to this file, etc.
-    Public CanTemplateExperimentName As String     'Set in ReadVehicleConfigsFile and is based on ProjectName derived from information in vehicleconfugurations.csv - Used when creating a new experiment 
+    Public CanTemplateExperimentName As String     'Loaded from config.xml INCAExperimentTemplate for NEW FULL registration.
     Private MessageLogLevel As Integer        'Set in ReadDebugFile - used as a debug message filter, the lower the MessageLogLevel,the more messages are written to the GM_ResidentClient.log file.
-    Public CLEVIRFilesPath As String = "Current" 'Set in ReadVehicleConfigsFile and SaveVehicleConfigChanges.  Determines directory where recorded files are saved, based on ProjectName
     Public ZipTheMF4Files As Boolean = True  'Set in ReadVehicleConfigsFile.  Determines if mf4 files will be zipped during recording sessions.  Validation vehicles do not zip, all others do.
 
-    Public FCMConfigName As String
 
     Private ReadOnly OriginalVehicleConfiguration As String = "UNDEFINED"
     Public CurrentVehicleUsage As String = "UNDEFINED"
@@ -183,6 +205,7 @@ Public Module Module1
     Public InitialINCAExperiment As String           'Stores the name of the INCA Experiment that was first referenced when CLEVIR started, in case we need to revert back to it
     Public INCAVariableFile As String                'This is the INCA Signal List file (.xlsx) file. 
     Public INCAWorkspaceTemplateName As String
+    Public ConfiguredDataDictionaryFile As String
 
     Public MeasurementStarted As Boolean
     Public myDeviceRasterSignals() As IGM_INCA_Comm.DeviceRasterSignalStatus
@@ -230,8 +253,6 @@ Public Module Module1
     Public UnzipSubDir As String
     Public UnzipFileName As String
 
-    Public DataUploadPath As String = ""
-    Public SaveDataUploadPath As String = ""
 
     Public AggregateAnnoFileName As String = ""
 
@@ -261,7 +282,7 @@ Public Module Module1
     Public NumControllers As Integer = 0
     ''' <summary>
     ''' Non-NA processor tokens from the active vehicle config (e.g. {"ACP3_MCU", "HCS"}).
-    ''' Populated by ApplyVehicleConfig / ProcessVehicleRow; used by ProcessDevicesAfterOpen
+    ''' Populated by ApplyVehicleConfig; used by
     ''' to skip expensive COM conformity calls on devices not belonging to this vehicle.
     ''' </summary>
     Public ActiveProcessorNames() As String
@@ -290,8 +311,165 @@ Public Module Module1
     Public ClevirAdministrator As Boolean
     Public ReadOnly AdminPassword As String = "poc"
 
-    Public ReadOnly BlueBoxInfo(3) As String
-    Public MasterTemplateName As String
+
+    Public GWorkspaceIsForRtk As Boolean
+
+    Public Function Get_Workspace(ByVal workspaceName As String, Optional ByVal path As String = "") As HardwareConfiguration
+        ' Returns the workspace hardware configuration for workspaceName from the INCA database (optionally from a folder path).
+        Dim myDatabaseItems() As DataBaseItem
+        Try
+            Get_Workspace = Nothing
+
+            If myActualDatabase Is Nothing Then
+                myActualDatabase = MyIncaInterface.MyGmIncaComm.IncaInstance.GetCurrentDataBase
+            End If
+
+            If Len(path) > 0 Then
+                Get_Workspace = myActualDatabase.GetItemInFolder(workspaceName, path)
+            Else
+                myDatabaseItems = myActualDatabase.BrowseItem(workspaceName)
+                If myDatabaseItems IsNot Nothing AndAlso myDatabaseItems.Length <> 0 Then
+                    Get_Workspace = myDatabaseItems(0)
+                End If
+            End If
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", "Get_Workspace: " & ex.Message, DisplayMsgBox, )
+            Get_Workspace = Nothing
+        End Try
+    End Function
+
+    Public Function DetermineIfUsingDifferentArxml(ByVal referenceString As String) As String
+        ' Determines if an alternate ARXML file is in use based on the workspace/experiment/a2l name passed in.
+        If InStr(referenceString, "XML_") = 0 Then Return ""
+
+        If InStr(referenceString, "\") > 0 Then
+            referenceString = Path.GetFileName(referenceString)
+        End If
+
+        If InStr(referenceString, "XML_") >= 4 Then
+            If IsNumeric(Mid(referenceString, InStr(referenceString, "XML_") - 2, 2)) AndAlso
+               InStr(Mid(referenceString, InStr(referenceString, "XML_") - 3, 1), "_") > 0 Then
+                Return "_" & Mid(referenceString, InStr(referenceString, "XML_") - 2, 5)
+            End If
+        End If
+
+        Return ""
+    End Function
+
+    Public Function DetermineModelYear(ByVal referenceString As String) As String
+        ' Extracts 2-digit model year (e.g. "26" from "180_MY26_ACP3_IP"); never throws.
+        Try
+            Dim nameOnly As String = referenceString
+            If InStr(nameOnly, "\") > 0 Then nameOnly = Path.GetFileName(nameOnly)
+
+            Dim upper As String = UCase(nameOnly)
+
+            Dim idx As Integer = InStr(upper, "_MY")
+            If idx > 0 AndAlso idx + 3 <= Len(nameOnly) Then
+                Dim yy As String = Mid(nameOnly, idx + 3, 2)
+                If IsNumeric(yy) Then Return yy
+            End If
+
+            Dim parts() As String = nameOnly.Split("_"c)
+            For Each p In parts
+                If Len(p) >= 4 AndAlso UCase(Mid(p, 1, 2)) = "MY" AndAlso IsNumeric(Mid(p, 3, 2)) Then
+                    Return Mid(p, 3, 2)
+                End If
+            Next
+
+            For Each p In parts
+                If Len(p) = 2 AndAlso IsNumeric(p) Then
+                    Dim v As Integer = Val(p)
+                    If v >= 15 AndAlso v <= 40 Then Return p
+                End If
+            Next
+
+            Return String.Empty
+        Catch
+            Return String.Empty
+        End Try
+    End Function
+
+    Public Function DetermineSoftwareVersion(ByVal referenceString As String) As String
+        ' Extracts 3-digit software version (e.g. "180" from "180_MY26_ACP3_IP"); never throws.
+        Try
+            Dim nameOnly As String = referenceString
+            If InStr(nameOnly, "\") > 0 Then nameOnly = Path.GetFileName(nameOnly)
+
+            Dim upper As String = UCase(nameOnly)
+
+            If Len(nameOnly) >= 4 AndAlso IsNumeric(Mid(nameOnly, 1, 3)) AndAlso Mid(nameOnly, 4, 1) = "_" Then
+                Return Mid(nameOnly, 1, 3)
+            End If
+
+            If InStr(upper, ".A2L") > 0 AndAlso InStr(upper, "FCM") > 0 Then
+                Dim parts() As String = Split(nameOnly, "_"c)
+                If UBound(parts) >= 3 Then
+                    Dim d As String = New String(parts(3).Where(Function(ch) ch >= "0"c AndAlso ch <= "9"c).ToArray())
+                    If Len(d) >= 7 Then Return Mid(d, 5, 3)
+                End If
+            End If
+
+            For Each t In Split(nameOnly, "_"c)
+                If Len(t) = 3 AndAlso IsNumeric(t) Then Return t
+            Next
+
+            If Len(nameOnly) >= 3 AndAlso IsNumeric(Mid(nameOnly, 1, 3)) Then
+                Return Mid(nameOnly, 1, 3)
+            End If
+
+            Dim allDigits As String = New String(nameOnly.Where(Function(ch) ch >= "0"c AndAlso ch <= "9"c).ToArray())
+            If Len(allDigits) >= 7 Then Return Mid(allDigits, 5, 3)
+
+            Return String.Empty
+        Catch
+            Return String.Empty
+        End Try
+    End Function
+    Public NumberOfCamerasInVehicle As Integer = 5
+    Public CameraNames() As String = {"FRONT", "Rear", "Left", "Right", "Driver", "NA", "NA", "NA"}
+    Public GModelYear As String = "??"
+    Public GSoftwareVersion As String = "???"
+    Public GSpecificArxml As String = ""
+    Public GProjectAbbreviation As String
+    Public ProjectName As String
+    Public ConfigureForNewSoftwareVersion As Boolean
+    Public CheckForNewerSignalListComplete As Boolean
+    Public StatusUpdatesOn As Boolean
+    Public FileSelectionMethod As String
+
+    Public Sub SetupClevirDatabase(ByVal myActualDatabase As Object)
+        ' Called from HandleDatabase. Adds the CLEVIR Setup top level folder with Experiments and Workspaces sub-folders if needed.
+        Dim myfolder As IncaFolder = myActualDatabase.GetFolder("CLEVIR Setup")
+
+        If myfolder IsNot Nothing Then
+            If myfolder.GetSubFolder("Experiments") Is Nothing Then myfolder.AddSubFolder("Experiments")
+            If myfolder.GetSubFolder("Workspaces") Is Nothing Then myfolder.AddSubFolder("Workspaces")
+        Else
+            myfolder = myActualDatabase.AddFolder("CLEVIR Setup")
+            myfolder.AddSubFolder("Experiments")
+            myfolder.AddSubFolder("Workspaces")
+        End If
+
+        If MyIncaInterface.MyGmIncaComm.IncaInstance.GetOption("MODULE: USEROPTIONS; OPTIONNAME: [Measure-General]MdfFileType") <> "mdf 4.0" Then
+            MyIncaInterface.MyGmIncaComm.IncaInstance.SetOption("MODULE: USEROPTIONS; OPTIONNAME: [Measure-General]MdfFileType; OPTIONVALUE: mdf 4.0")
+        End If
+
+        If MyIncaInterface.MyGmIncaComm.IncaInstance.GetOption("MODULE: USEROPTIONS; OPTIONNAME: [General]AllowECUReset") <> "true" Then
+            MyIncaInterface.MyGmIncaComm.IncaInstance.SetOption("MODULE: USEROPTIONS; OPTIONNAME: [General]AllowECUReset; OPTIONVALUE: true")
+        End If
+    End Sub
+
+    Public Function ReadVehiclePtpLookupFile() As List(Of String)
+        Dim returnlist As List(Of String) = Nothing
+        Dim filename As String = Path.Combine(My.Application.Info.DirectoryPath, "VehiclePTPLookup.csv")
+
+        If File.Exists(filename) Then
+            returnlist = New List(Of String)(File.ReadAllLines(filename).Skip(1))
+        End If
+
+        Return returnlist
+    End Function
 
     Public RecorderStopWatch As Stopwatch
     Public RecorderElapsedTime As TimeSpan
@@ -327,17 +505,26 @@ Public Module Module1
     ''' All configured camera position → IP mappings from config.xml
     ''' Key = Position (e.g., "FRONT"), Value = CameraConfig object
     ''' </summary>
+
+#End Region
+
+#Region "Camera Configuration"
+
     Public ConfiguredCameras As New Dictionary(Of String, CameraConfig)(StringComparer.OrdinalIgnoreCase)
 
     ''' <summary>
     ''' Active cameras for the current vehicle (subset of ConfiguredCameras)
-    ''' Populated by ReadVehicleConfigsFile() based on VehicleConfigurationsNF.csv
+    ''' Populated by ReadVehicleConfigsFile() from config.xml &lt;Vehicles&gt;
     ''' </summary>
     Public ActiveCameras As New List(Of CameraConfig)()
+
+#End Region
 
     ' ═══════════════════════════════════════════════════════════════════
     ' APPLICATION LIFECYCLE MANAGEMENT
     ' ═══════════════════════════════════════════════════════════════════
+
+#Region "Application Lifecycle"
 
     ''' <summary>
     ''' ✅ Global flag indicating the application is exiting.
@@ -368,6 +555,10 @@ Public Module Module1
             Volatile.Write(_initializationInProgress, value)
         End Set
     End Property
+
+#End Region
+
+#Region "Compression / Zip Settings"
 
     Public Property CompressMF4 As Boolean = True
     Public Property CompressPCAP As Boolean = True
@@ -445,9 +636,14 @@ Public Module Module1
     ' Declare sequenceNumber as a class-level variable
     Private ReadOnly sequenceNumber As Integer = 0
 
+#End Region
+
     ' =====================================================================
     ' LiDAR Capture - N-Device Scalable Architecture
     ' =====================================================================
+
+#Region "LiDAR Capture State"
+
     ' Global master switch for LiDAR capture functionality
     ' Backed by Volatile.Read/Write since it is read/written across threads.
     Private _lidarCaptureEnabled As Boolean = False
@@ -479,15 +675,25 @@ Public Module Module1
     ' more than one LiDAR device).  Keyed by upper-case adapter GUID.
     Public SharedNicCaptures As New Dictionary(Of String, SharedNicCapture)(StringComparer.OrdinalIgnoreCase)
 
+#End Region
+
     ' ════════════════════════════════════════════════════════════
     ' Background Compression Task Tracking
     ' ════════════════════════════════════════════════════════════
+
+#Region "Background Compression Task Tracking"
+
     Public ActiveCompressionTasks As New Concurrent.ConcurrentBag(Of Task)
     Public CompressionTasksLock As New Object()
+
+#End Region
 
     ' ═══════════════════════════════════════════════════════════════════
     ' SESSION METADATA (Optional fields for enhanced search/reporting)
     ' ═══════════════════════════════════════════════════════════════════
+
+#Region "Session Metadata"
+
     Public SaveEmailAddress As String = ""
     Public SaveGroupName As String = ""
     Public SaveProcedureName As String = ""
@@ -516,6 +722,8 @@ Public Module Module1
                                                   "Ride Trip",
                                                   "Other"
                                               }
+
+#End Region
 
     ''' <summary>
     ''' Loads session metadata defaults and predefined dropdown values from SessionMetadata.xml.
@@ -1159,37 +1367,6 @@ Public Module Module1
 
     End Sub
 
-    Public Function CheckForValidParameters(ByVal WorkspaceName As String) As Boolean
-
-        'Called when Select Existing Workspace in INCA to Flash button is pressed on FlashingStatus form as well as on SoftwareVersionSelect_Load 
-        'and when Refresh button is pressed on SoftwareVersionSelect form.
-
-        'Returns true if workspace name matches the appropriate construct for the workspace to be selected by the user.
-        'This so template workspaces, etc. are not made available to the user to select...
-
-        Dim l_HWC As HardwareConfiguration
-
-        CheckForValidParameters = True
-
-        l_HWC = Get_Workspace(WorkspaceName, "CLEVIR Setup\Workspaces")
-
-        If l_HWC IsNot Nothing Then
-
-            If l_HWC.HasAssignedExperimentEnvironment = False And
-                ((IsNumeric(Mid(WorkspaceName, 1, 3)) And Mid(WorkspaceName, 4, 1) = "_") Or
-                (Mid(WorkspaceName, 1, 5) = "ACP2_") Or (Mid(WorkspaceName, 1, 5) = "ACP3_") Or
-                 (Mid(WorkspaceName, 1, 5) = "ACP4_") Or (Mid(WorkspaceName, 1, 4) = "FCM_") Or
-                 (Mid(WorkspaceName, 1, 7) = "FCM100_") Or (Mid(WorkspaceName, 1, 3) = "HC_") Or
-                 (Mid(WorkspaceName, 1, 3) = "LC_") Or (Mid(WorkspaceName, 1, 6) = "CSAV2_")) Then
-                CheckForValidParameters = False
-            End If
-
-        Else
-            HandleUserMessageLogging("GMRC", "CheckForValidParameters: Get_Workspace could not find " & WorkspaceName,, )
-        End If
-
-    End Function
-
     Sub CopyFileToDDrive(ByVal DirName As String, ByVal Filename As String, ByVal AllFiles As Boolean)
 
         'Called from TriggerEncryptAndCopy which is called from EncryptFilesInDirectory.  Copies encrypted files to the Flash drive.
@@ -1233,7 +1410,7 @@ Public Module Module1
     ''' Verifies INCA configuration files (workspace, experiment, signal list, enumerations).
     ''' This is the centralized validation function called from InitForm.Drive().
     ''' </summary>
-    Public Function VerifyConfigFiles(Optional ByVal WhoCalledMe As String = "") As Boolean
+    Public Function VerifyConfigFiles(Optional ByVal WhoCalledMe As String = "", Optional failureReporter As Action(Of String) = Nothing) As Boolean
         ' ═══════════════════════════════════════════════════════════════
         ' CRITICAL: Use cached results to avoid expensive re-validation
         ' ═══════════════════════════════════════════════════════════════
@@ -1243,6 +1420,9 @@ Public Module Module1
         End If
 
         Try
+            If ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then
+                Return ReportConfigValidationFailure("Select a vehicle with valid config.xml <Processors> before starting INCA.", failureReporter)
+            End If
             HandleUserMessageLogging("GMRC", $"VerifyConfigFiles: Starting validation (called from {WhoCalledMe})...")
 
             ' ═══════════════════════════════════════════════════════════════
@@ -1259,10 +1439,7 @@ Public Module Module1
             Next
 
             If Not workspaceFound Then
-                HandleUserMessageLogging("GMRC",
-                $"VerifyConfigFiles: Workspace '{INCAWorkspace}' not found in INCA database",
-                DisplayMsgBox)
-                Return False
+                Return ReportConfigValidationFailure($"VerifyConfigFiles: Workspace '{INCAWorkspace}' not found in INCA database", failureReporter)
             End If
 
             HandleUserMessageLogging("GMRC", $"✓ Workspace verified: {INCAWorkspace}")
@@ -1281,10 +1458,7 @@ Public Module Module1
             Next
 
             If Not experimentFound AndAlso Not ConfigureForNewSoftwareVersion Then
-                HandleUserMessageLogging("GMRC",
-                $"VerifyConfigFiles: Experiment '{INCAExperiment}' not found in INCA database",
-                DisplayMsgBox)
-                Return False
+                Return ReportConfigValidationFailure($"VerifyConfigFiles: Experiment '{INCAExperiment}' not found in INCA database", failureReporter)
             End If
 
             HandleUserMessageLogging("GMRC", $"✓ Experiment verified: {INCAExperiment}")
@@ -1293,10 +1467,7 @@ Public Module Module1
             ' STEP 3: Verify Signal List File Exists on Disk
             ' ═══════════════════════════════════════════════════════════════
             If Not File.Exists(INCAVariableFile) Then
-                HandleUserMessageLogging("GMRC",
-                $"VerifyConfigFiles: Signal list file '{INCAVariableFile}' not found on disk",
-                DisplayMsgBox)
-                Return False
+                Return ReportConfigValidationFailure($"VerifyConfigFiles: Signal list file '{INCAVariableFile}' not found on disk", failureReporter)
             End If
 
             HandleUserMessageLogging("GMRC", $"✓ Signal list verified: {Path.GetFileName(INCAVariableFile)}")
@@ -1316,13 +1487,8 @@ Public Module Module1
             ' STEP 5: Setup Enumerations File
             ' ═══════════════════════════════════════════════════════════════
             Dim enumFileName As String
-            If InStr(FCMConfigName, "FCM") = 0 Then
-                enumFileName = Path.Combine(My.Application.Info.DirectoryPath,
-                $"{GSoftwareVersion}_{GModelYear}{GSpecificArxml}_Enumerations_{GProjectAbbreviation}.txt")
-            Else
-                enumFileName = Path.Combine(My.Application.Info.DirectoryPath,
-                $"{GSoftwareVersion}_{GModelYear}{GSpecificArxml}_Enumerations_{FCMConfigName}.txt")
-            End If
+            enumFileName = Path.Combine(My.Application.Info.DirectoryPath,
+            $"{GSoftwareVersion}_{GModelYear}{GSpecificArxml}_Enumerations_{GProjectAbbreviation}.txt")
 
             ' If versioned enum file doesn't exist, create it
             If Not File.Exists(enumFileName) Then
@@ -1360,19 +1526,22 @@ Public Module Module1
             Return True
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"VerifyConfigFiles: {ex.Message} Exiting...", DisplayMsgBox)
-            GmResidentClient.ExitApp("Complete")
-            Return False
+            Return ReportConfigValidationFailure($"VerifyConfigFiles: {ex.Message}", failureReporter)
         End Try
     End Function
 
-    Public Function ReadConfigFile() As Boolean
+    Private Function ReportConfigValidationFailure(message As String, Optional failureReporter As Action(Of String) = Nothing) As Boolean
+        verifyConfigsCached = False
+        Return ReportInitializationFailure(message, failureReporter)
+    End Function
+
+    Public Function ReadConfigFile(Optional failureReporter As Action(Of String) = Nothing) As Boolean
         ' This function now acts as a simple wrapper around the centralized ReadConfiguration helper.
         Dim configFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, "Config.xml")
         HandleUserMessageLogging("Module1", "ReadConfigFile: Reading Master Config File " & configFilePath & "...")
 
         ' Call the centralized helper located in the main form class
-        Return GmResidentClient.ReadConfiguration(configFilePath)
+        Return GmResidentClient.ReadConfiguration(configFilePath, failureReporter)
     End Function
 
     ''' <summary>
@@ -2002,47 +2171,15 @@ Public Module Module1
     End Sub
 
     Private Function GetDataDictionaryFilename() As String
-        If Len(AnnotationDataDictionaryFile) = 0 Then
-            HandleValidationDataDictionary()
-            Return My.Application.Info.DirectoryPath & "\DataDictionary.csv"
-        Else
-            FileCopy(AnnotationDataDictionaryFile, AnnotationDataDictionaryFile & ".SAVE")
-            Return AnnotationDataDictionaryFile
+        Dim filename As String = If(String.IsNullOrWhiteSpace(AnnotationDataDictionaryFile), ConfiguredDataDictionaryFile, AnnotationDataDictionaryFile)
+        If String.IsNullOrWhiteSpace(filename) OrElse Not File.Exists(filename) Then
+            Throw New FileNotFoundException("The annotation data dictionary is missing. Check config.xml <DataDictionary> or the file selected in the annotation editor.", filename)
         End If
+        If Not String.IsNullOrWhiteSpace(AnnotationDataDictionaryFile) Then
+            File.Copy(filename, filename & ".SAVE", True)
+        End If
+        Return filename
     End Function
-
-    Private Sub HandleValidationDataDictionary()
-        If Not File.Exists(My.Application.Info.DirectoryPath & "\VALIDATION_DataDictionary.csv") Then
-            If CurrentVehicleUsage <> "DEVELOPMENT" Then
-                HandleMissingValidationDataDictionary()
-            End If
-            CopyProjectDataDictionary()
-        Else
-            CopyValidationDataDictionary()
-        End If
-    End Sub
-
-    Private Sub HandleMissingValidationDataDictionary()
-        If OriginalVehicleConfiguration = "VALIDATION" Or OriginalVehicleConfiguration = "UNDEFINED" Or OriginalVehicleConfiguration = "VISTOOL" Then
-            Dim message As String = "If the intended vehicle usage Is For VALIDATION, there should be a file called VALIDATION_DataDictionary.csv In the " & My.Application.Info.DirectoryPath & " Directory. This file was Not found. Do you wish To Continue Using the " & ProjectName & " Data Dictionary?"
-            If Not StatusNotifier.Confirm(message, "CLEVIR") Then
-                HandleUserMessageLogging("GMRC", "ParseDataDictionary: User Answered No, Exiting")
-                GmResidentClient.ExitApp("Complete")
-            End If
-        End If
-    End Sub
-
-    Private Sub CopyProjectDataDictionary()
-        Dim projectDataDictionary As String = My.Application.Info.DirectoryPath & "\" & ProjectName & "_DataDictionary.csv"
-        If File.Exists(projectDataDictionary) Then
-            File.Copy(projectDataDictionary, My.Application.Info.DirectoryPath & "\DataDictionary.csv", True)
-        End If
-    End Sub
-
-    Private Sub CopyValidationDataDictionary()
-        Dim validationDataDictionary As String = My.Application.Info.DirectoryPath & "\VALIDATION_DataDictionary.csv"
-        File.Copy(validationDataDictionary, My.Application.Info.DirectoryPath & "\DataDictionary.csv", True)
-    End Sub
 
     Private Sub PrepareAnnotationFiles()
         Dim dataDictionary = DataDictionarySingleton.GetInstance() ' Get the Singleton instance
@@ -2136,76 +2273,7 @@ Public Module Module1
         })
     End Sub
 
-    Public Function HandleVehicleConfigurationsFile(ByVal Filename As String) As Boolean
-        ' Called from routines that open this file for input...
-        ' Checks for existence of VehicleConfigurations.csv file - if it does not exist for some reason
-        ' we will look for a saved version, copy it to VehicleConfigurations.csv and continue. If neither
-        ' file exists we post a message and return false...
-        Dim SaveFileName As String = Path.Combine(Path.GetDirectoryName(Filename), Path.GetFileNameWithoutExtension(Filename) & "_SAVE.csv")
-        Dim FilenameNF As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleConfigurationsNF.csv")
-        Dim NewString As String = ""
-        Dim FirstLine As Boolean = True
-        HandleUserMessageLogging("GMRC", "HandleVehicleConfigurationsFile Called...")
-        HandleVehicleConfigurationsFile = False
-        ' Check if the file exists; if not, check for a saved version and copy it
-        If Not File.Exists(Filename) Then
-            If File.Exists(SaveFileName) Then
-                HandleUserMessageLogging("GMRC", "HandleVehicleConfigurationsFile Copying " & SaveFileName & " to " & Filename)
-                File.Copy(SaveFileName, Filename, True)
-                HandleVehicleConfigurationsFile = True
-            Else
-                HandleUserMessageLogging("GMRC", "HandleVehicleConfigurationsFile " & Filename & " file does Not exist Or Is corrupted, Exiting...", DisplayMsgBox)
-                Return False
-            End If
-        Else
-            ' Check if the file is in use
-            If Not FileInUse(Filename) Then
-                HandleVehicleConfigurationsFile = True
-            Else
-                HandleUserMessageLogging("GMRC", "HandleVehicleConfigurationsFile: Vehicle Configurations file " & Filename & " In use. Please close the file before continuing...", DisplayMsgBox)
-                If FileInUse(Filename) Then
-                    HandleUserMessageLogging("GMRC", "HandleVehicleConfigurationsFile: Vehicle Configurations file " & Filename & " In use. Please close the file And restart CLEVIR. Exiting...", DisplayMsgBox)
-                    Return False
-                Else
-                    HandleVehicleConfigurationsFile = True
-                End If
-            End If
-        End If
-        ' If the Filename passed in is VehicleConfigurations.csv, create the new format NF file if necessary
-        If Filename = Path.Combine(My.Application.Info.DirectoryPath, "VehicleConfigurations.csv") AndAlso MaxCameras = 8 Then
-            LocalVehicleConfigFileModifyDate = File.GetLastWriteTime(Filename)
-            ' Use StreamReader and StreamWriter to process the file
-            Using reader As New StreamReader(Filename)
-                Using writer As New StreamWriter(FilenameNF, False) ' False to overwrite the file
-                    While Not reader.EndOfStream
-                        Dim textarray = reader.ReadLine().Split(","c)
-                        For x = 0 To textarray.Length - 1
-                            If x = 0 Then
-                                NewString = textarray(x)
-                            ElseIf x <= 13 Then
-                                NewString &= "," & textarray(x)
-                            ElseIf x = 14 Then
-                                If FirstLine Then
-                                    NewString &= ",Camera 7,Camera 8," & textarray(x)
-                                    FirstLine = False
-                                Else
-                                    NewString &= ",NA,NA," & textarray(x)
-                                End If
-                            Else
-                                NewString &= "," & textarray(x)
-                            End If
-                        Next
-                        writer.WriteLine(NewString)
-                    End While
-                End Using
-            End Using
-        Else
-            LocalVehicleConfigFileModifyDate = File.GetLastWriteTime(Filename)
-        End If
-        Return HandleVehicleConfigurationsFile
-    End Function
-
-    Public Function ReadVehicleConfigsFile() As Boolean
+    Public Function ReadVehicleConfigsFile(Optional failureReporter As Action(Of String) = Nothing) As Boolean
 
         '-------------------------------------------------------------------
         ' Called from:
@@ -2213,192 +2281,47 @@ Public Module Module1
         '   2. SaveVehicleConfigChanges
         '   3. InitForm.SaveVehicleNumber
         '
-        ' Reads and parses the vehicleconfigurations.csv (or VehicleConfigurationsNF.csv)
-        ' based on the VehicleNumber, populating global variables needed for subsequent
-        ' workspace-creation logic in CLEVIR.
-        '
-        ' This function sets:
-        '   - ProjectName, GProjectAbbreviation
-        '   - NumberOfCamerasInVehicle, CameraNames()
-        '   - BlueBoxInfo(), BlueBoxID
-        '   - NumControllers, FCMConfigName
-        '   - INCAWorkspaceTemplateName, MasterTemplateName, WorkspaceNameSuffix
-        '   - DataUploadPath, CLEVIRFilesPath, ZipTheMF4Files
+        ' Reads the <Vehicles> section of config.xml for the selected VehicleNumber,
+        ' populating global variables needed for subsequent workspace logic in CLEVIR.
         '
         ' Returns:
-        '   True if vehicle config was read and processed successfully;
+        '   True if vehicle config was read and processed successfully, or the
+        '   vehicle number is UNDEFINED/not found (user must select a vehicle);
         '   otherwise False.
         '-------------------------------------------------------------------
 
-        Dim defaultReturnValue As Boolean = False
-        Dim filename As String = DetermineVehicleConfigFileName()
-        Dim lineItems() As String = Nothing
-        ' Column indices for the 25-column VehicleConfigurationsNF.csv format
-        Dim PROC_START As Integer = 2, PROC_END As Integer = 7
-        Dim CAMERA_START As Integer = 8, CAMERA_END As Integer = 16 ' Adjusted for 9 cameras
-        Dim CANMON_START As Integer = 17, BLUEBOX_DESIGNATION As Integer = 18, CANMON_END As Integer = 20 ' Adjusted for new layout
-        Dim DATA_UPLOAD_PATH As Integer = 21, CLEVIR_FILES_PATH As Integer = 22
-        Dim ZIP_MF4_FILES As Integer = 23, CONFIG_NAME As Integer = 24
-        ' Flags/holders
-        Dim vehicleFound As Boolean = False
-        Dim vehicleID As String = ""
-        Dim foundFront As Boolean = False
-        Dim acpCanConfig As String = ""
-        Dim blueBoxID As String = ""
-        ReadVehicleConfigsFile = False
+        Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+        ClearProcessorConfiguration()
         Try
-            ' ── XML-first path ─────────────────────────────────────────
-            ' If config.xml contains a <Vehicles> section use it directly.
-            ' If not, fall through to the legacy CSV path below.
-            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
-            If File.Exists(configPath) Then
-                Dim xmlDoc As New XmlDocument()
-                xmlDoc.Load(configPath)
-                Dim xmlVehicles As List(Of VehicleConfig) = ReadVehiclesFromXml(xmlDoc)
-                If xmlVehicles IsNot Nothing AndAlso xmlVehicles.Count > 0 Then
-                    Dim xmlMatch As VehicleConfig = xmlVehicles.FirstOrDefault(
-                        Function(v) String.Equals(v.VehicleNumber, VehicleNumber, StringComparison.OrdinalIgnoreCase))
+            If Not File.Exists(configPath) Then
+                Return ReportInitializationFailure("ReadVehicleConfigsFile: config.xml not found.", failureReporter)
+            End If
 
-                    If xmlMatch IsNot Nothing Then
-                        If Not ApplyVehicleConfig(xmlMatch) Then Return False
-                        ' Backup config.xml so the save-file convention still works
-                        File.Copy(configPath,
-                                  Path.Combine(My.Application.Info.DirectoryPath, "config_vehicle_SAVE.xml"),
-                                  overwrite:=True)
-                        HandleUserMessageLogging("GMRC",
-                            $"ReadVehicleConfigsFile: Vehicle {VehicleNumber} loaded from config.xml Vehicles section.")
-                        defaultReturnValue = True
-                        Return True
-                    End If
-                    ' Vehicle not found in XML list (or VehicleNumber is UNDEFINED) — fall through to CSV
-                    HandleUserMessageLogging("GMRC",
-                        $"ReadVehicleConfigsFile: Vehicle '{VehicleNumber}' not found in config.xml <Vehicles> — falling back to CSV.")
+            Dim xmlDoc As New XmlDocument()
+            xmlDoc.Load(configPath)
+            Dim configuration As New IncaConfiguration(xmlDoc, My.Application.Info.DirectoryPath)
+            ApplyIncaConfiguration(configuration, xmlDoc)
+            If configuration.Processors.Length = 0 Then
+                If Not String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
+                    HandleUserMessageLogging("GMRC", $"Vehicle Number {VehicleNumber} not found in config.xml <Vehicles>. Select a configured vehicle.", failureReporter Is Nothing)
                 End If
-            End If
-            ' ── Legacy CSV path ────────────────────────────────────────
-            ' Ensure we have the correct CSV format and shift column indices if using the older format
-            If Not HandleVehicleConfigurationsFile(filename) Then
-                Return False
-            End If
-            If IsOldFormatFile(filename) Then
-                AdjustColumnIndicesForOldFormat(PROC_START, PROC_END, CAMERA_START, CAMERA_END, CANMON_START, BLUEBOX_DESIGNATION, CANMON_END,
-                                            DATA_UPLOAD_PATH, CLEVIR_FILES_PATH, ZIP_MF4_FILES, CONFIG_NAME)
-            End If
-            ' Reset key globals before reading
-            NumberOfCamerasInVehicle = 0
-            NumControllers = 0
-            FCMConfigName = ""
-            ReDim CameraNames(8) ' Resize for 9 cameras (indices 0-8)
-            ' Open the file using StreamReader
-            Using reader As New StreamReader(filename)
-                ' Skip header
-                Dim headerLine As String = reader.ReadLine()
-                lineItems = headerLine.Split(","c)
-                ' Read file line by line
-                While Not reader.EndOfStream
-                    Dim textLine As String = reader.ReadLine()
-                    lineItems = textLine.Split(","c)
-                    ' If this row matches the current VehicleNumber, process and break out
-                    If String.Equals(lineItems(0), VehicleNumber, StringComparison.OrdinalIgnoreCase) Then
-                        vehicleFound = True
-                        vehicleID = lineItems(1)
-                        Dim success As Boolean = ProcessVehicleRow(
-                        lineItems,
-                        filename,
-                        ReadVehicleConfigsFile,
-                        PROC_START, PROC_END,
-                        CAMERA_START, CAMERA_END,
-                        CANMON_START, BLUEBOX_DESIGNATION, CANMON_END,
-                        DATA_UPLOAD_PATH, CLEVIR_FILES_PATH,
-                        ZIP_MF4_FILES, CONFIG_NAME,
-                        foundFront,
-                        acpCanConfig,
-                        blueBoxID
-                    )
-                        If Not success Then
-                            Return False
-                        End If
-                        ' If not ClevirAdministrator, we can exit after finding the matched vehicle
-                        If Not ClevirAdministrator Then Exit While
-                    Else
-                        ' If admin, still do additional mismatch checks on lines that don’t match
-                        If ClevirAdministrator Then
-                            CheckClevirFilesPathMismatch(lineItems, CLEVIR_FILES_PATH, PROC_START)
-                        End If
-                    End If
-                End While
-            End Using
-            If Not vehicleFound AndAlso Not String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
-                HandleMissingVehicleNumber(vehicleNumber:=VehicleNumber, vehicleID, ReadVehicleConfigsFile)
                 Return True
             End If
-            ' We have enough info to figure out the workspace template and suffix
-            If Not ConfigureWorkspaceAndTemplate(filename, acpCanConfig, blueBoxID) Then
-                Return False
-            End If
-            WorkspaceNameSuffix = INCAWorkspaceTemplateName & NumberOfCamerasInVehicle & "C"
-            ' Save these in case we revert from version-specific templates
-            GSaveIncaWorkspaceTemplateName = INCAWorkspaceTemplateName
-            GSaveWorkspaceNameSuffix = WorkspaceNameSuffix
-            ' Make a backup of the config file
-            File.Copy(filename,
-                  Path.Combine(My.Application.Info.DirectoryPath, Path.GetFileNameWithoutExtension(filename) & "_SAVE.csv"),
-                  overwrite:=True)
-            defaultReturnValue = True
+
+            ' Backup config.xml so the save-file convention still works
+            File.Copy(configPath,
+                      Path.Combine(My.Application.Info.DirectoryPath, "config_vehicle_SAVE.xml"),
+                      overwrite:=True)
             HandleUserMessageLogging("GMRC",
-                                 $"ReadVehicleConfigsFile Number of Cameras defined in {Path.GetFileName(filename)} = {NumberOfCamerasInVehicle}")
+                $"ReadVehicleConfigsFile: Vehicle {VehicleNumber} loaded from config.xml Vehicles section.")
+            Return True
+
         Catch ex As Exception
-            ' If anything goes wrong, log the error
-            HandleUserMessageLogging("GMRC",
-                                 $"ReadVehicleConfigsFile {Path.GetFileName(filename)} file may be corrupted, {ex.Message} Exiting...",
-                                  DisplayMsgBox)
-        Finally
-            ReadVehicleConfigsFile = defaultReturnValue
+            ClearProcessorConfiguration()
+            Return ReportInitializationFailure($"ReadVehicleConfigsFile: {ex.Message}", failureReporter)
         End Try
-        Return ReadVehicleConfigsFile
     End Function
 
-    '-----------------------------------------------------------
-    '   DETERMINE WHICH CSV FILE TO USE
-    '-----------------------------------------------------------
-    Private Function DetermineVehicleConfigFileName() As String
-        Dim nfFile As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleConfigurationsNF.csv")
-        Dim legacyFile As String = Path.Combine(My.Application.Info.DirectoryPath, "VehicleConfigurations.csv")
-
-        If File.Exists(nfFile) Then
-            MaxCameras = 9 ' Updated to support 9 cameras
-            Return nfFile
-        Else
-            MaxCameras = 8 ' Legacy file supports 8 cameras
-            Return legacyFile
-        End If
-    End Function
-
-    Private Function IsOldFormatFile(filename As String) As Boolean
-        Return Path.GetFileName(filename).Equals("VehicleConfigurations.csv", StringComparison.OrdinalIgnoreCase)
-    End Function
-
-    Private Sub AdjustColumnIndicesForOldFormat(ByRef PROC_START As Integer,
-                                                ByRef PROC_END As Integer,
-                                                ByRef CAMERA_START As Integer,
-                                                ByRef CAMERA_END As Integer,
-                                                ByRef CANMON_START As Integer,
-                                                ByRef BLUEBOX_DESIGNATION As Integer,
-                                                ByRef CANMON_END As Integer,
-                                                ByRef DATA_UPLOAD_PATH As Integer,
-                                                ByRef CLEVIR_FILES_PATH As Integer,
-                                                ByRef ZIP_MF4_FILES As Integer,
-                                                ByRef CONFIG_NAME As Integer)
-        ' Adjust indices for the legacy format, which has 2 fewer camera columns
-        CAMERA_END -= 2
-        CANMON_START -= 2
-        BLUEBOX_DESIGNATION -= 2
-        CANMON_END -= 2
-        DATA_UPLOAD_PATH -= 2
-        CLEVIR_FILES_PATH -= 2
-        ZIP_MF4_FILES -= 2
-        CONFIG_NAME -= 2
-    End Sub
 
     '-----------------------------------------------------------
     '   SELECTED VEHICLE NUMBER — config.xml persistence
@@ -2434,13 +2357,16 @@ Public Module Module1
     ''' Persists <paramref name="vehicleNumber"/> to the &lt;SelectedVehicleNumber&gt;
     ''' element in config.xml, creating the element if it does not yet exist.
     ''' </summary>
-    Public Sub SaveSelectedVehicleNumber(vehicleNumber As String)
-        If String.IsNullOrWhiteSpace(vehicleNumber) Then Return
+    Public Function SaveSelectedVehicleNumber(vehicleNumber As String) As Boolean
+        If String.IsNullOrWhiteSpace(vehicleNumber) Then
+            HandleUserMessageLogging("GMRC", "SaveSelectedVehicleNumber: a vehicle number is required.", DisplayMsgBox)
+            Return False
+        End If
         Try
             Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
             If Not File.Exists(configPath) Then
-                HandleUserMessageLogging("GMRC", "SaveSelectedVehicleNumber: config.xml not found — cannot persist vehicle number.")
-                Return
+                HandleUserMessageLogging("GMRC", "SaveSelectedVehicleNumber: config.xml not found — cannot persist vehicle number.", DisplayMsgBox)
+                Return False
             End If
             Dim xmlDoc As New XmlDocument()
             xmlDoc.Load(configPath)
@@ -2455,13 +2381,19 @@ Public Module Module1
                     xmlDoc.DocumentElement.AppendChild(node)
                 End If
             End If
-            node.InnerText = vehicleNumber
+            node.InnerText = vehicleNumber.Trim()
+            Dim configuration As New IncaConfiguration(xmlDoc, My.Application.Info.DirectoryPath)
+            If configuration.Processors.Length = 0 Then
+                Throw New FormatException($"Vehicle '{vehicleNumber}' is not configured in config.xml <Vehicles>.")
+            End If
             xmlDoc.Save(configPath)
             HandleUserMessageLogging("GMRC", $"SaveSelectedVehicleNumber: Saved '{vehicleNumber}' to config.xml.")
+            Return True
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"SaveSelectedVehicleNumber: {ex.Message}", DisplayMsgBox)
+            Return False
         End Try
-    End Sub
+    End Function
 
     '-----------------------------------------------------------
     '   XML VEHICLE CONFIG: READ AND APPLY
@@ -2469,11 +2401,11 @@ Public Module Module1
 
     ''' <summary>
     ''' Reads all &lt;Vehicle&gt; elements from the Vehicles section of config.xml.
-    ''' Returns Nothing when the section is absent (CSV path used instead).
+    ''' Returns Nothing when the section is absent.
     ''' </summary>
     Public Function ReadVehiclesFromXml(xmlDoc As XmlDocument) As List(Of VehicleConfig)
         If xmlDoc Is Nothing Then Return Nothing
-        Dim vehiclesNode As XmlNode = xmlDoc.SelectSingleNode("//Vehicles")
+        Dim vehiclesNode As XmlNode = xmlDoc.SelectSingleNode("/Configuration/Vehicles")
         If vehiclesNode Is Nothing Then Return Nothing
 
         Dim list As New List(Of VehicleConfig)()
@@ -2491,54 +2423,29 @@ Public Module Module1
                 v.CameraPositions = camText.Split(","c)
             End If
 
-            Dim canText As String = node.SelectSingleNode("CanMonitors")?.InnerText
-            If Not String.IsNullOrWhiteSpace(canText) Then
-                v.CanMonitors = canText.Split(","c)
-            End If
-
-            v.DataUploadPath = node.SelectSingleNode("DataUploadPath")?.InnerText?.Trim() & ""
-            v.CLEVIRFilesPath = node.SelectSingleNode("CLEVIRFilesPath")?.InnerText?.Trim() & ""
-            Dim zipStr As String = node.SelectSingleNode("ZipMF4Files")?.InnerText?.Trim() & ""
+            Dim zipStr As String = node.SelectSingleNode("ZipMF4Files")?.InnerText
             v.ZipMF4Files = String.Equals(zipStr, "True", StringComparison.OrdinalIgnoreCase)
-            v.ConfigName = node.SelectSingleNode("ConfigName")?.InnerText?.Trim() & ""
             list.Add(v)
         Next
         Return list
     End Function
 
     ''' <summary>
-    ''' Applies a VehicleConfig object to the same module-level globals that ProcessVehicleRow sets,
-    ''' then calls ConfigureWorkspaceAndTemplate.  Returns False on invalid processor type.
+    ''' Applies a vehicle and its validated processor identities to the module-level globals.
+    ''' Workspace name comes from &lt;INCAWorkspace&gt; in config.xml.
     ''' </summary>
-    Private Function ApplyVehicleConfig(v As VehicleConfig) As Boolean
+    Private Sub ApplyVehicleConfig(v As VehicleConfig, processors As ProcessorIdentity())
         NumberOfCamerasInVehicle = 0
-        NumControllers = 0
-        FCMConfigName = ""
         ReDim CameraNames(8)
         ActiveCameras.Clear()
+        ActiveProcessorNames = processors.Select(Function(p) p.DeviceName).ToArray()
+        NumControllers = processors.Length
+        PrimaryProcessorDeviceName = processors(0).DeviceName
+        ProjectName = processors(0).VariantName
+        GProjectAbbreviation = ProjectName
 
-        ' 1. Project name from first processor
-        If v.Processors Is Nothing OrElse v.Processors.Length = 0 Then Return False
-        If Not DetermineProjectName(v.Processors(0).Trim()) Then
-            HandleUserMessageLogging("GMRC",
-                $"ApplyVehicleConfig: Invalid Processor '{v.Processors(0)}' for vehicle {v.VehicleNumber}. Exiting...",
-                DisplayMsgBox)
-            Return False
-        End If
-
-        ' 2. Count non-NA processors and record their names for device filtering
-        Dim activeProcs As New List(Of String)
-        For Each proc As String In v.Processors
-            If Not String.IsNullOrWhiteSpace(proc) AndAlso Not proc.Trim().ToUpper().Contains("NA") Then
-                NumControllers += 1
-                activeProcs.Add(proc.Trim().ToUpper())
-            End If
-        Next
-        ActiveProcessorNames = activeProcs.ToArray()
-
-        ' 3. Camera positions → ActiveCameras
+        ' 3. Camera positions
         Dim foundFront As Boolean = False
-        Dim acpCanConfig As String = ""
         For i As Integer = 0 To v.CameraPositions.Length - 1
             If i > 8 Then Exit For
             Dim pos As String = v.CameraPositions(i).Trim()
@@ -2556,478 +2463,59 @@ Public Module Module1
             End If
         Next
 
-        ' 4. CAN monitors — index 1 is BLUEBOX_DESIGNATION (mirrors column 18 in CSV)
-        Dim blueBoxID As String = ""
-        If v.CanMonitors IsNot Nothing Then
-            For i As Integer = 0 To Math.Min(v.CanMonitors.Length - 1, BlueBoxInfo.Length - 1)
-                BlueBoxInfo(i) = v.CanMonitors(i).Trim()
-                If ProjectName.ToUpper().Contains("ACP4") AndAlso
-                   BlueBoxInfo(i).ToUpper().Contains("RTK") Then
-                    acpCanConfig = "_RTK"
-                End If
-            Next
-            If v.CanMonitors.Length > 1 Then
-                blueBoxID = DetermineBlueBoxID(v.CanMonitors(1).Trim(), acpCanConfig)
-            End If
-        End If
-
-        ' 5. DataUploadPath
-        DataUploadPath = If(v.DataUploadPath.Length > 0, "\" & v.DataUploadPath, "")
-
-        ' 6. CLEVIRFilesPath
-        CLEVIRFilesPath = v.CLEVIRFilesPath
-
-        ' 7. ZipTheMF4Files (may be overridden by CurrentVehicleUsage)
+        ' 4. ZipTheMF4Files
         ZipTheMF4Files = v.ZipMF4Files
         Select Case CurrentVehicleUsage.ToUpper()
             Case "DEVELOPMENT" : ZipTheMF4Files = True
             Case "VALIDATION" : ZipTheMF4Files = False
         End Select
 
-        ' 8. FCMConfigName
-        FCMConfigName = v.ConfigName
-
-        ' 9. Workspace template
-        If Not ConfigureWorkspaceAndTemplate(
-                Path.Combine(My.Application.Info.DirectoryPath, "config.xml"),
-                acpCanConfig, blueBoxID) Then
-            Return False
-        End If
-
-        WorkspaceNameSuffix = INCAWorkspaceTemplateName & NumberOfCamerasInVehicle & "C"
-        GSaveIncaWorkspaceTemplateName = INCAWorkspaceTemplateName
-        GSaveWorkspaceNameSuffix = WorkspaceNameSuffix
-
         HandleUserMessageLogging("GMRC",
             $"ApplyVehicleConfig: Vehicle {v.VehicleNumber} loaded from config.xml — " &
-            $"{ActiveCameras.Count} camera(s), template={INCAWorkspaceTemplateName}")
-        Return True
-    End Function
-
-    '-----------------------------------------------------------
-    '   PROCESS A MATCHING VEHICLE ROW
-    '-----------------------------------------------------------
-    Private Function ProcessVehicleRow(
-    ByVal lineItems() As String,
-    ByVal filename As String,
-    ByRef readVehicleConfigsFile As Boolean,   ' <-- byRef param here!
-    ByVal PROC_START As Integer, ByVal PROC_END As Integer,
-    ByVal CAMERA_START As Integer, ByVal CAMERA_END As Integer,
-    ByVal CANMON_START As Integer, ByVal BLUEBOX_DESIGNATION As Integer, ByVal CANMON_END As Integer,
-    ByVal DATA_UPLOAD_PATH As Integer, ByVal CLEVIR_FILES_PATH As Integer,
-    ByVal ZIP_MF4_FILES As Integer, ByVal CONFIG_NAME As Integer,
-    ByRef foundFront As Boolean,
-    ByRef acpCanConfig As String,
-    ByRef blueBoxID As String
-) As Boolean
-
-        NumberOfCamerasInVehicle = 0
-
-        ' ✅ Clear ActiveCameras for this vehicle
-        ActiveCameras.Clear()
-
-        ' Accumulate active (non-NA) processor names for ProcessDevicesAfterOpen device filtering
-        Dim procNamesList As New List(Of String)
-
-        ' Ensure lineItems is large enough to prevent index errors
-        If lineItems.Length <= CONFIG_NAME Then
-            HandleUserMessageLogging("GMRC", $"ReadVehicleConfigsFile: Skipped row due to insufficient columns for vehicle {lineItems(0)}.")
-            Return True ' Continue processing other rows
-        End If
-
-        For x As Integer = PROC_START To CONFIG_NAME
-
-            ' 1) Handle the very first processor (assign ProjectName, etc.)
-            If x = PROC_START Then
-                If Not DetermineProjectName(lineItems(x)) Then
-                    ' If invalid, log and return False to exit
-                    HandleUserMessageLogging(
-                    "GMRC",
-                    $"ReadVehicleConfigsFile: Invalid Processor name ({lineItems(x)}) " &
-                    $"In {Path.GetFileName(filename)} file For Vehicle {lineItems(0)}. Exiting...",
-                    DisplayMsgBox,
-)
-                    Return False
-                End If
-            End If
-
-            ' 2) Count controllers and collect active processor names
-            If x >= PROC_START AndAlso x <= PROC_END Then
-                If Not lineItems(x).ToUpper().Contains("NA") Then
-                    NumControllers += 1
-                    If Not String.IsNullOrWhiteSpace(lineItems(x)) Then
-                        procNamesList.Add(lineItems(x).Trim().ToUpper())
-                    End If
-                End If
-            End If
-
-            ' 3) Gather camera info and map to IP addresses
-            If x >= CAMERA_START AndAlso x <= CAMERA_END Then
-                Dim cameraIndex As Integer = x - CAMERA_START
-                If cameraIndex < CameraNames.Length Then
-                    Dim cameraPosition As String = lineItems(x).Trim()
-                    CameraNames(cameraIndex) = cameraPosition
-
-                    If Not cameraPosition.Equals("NA", StringComparison.OrdinalIgnoreCase) Then
-                        If cameraPosition.ToUpper() = "FRONT" Then foundFront = True
-                        NumberOfCamerasInVehicle += 1
-
-                        ' ✅ NEW: Map camera position to IP address from config.xml
-                        If ConfiguredCameras.ContainsKey(cameraPosition) Then
-                            Dim cameraConfig = ConfiguredCameras(cameraPosition)
-                            ActiveCameras.Add(cameraConfig)
-                            HandleUserMessageLogging("GMRC",
-                                $"Camera mapped: {cameraPosition} → {cameraConfig.IpAddress} (Index: {cameraIndex})")
-                        Else
-                            HandleUserMessageLogging("GMRC",
-                                $"⚠️ WARNING: Camera position '{cameraPosition}' not found in config.xml camera mappings",
-                                DisplayMsgBox)
-                        End If
-                    End If
-                End If
-            End If
-
-            ' 4) Gather CAN monitoring info
-            If x >= CANMON_START AndAlso x <= CANMON_END Then
-                Dim canMonIndex As Integer = x - CANMON_START
-                If canMonIndex < BlueBoxInfo.Length Then
-                    BlueBoxInfo(canMonIndex) = lineItems(x)
-                    If ProjectName.ToUpper().Contains("ACP4") AndAlso
-                       BlueBoxInfo(canMonIndex).ToUpper().Contains("RTK") Then
-                        acpCanConfig = "_RTK"
-                    End If
-                End If
-
-                ' Check the special BlueBoxDesignation column
-                If x = BLUEBOX_DESIGNATION Then
-                    blueBoxID = DetermineBlueBoxID(lineItems(x), acpCanConfig)
-                End If
-            End If
-
-            ' 5) Handle DataUploadPath, CLEVIRFilesPath, ZipTheMF4Files, and FCMConfigName
-            If Not ProcessSpecialFields(
-            lineItems, x,
-            DATA_UPLOAD_PATH, CLEVIR_FILES_PATH, ZIP_MF4_FILES, CONFIG_NAME,
-            foundFront, acpCanConfig, blueBoxID
-        ) Then
-                Return False
-            End If
-
-        Next
-
-        ' ✅ Log final camera summary for this vehicle
-        HandleUserMessageLogging("GMRC",
-            $"Vehicle {lineItems(0)}: {ActiveCameras.Count} active camera(s) - " &
-            String.Join(", ", ActiveCameras.Select(Function(c) $"{c.Position}:{c.IpAddress}")))
-
-        ActiveProcessorNames = procNamesList.ToArray()
-
-        Return True
-    End Function
-
-    '-----------------------------------------------------------
-    '   DETERMINE PROJECT NAME FROM FIRST PROCESSOR
-    '-----------------------------------------------------------
-    Private Function DetermineProjectName(firstProcessor As String) As Boolean
-        Dim proc As String = UCase(firstProcessor)
-
-        Select Case True
-            Case proc = "XETK1"
-                ProjectName = "LowContent"
-                GProjectAbbreviation = "LC"
-
-            Case (proc.Contains("FCM") AndAlso Not proc.Contains("FCM100"))
-                ProjectName = "FCM"
-                GProjectAbbreviation = "FCM"
-
-            Case proc.Contains("FCM100")
-                ProjectName = "FCM100"
-                GProjectAbbreviation = "FCM100"
-
-            Case proc = "HCF"
-                ProjectName = "HighContent"
-                GProjectAbbreviation = "HC"
-
-            Case proc.Contains("ACP2")
-                ProjectName = "ACP2"
-                GProjectAbbreviation = "ACP2"
-
-            Case proc.Contains("ACP3")
-                ProjectName = "ACP3"
-                GProjectAbbreviation = "ACP3"
-
-            Case proc.Contains("ACP4")
-                ProjectName = "ACP4"
-                GProjectAbbreviation = "ACP4"
-
-            Case proc = "IP"
-                ProjectName = "CSAV2"
-                GProjectAbbreviation = "CSAV2"
-
-            Case Else
-                Return False
-        End Select
-
-        Return True
-    End Function
-
-    '-----------------------------------------------------------
-    '   DETERMINE BLUEBOX ID
-    '   (Adjust based on instrumentation defaults)
-    '-----------------------------------------------------------
-    Private Function DetermineBlueBoxID(currentBlueBoxID As String, ByVal acpCanConfig As String) As String
-        Dim candidate As String = currentBlueBoxID
-
-        ' If instrumentation setup matches a default, reset to ""
-        If ProjectName.ToUpper.Contains("LOWCONTENT") AndAlso candidate = "523" Then
-            candidate = ""
-
-        ElseIf ProjectName.ToUpper.Contains("FCM") AndAlso candidate = "523" Then
-            candidate = ""
-
-        ElseIf ProjectName.ToUpper.Contains("HIGHCONTENT") AndAlso candidate = "523" Then
-            candidate = ""
-
-        ElseIf ProjectName.ToUpper.Contains("ACP2") Then
-            If candidate = "523" Then
-                candidate = ""
-            ElseIf candidate = "NA" Then
-                acpCanConfig = "_NOCAN"
-                candidate = ""
-            End If
-
-        ElseIf ProjectName.ToUpper.Contains("ACP3") Then
-            If candidate = "523" Then
-                candidate = ""
-            ElseIf candidate = "NA" Then
-                acpCanConfig = "_NOCAN"
-                candidate = ""
-            End If
-
-        ElseIf ProjectName.ToUpper.Contains("ACP4") Then
-            If candidate.ToUpper.Contains("523") Then
-                candidate = ""
-            ElseIf candidate = "NA" AndAlso acpCanConfig <> "_RTK" Then
-                acpCanConfig = "_NOCAN"
-                candidate = ""
-            End If
-
-        ElseIf ProjectName.ToUpper.Contains("CSAV2") Then
-            If candidate = "593" Then
-                candidate = ""
-            End If
-        End If
-
-        Return candidate
-    End Function
-
-    '-----------------------------------------------------------
-    '   HANDLE DATA UPLOAD PATH, CLEVIR FILES PATH, ZIP MF4 FILES, CONFIG NAME
-    '-----------------------------------------------------------
-    Private Function ProcessSpecialFields(lineItems() As String,
-                                         currentIndex As Integer,
-                                         DATA_UPLOAD_PATH As Integer,
-                                         CLEVIR_FILES_PATH As Integer,
-                                         ZIP_MF4_FILES As Integer,
-                                         CONFIG_NAME As Integer,
-                                         foundFront As Boolean,
-                                         ByRef acpCanConfig As String,
-                                         ByRef blueBoxID As String) As Boolean
-
-        Select Case currentIndex
-
-            Case DATA_UPLOAD_PATH
-                If lineItems(currentIndex).Length > 0 Then
-                    DataUploadPath = "\" & lineItems(currentIndex)
-                Else
-                    DataUploadPath = ""
-                End If
-
-            Case CLEVIR_FILES_PATH
-                CLEVIRFilesPath = lineItems(currentIndex)
-                CheckClevirFilesPathMismatch(lineItems, CLEVIR_FILES_PATH, 2) ' 2 = PROC_START in default scenario
-
-            Case ZIP_MF4_FILES
-                ZipTheMF4Files = (UCase(lineItems(currentIndex)) = "TRUE")
-
-                ' Determine vehicle usage mode
-                Select Case CurrentVehicleUsage.ToUpper
-                    Case "DEVELOPMENT"
-                        ZipTheMF4Files = True
-                    Case "VALIDATION"
-                        ZipTheMF4Files = False
-                End Select
-
-                HandleUserMessageLogging("GMRC",
-                    $"ReadVehicleConfigsFile OriginalVehicleConfiguration = {OriginalVehicleConfiguration} CurrentVehicleUsage = {CurrentVehicleUsage} ZipTheMF4Files = {ZipTheMF4Files}")
-
-            Case CONFIG_NAME
-                FCMConfigName = lineItems(currentIndex)
-        End Select
-
-        Return True
-    End Function
-
-    '-----------------------------------------------------------
-    '   IF WE DON’T MATCH THE VEHICLE NUMBER, CHECK PATH MISMATCH
-    '   (Admin only)
-    '-----------------------------------------------------------
-    Private Sub CheckClevirFilesPathMismatch(lineItems() As String,
-                                             CLEVIR_FILES_PATH As Integer,
-                                             PROC_START As Integer)
-
-        If Not ClevirAdministrator Then Exit Sub
-
-        Dim cPath As String = UCase(lineItems(CLEVIR_FILES_PATH))
-        Dim proc As String = UCase(lineItems(PROC_START))
-        Dim mismatch As Boolean = False
-
-        If cPath.Contains("LOWCONTENT") AndAlso proc <> "XETK1" Then mismatch = True
-        If cPath.Contains("FCM") AndAlso Not proc.Contains("FCM") Then mismatch = True
-        If cPath.Contains("HIGHCONTENT") AndAlso proc <> "HCF" Then mismatch = True
-        If cPath.Contains("ACP2") AndAlso proc <> "ACP2_MCU" Then mismatch = True
-        If cPath.Contains("ACP3") AndAlso proc <> "ACP3_MCU" Then mismatch = True
-        If cPath.Contains("ACP4") AndAlso proc <> "ACP4_MCU" Then mismatch = True
-        If cPath = "CURRENT" AndAlso proc <> "IP" Then mismatch = True
-
-        If mismatch Then
-            HandleUserMessageLogging("GMRC",
-                $"ReadVehicleConfigsFile: CLEVIR Files Path {lineItems(CLEVIR_FILES_PATH)} does Not match controller type {lineItems(PROC_START)} For Vehicle Number {lineItems(0)}",
-                DisplayMsgBox, )
-        End If
+            $"{ActiveCameras.Count} camera(s), workspace={INCAWorkspace}")
     End Sub
 
-    '-----------------------------------------------------------
-    '   HANDLE CASE WHERE VEHICLE ID NOT FOUND
-    '-----------------------------------------------------------
-    Private Sub HandleMissingVehicleNumber(vehicleNumber As String,
-                                       ByRef vehicleID As String,
-                                       ByRef ReadVehicleConfigsFile As Boolean)
-        ' Log or display a message if the vehicle number is not found
-        HandleUserMessageLogging("GMRC",
-        $"Vehicle Number {vehicleNumber} Not found In Vehicle Configurations File...",
-        DisplayMsgBox, )
-        ' Update the vehicle ID and number to "UNDEFINED"
-        vehicleID = "UNDEFINED"
-        vehicleNumber = "UNDEFINED"
-        ReadVehicleConfigsFile = True
+    Public PrimaryProcessorDeviceName As String = ""
+
+    Public Sub ClearProcessorConfiguration()
+        verifyConfigsCached = False
+        ActiveProcessorNames = Array.Empty(Of String)()
+        NumControllers = 0
+        PrimaryProcessorDeviceName = String.Empty
+        ProjectName = String.Empty
+        GProjectAbbreviation = String.Empty
     End Sub
 
+    Public Sub ApplyIncaConfiguration(configuration As IncaConfiguration, document As XmlDocument)
+        Dim vehicles As List(Of VehicleConfig) = ReadVehiclesFromXml(document)
+        If vehicles Is Nothing OrElse vehicles.Count = 0 Then
+            Throw New FormatException("Missing config.xml <Vehicles>/<Vehicle> entries.")
+        End If
+        ClearProcessorConfiguration()
+        INCADatabase = configuration.Database
+        INCAWorkspace = configuration.Workspace
+        INCAWorkspaceTemplateName = configuration.Workspace
+        INCAExperiment = configuration.Experiment
+        InitialINCAExperiment = configuration.Experiment
+        CanTemplateExperimentName = configuration.ExperimentTemplate
+        INCAVariableFile = configuration.VariableFile
+        ETAS_USER_PATH = configuration.EtasUserPath
+        VehicleNumber = configuration.SelectedVehicle
+        ConfiguredDataDictionaryFile = configuration.DataDictionary
+        VSpySelectedConfigFileName = configuration.VehicleSpySetup
+        AlternateRecordConfig = configuration.AlternateRecordConfig
+        If configuration.Processors.Length = 0 Then
+            NumberOfCamerasInVehicle = 0
+            ActiveCameras.Clear()
+            Return
+        End If
+        Dim vehicle As VehicleConfig = vehicles.First(Function(v) String.Equals(v.VehicleNumber, VehicleNumber, StringComparison.OrdinalIgnoreCase))
+        ApplyVehicleConfig(vehicle, configuration.Processors)
+    End Sub
 
-    '-----------------------------------------------------------
-    '   CONFIGURE WORKSPACE TEMPLATE / SUFFIX
-    '-----------------------------------------------------------
-    Private Function ConfigureWorkspaceAndTemplate(filename As String,
-                                                   acpCanConfig As String,
-                                                   blueBoxID As String) As Boolean
-        Select Case GProjectAbbreviation
-            Case "CSAV2"
-                If NumControllers = 3 Then
-                    INCAWorkspaceTemplateName = GProjectAbbreviation & "_3P" & blueBoxID
-                ElseIf NumControllers = 6 Then
-                    INCAWorkspaceTemplateName = GProjectAbbreviation & "_3P3R" & blueBoxID
-                Else
-                    Return FailConfig(filename)
-                End If
-                MasterTemplateName = "CSAV2_WorkspaceTemplate"
-
-            Case "FCM"
-                If NumControllers = 1 Then
-                    INCAWorkspaceTemplateName = GProjectAbbreviation & "_1P" & blueBoxID
-                Else
-                    Return FailConfig(filename)
-                End If
-                MasterTemplateName = "FCM_WorkspaceTemplate"
-
-            Case "FCM100"
-                If NumControllers = 1 Then
-                    INCAWorkspaceTemplateName = GProjectAbbreviation & "_1P" & blueBoxID
-                Else
-                    Return FailConfig(filename)
-                End If
-                MasterTemplateName = "FCM100_WorkspaceTemplate"
-
-            Case "LC"
-                Select Case NumControllers
-                    Case 1
-                        INCAWorkspaceTemplateName = GProjectAbbreviation & "_1P" & blueBoxID
-                        MasterTemplateName = "LC_WorkspaceTemplate"
-                    Case 2
-                        INCAWorkspaceTemplateName = GProjectAbbreviation & "_" & Mid(FCMConfigName, 1, InStr(FCMConfigName, "_") - 1) & blueBoxID
-                        If InStr(FCMConfigName, "FCM100") > 0 Then
-                            MasterTemplateName = "LC_FCM100_WorkspaceTemplate"
-                        Else
-                            MasterTemplateName = "LC_FCM_WorkspaceTemplate"
-                        End If
-                    Case Else
-                        Return FailConfig(filename)
-                End Select
-
-            Case "HC"
-                Select Case NumControllers
-                    Case 2
-                        INCAWorkspaceTemplateName = GProjectAbbreviation & "_2P" & blueBoxID
-                        MasterTemplateName = "HC_WorkspaceTemplate"
-                    Case 3
-                        INCAWorkspaceTemplateName = GProjectAbbreviation & "_" & Mid(FCMConfigName, 1, InStr(FCMConfigName, "_") - 1) & blueBoxID
-                        If InStr(FCMConfigName, "FCM100") > 0 Then
-                            MasterTemplateName = "HC_FCM100_WorkspaceTemplate"
-                        Else
-                            MasterTemplateName = "HC_FCM_WorkspaceTemplate"
-                        End If
-                    Case Else
-                        Return FailConfig(filename)
-                End Select
-
-            Case "ACP2"
-                If NumControllers = 1 Then
-                    INCAWorkspaceTemplateName = GProjectAbbreviation & acpCanConfig & "_1P" & blueBoxID
-                    MasterTemplateName = "ACP2_WorkspaceTemplate"
-                Else
-                    Return FailConfig(filename)
-                End If
-
-            Case "ACP3"
-                Select Case NumControllers
-                    Case 1
-                        INCAWorkspaceTemplateName = GProjectAbbreviation & acpCanConfig & "_1P" & blueBoxID
-                        MasterTemplateName = "ACP3_WorkspaceTemplate"
-                    Case 2
-                        INCAWorkspaceTemplateName = GProjectAbbreviation & acpCanConfig & "_" & Mid(FCMConfigName, 1, InStr(FCMConfigName, "_") - 1) & blueBoxID
-                        If InStr(FCMConfigName, "FCM100") > 0 Then
-                            MasterTemplateName = "ACP3_FCM100_WorkspaceTemplate"
-                        Else
-                            MasterTemplateName = "ACP3_FCM_WorkspaceTemplate"
-                        End If
-                    Case Else
-                        Return FailConfig(filename)
-                End Select
-
-            Case "ACP4"
-                If NumControllers = 1 Then
-                    INCAWorkspaceTemplateName = GProjectAbbreviation & acpCanConfig & "_1P" & blueBoxID
-                Else
-                    Return FailConfig(filename)
-                End If
-
-                ' If ACP4 is using RTK, we use a different MasterTemplate
-                If acpCanConfig <> "_RTK" Then
-                    MasterTemplateName = "ACP4_WorkspaceTemplate"
-                Else
-                    MasterTemplateName = "ACP4_WorkspaceTemplate_RTK"
-                End If
-        End Select
-
-        Return True
+    Public Function IsConfiguredProcessorDevice(deviceName As String) As Boolean
+        Return ProcessorIdentity.ContainsDevice(ActiveProcessorNames, deviceName)
     End Function
-
-    Private Function FailConfig(filename As String) As Boolean
-        HandleUserMessageLogging("GMRC",
-            $"Invalid contents In {Path.GetFileName(filename)} file For {VehicleNumber} Exiting...",
-            DisplayMsgBox)
-        Return False
-    End Function
-
 
     Public Function HandleEscalationProcessingEXE(ByVal DirNAme As String, ByVal NumMF4Files As Integer) As Boolean
 
@@ -3840,7 +3328,7 @@ Public Module Module1
         ' ═══════════════════════════════════════════════════════════════════
         Select Case desiredMode
             Case "VEHICLESPY"
-                Dim vspyConfigPath As String = IO.Path.Combine(baseDir, "VehicleSpy", VSpySelectedConfigFileName)
+                Dim vspyConfigPath As String = VSpySelectedConfigFileName
                 If IO.File.Exists(vspyConfigPath) Then
                     AlternateRecordingMode = "VehicleSpy"
                     AlternateRecordEnabled = True
@@ -3848,7 +3336,7 @@ Public Module Module1
                 Else
                     ' ✅ EXPLICIT ERROR MESSAGE
                     HandleUserMessageLogging("GMRC",
-                        $"WARNING: AlternateRecordConfig=VehicleSpy in config.xml but file not found: {vspyConfigPath}",
+                        $"WARNING: config.xml <VehicleSpySetup> file not found: {vspyConfigPath}",
                         DisplayMsgBox)
                     AlternateRecordingMode = "None"
                     AlternateRecordEnabled = False

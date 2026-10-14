@@ -678,8 +678,9 @@ Public NotInheritable Class LidarDevice
                     RemoveHandler _eventBridge.PacketArrived, AddressOf OnPacketArrived
                     _eventBridge = Nothing
                 End If
-            Catch
-                ' Ignore - handler may not have been added yet
+            Catch exUnsub As Exception
+                ' Handler may not have been added yet - log at low severity for diagnostics
+                HandleUserMessageLogging("GMRC", $"{logPrefix}: event bridge unsubscribe failed - {exUnsub.Message}")
             End Try
             CleanupResources()
             Volatile.Write(_isCapturing, False)
@@ -1065,8 +1066,9 @@ Public NotInheritable Class LidarDevice
                 If count Mod 100 = 0 Then
                     Try
                         UpdateStatisticsFromRawPacket(rawPacket.Data)
-                    Catch
-                        ' Silent — timestamp already updated above
+                    Catch exStats As Exception
+                        ' Timestamp already updated above; log for diagnostics only
+                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] UpdateStatisticsFromRawPacket failed: {exStats.Message}")
                     End Try
                 End If
             Else
@@ -1629,8 +1631,8 @@ Public NotInheritable Class LidarDevice
                     End If
                 End If
             End If
-        Catch
-            ' Ignore parsing errors
+        Catch exParse As Exception
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] IsMarkerPacket parse error: {exParse.Message}")
         End Try
         Return False
     End Function
@@ -1651,8 +1653,8 @@ Public NotInheritable Class LidarDevice
                     End If
                 End If
             End If
-        Catch
-            ' Ignore parsing errors
+        Catch exParse As Exception
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ExtractMarkerData parse error: {exParse.Message}")
         End Try
         Return "(unable to parse)"
     End Function
@@ -1839,8 +1841,8 @@ Public NotInheritable Class LidarDevice
             If _dumpFile IsNot Nothing Then
                 Try
                     _dumpFile.Close()
-                Catch
-                    ' Ignore disposal errors
+                Catch exClose As Exception
+                    HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: dump file close failed - {exClose.Message}")
                 End Try
                 _dumpFile = Nothing
             End If
@@ -1849,8 +1851,8 @@ Public NotInheritable Class LidarDevice
             If _captureDevice IsNot Nothing Then
                 Try
                     _captureDevice.Close()
-                Catch
-                    ' Ignore disposal errors
+                Catch exClose As Exception
+                    HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: capture device close failed - {exClose.Message}")
                 End Try
                 ' Don't set to Nothing - may reuse for next capture
             End If
@@ -1869,8 +1871,9 @@ Public NotInheritable Class LidarDevice
             If Volatile.Read(_isCapturing) Then
                 StopCapture()
             End If
-        Catch
-            ' Ignore errors from an already-degraded capture session during disposal
+        Catch exDispose As Exception
+            ' Log errors from an already-degraded capture session during disposal
+            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Dispose: StopCapture failed - {exDispose.Message}")
         End Try
 
         ' Don't discard a manifest that is still being written in the background.

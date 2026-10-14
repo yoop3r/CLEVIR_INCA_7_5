@@ -38,6 +38,7 @@
   <ItemGroup>
 	<PackageReference Include="WixToolset.Bal.wixext" Version="6.0.2" />
 	<PackageReference Include="WixToolset.Util.wixext" Version="6.0.2" />
+	<PackageReference Include="WixToolset.Netfx.wixext" Version="6.0.2" />
   </ItemGroup>
 
   <!-- The bootstrapper embeds/chains the MSI produced by CLEVIR_Installer.wixproj -->
@@ -47,6 +48,6 @@
 
   <!-- Embedded .NET 10 Windows Desktop Runtime x64 redistributable, chained by Bundle.wxs -->
   <ItemGroup>
-	<Content Include="Redist\windowsdesktop-runtime-10.0-win-x64.exe" />
+	<Content Include="Redist\windowsdesktop-runtime-10.0.12-win-x64.exe" />
   </ItemGroup>
 </Project>

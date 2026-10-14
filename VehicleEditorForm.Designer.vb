@@ -21,11 +21,7 @@ Partial Class VehicleEditorForm
         Me.ColVehicleNumber = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColProcessors = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColCameraPositions = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.ColCanMonitors = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.ColDataUploadPath = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.ColCLEVIRFilesPath = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColZipMF4Files = New System.Windows.Forms.DataGridViewComboBoxColumn()
-        Me.ColConfigName = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ButtonAddVehicle = New System.Windows.Forms.Button()
         Me.ButtonRemoveVehicle = New System.Windows.Forms.Button()
         Me.ButtonSave = New System.Windows.Forms.Button()
@@ -46,9 +42,7 @@ Partial Class VehicleEditorForm
         Me.DataGridViewVehicles.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
         Me.DataGridViewVehicles.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {
             Me.ColVehicleNumber, Me.ColProcessors,
-            Me.ColCameraPositions, Me.ColCanMonitors,
-            Me.ColDataUploadPath, Me.ColCLEVIRFilesPath,
-            Me.ColZipMF4Files, Me.ColConfigName})
+            Me.ColCameraPositions, Me.ColZipMF4Files})
         Me.DataGridViewVehicles.Location = New System.Drawing.Point(12, 40)
         Me.DataGridViewVehicles.Name = "DataGridViewVehicles"
         Me.DataGridViewVehicles.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
@@ -72,35 +66,11 @@ Partial Class VehicleEditorForm
         Me.ColCameraPositions.Name = "ColCameraPositions"
         Me.ColCameraPositions.ToolTipText = "Up to 9 camera position names e.g. FRONT,REAR,NA,..."
         '
-        'ColCanMonitors
-        '
-        Me.ColCanMonitors.HeaderText = "CAN Monitors (comma-sep)"
-        Me.ColCanMonitors.Name = "ColCanMonitors"
-        Me.ColCanMonitors.ToolTipText = "4 CAN monitor IDs e.g. 886,886,886,886"
-        '
-        'ColDataUploadPath
-        '
-        Me.ColDataUploadPath.HeaderText = "Data Upload Path"
-        Me.ColDataUploadPath.Name = "ColDataUploadPath"
-        Me.ColDataUploadPath.ToolTipText = "e.g. ACP3\VehicleData\"
-        '
-        'ColCLEVIRFilesPath
-        '
-        Me.ColCLEVIRFilesPath.HeaderText = "CLEVIR Files Path"
-        Me.ColCLEVIRFilesPath.Name = "ColCLEVIRFilesPath"
-        Me.ColCLEVIRFilesPath.ToolTipText = "e.g. Current\ACP3"
-        '
         'ColZipMF4Files
         '
         Me.ColZipMF4Files.HeaderText = "Zip MF4 Files"
         Me.ColZipMF4Files.Items.AddRange(New Object() {"True", "False"})
         Me.ColZipMF4Files.Name = "ColZipMF4Files"
-        '
-        'ColConfigName
-        '
-        Me.ColConfigName.HeaderText = "Config Name"
-        Me.ColConfigName.Name = "ColConfigName"
-        Me.ColConfigName.ToolTipText = "e.g. ACP3_1P1C"
         '
         'LabelHint
         '
@@ -108,7 +78,7 @@ Partial Class VehicleEditorForm
         Me.LabelHint.Location = New System.Drawing.Point(12, 14)
         Me.LabelHint.Name = "LabelHint"
         Me.LabelHint.Size = New System.Drawing.Size(400, 13)
-        Me.LabelHint.Text = "Processors / Camera Positions / CAN Monitors: enter comma-separated values."
+        Me.LabelHint.Text = "Processors / Camera Positions: enter comma-separated values."
         '
         'ButtonAddVehicle
         '
@@ -176,11 +146,7 @@ Partial Class VehicleEditorForm
     Friend WithEvents ColVehicleNumber As System.Windows.Forms.DataGridViewTextBoxColumn
     Friend WithEvents ColProcessors As System.Windows.Forms.DataGridViewTextBoxColumn
     Friend WithEvents ColCameraPositions As System.Windows.Forms.DataGridViewTextBoxColumn
-    Friend WithEvents ColCanMonitors As System.Windows.Forms.DataGridViewTextBoxColumn
-    Friend WithEvents ColDataUploadPath As System.Windows.Forms.DataGridViewTextBoxColumn
-    Friend WithEvents ColCLEVIRFilesPath As System.Windows.Forms.DataGridViewTextBoxColumn
     Friend WithEvents ColZipMF4Files As System.Windows.Forms.DataGridViewComboBoxColumn
-    Friend WithEvents ColConfigName As System.Windows.Forms.DataGridViewTextBoxColumn
     Friend WithEvents ButtonAddVehicle As System.Windows.Forms.Button
     Friend WithEvents ButtonRemoveVehicle As System.Windows.Forms.Button
     Friend WithEvents ButtonSave As System.Windows.Forms.Button

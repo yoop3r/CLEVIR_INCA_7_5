@@ -15,11 +15,7 @@ Public Class VehicleEditorForm
     Private Const COL_NUMBER As Integer = 0
     Private Const COL_PROCESSORS As Integer = 1
     Private Const COL_CAMERAS As Integer = 2
-    Private Const COL_CAN As Integer = 3
-    Private Const COL_UPLOAD As Integer = 4
-    Private Const COL_CLEVIR As Integer = 5
-    Private Const COL_ZIP As Integer = 6
-    Private Const COL_CONFIG As Integer = 7
+    Private Const COL_ZIP As Integer = 3
 
     Public Sub New(xmlDoc As XmlDocument)
         InitializeComponent()
@@ -48,16 +44,14 @@ Public Class VehicleEditorForm
         Dim vehicles As List(Of VehicleConfig) = ReadVehiclesFromXml(_xmlDoc)
         If vehicles Is Nothing Then Return
 
-        For Each v As VehicleConfig In vehicles
-            DataGridViewVehicles.Rows.Add(
+        For i As Integer = 0 To vehicles.Count - 1
+            Dim v As VehicleConfig = vehicles(i)
+            Dim rowIndex As Integer = DataGridViewVehicles.Rows.Add(
                 v.VehicleNumber,
                 String.Join(",", v.Processors),
                 String.Join(",", v.CameraPositions),
-                String.Join(",", v.CanMonitors),
-                v.DataUploadPath,
-                v.CLEVIRFilesPath,
-                v.ZipMF4Files.ToString(),
-                v.ConfigName)
+                v.ZipMF4Files.ToString())
+            DataGridViewVehicles.Rows(rowIndex).Tag = _xmlDoc.SelectNodes("/Configuration/Vehicles/Vehicle")(i)
         Next
     End Sub
 
@@ -67,13 +61,9 @@ Public Class VehicleEditorForm
     Private Sub ButtonAddVehicle_Click(sender As Object, e As EventArgs) Handles ButtonAddVehicle.Click
         DataGridViewVehicles.Rows.Add(
             "XXXXXXXX",
-            "ACP3_MCU,NA,NA,NA,NA,NA",
+            "",
             "FRONT,REAR,NA,NA,NA,NA,NA,NA,NA",
-            "886,886,886,886",
-            "ACP3\VehicleData\",
-            "Current\ACP3",
-            "True",
-            "ACP3_1P1C")
+            "True")
         _isDirty = True
         Dim newRow As Integer = DataGridViewVehicles.Rows.Count - 1
         DataGridViewVehicles.CurrentCell = DataGridViewVehicles.Rows(newRow).Cells(COL_NUMBER)
@@ -95,28 +85,33 @@ Public Class VehicleEditorForm
     ' ─────────────────────────────────────────────────────────────
     Private Sub ButtonSave_Click(sender As Object, e As EventArgs) Handles ButtonSave.Click
         Try
-            ' Locate or create the <Vehicles> node
-            Dim vehiclesNode As XmlNode = _xmlDoc.SelectSingleNode("//Vehicles")
-            If vehiclesNode Is Nothing Then
-                vehiclesNode = _xmlDoc.CreateElement("Vehicles")
-                _xmlDoc.DocumentElement.AppendChild(vehiclesNode)
-            End If
-            vehiclesNode.RemoveAll()
-
+            Dim original As XmlNode = _xmlDoc.SelectSingleNode("/Configuration/Vehicles")
+            Dim vehiclesNode As XmlNode = If(original Is Nothing, _xmlDoc.CreateElement("Vehicles"), original.CloneNode(True))
+            For Each child As XmlNode In vehiclesNode.SelectNodes("Vehicle")
+                vehiclesNode.RemoveChild(child)
+            Next
+            Dim numbers As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
             For Each row As DataGridViewRow In DataGridViewVehicles.Rows
                 If row.IsNewRow Then Continue For
-
-                Dim vehicleEl As XmlElement = _xmlDoc.CreateElement("Vehicle")
-                AppendTextElement(vehicleEl, "VehicleNumber", CStr(row.Cells(COL_NUMBER).Value))
-                AppendTextElement(vehicleEl, "Processors", CStr(row.Cells(COL_PROCESSORS).Value))
+                Dim number As String = If(row.Cells(COL_NUMBER).Value?.ToString(), String.Empty).Trim()
+                If number.Length = 0 OrElse Not numbers.Add(number) Then
+                    Throw New FormatException("Vehicle numbers must be non-empty and unique: '" & number & "'.")
+                End If
+                Dim processorText As String = If(row.Cells(COL_PROCESSORS).Value?.ToString(), String.Empty)
+                Dim processors As ProcessorIdentity() = ProcessorIdentity.ParseList(processorText.Split(","c), number)
+                Dim source As XmlNode = TryCast(row.Tag, XmlNode)
+                Dim vehicleEl As XmlElement = If(source Is Nothing, _xmlDoc.CreateElement("Vehicle"), CType(source.CloneNode(True), XmlElement))
+                AppendTextElement(vehicleEl, "VehicleNumber", number)
+                AppendTextElement(vehicleEl, "Processors", String.Join(",", processorText.Split(","c).Select(Function(token) token.Trim())))
                 AppendTextElement(vehicleEl, "CameraPositions", CStr(row.Cells(COL_CAMERAS).Value))
-                AppendTextElement(vehicleEl, "CanMonitors", CStr(row.Cells(COL_CAN).Value))
-                AppendTextElement(vehicleEl, "DataUploadPath", CStr(row.Cells(COL_UPLOAD).Value))
-                AppendTextElement(vehicleEl, "CLEVIRFilesPath", CStr(row.Cells(COL_CLEVIR).Value))
                 AppendTextElement(vehicleEl, "ZipMF4Files", CStr(row.Cells(COL_ZIP).Value))
-                AppendTextElement(vehicleEl, "ConfigName", CStr(row.Cells(COL_CONFIG).Value))
                 vehiclesNode.AppendChild(vehicleEl)
             Next
+            If original Is Nothing Then
+                _xmlDoc.DocumentElement.AppendChild(vehiclesNode)
+            Else
+                _xmlDoc.DocumentElement.ReplaceChild(vehiclesNode, original)
+            End If
 
             Me.DialogResult = DialogResult.OK
             Me.Close()
@@ -128,9 +123,12 @@ Public Class VehicleEditorForm
     End Sub
 
     Private Sub AppendTextElement(parent As XmlElement, name As String, value As String)
-        Dim el As XmlElement = _xmlDoc.CreateElement(name)
+        Dim el As XmlElement = TryCast(parent.SelectSingleNode(name), XmlElement)
+        If el Is Nothing Then
+            el = _xmlDoc.CreateElement(name)
+            parent.AppendChild(el)
+        End If
         el.InnerText = If(value, "")
-        parent.AppendChild(el)
     End Sub
 
     Private Sub ButtonCancel_Click(sender As Object, e As EventArgs) Handles ButtonCancel.Click

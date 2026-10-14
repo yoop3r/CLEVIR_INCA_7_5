@@ -11,6 +11,7 @@
                                      Optional ByVal btn4 As String = ""
                                      ) As Integer
 
+        selectedOption = 0
         ' Set the message and title
         Label1.Text = message
         Text = title
@@ -29,11 +30,20 @@
         Button4.Visible = (btn4 <> "")
         ' --- END MODIFIED CODE ---
 
+        ' Ensure the dialog is displayed in front of a TopMost owner (e.g. OnVehicleScreen)
+        Me.TopMost = True
+
         'Show the form as a modal dialog with an explicit owner
         Me.ShowDialog(owner)
 
         Return selectedOption
     End Function
+
+    Private Sub Cusmsgbox_Shown(sender As Object, e As EventArgs) Handles Me.Shown
+        Me.TopMost = True
+        Me.BringToFront()
+        Me.Activate()
+    End Sub
 
     Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
         selectedOption = 1

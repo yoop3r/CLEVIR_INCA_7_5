@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
 	 xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
-	 xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+	 xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
 
   <Bundle Name="CLEVIR INCA 7.5 Setup"
 		  Version="$(var.ProductVersion)"
@@ -19,34 +19,25 @@
 
 	<!--
 	  .NET 10 Windows Desktop Runtime (x64) detection.
-	  The dotnet installer records each installed shared-framework version as its own
-	  registry VALUE (not a single comparable DWORD like the legacy .NET Framework
-	  "Release" value), under:
-		HKLM\SOFTWARE\WOW6432Node\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App
-	  This search checks for the exact version embedded in this bundle (see Redist\
-	  below). It intentionally does not attempt to satisfy "any >= 10.0.0" logic, since
-	  that requires enumerating all values under the key (not supported by a plain
-	  RegistrySearch) - if a newer/older 10.x servicing version is already present under
-	  a different value name, this will (harmlessly) reinstall the embedded runtime
-	  side-by-side. Revisit with a custom Burn extension/bundle if stricter version
-	  range matching is required.
+	  DotNetCoreSearch returns the highest installed Microsoft.WindowsDesktop.App 10.x version
+	  (empty if none). Any 10.x satisfies the app (runtimeconfig requires 10.0.0 with patch
+	  roll-forward), so the embedded runtime is only installed when no 10.x is present.
 	-->
-	<util:RegistrySearch Id="Dotnet10DesktopRuntimeDetect"
-						  Variable="Dotnet10DesktopRuntimeInstalled"
-						  Root="HKLM"
-						  Key="SOFTWARE\WOW6432Node\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
-						  Value="10.0.0"
-						  Result="exists" />
+	<netfx:DotNetCoreSearch Id="Dotnet10DesktopRuntimeDetect"
+							RuntimeType="desktop"
+							Platform="x64"
+							MajorVersion="10"
+							Variable="Dotnet10DesktopRuntimeVersion" />
 
 	<Chain>
 	  <!-- Install the .NET 10 Windows Desktop Runtime only if not already present -->
 	  <ExePackage Id="DotNet10DesktopRuntime"
-				  Name="Redist\windowsdesktop-runtime-10.0-win-x64.exe"
-				  SourceFile="Redist\windowsdesktop-runtime-10.0-win-x64.exe"
+				  Name="Redist\windowsdesktop-runtime-10.0.12-win-x64.exe"
+				  SourceFile="Redist\windowsdesktop-runtime-10.0.12-win-x64.exe"
 				  InstallArguments="/install /quiet /norestart"
 				  Permanent="yes"
 				  Vital="yes"
-				  DetectCondition="Dotnet10DesktopRuntimeInstalled" />
+				  DetectCondition="Dotnet10DesktopRuntimeVersion &gt;= v10.0.0" />
 
 	  <!-- Chain the existing CLEVIR INCA 7.5 MSI, built by CLEVIR_Installer.wixproj -->
 	  <MsiPackage Id="CLEVIR_INCA_MSI"

@@ -264,9 +264,6 @@
     <Compile Update="UserStatusInfo.designer.vb">
       <DependentUpon>UserStatusInfo.vb</DependentUpon>
     </Compile>
-    <Compile Update="VehicleConfigurationsEditor.designer.vb">
-      <DependentUpon>VehicleConfigurationsEditor.vb</DependentUpon>
-    </Compile>
     <Compile Update="VehicleStatDashboard.designer.vb">
       <DependentUpon>VehicleStatDashboard.vb</DependentUpon>
     </Compile>
@@ -639,8 +636,6 @@
     <Compile Remove="OscilloscopeDisplay\My Project\AssemblyInfo.vb" />
     <Compile Remove="OscilloscopeDisplay\My Project\Application.Designer.vb" />
     <Compile Remove="GridDataClass_prior to refactor.vb" />
-    <Compile Remove="GM_INCA_Comm_backup.vb" />
-    <Compile Remove="GM_INCA_Comm_06.16.vb" />
     <Compile Remove="GlobalCommonFunctions.vb" />
     <Compile Remove="CalibrationInterface.vb" />
     <Compile Remove="CalibrationInterface.designer.vb" />

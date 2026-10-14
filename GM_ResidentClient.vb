@@ -246,6 +246,7 @@ Public Class GmResidentClient
     Private _numInvalid As Integer
     Private _actualCameraIpAddresses() As String
     Private _inMeasureMode As Boolean
+    Private _loadedIncaConfiguration As IncaConfiguration
     Private _MyCpuStaleData As Boolean
     Private _MyDeviceStatus As Boolean
     Private _lostDevice As Boolean
@@ -283,7 +284,6 @@ Public Class GmResidentClient
     Private _recordingMonitorCts As CancellationTokenSource
     Private _backgroundTasksCts As CancellationTokenSource  ' Cancellation token for MyBackgroundTasks loop
     Private Shared saveStatus() As Boolean
-    Private Shared lMyDeviceStatus As Boolean = True
     Private Shared videoMessageLastDisplayed As Boolean = True
     Private Shared dataMessageLastDisplayed As Boolean = True
 
@@ -1098,7 +1098,8 @@ Public Class GmResidentClient
                 Using fs As New FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None)
                     Return True
                 End Using
-            Catch
+            Catch exWait As Exception
+                HandleUserMessageLogging("GMRC", $"WaitUntilFileReady: {path} not ready - {exWait.Message}")
                 Thread.Sleep(Math.Max(0, delayMs))
             End Try
         Next
@@ -1134,15 +1135,17 @@ Public Class GmResidentClient
                     ' Predicted "next" sequence filename (INCA exposes the "current" sequence as the sequence to be written next)
                     Return String.Format("{0}_{1:D2}.mf4", baseFileName, seq)
                 End If
-            Catch
+            Catch exRecInfo As Exception
                 ' If GetCurrentRecordingInfo isn't available or fails, we'll fallback to other APIs below.
+                HandleUserMessageLogging("GMRC", $"GetCurrentRecordingInfo failed, falling back: {exRecInfo.Message}")
             End Try
 
             ' Fallback: Ask INCA for the last completed recording file, then increment its sequence.
             Dim lastCompleted As String = ""
             Try
                 lastCompleted = MyIncaInterface.GetLastRecordingFileName()
-            Catch
+            Catch exLastRec As Exception
+                HandleUserMessageLogging("GMRC", $"GetLastRecordingFileName failed: {exLastRec.Message}")
                 lastCompleted = String.Empty
             End Try
 
@@ -1614,7 +1617,8 @@ Public Class GmResidentClient
         Catch ex As Net.Sockets.SocketException
             ' Connection refused = host reachable but port closed (still valid!)
             Return ex.SocketErrorCode = Net.Sockets.SocketError.ConnectionRefused
-        Catch
+        Catch exPortCheck As Exception
+            HandleUserMessageLogging("GMRC", $"Port check to {ip}:{port} failed: {exPortCheck.Message}")
             Return False
         End Try
     End Function
@@ -1888,11 +1892,6 @@ Public Class GmResidentClient
 
             ' 11) Initialize INCA
             If Not InitializeINCA() Then Return   ' If initialization failed, a message/log has already triggered an exit.
-
-            ' 12) If using Vehicle Spy, load the correct config
-            If Not PlaybackMode Then
-                ConfigureVehicleSpyIfNeeded()
-            End If
 
             ' 13) Decide which form to show
             ShowAppropriateForm()
@@ -2240,8 +2239,9 @@ Public Class GmResidentClient
             For Each id In _initToastIds
                 Try
                     If id <> Guid.Empty Then StatusNotifier.ToastDismiss(id, fade:=fade)
-                Catch
+                Catch exToast As Exception
                     ' ignore dismissal race conditions
+                    HandleUserMessageLogging("GMRC", $"DismissInitToast: dismiss failed for {id} - {exToast.Message}")
                 End Try
             Next
             _initToastIds.Clear()
@@ -2251,7 +2251,8 @@ Public Class GmResidentClient
         If _initToastId <> Guid.Empty Then
             Try
                 StatusNotifier.ToastDismiss(_initToastId, fade:=fade)
-            Catch
+            Catch exLegacyToast As Exception
+                HandleUserMessageLogging("GMRC", $"DismissInitToast: legacy dismiss failed for {_initToastId} - {exLegacyToast.Message}")
             End Try
             _initToastId = Guid.Empty
         End If
@@ -2499,57 +2500,6 @@ Public Class GmResidentClient
         End If
         Return True
     End Function
-
-    ''' <summary>
-    ''' If using Vehicle Spy, we set up the correct config file based on ARXML mapping.
-    ''' </summary>
-    Private Sub ConfigureVehicleSpyIfNeeded()
-        If AlternateRecordingMode <> "VehicleSpy" OrElse Not AlternateRecordEnabled OrElse Not VehicleSpyCaptureStarted Then Return
-
-        Select Case ProjectName
-            Case "LowContent"
-                ReadArxmlMappingFileNew(ProjectDatabaseNames(0))
-
-            Case "HighContent"
-                ' Make sure to feed in the HCS database name if there are multiple
-                If ProjectDatabaseNames.Any(Function(x) x.Contains("HCS")) Then
-                    Dim hcsDatabase = ProjectDatabaseNames.First(Function(x) x.Contains("HCS"))
-                    ReadArxmlMappingFileNew(hcsDatabase)
-                End If
-
-            Case Else
-                ' Example for FCM, or other project names:
-                If ProjectName.Contains("FCM") Then
-                    ' Scanning for “FCM”, “LC”, “HCS” etc.
-                    If InStr(ProjectDatabaseNames(0), "FCM") > 0 And UBound(ProjectDatabaseNames) = 0 Then 'FCM Stand alone, no other processors
-                        ReadArxmlMappingFileNew(ProjectDatabaseNames(0))
-                    ElseIf UBound(ProjectDatabaseNames) = 1 Then 'FCM LCM, one other processor would be XETK:1, low content
-                        If InStr(ProjectDatabaseNames(0), "LC") > 0 Then
-                            ReadArxmlMappingFileNew(ProjectDatabaseNames(0))
-                        Else
-                            ReadArxmlMappingFileNew(ProjectDatabaseNames(1))
-                        End If
-                    ElseIf UBound(ProjectDatabaseNames) = 2 Then 'FCM LCH two addtional processors, HCS and HCF, high content. select projectdatabasename of the HCS processor...
-                        If InStr(ProjectDatabaseNames(0), "HCS") > 0 Then
-                            ReadArxmlMappingFileNew(ProjectDatabaseNames(0))
-                        ElseIf InStr(ProjectDatabaseNames(1), "HCS") > 0 Then
-                            ReadArxmlMappingFileNew(ProjectDatabaseNames(1))
-                        ElseIf InStr(ProjectDatabaseNames(2), "HCS") > 0 Then
-                            ReadArxmlMappingFileNew(ProjectDatabaseNames(2))
-                        End If
-                    Else
-                        HandleUserMessageLogging("GMRC", "Initialize: Invalid ProjectDatabaseName for " & ProjectName)
-                    End If
-
-                End If
-        End Select
-
-        'HandleUserMessageLogging("GMRC", "Initialize: Sending VSpy Command: loadfile " & Path.Combine(My.Application.Info.DirectoryPath, "VehicleSpy", VSpySelectedConfigFileName))
-        'SendVSpyCommand("loadfile " & Path.Combine(My.Application.Info.DirectoryPath, "VehicleSpy", VSpySelectedConfigFileName))
-
-        ' Wait for load to complete
-        'Thread.Sleep(5000)
-    End Sub
 
     ''' <summary>
     ''' Displays the appropriate form based on current operating mode.
@@ -2836,36 +2786,38 @@ Public Class GmResidentClient
         HandleUserMessageLogging("GMRC", $"{nodeName} not found, using default: {defaultValue}")
         Return defaultValue
     End Function
-    Public Function ReadConfiguration(configFilePath As String) As Boolean
+    Public Function ReadConfiguration(configFilePath As String, Optional failureReporter As Action(Of String) = Nothing) As Boolean
         ' Centralized helper to read any XML-based configuration file.
         ' Returns True on success, False on failure.
+        If _inMeasureMode OrElse (MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.MeasurementStarted) Then
+            Return ReportInitializationFailure("Stop INCA measurement/recording before reloading configuration.", failureReporter)
+        End If
         If Not File.Exists(configFilePath) Then
-            HandleUserMessageLogging("GMRC", $"ReadConfiguration: File not found at {configFilePath}")
-            Return False
+            ClearProcessorConfiguration()
+            Return ReportInitializationFailure($"ReadConfiguration: File not found at {configFilePath}", failureReporter)
         End If
 
         Try
             Dim xmlDoc As New XmlDocument()
             xmlDoc.Load(configFilePath)
             Dim root As XmlNode = xmlDoc.DocumentElement
+            Dim masterDoc As XmlDocument = xmlDoc
+            Dim masterPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+            If Not String.Equals(Path.GetFullPath(configFilePath), Path.GetFullPath(masterPath), StringComparison.OrdinalIgnoreCase) Then
+                masterDoc = New XmlDocument()
+                masterDoc.Load(masterPath)
+            End If
+            Dim configuration As New IncaConfiguration(masterDoc, My.Application.Info.DirectoryPath)
+            If Initialized AndAlso _loadedIncaConfiguration IsNot Nothing AndAlso Not configuration.HasSameSessionSettings(_loadedIncaConfiguration) Then
+                Return ReportInitializationFailure("INCA identity, vehicle, or session resources changed in config.xml. Restart CLEVIR to apply these changes; the current session is unchanged.", failureReporter)
+            End If
+            ClearProcessorConfiguration()
 
-            ' ✅ REFACTORED: Use helper functions for clean, null-safe reading
-            INCADatabase = ReadStringConfig(root, "INCADatabase", "")
-            INCAWorkspace = ReadStringConfig(root, "INCAWorkspace", "")
-            INCAExperiment = ReadStringConfig(root, "INCAExperiment", "")
-            InitialINCAExperiment = INCAExperiment
-            ETAS_USER_PATH = ReadStringConfig(root, "ETAS_USER_PATH", "")
             BaseDataCollectionPath = ReadStringConfig(root, "BaseDataCollectionPath", "C:\HB")
 
             ' Local tool & script paths
             CSVScriptsPath = ReadStringConfig(root, "CSVScriptsPath", CSVScriptsPath)
             SevenZipPath = ReadStringConfig(root, "SevenZipPath", SevenZipPath)
-
-            ' File path handling
-            INCAVariableFile = ReadStringConfig(root, "INCAVariableFile", "")
-            If Not INCAVariableFile.Contains("\") Then
-                INCAVariableFile = Path.Combine(My.Application.Info.DirectoryPath, "SignalLists", INCAVariableFile)
-            End If
 
             ' Integer configs
             RecordWAVTime = ReadIntegerConfig(root, "RecordWAVTime", 30)
@@ -2959,8 +2911,7 @@ Public Class GmResidentClient
 
                 If Not dataPathStatus.IsRecoverable Then
                     ' Genuine configuration error (empty, spaces, not rooted, not writable).
-                    ' Returning False is correct here - the Configuration Editor CAN fix it.
-                    Return False
+                    Return ReportInitializationFailure(dataPathStatus.Message, failureReporter)
                 End If
 
                 ' MsgBoxSetForeground: this runs on the background thread started by
@@ -3081,6 +3032,8 @@ Public Class GmResidentClient
                 Case "VALIDATION" : ZipTheMF4Files = False
             End Select
 
+            ApplyIncaConfiguration(configuration, masterDoc)
+            _loadedIncaConfiguration = configuration
             HandleUserMessageLogging("GMRC", "ReadConfiguration: Configuration loaded successfully")
 
             ' Load session metadata dropdowns from SessionMetadata.xml (non-fatal if absent)
@@ -3090,8 +3043,8 @@ Public Class GmResidentClient
             Return True
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"ReadConfiguration: Error reading '{configFilePath}' - {ex.Message}")
-            Return False
+            ClearProcessorConfiguration()
+            Return ReportInitializationFailure($"ReadConfiguration: Error reading '{configFilePath}' - {ex.Message}", failureReporter)
         End Try
     End Function
 
@@ -3413,6 +3366,11 @@ Public Class GmResidentClient
         End If
 
         Try
+            Dim master As New XmlDocument()
+            master.Load(Path.Combine(My.Application.Info.DirectoryPath, "config.xml"))
+            Dim existing As XmlDocument = CType(master.CloneNode(True), XmlDocument)
+            If File.Exists(filePath) Then existing.Load(filePath)
+            Dim generated As New System.Text.StringBuilder()
             ' Use XmlWriter with proper settings for indentation and readability
             Dim settings As New XmlWriterSettings With {
             .Indent = True,
@@ -3420,7 +3378,7 @@ Public Class GmResidentClient
             .NewLineOnAttributes = False
         }
 
-            Using writer As XmlWriter = XmlWriter.Create(filePath, settings)
+            Using writer As XmlWriter = XmlWriter.Create(generated, settings)
                 writer.WriteStartDocument()
                 writer.WriteStartElement("Configuration") ' Root element
 
@@ -3622,6 +3580,10 @@ Public Class GmResidentClient
                 writer.WriteEndDocument()
             End Using
 
+            Dim updates As New XmlDocument()
+            updates.LoadXml(generated.ToString())
+            IncaConfiguration.MergeRuntimeSettings(existing, updates, master)
+            existing.Save(filePath)
             HandleUserMessageLogging("GMRC", $"WriteConfiguration: Configuration file written to {filePath}")
 
         Catch ex As Exception
@@ -4359,8 +4321,9 @@ Public Class GmResidentClient
             If excelApp IsNot Nothing Then
                 Try
                     excelApp.Quit()
-                Catch
+                Catch exQuit As Exception
                     ' suppress any cleanup error
+                    HandleUserMessageLogging("GMRC", $"ReadInSignalList: excelApp.Quit failed - {exQuit.Message}")
                 End Try
             End If
         End Try
@@ -5816,8 +5779,6 @@ Public Class GmResidentClient
     ''' Returns False if device is not okay.
     ''' </summary>
     Private Async Function GetDeviceStatus() As Task(Of Boolean)
-        ' Constants for device names
-        Dim ProcessorDeviceNames As String() = {"HCF", "HCS", "XETK:1", "ACP2", "ACP3", "ACP4"}
         Dim CameraDevicePrefixes As String() = {"FCM"}
         ' Initialize variables
         Dim MyDevices() As IGM_INCA_Comm.INCADeviceStatus = Await MyIncaInterface.GetAvailableDevicesAsync(True)
@@ -5834,9 +5795,20 @@ Public Class GmResidentClient
                 HandleCriticalError("Communication failure, Exiting CLEVIR and Closing INCA...")
                 Return False ' Return False if no devices are available
             End If
+            If ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then
+                HandleUserMessageLogging("GMRC", "GetDeviceStatus: no configured processors. Select a valid vehicle in config.xml.", DisplayMsgBox)
+                _MyDeviceStatus = False
+                Return False
+            End If
+            Dim missingProcessors = ActiveProcessorNames.Where(Function(name) Not MyDevices.Any(Function(device) String.Equals(device.myName, name, StringComparison.OrdinalIgnoreCase))).ToArray()
+            If missingProcessors.Length > 0 Then
+                HandleUserMessageLogging("GMRC", "Configured processors not found in the INCA experiment: " & String.Join(", ", missingProcessors), DisplayMsgBox)
+                _MyDeviceStatus = False
+                Return False
+            End If
             ' Initialize arrays
             ReDim isRed(UBound(MyDevices))
-            If saveStatus Is Nothing Then ReDim saveStatus(UBound(MyDevices))
+            If saveStatus Is Nothing OrElse saveStatus.Length <> MyDevices.Length Then ReDim saveStatus(UBound(MyDevices))
             ' Process each device
             For x As Integer = 0 To UBound(MyDevices)
                 Dim device = MyDevices(x)
@@ -5846,13 +5818,12 @@ Public Class GmResidentClient
                     ' Update device status and UI
                     UpdateDeviceStatusUI(x, device, isRed)
                     ' Check processor faults
-                    If ProcessorDeviceNames.Contains(device.myName) AndAlso Not device.myStatus Then
+                    If IsConfiguredProcessorDevice(device.myName) AndAlso Not device.myStatus Then
                         processorsFalse += 1
                         AppendLostDeviceName(device.myName)
-                        'MyDevicesStatus = False ' Update status to False if a processor device fails
                     End If
                     ' Check camera devices
-                    If CameraDevicePrefixes.Any(Function(prefix) InStr(device.myName, prefix) > 0) AndAlso Not device.myStatus Then
+                    If Not IsConfiguredProcessorDevice(device.myName) AndAlso CameraDevicePrefixes.Any(Function(prefix) InStr(device.myName, prefix) > 0) AndAlso Not device.myStatus Then
                         processorsFalse += 1
                         AppendLostDeviceName(device.myName)
                         'MyDevicesStatus = False ' Update status to False if a camera device fails
@@ -5862,11 +5833,11 @@ Public Class GmResidentClient
             ' Handle device status based on initialization state
             If Not _initializing Then
                 HandlePostInitializationStatus(MyDevices, isRed, saveStatus, processorsFalse)
+                MyDevicesStatus = _MyDeviceStatus
             Else
                 HandleInitializationStatus(MyDevices, isRed, numCameraDevicesInExperiment, MyDevicesStatus)
+                _MyDeviceStatus = MyDevicesStatus AndAlso (processorsFalse = 0 OrElse IgnoreLostDeviceForThisDrive OrElse OverrideCommFailureInDebugMode)
             End If
-            ' Update global device status
-            _MyDeviceStatus = lMyDeviceStatus
             ' Return the updated device status
             Return MyDevicesStatus
         Catch ex As Exception
@@ -5915,11 +5886,7 @@ Public Class GmResidentClient
                 End If
             End If
         Next
-        If processorsFalse > 0 AndAlso Not IgnoreLostDeviceForThisDrive Then
-            _MyDeviceStatus = False
-        ElseIf processorsFalse = 0 OrElse OverrideCommFailureInDebugMode Then
-            _MyDeviceStatus = True
-        End If
+        _MyDeviceStatus = processorsFalse = 0 OrElse IgnoreLostDeviceForThisDrive OrElse OverrideCommFailureInDebugMode
         saveStatus = isRed
     End Sub
     ' Helper method to handle initialization status
@@ -7869,46 +7836,46 @@ Public Class GmResidentClient
                 Select Case MycolorStr
 
                     Case "Invisible"
-                        MyTdGraphicsContainer.MyPictureBoxGreenLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueRightArrow.Visible = False
                     Case "Gray"
-                        MyTdGraphicsContainer.MyPictureBoxGreenLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayLeftArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxGrayLeftArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxYellowLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayLeftArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxGrayLeftArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxYellowLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueRightArrow.Visible = False
                     Case "Green"
-                        MyTdGraphicsContainer.MyPictureBoxGreenLeftArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxGreenLeftArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxGrayLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenLeftArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxGreenLeftArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxGrayLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueRightArrow.Visible = False
                     Case "Red"
-                        MyTdGraphicsContainer.MyPictureBoxGreenLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedLeftArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxRedLeftArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxBlueRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedLeftArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxRedLeftArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxBlueRightArrow.Visible = False
                     Case "Yellow"
-                        MyTdGraphicsContainer.MyPictureBoxGreenLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowLeftArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxYellowLeftArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxRedLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowLeftArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxYellowLeftArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxRedLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueRightArrow.Visible = False
                     Case "Blue"
-                        MyTdGraphicsContainer.MyPictureBoxGreenLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedLeftArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueRightArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxBlueRightArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxGreenLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueRightArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxBlueRightArrow.BringToFront()
                 End Select
 
             Case "Right"
@@ -7916,46 +7883,46 @@ Public Class GmResidentClient
                 Select Case MycolorStr
 
                     Case "Invisible"
-                        MyTdGraphicsContainer.MyPictureBoxGreenRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueLeftArrow.Visible = False
                     Case "Gray"
-                        MyTdGraphicsContainer.MyPictureBoxGreenRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayRightArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxGrayRightArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxYellowRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayRightArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxGrayRightArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxYellowRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueLeftArrow.Visible = False
                     Case "Green"
-                        MyTdGraphicsContainer.MyPictureBoxGreenRightArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxGreenRightArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxGrayRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenRightArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxGreenRightArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxGrayRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueLeftArrow.Visible = False
                     Case "Red"
-                        MyTdGraphicsContainer.MyPictureBoxGreenRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedRightArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxRedRightArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxBlueLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedRightArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxRedRightArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxBlueLeftArrow.Visible = False
                     Case "Yellow"
-                        MyTdGraphicsContainer.MyPictureBoxGreenRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowRightArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxYellowRightArrow.BringToFront()
-                        MyTdGraphicsContainer.MyPictureBoxRedRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueLeftArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGreenRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowRightArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxYellowRightArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxRedRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueLeftArrow.Visible = False
                     Case "Blue"
-                        MyTdGraphicsContainer.MyPictureBoxGreenRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxGrayRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxYellowRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxRedRightArrow.Visible = False
-                        MyTdGraphicsContainer.MyPictureBoxBlueLeftArrow.Visible = True
-                        MyTdGraphicsContainer.MyPictureBoxBlueLeftArrow.BringToFront()
+                        MyTdGraphicsContainer.myPictureBoxGreenRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxGrayRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxYellowRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxRedRightArrow.Visible = False
+                        MyTdGraphicsContainer.myPictureBoxBlueLeftArrow.Visible = True
+                        MyTdGraphicsContainer.myPictureBoxBlueLeftArrow.BringToFront()
 
                 End Select
 
@@ -8009,19 +7976,19 @@ Public Class GmResidentClient
 
         If MyDg.CS_ALC_LANE_CHANGE_DCSN_RSN > 0 And MyDg.CS_ALC_LANE_CHANGE_STATE > 0 Then
 
-            If MyTdGraphicsContainer.MyALCStatusRightLabel.Visible = False Then
+            If MyTdGraphicsContainer.myALCStatusRightLabel.Visible = False Then
 
-                MyTdGraphicsContainer.MyALCStatusRightLabel.Visible = True
-                MyTdGraphicsContainer.MyALCStatusRightLabel.BringToFront()
+                MyTdGraphicsContainer.myALCStatusRightLabel.Visible = True
+                MyTdGraphicsContainer.myALCStatusRightLabel.BringToFront()
 
-                MyTdGraphicsContainer.MyALCStatusLeftLabel.Visible = True
-                MyTdGraphicsContainer.MyALCStatusLeftLabel.BringToFront()
+                MyTdGraphicsContainer.myALCStatusLeftLabel.Visible = True
+                MyTdGraphicsContainer.myALCStatusLeftLabel.BringToFront()
 
-                MyTdGraphicsContainer.MyALCReasonRightLabel.Visible = True
-                MyTdGraphicsContainer.MyALCReasonRightLabel.BringToFront()
+                MyTdGraphicsContainer.myALCReasonRightLabel.Visible = True
+                MyTdGraphicsContainer.myALCReasonRightLabel.BringToFront()
 
-                MyTdGraphicsContainer.MyALCReasonLeftLabel.Visible = True
-                MyTdGraphicsContainer.MyALCReasonLeftLabel.BringToFront()
+                MyTdGraphicsContainer.myALCReasonLeftLabel.Visible = True
+                MyTdGraphicsContainer.myALCReasonLeftLabel.BringToFront()
 
             End If
 
@@ -8030,8 +7997,8 @@ Public Class GmResidentClient
                 reasonLeft = "NONE"
                 reasonRight = "NONE"
 
-                MyTdGraphicsContainer.MyALCReasonLeftLabel.Text = reasonLeft
-                MyTdGraphicsContainer.MyALCReasonRightLabel.Text = reasonRight
+                MyTdGraphicsContainer.myALCReasonLeftLabel.Text = reasonLeft
+                MyTdGraphicsContainer.myALCReasonRightLabel.Text = reasonRight
 
                 Mytempval = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ALC_LANE_CHANGE_DCSN_RSN, 1)).SignalData
                 'Mytempval = GetRandom(0, 4) 'FOR TESTING ONLY!!!
@@ -8044,8 +8011,8 @@ Public Class GmResidentClient
                 If whichSide = "None" Then
                     reasonLeft = "NONE"
                     reasonRight = "NONE"
-                    MyTdGraphicsContainer.MyALCReasonLeftLabel.Text = reasonLeft
-                    MyTdGraphicsContainer.MyALCReasonRightLabel.Text = reasonRight
+                    MyTdGraphicsContainer.myALCReasonLeftLabel.Text = reasonLeft
+                    MyTdGraphicsContainer.myALCReasonRightLabel.Text = reasonRight
                 End If
 
             ElseIf InStr(tempstr1, "CeLFFR_e_LnChgRsn_Driver") > 0 Or tempstr1 = "1" Then
@@ -8079,8 +8046,8 @@ Public Class GmResidentClient
             If InStr(tempstr2, "CeLFFR_e_LnChg_Inactv") > 0 Then 'Invisible
 
                 If whichSide = "None" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "IN-ACTIVE"
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "IN-ACTIVE"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "IN-ACTIVE"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "IN-ACTIVE"
 
                     HandleArrowDisplay("Invisible", "Left")
                     HandleArrowDisplay("Invisible", "Right")
@@ -8089,8 +8056,8 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_Inhb") > 0 Then 'Red
 
                 If whichSide = "None" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "INHIBIT"
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "INHIBIT"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "INHIBIT"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "INHIBIT"
 
                     HandleArrowDisplay("Red", "Left")
                     HandleArrowDisplay("Red", "Right")
@@ -8099,8 +8066,8 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_Standby") > 0 Then 'Gray
 
                 If whichSide = "None" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "STAND BY"
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "STAND BY"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "STAND BY"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "STAND BY"
 
                     HandleArrowDisplay("Gray", "Left")
                     HandleArrowDisplay("Gray", "Right")
@@ -8110,11 +8077,11 @@ Public Class GmResidentClient
 
                 If whichSide <> "Right" Then
 
-                    MyTdGraphicsContainer.MyALCReasonRightLabel.Text = ""
-                    MyTdGraphicsContainer.MyALCReasonLeftLabel.Text = reasonLeft
+                    MyTdGraphicsContainer.myALCReasonRightLabel.Text = ""
+                    MyTdGraphicsContainer.myALCReasonLeftLabel.Text = reasonLeft
 
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "CHK LEFT"
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = ""
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "CHK LEFT"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = ""
                     whichSide = "Left"
                     HandleArrowDisplay("Yellow", "Left")
                     HandleArrowDisplay("Invisible", "Right")
@@ -8124,11 +8091,11 @@ Public Class GmResidentClient
 
                 If whichSide <> "Left" Then
 
-                    MyTdGraphicsContainer.MyALCReasonRightLabel.Text = reasonRight
-                    MyTdGraphicsContainer.MyALCReasonLeftLabel.Text = ""
+                    MyTdGraphicsContainer.myALCReasonRightLabel.Text = reasonRight
+                    MyTdGraphicsContainer.myALCReasonLeftLabel.Text = ""
 
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = ""
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "CHK RIGHT"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = ""
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "CHK RIGHT"
                     whichSide = "Right"
                     HandleArrowDisplay("Invisible", "Left")
                     HandleArrowDisplay("Yellow", "Right")
@@ -8137,8 +8104,8 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_ChgLt") > 0 Then 'Green
 
                 If whichSide <> "Right" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "CHG LEFT"
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = ""
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "CHG LEFT"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = ""
                     whichSide = "Left"
                     HandleArrowDisplay("Green", "Left")
                     HandleArrowDisplay("Invisible", "Right")
@@ -8147,8 +8114,8 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_ChgRt") > 0 Then 'Green
 
                 If whichSide <> "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = ""
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "CHG RIGHT"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = ""
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "CHG RIGHT"
                     whichSide = "Right"
                     HandleArrowDisplay("Invisible", "Left")
                     HandleArrowDisplay("Green", "Right")
@@ -8157,12 +8124,12 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_ReqCancel") > 0 Then 'Gray
 
                 If whichSide = "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "REQ CANCEL"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "REQ CANCEL"
                     HandleArrowDisplay("Gray", "Left")
                     HandleArrowDisplay("Invisible", "Right")
                 End If
                 If whichSide = "Right" Then
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "REQ CANCEL"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "REQ CANCEL"
                     HandleArrowDisplay("Gray", "Right")
                     HandleArrowDisplay("Invisible", "Left")
                 End If
@@ -8170,19 +8137,19 @@ Public Class GmResidentClient
                 whichSide = "None"
 
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_NotFeasible") > 0 Then 'Red
-                MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "NOT FEAS"
-                MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "NOT FEAS"
+                MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "NOT FEAS"
+                MyTdGraphicsContainer.myALCStatusRightLabel.Text = "NOT FEAS"
                 HandleArrowDisplay("Red", "Left")
                 HandleArrowDisplay("Red", "Right")
                 whichSide = "None"
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_ReqInvld") > 0 Then 'Red
 
                 If whichSide = "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "REQ INVALID"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "REQ INVALID"
                     HandleArrowDisplay("Red", "Left")
                 End If
                 If whichSide = "Right" Then
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "REQ INVALID"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "REQ INVALID"
                     HandleArrowDisplay("Red", "Right")
                 End If
 
@@ -8191,12 +8158,12 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_Returning") > 0 Then 'Blue
 
                 If whichSide = "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "RETURNING"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "RETURNING"
                     HandleArrowDisplay("Blue", "Left")
                     HandleArrowDisplay("Invisible", "Right")
                 End If
                 If whichSide = "Right" Then
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "RETURNING"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "RETURNING"
                     HandleArrowDisplay("Invisible", "Left")
                     HandleArrowDisplay("Blue", "Right")
                 End If
@@ -8204,13 +8171,13 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_Straddle") > 0 Then 'Red
 
                 If whichSide = "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "STRADDLE"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "STRADDLE"
                     HandleArrowDisplay("Red", "Left")
                     HandleArrowDisplay("Invisible", "Right")
                 End If
 
                 If whichSide = "Right" Then
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "STRADDLE"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "STRADDLE"
                     HandleArrowDisplay("Invisible", "Left")
                     HandleArrowDisplay("Red", "Right")
                 End If
@@ -8218,12 +8185,12 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_DrvrOvrrd") > 0 Then 'Gray
 
                 If whichSide = "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "DRVR OVRD"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "DRVR OVRD"
                     HandleArrowDisplay("Gray", "Left")
                     HandleArrowDisplay("Invisible", "Right")
                 End If
                 If whichSide = "Right" Then
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "DRVR OVRD"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "DRVR OVRD"
                     HandleArrowDisplay("Invisible", "Left")
                     HandleArrowDisplay("Gray", "Right")
                 End If
@@ -8233,12 +8200,12 @@ Public Class GmResidentClient
             ElseIf InStr(tempstr2, "CeLFFR_e_LnChg_Cmpt") > 0 Then 'Invisible
 
                 If whichSide = "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusLeftLabel.Text = "COMPLETE"
+                    MyTdGraphicsContainer.myALCStatusLeftLabel.Text = "COMPLETE"
                     HandleArrowDisplay("Invisible", "Left")
                 End If
 
                 If whichSide = "Left" Then
-                    MyTdGraphicsContainer.MyALCStatusRightLabel.Text = "COMPLETE"
+                    MyTdGraphicsContainer.myALCStatusRightLabel.Text = "COMPLETE"
                     HandleArrowDisplay("Invisible", "Right")
                 End If
 
@@ -9291,19 +9258,19 @@ Public Class GmResidentClient
                 goNoGoFault(MyDFs(z).GoNoGoIndex) = False
 
                 ' Reset all grids under this form
-                For i = 0 To MyDGs.Count - 1
-                    If MyDGs(i) Is Nothing Then Continue For
-                    If MyDGs(i).ParentFormIndex <> z Then Continue For
+                For i = 0 To myDGs.Count - 1
+                    If myDGs(i) Is Nothing Then Continue For
+                    If myDGs(i).ParentFormIndex <> z Then Continue For
 
                     ' Only iterate data rows (x >= 1) because UpdateGridColor uses Rows(x-1)
-                    Dim lastRow As Integer = Math.Max(1, MyDGs(i).RowCount - 1)
+                    Dim lastRow As Integer = Math.Max(1, myDGs(i).RowCount - 1)
                     For x = 1 To lastRow
-                        For y = 0 To MyDGs(i).ColumnCount - 1
-                            MyDGs(i).DataFrozenCounter(x, y) = 0
-                            MyDGs(i).DataFrozen(x, y) = False
+                        For y = 0 To myDGs(i).ColumnCount - 1
+                            myDGs(i).DataFrozenCounter(x, y) = 0
+                            myDGs(i).DataFrozen(x, y) = False
 
-                            If MyDGs(i).CurrentBackColor(x, y) <> MyDGs(i).DefaultCellBackColor(x, y) _
-                       OrElse MyDGs(i).CurrentForeColor(x, y) <> MyDGs(i).DefaultCellForeColor(x, y) Then
+                            If myDGs(i).CurrentBackColor(x, y) <> myDGs(i).DefaultCellBackColor(x, y) _
+                       OrElse myDGs(i).CurrentForeColor(x, y) <> myDGs(i).DefaultCellForeColor(x, y) Then
                                 UpdateGridColor(i, x, y, GridUpdateActions.FromLow)
                             End If
                         Next y
@@ -9905,7 +9872,7 @@ Public Class GmResidentClient
                                                 If Debugger.IsAttached Then
 
                                                     If OnVehicleScreen.CheckBox1.Checked = True Then
-                                                        If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 And myDGs(z).DeviceName(x, y) = "ACP3_MCU" Then
+                                                        If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 AndAlso IsConfiguredProcessorDevice(myDGs(z).DeviceName(x, y)) AndAlso String.Equals(myDGs(z).DeviceName(x, y), PrimaryProcessorDeviceName, StringComparison.OrdinalIgnoreCase) Then
                                                             If acpDebugOneShot = False Then
                                                                 MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = GetRandom(0, 10)
                                                                 acpDebugOneShot = True
@@ -9915,7 +9882,7 @@ Public Class GmResidentClient
                                                             End If
                                                         End If
                                                     Else
-                                                        If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 And myDGs(z).DeviceName(x, y) = "ACP3_MCU" Then
+                                                        If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 AndAlso IsConfiguredProcessorDevice(myDGs(z).DeviceName(x, y)) AndAlso String.Equals(myDGs(z).DeviceName(x, y), PrimaryProcessorDeviceName, StringComparison.OrdinalIgnoreCase) Then
                                                             acpDebugOneShot = False
                                                             MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = 0
                                                         End If
@@ -11082,7 +11049,8 @@ Public Class GmResidentClient
         If MyTimeSyncProvider IsNot Nothing Then
             Try
                 MyTimeSyncProvider.Stop()
-            Catch
+            Catch exStopSync As Exception
+                HandleUserMessageLogging("GMRC", $"GmResidentClient_FormClosed: MyTimeSyncProvider.Stop failed - {exStopSync.Message}")
             End Try
         End If
 
@@ -11715,8 +11683,9 @@ Public Class GmResidentClient
         Finally
             Try
                 proc?.Dispose()
-            Catch
+            Catch exDispose As Exception
                 ' Ignore disposal errors
+                HandleUserMessageLogging("GMRC", $"TerminateIncaProcesses: process dispose failed - {exDispose.Message}")
             End Try
         End Try
     End Function
@@ -12241,9 +12210,9 @@ Public Class GmResidentClient
         tmpVehicleNumber = InputBox("Please enter the 8 character Vehicle ID", "INPUT VEHICLE NUMBER")
 
         If Len(tmpVehicleNumber) >= 8 Then
-            VehicleNumber = tmpVehicleNumber
-            SaveSelectedVehicleNumber(VehicleNumber)
-            Text = "Vehicle " & VehicleNumber
+            If SaveSelectedVehicleNumber(tmpVehicleNumber) Then
+                HandleUserMessageLogging("GMRC", "Vehicle selection saved. Restart CLEVIR to apply it; the current session retains its original vehicle and processors.", DisplayMsgBox)
+            End If
 
         Else
             If Len(tmpVehicleNumber) > 0 Then
@@ -12414,8 +12383,7 @@ Public Class GmResidentClient
         Dim editor As New ConfigurationEditorForm()
         If editor.ShowDialog(Me) = DialogResult.OK Then
             If MsgBox("Configuration updated successfully. Reload settings now?", vbYesNo + vbQuestion) = vbYes Then
-                ReadConfigFile()
-                HandleUserMessageLogging("GMRC", "Configuration reloaded after editing")
+                If ReadConfigFile() Then HandleUserMessageLogging("GMRC", "Configuration reloaded after editing")
             End If
         End If
     End Sub

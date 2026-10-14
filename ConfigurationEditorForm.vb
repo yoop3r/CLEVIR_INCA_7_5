@@ -6,6 +6,11 @@ Public Class ConfigurationEditorForm
     Private _configData As New Dictionary(Of String, String)
     Private _isDirty As Boolean = False
     Private _xmlDoc As XmlDocument
+    Private _hasSavedChanges As Boolean
+
+    Private Sub ConfigurationEditorForm_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
+        If _hasSavedChanges Then Me.DialogResult = DialogResult.OK
+    End Sub
 
     Private Sub ConfigurationEditorForm_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Try
@@ -360,8 +365,6 @@ Public Class ConfigurationEditorForm
                 vehicleEditor.BringToFront()
                 If vehicleEditor.ShowDialog() = DialogResult.OK Then
                     _isDirty = True
-                    ' Refresh the parameter grid to reflect any structural changes
-                    LoadConfiguration()
                 End If
             End Using
         Catch ex As Exception
@@ -782,9 +785,14 @@ Public Class ConfigurationEditorForm
         Dim leafName As String = If(paramName.Contains("."), paramName.Split("."c).Last(), paramName)
 
         Select Case leafName
-            Case "INCADatabase", "INCAWorkspace"
-                If Not String.IsNullOrWhiteSpace(value) AndAlso Not Directory.Exists(value) Then
-                    Return New ValidationResult(False, "Directory does not exist")
+            Case "INCADatabase"
+                If String.IsNullOrWhiteSpace(value) OrElse Not Directory.Exists(value) Then
+                    Return New ValidationResult(False, "INCA database directory does not exist")
+                End If
+
+            Case "INCAWorkspace", "INCAExperiment", "DataDictionary"
+                If String.IsNullOrWhiteSpace(value) Then
+                    Return New ValidationResult(False, "A value is required")
                 End If
 
             Case "RecordFileDurationMinutes"
@@ -858,8 +866,11 @@ Public Class ConfigurationEditorForm
             Case "INCADatabase" : Return "INCA database directory path"
             Case "INCAWorkspace" : Return "INCA workspace name"
             Case "INCAExperiment" : Return "INCA experiment file name"
+            Case "INCAExperimentTemplate" : Return "Existing INCA experiment template; required only for NEW FULL registration"
             Case "INCAVariableFile" : Return "Signal list file path (.csv or .xlsx)"
             Case "SignalRegistrationMode" : Return "Signal registration mode (DISPLAYS/ALL)"
+            Case "DataDictionary" : Return "Annotation GUI dictionary CSV; absolute path or relative to the application directory"
+            Case "VehicleSpySetup" : Return "User-configured VehicleSpy setup; required for VehicleSpy, absolute path or relative to the application directory"
 
             ' Recording
             Case "RecordWAVTime" : Return "Audio recording duration (seconds)"
@@ -944,11 +955,7 @@ Public Class ConfigurationEditorForm
             Case "VehicleNumber" : Return "Unique vehicle identifier (e.g. 6SME5384)"
             Case "Processors" : Return "Comma-separated processor list (e.g. ACP3_MCU,NA,NA,NA,NA,NA)"
             Case "CameraPositions" : Return "Comma-separated camera position names (e.g. FRONT,REAR,NA,...)"
-            Case "CanMonitors" : Return "Comma-separated CAN monitor IDs (e.g. 886,886,886,886)"
-            Case "DataUploadPath" : Return "Upload sub-path on network drive (e.g. ACP3\VehicleData\)"
-            Case "CLEVIRFilesPath" : Return "Network path to CLEVIR signal/workspace files (e.g. Current\ACP3)"
             Case "ZipMF4Files" : Return "Zip MF4 files after recording (True/False)"
-            Case "ConfigName" : Return "Workspace config name (e.g. ACP3_1P1C)"
 
             ' Global Application Settings
             Case "CurrentVehicleUsage" : Return "Current usage mode (e.g. VALIDATION)"
@@ -990,6 +997,7 @@ Public Class ConfigurationEditorForm
             MessageBox.Show($"Configuration saved to config.xml successfully!", "Success",
                             MessageBoxButtons.OK, MessageBoxIcon.Information)
             _isDirty = False
+            _hasSavedChanges = True
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"ButtonSave_Click: {ex.Message}")
@@ -1014,6 +1022,8 @@ Public Class ConfigurationEditorForm
                 node.InnerText = If(value, String.Empty)
             End If
         Next
+
+        Dim validated As New IncaConfiguration(_xmlDoc, My.Application.Info.DirectoryPath)
 
         ' Save with formatting
         Using writer As New XmlTextWriter(configPath, System.Text.Encoding.UTF8)
