@@ -598,7 +598,7 @@ Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 6: HANDLE COMPRESSION (IF CONFIGURED)
             ' ════════════════════════════════════════════════════════════════
-            If CompressMF4 Or CompressPCAP Or CompressASC Or CompressVSB Then
+            If AnyCompressionEnabled() Then
                 CompressOrphanedFiles()      ' Queue orphaned files
                 Handle7ZipProcess()          ' Wait for completion
             Else
@@ -2823,7 +2823,6 @@ Public Class GmResidentClient
             RecordWAVTime = ReadIntegerConfig(root, "RecordWAVTime", 30)
             RecordFileDurationMinutes = ReadIntegerConfig(root, "RecordFileDurationMinutes", 5)
             APICommErrorMsgDelayTime = ReadIntegerConfig(root, "APICommErrorMsgDelayTime", 90)
-            MaxCameras = ReadIntegerConfig(root, "MaxCameras", 9)
 
             ' Boolean configs
             MuteVoiceRecordingMessages = ReadBooleanConfig(root, "MuteVoiceRecordingMessages", False)
@@ -3023,14 +3022,11 @@ Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════
             LoadOxtsCaptureConfig(root)
 
-            ' Current vehicle usage
-            Dim vehicleUsage = ReadStringConfig(root, "CurrentVehicleUsage", "DEVELOPMENT").Trim().ToUpper()
-            CurrentVehicleUsage = vehicleUsage
-
-            Select Case vehicleUsage
-                Case "DEVELOPMENT" : ZipTheMF4Files = True
-                Case "VALIDATION" : ZipTheMF4Files = False
-            End Select
+            ' <CurrentVehicleUsage> is obsolete: compression is controlled by <Compression>.
+            Dim legacyUsage As String = root.SelectSingleNode("CurrentVehicleUsage")?.InnerText
+            If Not String.IsNullOrWhiteSpace(legacyUsage) Then
+                HandleUserMessageLogging("GMRC", $"ReadConfiguration: Ignoring obsolete <CurrentVehicleUsage>{legacyUsage.Trim()}</CurrentVehicleUsage>; compression follows <Compression>.")
+            End If
 
             ApplyIncaConfiguration(configuration, masterDoc)
             _loadedIncaConfiguration = configuration
@@ -3486,7 +3482,6 @@ Public Class GmResidentClient
                 writer.WriteComment(" ================================================================ ")
 
                 writer.WriteElementString("NetworkAdapterDescription", NetworkAdapterDescription)
-                writer.WriteElementString("MaxCameras", MaxCameras.ToString())
 
                 ' ════════════════════════════════════════════════════════════
                 ' OXTS CONFIGURATION SECTION (GPS/INS Integration)
@@ -3573,7 +3568,6 @@ Public Class GmResidentClient
                 writer.WriteComment(" Application Configuration ")
                 writer.WriteComment(" ================================================================ ")
 
-                writer.WriteElementString("CurrentVehicleUsage", CurrentVehicleUsage)
                 writer.WriteElementString("APICommErrorMsgDelayTime", APICommErrorMsgDelayTime.ToString())
 
                 writer.WriteEndElement() ' Close root element
@@ -5869,7 +5863,7 @@ Public Class GmResidentClient
     Private Sub AppendLostDeviceName(deviceName As String)
         If String.IsNullOrEmpty(SaveLostDeviceName) Then
             SaveLostDeviceName = deviceName
-        Else
+        ElseIf Not SaveLostDeviceName.Split(","c).Contains(deviceName, StringComparer.OrdinalIgnoreCase) Then
             SaveLostDeviceName &= "," & deviceName
         End If
     End Sub
@@ -6561,6 +6555,7 @@ Public Class GmResidentClient
             _lostDevice = False
             VideoCameraNotUpdating = False
             BackgroundLoopCounterNotUpdating = False
+            SaveLostDeviceName = ""
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "CheckForLostDevice: " & ex.Message)
@@ -9229,6 +9224,41 @@ Public Class GmResidentClient
             _saveColprsysbrkprfreq_Ped = colprsysbrkprfreq
         End If
     End Sub
+    ''' <summary>
+    ''' Clears data-frozen / lost-device tracking so INCA COMM and frozen-data detection start fresh
+    ''' when measurement or recording begins, rather than carrying over state from before the start.
+    ''' </summary>
+    Private Sub ResetDataFrozenTracking(ByVal reason As String)
+        Try
+            For i = 0 To myDGs.Count - 1
+                If myDGs(i) Is Nothing Then Continue For
+
+                ' Only iterate data rows (x >= 1) because UpdateGridColor uses Rows(x-1)
+                Dim lastRow As Integer = Math.Max(1, myDGs(i).RowCount - 1)
+                For x = 1 To lastRow
+                    For y = 0 To myDGs(i).ColumnCount - 1
+                        Dim wasFrozen As Boolean = myDGs(i).DataFrozen(x, y)
+                        myDGs(i).DataFrozenCounter(x, y) = 0
+                        myDGs(i).DataFrozen(x, y) = False
+                        If wasFrozen Then UpdateGridColor(i, x, y, GridUpdateActions.FromLow)
+                    Next y
+                Next x
+            Next i
+
+            _lostDevice = False
+            VideoCameraNotUpdating = False
+            BackgroundLoopCounterNotUpdating = False
+            _MyCpuStaleData = False
+            SaveDataFrozenDeviceName = ""
+            SaveVideoFrozenDeviceName = ""
+            SaveLostDeviceName = ""
+
+            HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & reason & " - data-frozen/lost-device tracking reset")
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & ex.Message)
+        End Try
+    End Sub
+
     Private Sub HandleNonMeasureModeUpdates(ByVal saveOdoReading As Double, ByRef saveWhereAmIAt As String, ByRef goNoGoFault() As Boolean)
         ' Called from MyBackgroundTasks
         ' Handles updates when transitioning out of measure mode...
@@ -9439,6 +9469,7 @@ Public Class GmResidentClient
                                 MySaveTime3 = DateTime.Now
 
                                 dataFrozenMaxCount = dataFrozenMaxCountMeasurementMode
+                                ResetDataFrozenTracking("Measurement started")
 
                             End If
 
@@ -9456,6 +9487,10 @@ Public Class GmResidentClient
                         lRecordingState = MyIncaInterface.GetRecordingState()
                         If lSaveRecordingState = False And lRecordingState = True Then
                             dataFrozenMaxCount = dataFrozenMaxCountRecordMode
+                            ' Discard counts accumulated during measure-only so INCA COMM/data-frozen
+                            ' detection for the recording starts from the moment recording begins.
+                            ResetDataFrozenTracking("Recording started")
+                            MySaveTime3 = DateTime.Now
                         End If
                         lSaveRecordingState = lRecordingState
 
@@ -9488,6 +9523,11 @@ Public Class GmResidentClient
 
                     End If 'If MyElapseTime.Seconds >= 5
 
+                End If
+
+                ' Communication/data alerts only apply once measurement or recording is active.
+                If Not (_inMeasureMode OrElse lRecordingState) Then
+                    MySaveTime3 = DateTime.Now
                 End If
 
                 MyElapseTime3 = DateTime.Now.Subtract(MySaveTime3)
@@ -10850,17 +10890,16 @@ Public Class GmResidentClient
     ' ====================================================================================
 
     Private Sub HandleIncaCommStatusLabel(ByVal MyColor As Color)
-        ' Only update flags if alerts are not being ignored
-        If Not IgnoreLostDeviceForThisDrive Then
-            If MyColor = Color.Red Then
-                If Not OverrideCommFailureInDebugMode Then
-                    BackgroundLoopCounterNotUpdating = True
-                End If
-                _MyCpuStaleData = True
-            Else
-                BackgroundLoopCounterNotUpdating = False
-                _MyCpuStaleData = False
+        ' Stale-data state always tracks the label: RED while comms are lost, GREEN once re-established.
+        ' The ignore flag only suppresses raising the operator alert.
+        If MyColor = Color.Red Then
+            If Not IgnoreLostDeviceForThisDrive AndAlso Not OverrideCommFailureInDebugMode Then
+                BackgroundLoopCounterNotUpdating = True
             End If
+            _MyCpuStaleData = True
+        Else
+            BackgroundLoopCounterNotUpdating = False
+            _MyCpuStaleData = False
         End If
     End Sub
 
@@ -11278,9 +11317,9 @@ Public Class GmResidentClient
         Static Mysavetime4 As DateTime = DateTime.Now
 
         ' ──────────────────────────────────────────────────────────────
-        ' Monitor Device Status (lost device detection)
+        ' Monitor Device Status (lost device detection) - only once measuring/recording
         ' ──────────────────────────────────────────────────────────────
-        If Not _MyDeviceStatus Then
+        If Not _MyDeviceStatus AndAlso IsMeasuringOrRecording() Then
             If DateTime.Now.Subtract(Mysavetime4).Seconds > 25 Then
                 Mysavetime4 = DateTime.Now
 
@@ -11423,7 +11462,10 @@ Public Class GmResidentClient
             MyLabel2.Text = "D"
             MyLabel2.BackColor = Color.Red
             MyLabel2.Visible = True
-            If DateTime.Now.Subtract(Mysavetime4).Seconds > 25 Then
+            If Not IsMeasuringOrRecording() Then
+                ' Lost-device alerts only apply once measurement or recording is active
+                Mysavetime4 = DateTime.Now
+            ElseIf DateTime.Now.Subtract(Mysavetime4).Seconds > 25 Then
                 Mysavetime4 = DateTime.Now
                 If Not Debugger.IsAttached AndAlso Not IgnoreLostDeviceForThisDrive Then
                     _lostDevice = True
@@ -11448,6 +11490,15 @@ Public Class GmResidentClient
             MyLabel3.BackColor = If(_inMeasureMode, Color.MediumSpringGreen, Color.Gray)
         End If
     End Sub
+
+    ''' <summary>
+    ''' True when INCA measurement or recording is active. Safe to call from the ProcessKiller thread.
+    ''' </summary>
+    Private Function IsMeasuringOrRecording() As Boolean
+        If Volatile.Read(_inMeasureMode) Then Return True
+        Dim inca = MyIncaInterface
+        Return inca IsNot Nothing AndAlso inca.Recording
+    End Function
 
     Private Sub CheckForApiCommError()
         If BackgroundLoopCounterNotUpdating OrElse VideoCameraNotUpdating OrElse _lostDevice OrElse INCACommIgnoreEvents Then
@@ -12200,17 +12251,18 @@ Public Class GmResidentClient
 
     Private Sub ChangeVehicleNumberToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As EventArgs) Handles ChangeVehicleNumberToolStripMenuItem.Click
 
-        ' Allows the user to change the vehicle number.
-        ' The selected vehicle number is persisted to <SelectedVehicleNumber> in config.xml.
-        ' There will be a unique vehicle number for each computer on which the application
-        ' runs, but it may need to change when the computer moves to a different vehicle.
+        ' Administrator only: renames the single vehicle in config.xml (<Vehicle>/<VehicleNumber>).
+        ' There is one vehicle per config.xml; its <Processors> are kept unchanged.
+        ' Use the Configuration Editor (Edit Vehicle) to change processors as well.
+
+        If Not ClevirAdministrator Then Return
 
         Dim tmpVehicleNumber As String
 
-        tmpVehicleNumber = InputBox("Please enter the 8 character Vehicle ID", "INPUT VEHICLE NUMBER")
+        tmpVehicleNumber = InputBox("Please enter the 8 character Vehicle ID", "INPUT VEHICLE NUMBER", VehicleNumber)
 
         If Len(tmpVehicleNumber) >= 8 Then
-            If SaveSelectedVehicleNumber(tmpVehicleNumber) Then
+            If SaveConfiguredVehicleNumber(tmpVehicleNumber) Then
                 HandleUserMessageLogging("GMRC", "Vehicle selection saved. Restart CLEVIR to apply it; the current session retains its original vehicle and processors.", DisplayMsgBox)
             End If
 

@@ -32,573 +32,568 @@ Partial Class OnVehicleScreen
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
-        Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(OnVehicleScreen))
-        Me.Button6 = New System.Windows.Forms.Button()
-        Me.Button14 = New System.Windows.Forms.Button()
-        Me.Button1 = New System.Windows.Forms.Button()
-        Me.GroupBox6 = New System.Windows.Forms.GroupBox()
-        Me.ListBox3 = New System.Windows.Forms.ListBox()
-        Me.Label6 = New System.Windows.Forms.Label()
-        Me.Button23 = New System.Windows.Forms.Button()
-        Me.Label5 = New System.Windows.Forms.Label()
-        Me.ComboBox1 = New System.Windows.Forms.ComboBox()
-        Me.Label9 = New System.Windows.Forms.Label()
-        Me.Label8 = New System.Windows.Forms.Label()
-        Me.Label7 = New System.Windows.Forms.Label()
-        Me.GroupBox1 = New System.Windows.Forms.GroupBox()
-        Me.Label2 = New System.Windows.Forms.Label()
-        Me.GroupBox_LidarStatus = New System.Windows.Forms.GroupBox()
-        Me.Label_LidarStatus = New System.Windows.Forms.Label()
-        Me.ListBox1 = New System.Windows.Forms.ListBox()
-        Me.GroupBox4 = New System.Windows.Forms.GroupBox()
-        Me.Button2 = New System.Windows.Forms.Button()
-        Me.TextBox1 = New System.Windows.Forms.TextBox()
-        Me.Button3 = New System.Windows.Forms.Button()
-        Me.Button4 = New System.Windows.Forms.Button()
-        Me.Label17 = New System.Windows.Forms.Label()
-        Me.Button5 = New System.Windows.Forms.Button()
-        Me.Label1 = New System.Windows.Forms.Label()
-        Me.PictureBox1 = New System.Windows.Forms.PictureBox()
-        Me.Button7 = New System.Windows.Forms.Button()
-        Me.GroupBox2_PageSwitch = New System.Windows.Forms.GroupBox()
-        Me.RadioButton2 = New System.Windows.Forms.RadioButton()
-        Me.RadioButton1 = New System.Windows.Forms.RadioButton()
-        Me.Button8 = New System.Windows.Forms.Button()
-        Me.Label3 = New System.Windows.Forms.Label()
-        Me.GroupBox3 = New System.Windows.Forms.GroupBox()
-        Me.ListBox2 = New System.Windows.Forms.ListBox()
-        Me.GroupBox5 = New System.Windows.Forms.GroupBox()
-        Me.ListBox4 = New System.Windows.Forms.ListBox()
-        Me.OpenFileDialog1 = New System.Windows.Forms.OpenFileDialog()
-        Me.CheckBox1 = New System.Windows.Forms.CheckBox()
-        Me.Button9 = New System.Windows.Forms.Button()
-        Me.Button10 = New System.Windows.Forms.Button()
-        Me.GroupBox6.SuspendLayout()
-        Me.GroupBox1.SuspendLayout()
-        Me.GroupBox_LidarStatus.SuspendLayout()
-        CType(Me.PictureBox1, System.ComponentModel.ISupportInitialize).BeginInit()
-        Me.GroupBox2_PageSwitch.SuspendLayout()
-        Me.GroupBox3.SuspendLayout()
-        Me.GroupBox5.SuspendLayout()
-        Me.SuspendLayout()
-        '
-        'Button6
-        '
-        Me.Button6.FlatStyle = System.Windows.Forms.FlatStyle.System
-        Me.Button6.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button6.ForeColor = System.Drawing.Color.Black
-        Me.Button6.Location = New System.Drawing.Point(95, 35)
-        Me.Button6.Name = "Button6"
-        Me.Button6.Size = New System.Drawing.Size(80, 67)
-        Me.Button6.TabIndex = 47
-        Me.Button6.Text = "START MEASUREMENT"
-        Me.Button6.UseVisualStyleBackColor = True
-        '
-        'Button14
-        '
-        Me.Button14.FlatStyle = System.Windows.Forms.FlatStyle.System
-        Me.Button14.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button14.ForeColor = System.Drawing.Color.Black
-        Me.Button14.Location = New System.Drawing.Point(182, 35)
-        Me.Button14.Name = "Button14"
-        Me.Button14.Size = New System.Drawing.Size(80, 67)
-        Me.Button14.TabIndex = 48
-        Me.Button14.Text = "START RECORD"
-        Me.Button14.UseVisualStyleBackColor = True
-        '
-        'Button1
-        '
-        Me.Button1.FlatStyle = System.Windows.Forms.FlatStyle.System
-        Me.Button1.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button1.ForeColor = System.Drawing.Color.Black
-        Me.Button1.Location = New System.Drawing.Point(710, 35)
-        Me.Button1.Name = "Button1"
-        Me.Button1.Size = New System.Drawing.Size(80, 67)
-        Me.Button1.TabIndex = 60
-        Me.Button1.Text = "EXIT"
-        Me.Button1.UseVisualStyleBackColor = True
-        '
-        'GroupBox6
-        '
-        Me.GroupBox6.AutoSize = True
-        Me.GroupBox6.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink
-        Me.GroupBox6.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None
-        Me.GroupBox6.Controls.Add(Me.ListBox3)
-        Me.GroupBox6.FlatStyle = System.Windows.Forms.FlatStyle.System
-        Me.GroupBox6.Location = New System.Drawing.Point(600, 215)
-        Me.GroupBox6.Name = "GroupBox6"
-        Me.GroupBox6.Size = New System.Drawing.Size(190, 79)
-        Me.GroupBox6.TabIndex = 92
-        Me.GroupBox6.TabStop = False
-        Me.GroupBox6.Text = "Voice Commands"
-        Me.GroupBox6.Visible = False
-        '
-        'ListBox3
-        '
-        Me.ListBox3.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.ListBox3.FormattingEnabled = True
-        Me.ListBox3.ItemHeight = 25
-        Me.ListBox3.Location = New System.Drawing.Point(0, 25)
-        Me.ListBox3.Name = "ListBox3"
-        Me.ListBox3.Size = New System.Drawing.Size(184, 29)
-        Me.ListBox3.TabIndex = 61
-        '
-        'Label6
-        '
-        Me.Label6.BackColor = System.Drawing.Color.Transparent
-        Me.Label6.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label6.ForeColor = System.Drawing.Color.Transparent
-        Me.Label6.ImageAlign = System.Drawing.ContentAlignment.MiddleRight
-        Me.Label6.Location = New System.Drawing.Point(600, 106)
-        Me.Label6.Margin = New System.Windows.Forms.Padding(0)
-        Me.Label6.Name = "Label6"
-        Me.Label6.Size = New System.Drawing.Size(190, 26)
-        Me.Label6.TabIndex = 63
-        Me.Label6.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-        '
-        'Button23
-        '
-        Me.Button23.Enabled = False
-        Me.Button23.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button23.ForeColor = System.Drawing.Color.Black
-        Me.Button23.Location = New System.Drawing.Point(536, 70)
-        Me.Button23.Name = "Button23"
-        Me.Button23.Size = New System.Drawing.Size(80, 32)
-        Me.Button23.TabIndex = 62
-        Me.Button23.Text = "VOICE"
-        Me.Button23.UseVisualStyleBackColor = True
-        '
-        'Label5
-        '
-        Me.Label5.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label5.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label5.ImageAlign = System.Drawing.ContentAlignment.MiddleRight
-        Me.Label5.Location = New System.Drawing.Point(95, 6)
-        Me.Label5.Name = "Label5"
-        Me.Label5.Size = New System.Drawing.Size(347, 25)
-        Me.Label5.TabIndex = 66
-        Me.Label5.TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-        Me.Label5.UseCompatibleTextRendering = True
-        '
-        'ComboBox1
-        '
-        Me.ComboBox1.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold)
-        Me.ComboBox1.FormattingEnabled = True
-        Me.ComboBox1.Items.AddRange(New Object() {"1", "2", "3", "4", "5", "10", "15", "20"})
-        Me.ComboBox1.Location = New System.Drawing.Point(277, 105)
-        Me.ComboBox1.Name = "ComboBox1"
-        Me.ComboBox1.Size = New System.Drawing.Size(50, 28)
-        Me.ComboBox1.TabIndex = 70
-        '
-        'Label9
-        '
-        Me.Label9.BackColor = System.Drawing.Color.Transparent
-        Me.Label9.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label9.ImageAlign = System.Drawing.ContentAlignment.MiddleRight
-        Me.Label9.Location = New System.Drawing.Point(399, 104)
-        Me.Label9.Margin = New System.Windows.Forms.Padding(0)
-        Me.Label9.Name = "Label9"
-        Me.Label9.Size = New System.Drawing.Size(158, 25)
-        Me.Label9.TabIndex = 69
-        Me.Label9.Text = "Time In Recording"
-        Me.Label9.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label8
-        '
-        Me.Label8.BackColor = System.Drawing.Color.WhiteSmoke
-        Me.Label8.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label8.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label8.Location = New System.Drawing.Point(561, 106)
-        Me.Label8.Name = "Label8"
-        Me.Label8.Size = New System.Drawing.Size(42, 22)
-        Me.Label8.TabIndex = 68
-        Me.Label8.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-        '
-        'Label7
-        '
-        Me.Label7.BackColor = System.Drawing.Color.Transparent
-        Me.Label7.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label7.ImageAlign = System.Drawing.ContentAlignment.MiddleRight
-        Me.Label7.Location = New System.Drawing.Point(89, 104)
-        Me.Label7.Margin = New System.Windows.Forms.Padding(0)
-        Me.Label7.Name = "Label7"
-        Me.Label7.Size = New System.Drawing.Size(187, 25)
-        Me.Label7.TabIndex = 67
-        Me.Label7.Text = "Set Record Duration (Minutes)"
-        Me.Label7.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-        '
-        'GroupBox1
-        '
-        Me.GroupBox1.BackColor = System.Drawing.SystemColors.Control
-        Me.GroupBox1.Controls.Add(Me.Label2)
-        Me.GroupBox1.Location = New System.Drawing.Point(435, 493)
-        Me.GroupBox1.Name = "GroupBox1"
-        Me.GroupBox1.Size = New System.Drawing.Size(800, 610)
-        Me.GroupBox1.TabIndex = 71
-        Me.GroupBox1.TabStop = False
-        '
-        'Label2
-        '
-        Me.Label2.Font = New System.Drawing.Font("Microsoft Sans Serif", 14.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label2.ForeColor = System.Drawing.SystemColors.ControlText
-        Me.Label2.Location = New System.Drawing.Point(0, 277)
-        Me.Label2.Name = "Label2"
-        Me.Label2.Size = New System.Drawing.Size(800, 73)
-        Me.Label2.TabIndex = 28
-        Me.Label2.Text = "Label2"
-        Me.Label2.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-        '
-        'GroupBox_LidarStatus
-        '
-        Me.GroupBox_LidarStatus.BackColor = System.Drawing.Color.Transparent
-        Me.GroupBox_LidarStatus.Controls.Add(Me.Label_LidarStatus)
-        Me.GroupBox_LidarStatus.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.GroupBox_LidarStatus.Location = New System.Drawing.Point(268, 36)
-        Me.GroupBox_LidarStatus.Name = "GroupBox_LidarStatus"
-        Me.GroupBox_LidarStatus.Size = New System.Drawing.Size(173, 59)
-        Me.GroupBox_LidarStatus.TabIndex = 100
-        Me.GroupBox_LidarStatus.TabStop = False
-        Me.GroupBox_LidarStatus.Text = "Status"
-        Me.GroupBox_LidarStatus.Visible = False
-        '
-        'Label_LidarStatus
-        '
-        Me.Label_LidarStatus.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label_LidarStatus.Cursor = System.Windows.Forms.Cursors.Hand
-        Me.Label_LidarStatus.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label_LidarStatus.ForeColor = System.Drawing.Color.Black
-        Me.Label_LidarStatus.Location = New System.Drawing.Point(6, 21)
-        Me.Label_LidarStatus.Name = "Label_LidarStatus"
-        Me.Label_LidarStatus.Size = New System.Drawing.Size(161, 25)
-        Me.Label_LidarStatus.TabIndex = 0
-        Me.Label_LidarStatus.Text = "LiDAR (0) - Stopped"
-        Me.Label_LidarStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-        '
-        'ListBox1
-        '
-        Me.ListBox1.FormattingEnabled = True
-        Me.ListBox1.ItemHeight = 20
-        Me.ListBox1.Location = New System.Drawing.Point(28, 354)
-        Me.ListBox1.Name = "ListBox1"
-        Me.ListBox1.Size = New System.Drawing.Size(694, 404)
-        Me.ListBox1.TabIndex = 29
-        Me.ListBox1.Visible = False
-        '
-        'GroupBox4
-        '
-        Me.GroupBox4.BackColor = System.Drawing.Color.WhiteSmoke
-        Me.GroupBox4.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.GroupBox4.ForeColor = System.Drawing.Color.Black
-        Me.GroupBox4.Location = New System.Drawing.Point(5, 129)
-        Me.GroupBox4.Name = "GroupBox4"
-        Me.GroupBox4.Size = New System.Drawing.Size(785, 75)
-        Me.GroupBox4.TabIndex = 72
-        Me.GroupBox4.TabStop = False
-        '
-        'Button2
-        '
-        Me.Button2.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button2.ForeColor = System.Drawing.Color.Black
-        Me.Button2.Location = New System.Drawing.Point(622, 35)
-        Me.Button2.Name = "Button2"
-        Me.Button2.Size = New System.Drawing.Size(80, 32)
-        Me.Button2.TabIndex = 73
-        Me.Button2.Text = "CONFIG"
-        Me.Button2.UseVisualStyleBackColor = True
-        '
-        'TextBox1
-        '
-        Me.TextBox1.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold)
-        Me.TextBox1.Location = New System.Drawing.Point(28, 56)
-        Me.TextBox1.Name = "TextBox1"
-        Me.TextBox1.Size = New System.Drawing.Size(39, 26)
-        Me.TextBox1.TabIndex = 74
-        Me.TextBox1.TextAlign = System.Windows.Forms.HorizontalAlignment.Center
-        Me.TextBox1.Visible = False
-        '
-        'Button3
-        '
-        Me.Button3.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button3.ForeColor = System.Drawing.Color.Black
-        Me.Button3.Location = New System.Drawing.Point(447, 71)
-        Me.Button3.Name = "Button3"
-        Me.Button3.Size = New System.Drawing.Size(80, 32)
-        Me.Button3.TabIndex = 75
-        Me.Button3.Text = "DISPLAYS"
-        Me.Button3.UseVisualStyleBackColor = True
-        '
-        'Button4
-        '
-        Me.Button4.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button4.ForeColor = System.Drawing.Color.Black
-        Me.Button4.Location = New System.Drawing.Point(622, 70)
-        Me.Button4.Name = "Button4"
-        Me.Button4.Size = New System.Drawing.Size(80, 32)
-        Me.Button4.TabIndex = 76
-        Me.Button4.Text = "LOGIN"
-        Me.Button4.UseVisualStyleBackColor = True
-        '
-        'Label17
-        '
-        Me.Label17.Font = New System.Drawing.Font("Microsoft Sans Serif", 15.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label17.Location = New System.Drawing.Point(776, 40)
-        Me.Label17.Name = "Label17"
-        Me.Label17.Size = New System.Drawing.Size(85, 61)
-        Me.Label17.TabIndex = 77
-        Me.Label17.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-        '
-        'Button5
-        '
-        Me.Button5.Enabled = False
-        Me.Button5.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button5.ForeColor = System.Drawing.Color.Black
-        Me.Button5.Location = New System.Drawing.Point(535, 69)
-        Me.Button5.Name = "Button5"
-        Me.Button5.Size = New System.Drawing.Size(80, 32)
-        Me.Button5.TabIndex = 78
-        Me.Button5.Text = "SAVE CAL"
-        Me.Button5.UseVisualStyleBackColor = True
-        Me.Button5.Visible = False
-        '
-        'Label1
-        '
-        Me.Label1.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label1.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label1.Location = New System.Drawing.Point(710, 6)
-        Me.Label1.Name = "Label1"
-        Me.Label1.Size = New System.Drawing.Size(80, 23)
-        Me.Label1.TabIndex = 79
-        Me.Label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-        Me.Label1.Visible = False
-        '
-        'PictureBox1
-        '
-        Me.PictureBox1.BackColor = System.Drawing.Color.Red
-        Me.PictureBox1.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.PictureBox1.Image = CType(resources.GetObject("PictureBox1.Image"), System.Drawing.Image)
-        Me.PictureBox1.Location = New System.Drawing.Point(5, 6)
-        Me.PictureBox1.Name = "PictureBox1"
-        Me.PictureBox1.Size = New System.Drawing.Size(84, 80)
-        Me.PictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage
-        Me.PictureBox1.TabIndex = 38
-        Me.PictureBox1.TabStop = False
-        '
-        'Button7
-        '
-        Me.Button7.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button7.ForeColor = System.Drawing.Color.Black
-        Me.Button7.Location = New System.Drawing.Point(447, 35)
-        Me.Button7.Name = "Button7"
-        Me.Button7.Size = New System.Drawing.Size(80, 33)
-        Me.Button7.TabIndex = 80
-        Me.Button7.Text = "CAMERA"
-        Me.Button7.UseVisualStyleBackColor = True
-        '
-        'GroupBox2_PageSwitch
-        '
-        Me.GroupBox2_PageSwitch.BackColor = System.Drawing.Color.Transparent
-        Me.GroupBox2_PageSwitch.Controls.Add(Me.RadioButton2)
-        Me.GroupBox2_PageSwitch.Controls.Add(Me.RadioButton1)
-        Me.GroupBox2_PageSwitch.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold)
-        Me.GroupBox2_PageSwitch.Location = New System.Drawing.Point(532, -5)
-        Me.GroupBox2_PageSwitch.Name = "GroupBox2_PageSwitch"
-        Me.GroupBox2_PageSwitch.Size = New System.Drawing.Size(106, 40)
-        Me.GroupBox2_PageSwitch.TabIndex = 81
-        Me.GroupBox2_PageSwitch.TabStop = False
-        '
-        'RadioButton2
-        '
-        Me.RadioButton2.Location = New System.Drawing.Point(60, 12)
-        Me.RadioButton2.Name = "RadioButton2"
-        Me.RadioButton2.Size = New System.Drawing.Size(56, 26)
-        Me.RadioButton2.TabIndex = 1
-        Me.RadioButton2.TabStop = True
-        Me.RadioButton2.Text = "RP"
-        Me.RadioButton2.UseVisualStyleBackColor = True
-        Me.RadioButton2.Visible = False
-        '
-        'RadioButton1
-        '
-        Me.RadioButton1.Location = New System.Drawing.Point(12, 12)
-        Me.RadioButton1.Name = "RadioButton1"
-        Me.RadioButton1.Size = New System.Drawing.Size(59, 26)
-        Me.RadioButton1.TabIndex = 0
-        Me.RadioButton1.TabStop = True
-        Me.RadioButton1.Text = "WP"
-        Me.RadioButton1.UseVisualStyleBackColor = True
-        Me.RadioButton1.Visible = False
-        '
-        'Button8
-        '
-        Me.Button8.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button8.Location = New System.Drawing.Point(5, 90)
-        Me.Button8.Name = "Button8"
-        Me.Button8.Size = New System.Drawing.Size(84, 40)
-        Me.Button8.TabIndex = 82
-        Me.Button8.Text = "CALIBRATE"
-        Me.Button8.UseVisualStyleBackColor = True
-        Me.Button8.Visible = False
-        '
-        'Label3
-        '
-        Me.Label3.BackColor = System.Drawing.SystemColors.ActiveBorder
-        Me.Label3.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label3.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label3.Location = New System.Drawing.Point(645, 6)
-        Me.Label3.Name = "Label3"
-        Me.Label3.Size = New System.Drawing.Size(62, 23)
-        Me.Label3.TabIndex = 84
-        Me.Label3.Text = "Alt Rcrd"
-        Me.Label3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-        Me.Label3.Visible = False
-        '
-        'GroupBox3
-        '
-        Me.GroupBox3.AutoSize = True
-        Me.GroupBox3.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink
-        Me.GroupBox3.Controls.Add(Me.ListBox2)
-        Me.GroupBox3.FlatStyle = System.Windows.Forms.FlatStyle.System
-        Me.GroupBox3.Location = New System.Drawing.Point(302, 213)
-        Me.GroupBox3.Name = "GroupBox3"
-        Me.GroupBox3.Size = New System.Drawing.Size(131, 55)
-        Me.GroupBox3.TabIndex = 85
-        Me.GroupBox3.TabStop = False
-        Me.GroupBox3.Text = "Cameras"
-        Me.GroupBox3.Visible = False
-        '
-        'ListBox2
-        '
-        Me.ListBox2.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.ListBox2.FormattingEnabled = True
-        Me.ListBox2.ItemHeight = 25
-        Me.ListBox2.Location = New System.Drawing.Point(0, 26)
-        Me.ListBox2.Name = "ListBox2"
-        Me.ListBox2.Size = New System.Drawing.Size(125, 4)
-        Me.ListBox2.TabIndex = 0
-        '
-        'GroupBox5
-        '
-        Me.GroupBox5.AutoSize = True
-        Me.GroupBox5.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink
-        Me.GroupBox5.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None
-        Me.GroupBox5.Controls.Add(Me.ListBox4)
-        Me.GroupBox5.FlatStyle = System.Windows.Forms.FlatStyle.System
-        Me.GroupBox5.Font = New System.Drawing.Font("Microsoft Sans Serif", 10.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.GroupBox5.Location = New System.Drawing.Point(129, 213)
-        Me.GroupBox5.Name = "GroupBox5"
-        Me.GroupBox5.Size = New System.Drawing.Size(72, 116)
-        Me.GroupBox5.TabIndex = 88
-        Me.GroupBox5.TabStop = False
-        Me.GroupBox5.Text = "SubCategory"
-        Me.GroupBox5.Visible = False
-        '
-        'ListBox4
-        '
-        Me.ListBox4.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed
-        Me.ListBox4.Font = New System.Drawing.Font("Microsoft Sans Serif", 14.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.ListBox4.FormattingEnabled = True
-        Me.ListBox4.ItemHeight = 50
-        Me.ListBox4.Location = New System.Drawing.Point(6, 33)
-        Me.ListBox4.Name = "ListBox4"
-        Me.ListBox4.Size = New System.Drawing.Size(60, 54)
-        Me.ListBox4.TabIndex = 3
-        '
-        'OpenFileDialog1
-        '
-        Me.OpenFileDialog1.FileName = "OpenFileDialog1"
-        '
-        'CheckBox1
-        '
-        Me.CheckBox1.AutoSize = True
-        Me.CheckBox1.BackColor = System.Drawing.Color.Transparent
-        Me.CheckBox1.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.CheckBox1.Location = New System.Drawing.Point(611, 109)
-        Me.CheckBox1.Name = "CheckBox1"
-        Me.CheckBox1.Size = New System.Drawing.Size(189, 24)
-        Me.CheckBox1.TabIndex = 89
-        Me.CheckBox1.Text = "Enable DTC Debug"
-        Me.CheckBox1.UseVisualStyleBackColor = False
-        Me.CheckBox1.Visible = False
-        '
-        'Button9
-        '
-        Me.Button9.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button9.ForeColor = System.Drawing.Color.Black
-        Me.Button9.Location = New System.Drawing.Point(447, 6)
-        Me.Button9.Name = "Button9"
-        Me.Button9.Size = New System.Drawing.Size(80, 26)
-        Me.Button9.TabIndex = 90
-        Me.Button9.Text = "Proc Esc"
-        Me.Button9.UseVisualStyleBackColor = True
-        Me.Button9.Visible = False
-        '
-        'Button10
-        '
-        Me.Button10.Font = New System.Drawing.Font("Microsoft Sans Serif", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Button10.ForeColor = System.Drawing.Color.Black
-        Me.Button10.Location = New System.Drawing.Point(535, 35)
-        Me.Button10.Name = "Button10"
-        Me.Button10.Size = New System.Drawing.Size(80, 32)
-        Me.Button10.TabIndex = 91
-        Me.Button10.Text = "T/D VIEW"
-        Me.Button10.UseVisualStyleBackColor = True
-        '
-        'OnVehicleScreen
-        '
-        Me.AllowDrop = True
-        Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None
-        Me.AutoSize = True
-        Me.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink
-        Me.AutoValidate = System.Windows.Forms.AutoValidate.EnableAllowFocusChange
-        Me.BackColor = System.Drawing.SystemColors.Control
-        Me.ClientSize = New System.Drawing.Size(804, 943)
-        Me.Controls.Add(Me.GroupBox_LidarStatus)
-        Me.Controls.Add(Me.Label5)
-        Me.Controls.Add(Me.Button9)
-        Me.Controls.Add(Me.GroupBox5)
-        Me.Controls.Add(Me.ListBox1)
-        Me.Controls.Add(Me.CheckBox1)
-        Me.Controls.Add(Me.TextBox1)
-        Me.Controls.Add(Me.GroupBox3)
-        Me.Controls.Add(Me.GroupBox6)
-        Me.Controls.Add(Me.Label3)
-        Me.Controls.Add(Me.Button8)
-        Me.Controls.Add(Me.GroupBox2_PageSwitch)
-        Me.Controls.Add(Me.Label1)
-        Me.Controls.Add(Me.GroupBox1)
-        Me.Controls.Add(Me.Button2)
-        Me.Controls.Add(Me.Label8)
-        Me.Controls.Add(Me.Label7)
-        Me.Controls.Add(Me.Label6)
-        Me.Controls.Add(Me.Button23)
-        Me.Controls.Add(Me.Button1)
-        Me.Controls.Add(Me.Button14)
-        Me.Controls.Add(Me.Button6)
-        Me.Controls.Add(Me.PictureBox1)
-        Me.Controls.Add(Me.GroupBox4)
-        Me.Controls.Add(Me.Button3)
-        Me.Controls.Add(Me.Button4)
-        Me.Controls.Add(Me.Button5)
-        Me.Controls.Add(Me.Label17)
-        Me.Controls.Add(Me.Button7)
-        Me.Controls.Add(Me.ComboBox1)
-        Me.Controls.Add(Me.Label9)
-        Me.Controls.Add(Me.Button10)
-        Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle
-        Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
-        Me.KeyPreview = True
-        Me.Name = "OnVehicleScreen"
-        Me.Text = "OnVehicleScreen"
-        Me.TopMost = True
-        Me.GroupBox6.ResumeLayout(False)
-        Me.GroupBox1.ResumeLayout(False)
-        Me.GroupBox_LidarStatus.ResumeLayout(False)
-        CType(Me.PictureBox1, System.ComponentModel.ISupportInitialize).EndInit()
-        Me.GroupBox2_PageSwitch.ResumeLayout(False)
-        Me.GroupBox3.ResumeLayout(False)
-        Me.GroupBox5.ResumeLayout(False)
-        Me.ResumeLayout(False)
-        Me.PerformLayout()
+        Dim resources As ComponentResourceManager = New ComponentResourceManager(GetType(OnVehicleScreen))
+        Button6 = New Button()
+        Button14 = New Button()
+        Button1 = New Button()
+        GroupBox6 = New GroupBox()
+        ListBox3 = New ListBox()
+        Label6 = New Label()
+        Button23 = New Button()
+        Label5 = New Label()
+        ComboBox1 = New ComboBox()
+        Label9 = New Label()
+        Label8 = New Label()
+        Label7 = New Label()
+        GroupBox1 = New GroupBox()
+        Label2 = New Label()
+        GroupBox_LidarStatus = New GroupBox()
+        Label_LidarStatus = New Label()
+        ListBox1 = New ListBox()
+        GroupBox4 = New GroupBox()
+        Button2 = New Button()
+        TextBox1 = New TextBox()
+        Button3 = New Button()
+        Button4 = New Button()
+        Label17 = New Label()
+        Button5 = New Button()
+        Label1 = New Label()
+        PictureBox1 = New PictureBox()
+        Button7 = New Button()
+        GroupBox2_PageSwitch = New GroupBox()
+        RadioButton2 = New RadioButton()
+        RadioButton1 = New RadioButton()
+        Button8 = New Button()
+        Label3 = New Label()
+        GroupBox3 = New GroupBox()
+        ListBox2 = New ListBox()
+        GroupBox5 = New GroupBox()
+        ListBox4 = New ListBox()
+        OpenFileDialog1 = New OpenFileDialog()
+        CheckBox1 = New CheckBox()
+        Button9 = New Button()
+        Button10 = New Button()
+        GroupBox6.SuspendLayout()
+        GroupBox1.SuspendLayout()
+        GroupBox_LidarStatus.SuspendLayout()
+        CType(PictureBox1, ISupportInitialize).BeginInit()
+        GroupBox2_PageSwitch.SuspendLayout()
+        GroupBox3.SuspendLayout()
+        GroupBox5.SuspendLayout()
+        SuspendLayout()
+        ' 
+        ' Button6
+        ' 
+        Button6.FlatStyle = FlatStyle.System
+        Button6.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button6.ForeColor = Color.Black
+        Button6.Location = New Point(95, 35)
+        Button6.Name = "Button6"
+        Button6.Size = New Size(80, 67)
+        Button6.TabIndex = 47
+        Button6.Text = "START MEASUREMENT"
+        Button6.UseVisualStyleBackColor = True
+        ' 
+        ' Button14
+        ' 
+        Button14.FlatStyle = FlatStyle.System
+        Button14.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button14.ForeColor = Color.Black
+        Button14.Location = New Point(182, 35)
+        Button14.Name = "Button14"
+        Button14.Size = New Size(80, 67)
+        Button14.TabIndex = 48
+        Button14.Text = "START RECORD"
+        Button14.UseVisualStyleBackColor = True
+        ' 
+        ' Button1
+        ' 
+        Button1.FlatStyle = FlatStyle.System
+        Button1.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button1.ForeColor = Color.Black
+        Button1.Location = New Point(710, 35)
+        Button1.Name = "Button1"
+        Button1.Size = New Size(80, 67)
+        Button1.TabIndex = 60
+        Button1.Text = "EXIT"
+        Button1.UseVisualStyleBackColor = True
+        ' 
+        ' GroupBox6
+        ' 
+        GroupBox6.AutoSize = True
+        GroupBox6.AutoSizeMode = AutoSizeMode.GrowAndShrink
+        GroupBox6.BackgroundImageLayout = ImageLayout.None
+        GroupBox6.Controls.Add(ListBox3)
+        GroupBox6.FlatStyle = FlatStyle.System
+        GroupBox6.Location = New Point(600, 215)
+        GroupBox6.Name = "GroupBox6"
+        GroupBox6.Size = New Size(190, 67)
+        GroupBox6.TabIndex = 92
+        GroupBox6.TabStop = False
+        GroupBox6.Text = "Voice Commands"
+        GroupBox6.Visible = False
+        ' 
+        ' ListBox3
+        ' 
+        ListBox3.Font = New Font("Microsoft Sans Serif", 10F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        ListBox3.FormattingEnabled = True
+        ListBox3.Location = New Point(0, 25)
+        ListBox3.Name = "ListBox3"
+        ListBox3.Size = New Size(184, 20)
+        ListBox3.TabIndex = 61
+        ' 
+        ' Label6
+        ' 
+        Label6.BackColor = Color.Transparent
+        Label6.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label6.ForeColor = Color.Transparent
+        Label6.ImageAlign = ContentAlignment.MiddleRight
+        Label6.Location = New Point(600, 106)
+        Label6.Margin = New Padding(0)
+        Label6.Name = "Label6"
+        Label6.Size = New Size(190, 26)
+        Label6.TabIndex = 63
+        Label6.TextAlign = ContentAlignment.MiddleCenter
+        ' 
+        ' Button23
+        ' 
+        Button23.Enabled = False
+        Button23.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button23.ForeColor = Color.Black
+        Button23.Location = New Point(536, 70)
+        Button23.Name = "Button23"
+        Button23.Size = New Size(80, 32)
+        Button23.TabIndex = 62
+        Button23.Text = "VOICE"
+        Button23.UseVisualStyleBackColor = True
+        ' 
+        ' Label5
+        ' 
+        Label5.BorderStyle = BorderStyle.Fixed3D
+        Label5.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        Label5.ImageAlign = ContentAlignment.MiddleRight
+        Label5.Location = New Point(95, 6)
+        Label5.Name = "Label5"
+        Label5.Size = New Size(347, 25)
+        Label5.TabIndex = 66
+        Label5.TextAlign = ContentAlignment.MiddleLeft
+        Label5.UseCompatibleTextRendering = True
+        ' 
+        ' ComboBox1
+        ' 
+        ComboBox1.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold)
+        ComboBox1.FormattingEnabled = True
+        ComboBox1.Items.AddRange(New Object() {"1", "2", "3", "4", "5", "10", "15", "20"})
+        ComboBox1.Location = New Point(277, 105)
+        ComboBox1.Name = "ComboBox1"
+        ComboBox1.Size = New Size(50, 21)
+        ComboBox1.TabIndex = 70
+        ' 
+        ' Label9
+        ' 
+        Label9.BackColor = Color.Transparent
+        Label9.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label9.ImageAlign = ContentAlignment.MiddleRight
+        Label9.Location = New Point(399, 104)
+        Label9.Margin = New Padding(0)
+        Label9.Name = "Label9"
+        Label9.Size = New Size(158, 25)
+        Label9.TabIndex = 69
+        Label9.Text = "Time In Recording"
+        Label9.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label8
+        ' 
+        Label8.BackColor = Color.WhiteSmoke
+        Label8.BorderStyle = BorderStyle.Fixed3D
+        Label8.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label8.Location = New Point(561, 106)
+        Label8.Name = "Label8"
+        Label8.Size = New Size(42, 22)
+        Label8.TabIndex = 68
+        Label8.TextAlign = ContentAlignment.MiddleCenter
+        ' 
+        ' Label7
+        ' 
+        Label7.BackColor = Color.Transparent
+        Label7.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label7.ImageAlign = ContentAlignment.MiddleRight
+        Label7.Location = New Point(89, 104)
+        Label7.Margin = New Padding(0)
+        Label7.Name = "Label7"
+        Label7.Size = New Size(187, 25)
+        Label7.TabIndex = 67
+        Label7.Text = "Set Record Duration (Minutes)"
+        Label7.TextAlign = ContentAlignment.MiddleCenter
+        ' 
+        ' GroupBox1
+        ' 
+        GroupBox1.BackColor = SystemColors.Control
+        GroupBox1.Controls.Add(Label2)
+        GroupBox1.Location = New Point(435, 493)
+        GroupBox1.Name = "GroupBox1"
+        GroupBox1.Size = New Size(800, 610)
+        GroupBox1.TabIndex = 71
+        GroupBox1.TabStop = False
+        ' 
+        ' Label2
+        ' 
+        Label2.Font = New Font("Microsoft Sans Serif", 14.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label2.ForeColor = SystemColors.ControlText
+        Label2.Location = New Point(0, 277)
+        Label2.Name = "Label2"
+        Label2.Size = New Size(800, 73)
+        Label2.TabIndex = 28
+        Label2.Text = "Label2"
+        Label2.TextAlign = ContentAlignment.MiddleCenter
+        ' 
+        ' GroupBox_LidarStatus
+        ' 
+        GroupBox_LidarStatus.BackColor = Color.Transparent
+        GroupBox_LidarStatus.Controls.Add(Label_LidarStatus)
+        GroupBox_LidarStatus.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        GroupBox_LidarStatus.Location = New Point(268, 36)
+        GroupBox_LidarStatus.Name = "GroupBox_LidarStatus"
+        GroupBox_LidarStatus.Size = New Size(173, 59)
+        GroupBox_LidarStatus.TabIndex = 100
+        GroupBox_LidarStatus.TabStop = False
+        GroupBox_LidarStatus.Text = "Status"
+        GroupBox_LidarStatus.Visible = False
+        ' 
+        ' Label_LidarStatus
+        ' 
+        Label_LidarStatus.BorderStyle = BorderStyle.Fixed3D
+        Label_LidarStatus.Cursor = Cursors.Hand
+        Label_LidarStatus.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        Label_LidarStatus.ForeColor = Color.Black
+        Label_LidarStatus.Location = New Point(6, 21)
+        Label_LidarStatus.Name = "Label_LidarStatus"
+        Label_LidarStatus.Size = New Size(161, 25)
+        Label_LidarStatus.TabIndex = 0
+        Label_LidarStatus.Text = "LiDAR (0) - Stopped"
+        Label_LidarStatus.TextAlign = ContentAlignment.MiddleLeft
+        ' 
+        ' ListBox1
+        ' 
+        ListBox1.FormattingEnabled = True
+        ListBox1.Location = New Point(28, 354)
+        ListBox1.Name = "ListBox1"
+        ListBox1.Size = New Size(694, 394)
+        ListBox1.TabIndex = 29
+        ListBox1.Visible = False
+        ' 
+        ' GroupBox4
+        ' 
+        GroupBox4.BackColor = Color.WhiteSmoke
+        GroupBox4.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        GroupBox4.ForeColor = Color.Black
+        GroupBox4.Location = New Point(5, 129)
+        GroupBox4.Name = "GroupBox4"
+        GroupBox4.Size = New Size(785, 75)
+        GroupBox4.TabIndex = 72
+        GroupBox4.TabStop = False
+        ' 
+        ' Button2
+        ' 
+        Button2.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button2.ForeColor = Color.Black
+        Button2.Location = New Point(622, 35)
+        Button2.Name = "Button2"
+        Button2.Size = New Size(80, 32)
+        Button2.TabIndex = 73
+        Button2.Text = "CONFIG"
+        Button2.UseVisualStyleBackColor = True
+        ' 
+        ' TextBox1
+        ' 
+        TextBox1.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold)
+        TextBox1.Location = New Point(28, 56)
+        TextBox1.Name = "TextBox1"
+        TextBox1.Size = New Size(39, 20)
+        TextBox1.TabIndex = 74
+        TextBox1.TextAlign = HorizontalAlignment.Center
+        TextBox1.Visible = False
+        ' 
+        ' Button3
+        ' 
+        Button3.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button3.ForeColor = Color.Black
+        Button3.Location = New Point(447, 71)
+        Button3.Name = "Button3"
+        Button3.Size = New Size(80, 32)
+        Button3.TabIndex = 75
+        Button3.Text = "DISPLAYS"
+        Button3.UseVisualStyleBackColor = True
+        ' 
+        ' Button4
+        ' 
+        Button4.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button4.ForeColor = Color.Black
+        Button4.Location = New Point(622, 70)
+        Button4.Name = "Button4"
+        Button4.Size = New Size(80, 32)
+        Button4.TabIndex = 76
+        Button4.Text = "LOGIN"
+        Button4.UseVisualStyleBackColor = True
+        ' 
+        ' Label17
+        ' 
+        Label17.Font = New Font("Microsoft Sans Serif", 15.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label17.Location = New Point(776, 40)
+        Label17.Name = "Label17"
+        Label17.Size = New Size(85, 61)
+        Label17.TabIndex = 77
+        Label17.TextAlign = ContentAlignment.MiddleCenter
+        ' 
+        ' Button5
+        ' 
+        Button5.Enabled = False
+        Button5.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button5.ForeColor = Color.Black
+        Button5.Location = New Point(535, 69)
+        Button5.Name = "Button5"
+        Button5.Size = New Size(80, 32)
+        Button5.TabIndex = 78
+        Button5.Text = "SAVE CAL"
+        Button5.UseVisualStyleBackColor = True
+        Button5.Visible = False
+        ' 
+        ' Label1
+        ' 
+        Label1.BorderStyle = BorderStyle.Fixed3D
+        Label1.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label1.Location = New Point(710, 6)
+        Label1.Name = "Label1"
+        Label1.Size = New Size(80, 23)
+        Label1.TabIndex = 79
+        Label1.TextAlign = ContentAlignment.MiddleCenter
+        Label1.Visible = False
+        ' 
+        ' PictureBox1
+        ' 
+        PictureBox1.BackColor = Color.Red
+        PictureBox1.BorderStyle = BorderStyle.Fixed3D
+        PictureBox1.Image = CType(resources.GetObject("PictureBox1.Image"), Image)
+        PictureBox1.Location = New Point(5, 6)
+        PictureBox1.Name = "PictureBox1"
+        PictureBox1.Size = New Size(84, 80)
+        PictureBox1.SizeMode = PictureBoxSizeMode.CenterImage
+        PictureBox1.TabIndex = 38
+        PictureBox1.TabStop = False
+        ' 
+        ' Button7
+        ' 
+        Button7.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button7.ForeColor = Color.Black
+        Button7.Location = New Point(447, 35)
+        Button7.Name = "Button7"
+        Button7.Size = New Size(80, 33)
+        Button7.TabIndex = 80
+        Button7.Text = "CAMERA"
+        Button7.UseVisualStyleBackColor = True
+        ' 
+        ' GroupBox2_PageSwitch
+        ' 
+        GroupBox2_PageSwitch.BackColor = Color.Transparent
+        GroupBox2_PageSwitch.Controls.Add(RadioButton2)
+        GroupBox2_PageSwitch.Controls.Add(RadioButton1)
+        GroupBox2_PageSwitch.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Bold)
+        GroupBox2_PageSwitch.Location = New Point(532, -5)
+        GroupBox2_PageSwitch.Name = "GroupBox2_PageSwitch"
+        GroupBox2_PageSwitch.Size = New Size(106, 40)
+        GroupBox2_PageSwitch.TabIndex = 81
+        GroupBox2_PageSwitch.TabStop = False
+        ' 
+        ' RadioButton2
+        ' 
+        RadioButton2.Location = New Point(60, 12)
+        RadioButton2.Name = "RadioButton2"
+        RadioButton2.Size = New Size(56, 26)
+        RadioButton2.TabIndex = 1
+        RadioButton2.TabStop = True
+        RadioButton2.Text = "RP"
+        RadioButton2.UseVisualStyleBackColor = True
+        RadioButton2.Visible = False
+        ' 
+        ' RadioButton1
+        ' 
+        RadioButton1.Location = New Point(12, 12)
+        RadioButton1.Name = "RadioButton1"
+        RadioButton1.Size = New Size(59, 26)
+        RadioButton1.TabIndex = 0
+        RadioButton1.TabStop = True
+        RadioButton1.Text = "WP"
+        RadioButton1.UseVisualStyleBackColor = True
+        RadioButton1.Visible = False
+        ' 
+        ' Button8
+        ' 
+        Button8.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button8.Location = New Point(5, 90)
+        Button8.Name = "Button8"
+        Button8.Size = New Size(84, 40)
+        Button8.TabIndex = 82
+        Button8.Text = "CALIBRATE"
+        Button8.UseVisualStyleBackColor = True
+        Button8.Visible = False
+        ' 
+        ' Label3
+        ' 
+        Label3.BackColor = SystemColors.ActiveBorder
+        Label3.BorderStyle = BorderStyle.Fixed3D
+        Label3.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label3.Location = New Point(645, 6)
+        Label3.Name = "Label3"
+        Label3.Size = New Size(62, 23)
+        Label3.TabIndex = 84
+        Label3.Text = "Alt Rcrd"
+        Label3.TextAlign = ContentAlignment.MiddleCenter
+        Label3.Visible = False
+        ' 
+        ' GroupBox3
+        ' 
+        GroupBox3.AutoSize = True
+        GroupBox3.AutoSizeMode = AutoSizeMode.GrowAndShrink
+        GroupBox3.Controls.Add(ListBox2)
+        GroupBox3.FlatStyle = FlatStyle.System
+        GroupBox3.Location = New Point(302, 213)
+        GroupBox3.Name = "GroupBox3"
+        GroupBox3.Size = New Size(131, 52)
+        GroupBox3.TabIndex = 85
+        GroupBox3.TabStop = False
+        GroupBox3.Text = "Cameras"
+        GroupBox3.Visible = False
+        ' 
+        ' ListBox2
+        ' 
+        ListBox2.Font = New Font("Microsoft Sans Serif", 10F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        ListBox2.FormattingEnabled = True
+        ListBox2.Location = New Point(0, 26)
+        ListBox2.Name = "ListBox2"
+        ListBox2.Size = New Size(125, 4)
+        ListBox2.TabIndex = 0
+        ' 
+        ' GroupBox5
+        ' 
+        GroupBox5.AutoSize = True
+        GroupBox5.AutoSizeMode = AutoSizeMode.GrowAndShrink
+        GroupBox5.BackgroundImageLayout = ImageLayout.None
+        GroupBox5.Controls.Add(ListBox4)
+        GroupBox5.FlatStyle = FlatStyle.System
+        GroupBox5.Font = New Font("Microsoft Sans Serif", 10F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        GroupBox5.Location = New Point(129, 213)
+        GroupBox5.Name = "GroupBox5"
+        GroupBox5.Size = New Size(72, 109)
+        GroupBox5.TabIndex = 88
+        GroupBox5.TabStop = False
+        GroupBox5.Text = "SubCategory"
+        GroupBox5.Visible = False
+        ' 
+        ' ListBox4
+        ' 
+        ListBox4.DrawMode = DrawMode.OwnerDrawFixed
+        ListBox4.Font = New Font("Microsoft Sans Serif", 14F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        ListBox4.FormattingEnabled = True
+        ListBox4.ItemHeight = 50
+        ListBox4.Location = New Point(6, 33)
+        ListBox4.Name = "ListBox4"
+        ListBox4.Size = New Size(60, 54)
+        ListBox4.TabIndex = 3
+        ' 
+        ' OpenFileDialog1
+        ' 
+        OpenFileDialog1.FileName = "OpenFileDialog1"
+        ' 
+        ' CheckBox1
+        ' 
+        CheckBox1.AutoSize = True
+        CheckBox1.BackColor = Color.Transparent
+        CheckBox1.Font = New Font("Microsoft Sans Serif", 8F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        CheckBox1.Location = New Point(611, 109)
+        CheckBox1.Name = "CheckBox1"
+        CheckBox1.Size = New Size(135, 17)
+        CheckBox1.TabIndex = 89
+        CheckBox1.Text = "Enable DTC Debug"
+        CheckBox1.UseVisualStyleBackColor = False
+        CheckBox1.Visible = False
+        ' 
+        ' Button9
+        ' 
+        Button9.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button9.ForeColor = Color.Black
+        Button9.Location = New Point(447, 6)
+        Button9.Name = "Button9"
+        Button9.Size = New Size(80, 26)
+        Button9.TabIndex = 90
+        Button9.Text = "Proc Esc"
+        Button9.UseVisualStyleBackColor = True
+        Button9.Visible = False
+        ' 
+        ' Button10
+        ' 
+        Button10.Font = New Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Button10.ForeColor = Color.Black
+        Button10.Location = New Point(535, 35)
+        Button10.Name = "Button10"
+        Button10.Size = New Size(80, 32)
+        Button10.TabIndex = 91
+        Button10.Text = "T/D VIEW"
+        Button10.UseVisualStyleBackColor = True
+        ' 
+        ' OnVehicleScreen
+        ' 
+        AllowDrop = True
+        AutoScaleMode = AutoScaleMode.None
+        AutoSizeMode = AutoSizeMode.GrowAndShrink
+        AutoValidate = AutoValidate.EnableAllowFocusChange
+        BackColor = SystemColors.Control
+        ClientSize = New Size(804, 581)
+        Controls.Add(GroupBox_LidarStatus)
+        Controls.Add(Label5)
+        Controls.Add(Button9)
+        Controls.Add(GroupBox5)
+        Controls.Add(ListBox1)
+        Controls.Add(CheckBox1)
+        Controls.Add(TextBox1)
+        Controls.Add(GroupBox3)
+        Controls.Add(GroupBox6)
+        Controls.Add(Label3)
+        Controls.Add(Button8)
+        Controls.Add(GroupBox2_PageSwitch)
+        Controls.Add(Label1)
+        Controls.Add(GroupBox1)
+        Controls.Add(Button2)
+        Controls.Add(Label8)
+        Controls.Add(Label7)
+        Controls.Add(Label6)
+        Controls.Add(Button23)
+        Controls.Add(Button1)
+        Controls.Add(Button14)
+        Controls.Add(Button6)
+        Controls.Add(PictureBox1)
+        Controls.Add(GroupBox4)
+        Controls.Add(Button3)
+        Controls.Add(Button4)
+        Controls.Add(Button5)
+        Controls.Add(Label17)
+        Controls.Add(Button7)
+        Controls.Add(ComboBox1)
+        Controls.Add(Label9)
+        Controls.Add(Button10)
+        FormBorderStyle = FormBorderStyle.FixedSingle
+        Icon = CType(resources.GetObject("$this.Icon"), Icon)
+        KeyPreview = True
+        Name = "OnVehicleScreen"
+        Text = "OnVehicleScreen"
+        GroupBox6.ResumeLayout(False)
+        GroupBox1.ResumeLayout(False)
+        GroupBox_LidarStatus.ResumeLayout(False)
+        CType(PictureBox1, ISupportInitialize).EndInit()
+        GroupBox2_PageSwitch.ResumeLayout(False)
+        GroupBox3.ResumeLayout(False)
+        GroupBox5.ResumeLayout(False)
+        ResumeLayout(False)
+        PerformLayout()
 
     End Sub
     Friend WithEvents PictureBox1 As System.Windows.Forms.PictureBox

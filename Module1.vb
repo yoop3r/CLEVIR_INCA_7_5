@@ -65,9 +65,14 @@ Public Class VehicleConfig
     Public Property VehicleNumber As String = ""
     ''' <summary>Up to 6 processor names</summary>
     Public Property Processors As String() = {"NA", "NA", "NA", "NA", "NA", "NA"}
-    ''' <summary>Up to 9 camera positions (e.g. "FRONT,REAR,NA,NA,NA,NA,NA,NA,NA")</summary>
-    Public Property CameraPositions As String() = {"NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"}
-    Public Property ZipMF4Files As Boolean = True
+    ''' <summary>
+    ''' Obsolete &lt;CameraPositions&gt; value from legacy config files (Nothing when absent).
+    ''' Active cameras now come from the enabled &lt;CameraConfiguration&gt;/&lt;Cameras&gt; entries;
+    ''' this is only used for migration diagnostics.
+    ''' </summary>
+    Public Property LegacyCameraPositions As String() = Nothing
+    ''' <summary>Obsolete &lt;ZipMF4Files&gt; value from legacy config files (Nothing when absent); compression is controlled by &lt;Compression&gt;.</summary>
+    Public Property LegacyZipMF4Files As Boolean? = Nothing
 End Class
 
 Public Module Module1
@@ -170,15 +175,10 @@ Public Module Module1
     Public SelectedTestName As String       'Set in SetupDataLogging based on vehiclenumber, date, time, etc.  Used for naming the various recorded files
     Public SaveSelectedTestName As String   'Set in SetupDataLogging.  Used in conjunction with SelectedTestName
     Public SaveLoginID As String = ""            'Set as part of login process, either from LoginForm or in SetupDataLogging
-    Public VehicleNumber As String          'Holds the vehicle number read from <SelectedVehicleNumber> in config.xml.  Used when setting up file names for record files etc.
+    Public VehicleNumber As String          'Holds the vehicle number read from <Vehicle>/<VehicleNumber> in config.xml.  Used when setting up file names for record files etc.
     Public ANNOFileName As String           'Set in SetupDataLogging, holds the annotation file name for the current recording session.  Used when saving data to this file, etc.
     Public CanTemplateExperimentName As String     'Loaded from config.xml INCAExperimentTemplate for NEW FULL registration.
     Private MessageLogLevel As Integer        'Set in ReadDebugFile - used as a debug message filter, the lower the MessageLogLevel,the more messages are written to the GM_ResidentClient.log file.
-    Public ZipTheMF4Files As Boolean = True  'Set in ReadVehicleConfigsFile.  Determines if mf4 files will be zipped during recording sessions.  Validation vehicles do not zip, all others do.
-
-
-    Private ReadOnly OriginalVehicleConfiguration As String = "UNDEFINED"
-    Public CurrentVehicleUsage As String = "UNDEFINED"
 
     Public CounterValue As Integer           'Set in ReadDebugFile, used in GM_INCA_CommClass - DataCollectionProcess
     Public DebugMessages As Integer          'Set in ReadDebugFile, used as a debug message fileter for DataCollectionProcess messages
@@ -513,8 +513,17 @@ Public Module Module1
     Public ConfiguredCameras As New Dictionary(Of String, CameraConfig)(StringComparer.OrdinalIgnoreCase)
 
     ''' <summary>
-    ''' Active cameras for the current vehicle (subset of ConfiguredCameras)
-    ''' Populated by ReadVehicleConfigsFile() from config.xml &lt;Vehicles&gt;
+    ''' The same CameraConfig objects as ConfiguredCameras, in config.xml document order.
+    ''' Order matters: the n-th enabled camera maps to the n-th VIDEO_CAMERA_TIMECODE signal.
+    ''' </summary>
+    Public ReadOnly OrderedCameras As New List(Of CameraConfig)()
+
+    ''' <summary>True when the camera list came from LoadDefaultCameraConfig (no usable &lt;CameraConfiguration&gt;).</summary>
+    Public CamerasLoadedFromDefaults As Boolean = False
+
+    ''' <summary>
+    ''' Active cameras for the current vehicle: the enabled entries of OrderedCameras.
+    ''' Populated by ApplyVehicleConfig().
     ''' </summary>
     Public ActiveCameras As New List(Of CameraConfig)()
 
@@ -568,6 +577,11 @@ Public Module Module1
     Public Property CompressionLevel As Integer = 1  ' Fast compression
     Public Property CompressionMaxRetries As Integer = 5
     Public Property CompressionRetryDelay As Integer = 10
+
+    ''' <summary>True when any file type is enabled for compression in config.xml &lt;Compression&gt;.</summary>
+    Public Function AnyCompressionEnabled() As Boolean
+        Return CompressMF4 OrElse CompressPCAP OrElse CompressASC OrElse CompressVSB
+    End Function
 
     Public ZipCompressionEnabled As Boolean = True
     Public ZipCompressionMaxRetries As Integer = 5
@@ -1558,29 +1572,34 @@ Public Module Module1
 
             ' Clear existing camera configs
             ConfiguredCameras.Clear()
+            OrderedCameras.Clear()
+            CamerasLoadedFromDefaults = False
 
-            ' Read MaxCameras
-            Dim maxCamerasNode = cameraConfigNode.SelectSingleNode("MaxCameras")
-            If maxCamerasNode IsNot Nothing Then
-                MaxCameras = Integer.Parse(maxCamerasNode.InnerText)
-            Else
-                MaxCameras = 9 ' Default
-            End If
-
-            ' Read camera mappings
+            ' Read camera mappings (document order defines camera order)
             Dim camerasNode = cameraConfigNode.SelectSingleNode("Cameras")
             If camerasNode IsNot Nothing Then
                 For Each cameraNode As XmlNode In camerasNode.SelectNodes("Camera")
-                    Dim position As String = cameraNode.Attributes("position")?.Value
-                    Dim ipAddress As String = cameraNode.Attributes("ipAddress")?.Value
+                    Dim position As String = cameraNode.Attributes("position")?.Value?.Trim()
+                    Dim ipAddress As String = cameraNode.Attributes("ipAddress")?.Value?.Trim()
                     Dim enabledStr As String = cameraNode.Attributes("enabled")?.Value
                     Dim enabled As Boolean = String.IsNullOrEmpty(enabledStr) OrElse Boolean.Parse(enabledStr)
 
                     If Not String.IsNullOrEmpty(position) AndAlso Not String.IsNullOrEmpty(ipAddress) Then
-                        ConfiguredCameras(position) = New CameraConfig(position, ipAddress, enabled)
-                        HandleUserMessageLogging("GMRC", $"Camera config loaded: {position} → {ipAddress}")
+                        If ConfiguredCameras.ContainsKey(position) Then
+                            HandleUserMessageLogging("GMRC", $"WARNING: Duplicate camera position '{position}' in config.xml <Cameras> - ignoring {ipAddress}")
+                            Continue For
+                        End If
+                        Dim camera As New CameraConfig(position, ipAddress, enabled)
+                        ConfiguredCameras(position) = camera
+                        OrderedCameras.Add(camera)
+                        HandleUserMessageLogging("GMRC", $"Camera config loaded: {position} → {ipAddress} (enabled={enabled})")
                     End If
                 Next
+            End If
+
+            MaxCameras = OrderedCameras.Where(Function(c) c.Enabled).Count()
+            If cameraConfigNode.SelectSingleNode("MaxCameras") IsNot Nothing Then
+                HandleUserMessageLogging("GMRC", $"Ignoring obsolete config.xml <MaxCameras>; using enabled camera count ({MaxCameras}).")
             End If
 
             ' Read camera validation settings
@@ -1607,18 +1626,23 @@ Public Module Module1
     ''' Provides backward compatibility with hardcoded addresses.
     ''' </summary>
     Public Sub LoadDefaultCameraConfig()
+        ' Defaults only supply IP mappings; they start disabled. A legacy vehicle <CameraPositions>
+        ' list (if present) enables the matching entries in ApplyVehicleConfig.
         ConfiguredCameras.Clear()
-        ConfiguredCameras("FRONT") = New CameraConfig("FRONT", "192.168.40.101")
-        ConfiguredCameras("RIGHTREAR") = New CameraConfig("RIGHTREAR", "192.168.40.102")
-        ConfiguredCameras("LEFTREAR") = New CameraConfig("LEFTREAR", "192.168.40.103")
-        ConfiguredCameras("HMI") = New CameraConfig("HMI", "192.168.40.104")
-        ConfiguredCameras("LEFTFRONT") = New CameraConfig("LEFTFRONT", "192.168.40.105")
-        ConfiguredCameras("RIGHTFRONT") = New CameraConfig("RIGHTFRONT", "192.168.40.106")
-        ConfiguredCameras("LABEL1") = New CameraConfig("LABEL1", "192.168.40.107")
-        ConfiguredCameras("LABEL2") = New CameraConfig("LABEL2", "192.168.40.108")
-        ConfiguredCameras("LABEL3") = New CameraConfig("LABEL3", "192.168.40.109")
+        OrderedCameras.Clear()
+        Dim defaults As String(,) = {
+            {"FRONT", "192.168.40.101"}, {"RIGHTREAR", "192.168.40.102"}, {"LEFTREAR", "192.168.40.103"},
+            {"HMI", "192.168.40.104"}, {"LEFTFRONT", "192.168.40.105"}, {"RIGHTFRONT", "192.168.40.106"},
+            {"LABEL1", "192.168.40.107"}, {"LABEL2", "192.168.40.108"}, {"LABEL3", "192.168.40.109"}}
+        For i As Integer = 0 To defaults.GetLength(0) - 1
+            Dim camera As New CameraConfig(defaults(i, 0), defaults(i, 1), False)
+            ConfiguredCameras(camera.Position) = camera
+            OrderedCameras.Add(camera)
+        Next
+        CamerasLoadedFromDefaults = True
+        MaxCameras = 0
 
-        HandleUserMessageLogging("GMRC", "Loaded 9 default camera configurations")
+        HandleUserMessageLogging("GMRC", "Loaded 9 default camera IP mappings (all disabled) - configure cameras via Edit Cameras")
     End Sub
 
     Public Sub WriteConfigFile()
@@ -2279,15 +2303,14 @@ Public Module Module1
         ' Called from:
         '   1. Init_Form.Load
         '   2. SaveVehicleConfigChanges
-        '   3. InitForm.SaveVehicleNumber
         '
-        ' Reads the <Vehicles> section of config.xml for the selected VehicleNumber,
+        ' Reads the <Vehicle> section of config.xml (one vehicle per config.xml),
         ' populating global variables needed for subsequent workspace logic in CLEVIR.
+        ' Legacy <Vehicles>/<SelectedVehicleNumber> files are still accepted.
         '
         ' Returns:
         '   True if vehicle config was read and processed successfully, or the
-        '   vehicle number is UNDEFINED/not found (user must select a vehicle);
-        '   otherwise False.
+        '   vehicle number is UNDEFINED (config.xml must be edited); otherwise False.
         '-------------------------------------------------------------------
 
         Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
@@ -2301,10 +2324,12 @@ Public Module Module1
             xmlDoc.Load(configPath)
             Dim configuration As New IncaConfiguration(xmlDoc, My.Application.Info.DirectoryPath)
             ApplyIncaConfiguration(configuration, xmlDoc)
+            If IncaConfiguration.IsLegacyVehicleLayout(xmlDoc.DocumentElement) Then
+                HandleUserMessageLogging("GMRC",
+                    $"ReadVehicleConfigsFile: legacy <Vehicles>/<SelectedVehicleNumber> layout detected; using vehicle {VehicleNumber}. Save from the Configuration Editor to migrate to a single <Vehicle>.")
+            End If
             If configuration.Processors.Length = 0 Then
-                If Not String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
-                    HandleUserMessageLogging("GMRC", $"Vehicle Number {VehicleNumber} not found in config.xml <Vehicles>. Select a configured vehicle.", failureReporter Is Nothing)
-                End If
+                HandleUserMessageLogging("GMRC", "ReadVehicleConfigsFile: config.xml <Vehicle>/<VehicleNumber> is UNDEFINED.")
                 Return True
             End If
 
@@ -2313,7 +2338,7 @@ Public Module Module1
                       Path.Combine(My.Application.Info.DirectoryPath, "config_vehicle_SAVE.xml"),
                       overwrite:=True)
             HandleUserMessageLogging("GMRC",
-                $"ReadVehicleConfigsFile: Vehicle {VehicleNumber} loaded from config.xml Vehicles section.")
+                $"ReadVehicleConfigsFile: Vehicle {VehicleNumber} loaded from config.xml.")
             Return True
 
         Catch ex As Exception
@@ -2324,73 +2349,69 @@ Public Module Module1
 
 
     '-----------------------------------------------------------
-    '   SELECTED VEHICLE NUMBER — config.xml persistence
-    '   Replaces the legacy vehicleconfig.txt single-value file.
-    '   The value is stored as <SelectedVehicleNumber> at the root
-    '   of config.xml, alongside <CurrentVehicleUsage>.
+    '   VEHICLE NUMBER — config.xml persistence
+    '   One vehicle per config.xml: the value is stored in
+    '   <Vehicle>/<VehicleNumber> at the root of config.xml.
     '-----------------------------------------------------------
 
     ''' <summary>
-    ''' Reads the &lt;SelectedVehicleNumber&gt; element from config.xml.
+    ''' Reads &lt;Vehicle&gt;/&lt;VehicleNumber&gt; from config.xml (legacy layouts are resolved).
     ''' Returns "UNDEFINED" when the file or element is absent.
     ''' </summary>
-    Public Function ReadSelectedVehicleNumber() As String
+    Public Function ReadConfiguredVehicleNumber() As String
         Try
             Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
             If Not File.Exists(configPath) Then Return "UNDEFINED"
             Dim xmlDoc As New XmlDocument()
             xmlDoc.Load(configPath)
-            Dim node As XmlNode = xmlDoc.SelectSingleNode("/Configuration/SelectedVehicleNumber")
-            Dim value As String = node?.InnerText?.Trim()
+            Dim vehicle As XmlNode = IncaConfiguration.ResolveVehicleNode(xmlDoc.DocumentElement)
+            Dim value As String = vehicle?.SelectSingleNode("VehicleNumber")?.InnerText?.Trim()
             If String.IsNullOrEmpty(value) OrElse
                String.Equals(value, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
                 Return "UNDEFINED"
             End If
             Return value
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"ReadSelectedVehicleNumber: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"ReadConfiguredVehicleNumber: {ex.Message}")
             Return "UNDEFINED"
         End Try
     End Function
 
     ''' <summary>
-    ''' Persists <paramref name="vehicleNumber"/> to the &lt;SelectedVehicleNumber&gt;
-    ''' element in config.xml, creating the element if it does not yet exist.
+    ''' Persists <paramref name="vehicleNumber"/> to &lt;Vehicle&gt;/&lt;VehicleNumber&gt; in config.xml,
+    ''' migrating a legacy &lt;Vehicles&gt; layout first. The vehicle's &lt;Processors&gt; are kept.
     ''' </summary>
-    Public Function SaveSelectedVehicleNumber(vehicleNumber As String) As Boolean
+    Public Function SaveConfiguredVehicleNumber(vehicleNumber As String) As Boolean
         If String.IsNullOrWhiteSpace(vehicleNumber) Then
-            HandleUserMessageLogging("GMRC", "SaveSelectedVehicleNumber: a vehicle number is required.", DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", "SaveConfiguredVehicleNumber: a vehicle number is required.", DisplayMsgBox)
             Return False
         End If
         Try
             Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
             If Not File.Exists(configPath) Then
-                HandleUserMessageLogging("GMRC", "SaveSelectedVehicleNumber: config.xml not found — cannot persist vehicle number.", DisplayMsgBox)
+                HandleUserMessageLogging("GMRC", "SaveConfiguredVehicleNumber: config.xml not found — cannot persist vehicle number.", DisplayMsgBox)
                 Return False
             End If
             Dim xmlDoc As New XmlDocument()
             xmlDoc.Load(configPath)
-            Dim node As XmlNode = xmlDoc.SelectSingleNode("/Configuration/SelectedVehicleNumber")
+            IncaConfiguration.MigrateLegacyVehicleLayout(xmlDoc)
+            Dim vehicle As XmlNode = xmlDoc.SelectSingleNode("/Configuration/Vehicle")
+            If vehicle Is Nothing Then
+                vehicle = xmlDoc.CreateElement("Vehicle")
+                xmlDoc.DocumentElement.AppendChild(vehicle)
+            End If
+            Dim node As XmlNode = vehicle.SelectSingleNode("VehicleNumber")
             If node Is Nothing Then
-                ' Create the element after <CurrentVehicleUsage> if present, otherwise append to root
-                node = xmlDoc.CreateElement("SelectedVehicleNumber")
-                Dim refNode As XmlNode = xmlDoc.SelectSingleNode("/Configuration/CurrentVehicleUsage")
-                If refNode IsNot Nothing Then
-                    xmlDoc.DocumentElement.InsertAfter(node, refNode)
-                Else
-                    xmlDoc.DocumentElement.AppendChild(node)
-                End If
+                node = xmlDoc.CreateElement("VehicleNumber")
+                vehicle.PrependChild(node)
             End If
             node.InnerText = vehicleNumber.Trim()
             Dim configuration As New IncaConfiguration(xmlDoc, My.Application.Info.DirectoryPath)
-            If configuration.Processors.Length = 0 Then
-                Throw New FormatException($"Vehicle '{vehicleNumber}' is not configured in config.xml <Vehicles>.")
-            End If
             xmlDoc.Save(configPath)
-            HandleUserMessageLogging("GMRC", $"SaveSelectedVehicleNumber: Saved '{vehicleNumber}' to config.xml.")
+            HandleUserMessageLogging("GMRC", $"SaveConfiguredVehicleNumber: Saved '{configuration.VehicleNumber}' to config.xml.")
             Return True
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"SaveSelectedVehicleNumber: {ex.Message}", DisplayMsgBox)
+            HandleUserMessageLogging("GMRC", $"SaveConfiguredVehicleNumber: {ex.Message}", DisplayMsgBox)
             Return False
         End Try
     End Function
@@ -2400,34 +2421,31 @@ Public Module Module1
     '-----------------------------------------------------------
 
     ''' <summary>
-    ''' Reads all &lt;Vehicle&gt; elements from the Vehicles section of config.xml.
-    ''' Returns Nothing when the section is absent.
+    ''' Reads the single &lt;Vehicle&gt; element of config.xml (legacy &lt;Vehicles&gt; layouts are resolved).
+    ''' Returns Nothing when no vehicle is defined.
     ''' </summary>
-    Public Function ReadVehiclesFromXml(xmlDoc As XmlDocument) As List(Of VehicleConfig)
-        If xmlDoc Is Nothing Then Return Nothing
-        Dim vehiclesNode As XmlNode = xmlDoc.SelectSingleNode("/Configuration/Vehicles")
-        If vehiclesNode Is Nothing Then Return Nothing
+    Public Function ReadVehicleFromXml(xmlDoc As XmlDocument) As VehicleConfig
+        Dim node As XmlNode = IncaConfiguration.ResolveVehicleNode(xmlDoc?.DocumentElement)
+        If node Is Nothing Then Return Nothing
 
-        Dim list As New List(Of VehicleConfig)()
-        For Each node As XmlNode In vehiclesNode.SelectNodes("Vehicle")
-            Dim v As New VehicleConfig()
-            v.VehicleNumber = node.SelectSingleNode("VehicleNumber")?.InnerText?.Trim()
+        Dim v As New VehicleConfig()
+        v.VehicleNumber = node.SelectSingleNode("VehicleNumber")?.InnerText?.Trim()
 
-            Dim procText As String = node.SelectSingleNode("Processors")?.InnerText
-            If Not String.IsNullOrWhiteSpace(procText) Then
-                v.Processors = procText.Split(","c)
-            End If
+        Dim procText As String = node.SelectSingleNode("Processors")?.InnerText
+        If Not String.IsNullOrWhiteSpace(procText) Then
+            v.Processors = procText.Split(","c)
+        End If
 
-            Dim camText As String = node.SelectSingleNode("CameraPositions")?.InnerText
-            If Not String.IsNullOrWhiteSpace(camText) Then
-                v.CameraPositions = camText.Split(","c)
-            End If
+        Dim camText As String = node.SelectSingleNode("CameraPositions")?.InnerText
+        If Not String.IsNullOrWhiteSpace(camText) Then
+            v.LegacyCameraPositions = camText.Split(","c)
+        End If
 
-            Dim zipStr As String = node.SelectSingleNode("ZipMF4Files")?.InnerText
-            v.ZipMF4Files = String.Equals(zipStr, "True", StringComparison.OrdinalIgnoreCase)
-            list.Add(v)
-        Next
-        Return list
+        Dim zipStr As String = node.SelectSingleNode("ZipMF4Files")?.InnerText
+        If Not String.IsNullOrWhiteSpace(zipStr) Then
+            v.LegacyZipMF4Files = String.Equals(zipStr.Trim(), "True", StringComparison.OrdinalIgnoreCase)
+        End If
+        Return v
     End Function
 
     ''' <summary>
@@ -2444,31 +2462,61 @@ Public Module Module1
         ProjectName = processors(0).VariantName
         GProjectAbbreviation = ProjectName
 
-        ' 3. Camera positions
-        Dim foundFront As Boolean = False
-        For i As Integer = 0 To v.CameraPositions.Length - 1
-            If i > 8 Then Exit For
-            Dim pos As String = v.CameraPositions(i).Trim()
-            CameraNames(i) = pos
-            If Not pos.Equals("NA", StringComparison.OrdinalIgnoreCase) Then
-                If pos.ToUpper() = "FRONT" Then foundFront = True
-                NumberOfCamerasInVehicle += 1
-                If ConfiguredCameras.ContainsKey(pos) Then
-                    ActiveCameras.Add(ConfiguredCameras(pos))
+        ' 3. Cameras: the enabled <CameraConfiguration>/<Cameras> entries, in document order
+        Dim legacyPositions As List(Of String) = Nothing
+        If v.LegacyCameraPositions IsNot Nothing Then
+            legacyPositions = v.LegacyCameraPositions.Select(Function(p) p.Trim()).
+                Where(Function(p) p.Length > 0 AndAlso Not p.Equals("NA", StringComparison.OrdinalIgnoreCase)).ToList()
+        End If
+
+        If CamerasLoadedFromDefaults AndAlso legacyPositions IsNot Nothing Then
+            ' Legacy config without <CameraConfiguration>: honour the old <CameraPositions> list and order.
+            Dim legacyOrder As New List(Of CameraConfig)()
+            For Each pos As String In legacyPositions
+                Dim camera As CameraConfig = Nothing
+                If ConfiguredCameras.TryGetValue(pos, camera) Then
+                    camera.Enabled = True
+                    If Not legacyOrder.Contains(camera) Then legacyOrder.Add(camera)
                 Else
                     HandleUserMessageLogging("GMRC",
-                        $"WARNING: Camera position '{pos}' not found in config.xml camera mappings",
+                        $"WARNING: Camera position '{pos}' not found in default camera mappings",
                         DisplayMsgBox)
                 End If
-            End If
-        Next
+            Next
+            Dim remaining As List(Of CameraConfig) = OrderedCameras.Where(Function(c) Not legacyOrder.Contains(c)).ToList()
+            OrderedCameras.Clear()
+            OrderedCameras.AddRange(legacyOrder)
+            OrderedCameras.AddRange(remaining)
+            MaxCameras = legacyOrder.Count
+            HandleUserMessageLogging("GMRC", "ApplyVehicleConfig: No <CameraConfiguration> found; using legacy <CameraPositions>. Save cameras via Edit Cameras to migrate.")
+        End If
 
-        ' 4. ZipTheMF4Files
-        ZipTheMF4Files = v.ZipMF4Files
-        Select Case CurrentVehicleUsage.ToUpper()
-            Case "DEVELOPMENT" : ZipTheMF4Files = True
-            Case "VALIDATION" : ZipTheMF4Files = False
-        End Select
+        Dim enabledCameras As List(Of CameraConfig) = OrderedCameras.Where(Function(c) c.Enabled).ToList()
+        If enabledCameras.Count > CameraNames.Length Then
+            HandleUserMessageLogging("GMRC",
+                $"WARNING: {enabledCameras.Count} cameras are enabled in config.xml but only {CameraNames.Length} are supported; extra cameras ignored.",
+                DisplayMsgBox)
+            enabledCameras = enabledCameras.Take(CameraNames.Length).ToList()
+        End If
+        For i As Integer = 0 To CameraNames.Length - 1
+            CameraNames(i) = If(i < enabledCameras.Count, enabledCameras(i).Position, "NA")
+        Next
+        NumberOfCamerasInVehicle = enabledCameras.Count
+        ActiveCameras.AddRange(enabledCameras)
+
+        If legacyPositions IsNot Nothing AndAlso Not CamerasLoadedFromDefaults AndAlso
+           Not legacyPositions.SequenceEqual(enabledCameras.Select(Function(c) c.Position), StringComparer.OrdinalIgnoreCase) Then
+            HandleUserMessageLogging("GMRC",
+                $"WARNING: Obsolete config.xml <CameraPositions> ({String.Join(",", legacyPositions)}) differs from the enabled <Cameras> " &
+                $"({String.Join(",", enabledCameras.Select(Function(c) c.Position))}). Using <Cameras>.")
+        End If
+
+        ' 4. Compression is controlled solely by <Compression>; the legacy per-vehicle flag is diagnostic only.
+        If v.LegacyZipMF4Files.HasValue AndAlso v.LegacyZipMF4Files.Value <> AnyCompressionEnabled() Then
+            HandleUserMessageLogging("GMRC",
+                $"WARNING: Ignoring obsolete config.xml <ZipMF4Files>{v.LegacyZipMF4Files.Value}</ZipMF4Files>; compression follows <Compression> " &
+                $"(CompressMF4={CompressMF4}, CompressPCAP={CompressPCAP}, CompressASC={CompressASC}, CompressVSB={CompressVSB}).")
+        End If
 
         HandleUserMessageLogging("GMRC",
             $"ApplyVehicleConfig: Vehicle {v.VehicleNumber} loaded from config.xml — " &
@@ -2487,9 +2535,9 @@ Public Module Module1
     End Sub
 
     Public Sub ApplyIncaConfiguration(configuration As IncaConfiguration, document As XmlDocument)
-        Dim vehicles As List(Of VehicleConfig) = ReadVehiclesFromXml(document)
-        If vehicles Is Nothing OrElse vehicles.Count = 0 Then
-            Throw New FormatException("Missing config.xml <Vehicles>/<Vehicle> entries.")
+        Dim vehicle As VehicleConfig = ReadVehicleFromXml(document)
+        If vehicle Is Nothing Then
+            Throw New FormatException("Missing config.xml <Vehicle> element.")
         End If
         ClearProcessorConfiguration()
         INCADatabase = configuration.Database
@@ -2500,7 +2548,7 @@ Public Module Module1
         CanTemplateExperimentName = configuration.ExperimentTemplate
         INCAVariableFile = configuration.VariableFile
         ETAS_USER_PATH = configuration.EtasUserPath
-        VehicleNumber = configuration.SelectedVehicle
+        VehicleNumber = configuration.VehicleNumber
         ConfiguredDataDictionaryFile = configuration.DataDictionary
         VSpySelectedConfigFileName = configuration.VehicleSpySetup
         AlternateRecordConfig = configuration.AlternateRecordConfig
@@ -2509,7 +2557,6 @@ Public Module Module1
             ActiveCameras.Clear()
             Return
         End If
-        Dim vehicle As VehicleConfig = vehicles.First(Function(v) String.Equals(v.VehicleNumber, VehicleNumber, StringComparison.OrdinalIgnoreCase))
         ApplyVehicleConfig(vehicle, configuration.Processors)
     End Sub
 

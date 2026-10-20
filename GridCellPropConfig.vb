@@ -282,7 +282,7 @@ Public Class GridCellPropConfig
         If _addSignalAsArray Then
             maxColumn = MySenderObject.ColumnCount - 1
             colStart = 1
-            MySenderObject.CurrentCell = MySenderObject(rowIndex, colStart)
+            MySenderObject.CurrentCell = MySenderObject(colStart, rowIndex)
         Else
             maxColumn = colStart
         End If
@@ -350,7 +350,7 @@ Public Class GridCellPropConfig
         Next
 
         ' Reset the current cell to column 0 and update the grid's text
-        MySenderObject.CurrentCell = MySenderObject(rowIndex, 0)
+        MySenderObject.CurrentCell = MySenderObject(0, rowIndex)
         MySenderObject.Text = newDisplayName
 
         _changesMade = True

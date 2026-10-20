@@ -450,7 +450,7 @@ Public Class INCA_InterfaceClass
     Private Async Sub HandleStartRecording(ByVal startButton As Button)
         Try
             ' 1. Finalize files from the previous session if applicable
-            If ZipTheMF4Files AndAlso HaveRecorded Then
+            If AnyCompressionEnabled() AndAlso HaveRecorded Then
                 If String.IsNullOrEmpty(SaveFinalPathToSaveData) Then
                     ReadFinalDataSavePath()
                 End If
@@ -1311,11 +1311,12 @@ Public Class INCA_InterfaceClass
             ' ================================================================
             ' Handle Alternate Recording (CANalyzer/VehicleSpy)
             ' ================================================================
+            Dim vehicleSpyStartFailed As Boolean = False
             If AlternateRecordingMode <> "None" AndAlso AlternateRecordEnabled Then
                 If AlternateRecordingMode <> "VehicleSpy" Then
                     StartCanalyzer()
                 Else
-                    StartVehicleSpy()
+                    vehicleSpyStartFailed = Not StartVehicleSpy(deferCommunicationWarning:=True)
                 End If
             End If
 
@@ -1471,6 +1472,11 @@ Public Class INCA_InterfaceClass
                 OnVehicleScreen.Label5.Text = "Recording Filename: [Pending...]"
                 OnVehicleScreen.Label5.BackColor = SystemColors.Control
             End Try
+
+            ' Complete capture startup before asking the user to acknowledge the failure.
+            If vehicleSpyStartFailed Then
+                ShowVehicleSpyCommunicationFailure()
+            End If
         End If
     End Function
 
@@ -1915,7 +1921,7 @@ Public Class INCA_InterfaceClass
                 GmResidentClient.ProgressBarEnable = True
 
                 ' ✅ FIXED: Pass progressForm to the underlying implementation
-                If SignalRegistrationMode.ToUpper() = "FULL" Then
+                If SignalRegistrationMode.Equals("FULL", StringComparison.CurrentCultureIgnoreCase) Then
                     myDisplaySignals = MyGmIncaComm.RegisterSignalsCore(mySignals, progressForm)
                 Else
                     myDisplaySignals = MyGmIncaComm.RegisterSignalsCore(myPreliminaryDisplaySignals, progressForm)
@@ -2130,7 +2136,7 @@ Public Class INCA_InterfaceClass
                         HandleUserMessageLogging("GMRC", "StopAndStartRecording: Stop recording successful")
 
                         ' Add to StopAndStartRecording after stop
-                        If ZipTheMF4Files Then
+                        If AnyCompressionEnabled() Then
                             ' ✅ ASYNC FIX: Don't block on compression (intentional fire-and-forget)
                             Dim compressionTask As Task = Task.Run(Sub()
                                                                        Try

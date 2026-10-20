@@ -268,7 +268,7 @@ Partial Class GmResidentClient
         Me.Name = "GmResidentClient"
         Me.ShowInTaskbar = True
         Me.StartPosition = System.Windows.Forms.FormStartPosition.Manual
-        Me.Text = "GmResidentClient (INCA 7.2)"
+        Me.Text = "GmResidentClient (INCA 7.5)"
         Me.MenuStrip1.ResumeLayout(False)
         Me.MenuStrip1.PerformLayout()
         Me.GroupBox1.ResumeLayout(False)

@@ -71,9 +71,9 @@ Public Class ConfigurationEditorForm
         AddHandler btnEditLidar.Click, AddressOf ButtonEditLidar_Click
         Me.Controls.Add(btnEditLidar)
 
-        ' Edit Vehicles Button
+        ' Edit Vehicle Button (one vehicle per config.xml)
         Dim btnEditVehicles As New Button With {
-            .Text = "Edit Vehicles",
+            .Text = "Edit Vehicle",
             .Location = New Point(290, yPos),
             .Size = New Size(120, 30),
             .BackColor = Color.LightSalmon
@@ -226,7 +226,7 @@ Public Class ConfigurationEditorForm
                 .Font = New Font(dlg.Font, FontStyle.Bold)
             }
 
-            Dim showNewFull As Boolean = Not (PATAC OrElse CurrentVehicleUsage = "VALIDATION")
+            Dim showNewFull As Boolean = ClevirAdministrator AndAlso Not PATAC
 
             Dim rb1 As New RadioButton() With {.Text = "FULL", .Location = New Point(20, 38), .Size = New Size(310, 24), .Checked = (SignalRegistrationMode = "FULL")}
             Dim rb2 As New RadioButton() With {.Text = "DISPLAYS", .Location = New Point(20, 66), .Size = New Size(310, 24), .Checked = (SignalRegistrationMode = "DISPLAYS")}
@@ -368,8 +368,8 @@ Public Class ConfigurationEditorForm
                 End If
             End Using
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"EditVehicles failed: {ex.Message}")
-            MessageBox.Show($"Failed to edit vehicles: {ex.Message}", "Error",
+            HandleUserMessageLogging("GMRC", $"EditVehicle failed: {ex.Message}")
+            MessageBox.Show($"Failed to edit vehicle: {ex.Message}", "Error",
                             MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
@@ -751,8 +751,8 @@ Public Class ConfigurationEditorForm
                 ' ✅ Skip LidarDevices entirely (handled by dedicated editor button)
                 Return True
 
-            Case "Vehicles"
-                ' ✅ Skip Vehicles entirely (handled by dedicated VehicleEditorForm button)
+            Case "Vehicle", "Vehicles"
+                ' ✅ Skip Vehicle (and legacy Vehicles) entirely (handled by dedicated VehicleEditorForm button)
                 Return True
 
             Case "CameraConfiguration"
@@ -813,8 +813,7 @@ Public Class ConfigurationEditorForm
                  "MuteVoiceRecordingMessages", "AudioToTextConversion", "AlternateRecordEnabled",
                  "EnableAltRecReStartAfterRecordStop", "OxtsCaptureEnabled", "EnableTimeSync",
                  "Enabled", "PtpAssumeLocked", "SaveCalSnapshotEnabled", "SkipSubscriptionOnCacheHit",
-                 "CompressMF4", "CompressPCAP", "CompressASC", "CompressVSB", "DeleteAfterCompression",
-                 "ZipMF4Files"
+                 "CompressMF4", "CompressPCAP", "CompressASC", "CompressVSB", "DeleteAfterCompression"
                 If Not (value.Equals("True", StringComparison.OrdinalIgnoreCase) OrElse
                         value.Equals("False", StringComparison.OrdinalIgnoreCase)) Then
                     Return New ValidationResult(False, "Must be 'True' or 'False'")
@@ -931,7 +930,6 @@ Public Class ConfigurationEditorForm
 
             ' Camera Configuration
             Case "CameraConfiguration" : Return "Camera device settings (edit via Edit Cameras button)"
-            Case "CameraConfiguration.MaxCameras" : Return "Auto-calculated count of enabled cameras"
             Case "CameraConfiguration.InitialWaitTime" : Return "Seconds to wait before first camera ping on startup"
             Case "CameraConfiguration.PingTimeout" : Return "Camera reachability ping timeout in milliseconds"
 
@@ -947,19 +945,13 @@ Public Class ConfigurationEditorForm
             Case "Compression.RetryDelaySeconds" : Return "Delay between compression retry attempts (seconds)"
             Case "Compression.FileLockTimeoutSeconds" : Return "Total time to wait for a file lock to clear before giving up (seconds)"
 
-            ' Hardware
-            Case "MaxCameras" : Return "Maximum number of cameras supported"
-
-            ' Vehicles
-            Case "Vehicles" : Return "Fleet vehicle configurations (edit via Edit Vehicles button)"
+            ' Vehicle (one per config.xml)
+            Case "Vehicle" : Return "The vehicle for this config.xml (edit via Edit Vehicle button)"
             Case "VehicleNumber" : Return "Unique vehicle identifier (e.g. 6SME5384)"
             Case "Processors" : Return "Comma-separated processor list (e.g. ACP3_MCU,NA,NA,NA,NA,NA)"
-            Case "CameraPositions" : Return "Comma-separated camera position names (e.g. FRONT,REAR,NA,...)"
-            Case "ZipMF4Files" : Return "Zip MF4 files after recording (True/False)"
 
             ' Global Application Settings
-            Case "CurrentVehicleUsage" : Return "Current usage mode (e.g. VALIDATION)"
-            Case "SelectedVehicleNumber" : Return "Currently active vehicle number from the Vehicles list"
+            Case "SelectedVehicleNumber" : Return "Obsolete: legacy vehicle selector; migrated to a single <Vehicle> on save"
             Case "SaveCalSnapshotEnabled" : Return "Save a calibration snapshot on session start (True/False)"
             Case "APICommErrorMsgDelayTime" : Return "Delay before showing API communication error messages (seconds)"
             Case "SkipSubscriptionOnCacheHit" : Return "Skip re-subscribing signals when cached subscription is valid (True/False)"
@@ -1023,6 +1015,9 @@ Public Class ConfigurationEditorForm
             End If
         Next
 
+        If IncaConfiguration.MigrateLegacyVehicleLayout(_xmlDoc) Then
+            HandleUserMessageLogging("GMRC", "SaveConfiguration: migrated legacy <Vehicles>/<SelectedVehicleNumber> to a single <Vehicle>.")
+        End If
         Dim validated As New IncaConfiguration(_xmlDoc, My.Application.Info.DirectoryPath)
 
         ' Save with formatting

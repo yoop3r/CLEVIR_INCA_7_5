@@ -20,10 +20,6 @@ Partial Class VehicleEditorForm
         Me.DataGridViewVehicles = New System.Windows.Forms.DataGridView()
         Me.ColVehicleNumber = New System.Windows.Forms.DataGridViewTextBoxColumn()
         Me.ColProcessors = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.ColCameraPositions = New System.Windows.Forms.DataGridViewTextBoxColumn()
-        Me.ColZipMF4Files = New System.Windows.Forms.DataGridViewComboBoxColumn()
-        Me.ButtonAddVehicle = New System.Windows.Forms.Button()
-        Me.ButtonRemoveVehicle = New System.Windows.Forms.Button()
         Me.ButtonSave = New System.Windows.Forms.Button()
         Me.ButtonCancel = New System.Windows.Forms.Button()
         Me.LabelHint = New System.Windows.Forms.Label()
@@ -41,8 +37,7 @@ Partial Class VehicleEditorForm
         Me.DataGridViewVehicles.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill
         Me.DataGridViewVehicles.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
         Me.DataGridViewVehicles.Columns.AddRange(New System.Windows.Forms.DataGridViewColumn() {
-            Me.ColVehicleNumber, Me.ColProcessors,
-            Me.ColCameraPositions, Me.ColZipMF4Files})
+            Me.ColVehicleNumber, Me.ColProcessors})
         Me.DataGridViewVehicles.Location = New System.Drawing.Point(12, 40)
         Me.DataGridViewVehicles.Name = "DataGridViewVehicles"
         Me.DataGridViewVehicles.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
@@ -60,45 +55,13 @@ Partial Class VehicleEditorForm
         Me.ColProcessors.Name = "ColProcessors"
         Me.ColProcessors.ToolTipText = "Up to 6 processor names e.g. ACP3_MCU,NA,NA,NA,NA,NA"
         '
-        'ColCameraPositions
-        '
-        Me.ColCameraPositions.HeaderText = "Camera Positions (comma-sep)"
-        Me.ColCameraPositions.Name = "ColCameraPositions"
-        Me.ColCameraPositions.ToolTipText = "Up to 9 camera position names e.g. FRONT,REAR,NA,..."
-        '
-        'ColZipMF4Files
-        '
-        Me.ColZipMF4Files.HeaderText = "Zip MF4 Files"
-        Me.ColZipMF4Files.Items.AddRange(New Object() {"True", "False"})
-        Me.ColZipMF4Files.Name = "ColZipMF4Files"
-        '
         'LabelHint
         '
         Me.LabelHint.AutoSize = True
         Me.LabelHint.Location = New System.Drawing.Point(12, 14)
         Me.LabelHint.Name = "LabelHint"
         Me.LabelHint.Size = New System.Drawing.Size(400, 13)
-        Me.LabelHint.Text = "Processors / Camera Positions: enter comma-separated values."
-        '
-        'ButtonAddVehicle
-        '
-        Me.ButtonAddVehicle.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left), System.Windows.Forms.AnchorStyles)
-        Me.ButtonAddVehicle.Location = New System.Drawing.Point(12, 440)
-        Me.ButtonAddVehicle.Name = "ButtonAddVehicle"
-        Me.ButtonAddVehicle.Size = New System.Drawing.Size(110, 27)
-        Me.ButtonAddVehicle.TabIndex = 2
-        Me.ButtonAddVehicle.Text = "Add Vehicle"
-        Me.ButtonAddVehicle.UseVisualStyleBackColor = True
-        '
-        'ButtonRemoveVehicle
-        '
-        Me.ButtonRemoveVehicle.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left), System.Windows.Forms.AnchorStyles)
-        Me.ButtonRemoveVehicle.Location = New System.Drawing.Point(130, 440)
-        Me.ButtonRemoveVehicle.Name = "ButtonRemoveVehicle"
-        Me.ButtonRemoveVehicle.Size = New System.Drawing.Size(120, 27)
-        Me.ButtonRemoveVehicle.TabIndex = 3
-        Me.ButtonRemoveVehicle.Text = "Remove Selected"
-        Me.ButtonRemoveVehicle.UseVisualStyleBackColor = True
+        Me.LabelHint.Text = "One vehicle per config.xml. Processors: enter comma-separated values. Cameras are configured via Edit Cameras."
         '
         'ButtonSave
         '
@@ -130,8 +93,6 @@ Partial Class VehicleEditorForm
         Me.ClientSize = New System.Drawing.Size(1094, 480)
         Me.Controls.Add(Me.LabelHint)
         Me.Controls.Add(Me.DataGridViewVehicles)
-        Me.Controls.Add(Me.ButtonAddVehicle)
-        Me.Controls.Add(Me.ButtonRemoveVehicle)
         Me.Controls.Add(Me.ButtonSave)
         Me.Controls.Add(Me.ButtonCancel)
         Me.MinimumSize = New System.Drawing.Size(900, 400)
@@ -145,10 +106,6 @@ Partial Class VehicleEditorForm
     Friend WithEvents DataGridViewVehicles As System.Windows.Forms.DataGridView
     Friend WithEvents ColVehicleNumber As System.Windows.Forms.DataGridViewTextBoxColumn
     Friend WithEvents ColProcessors As System.Windows.Forms.DataGridViewTextBoxColumn
-    Friend WithEvents ColCameraPositions As System.Windows.Forms.DataGridViewTextBoxColumn
-    Friend WithEvents ColZipMF4Files As System.Windows.Forms.DataGridViewComboBoxColumn
-    Friend WithEvents ButtonAddVehicle As System.Windows.Forms.Button
-    Friend WithEvents ButtonRemoveVehicle As System.Windows.Forms.Button
     Friend WithEvents ButtonSave As System.Windows.Forms.Button
     Friend WithEvents ButtonCancel As System.Windows.Forms.Button
     Friend WithEvents LabelHint As System.Windows.Forms.Label

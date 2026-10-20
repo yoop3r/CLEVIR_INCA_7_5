@@ -22,589 +22,639 @@ Partial Class GridCellPropConfig
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
-        Me.Button1 = New System.Windows.Forms.Button()
-        Me.Button2 = New System.Windows.Forms.Button()
-        Me.Button3 = New System.Windows.Forms.Button()
-        Me.GroupBox1 = New System.Windows.Forms.GroupBox()
-        Me.EqualTo = New System.Windows.Forms.TextBox()
-        Me.CheckForDataChange = New System.Windows.Forms.ComboBox()
-        Me.TextBox1 = New System.Windows.Forms.TextBox()
-        Me.DisplayFormat = New System.Windows.Forms.ComboBox()
-        Me.Label18 = New System.Windows.Forms.Label()
-        Me.AlsoAssocWith = New System.Windows.Forms.ComboBox()
-        Me.Label14 = New System.Windows.Forms.Label()
-        Me.RasterName = New System.Windows.Forms.ComboBox()
-        Me.DeviceName = New System.Windows.Forms.ComboBox()
-        Me.VariableName = New System.Windows.Forms.ComboBox()
-        Me.LowThreshForeColor = New System.Windows.Forms.ComboBox()
-        Me.HighThreshForeColor = New System.Windows.Forms.ComboBox()
-        Me.LowThreshBackColor = New System.Windows.Forms.ComboBox()
-        Me.HighThreshBackColor = New System.Windows.Forms.ComboBox()
-        Me.DefaultForeColorCombo = New System.Windows.Forms.ComboBox()
-        Me.DefaultBackColorCombo = New System.Windows.Forms.ComboBox()
-        Me.LowThreshold = New System.Windows.Forms.TextBox()
-        Me.HighThreshold = New System.Windows.Forms.TextBox()
-        Me.ControlName = New System.Windows.Forms.TextBox()
-        Me.DisplayName = New System.Windows.Forms.TextBox()
-        Me.DisplayWindowName = New System.Windows.Forms.TextBox()
-        Me.Label13 = New System.Windows.Forms.Label()
-        Me.Label15 = New System.Windows.Forms.Label()
-        Me.Label16 = New System.Windows.Forms.Label()
-        Me.Label17 = New System.Windows.Forms.Label()
-        Me.Label20 = New System.Windows.Forms.Label()
-        Me.Label7 = New System.Windows.Forms.Label()
-        Me.Label8 = New System.Windows.Forms.Label()
-        Me.Label9 = New System.Windows.Forms.Label()
-        Me.Label10 = New System.Windows.Forms.Label()
-        Me.Label11 = New System.Windows.Forms.Label()
-        Me.Label12 = New System.Windows.Forms.Label()
-        Me.Label4 = New System.Windows.Forms.Label()
-        Me.Label5 = New System.Windows.Forms.Label()
-        Me.Label6 = New System.Windows.Forms.Label()
-        Me.Label3 = New System.Windows.Forms.Label()
-        Me.Label2 = New System.Windows.Forms.Label()
-        Me.Label1 = New System.Windows.Forms.Label()
-        Me.PictureBox2 = New System.Windows.Forms.PictureBox()
-        Me.VScrollBar1 = New System.Windows.Forms.VScrollBar()
-        Me.PictureBox1 = New System.Windows.Forms.PictureBox()
-        Me.Button4 = New System.Windows.Forms.Button()
-        Me.Button5 = New System.Windows.Forms.Button()
-        Me.GroupBox1.SuspendLayout()
-        CType(Me.PictureBox2, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.PictureBox1, System.ComponentModel.ISupportInitialize).BeginInit()
-        Me.SuspendLayout()
-        '
-        'Button1
-        '
-        Me.Button1.Enabled = False
-        Me.Button1.Location = New System.Drawing.Point(116, 9)
-        Me.Button1.Name = "Button1"
-        Me.Button1.Size = New System.Drawing.Size(88, 23)
-        Me.Button1.TabIndex = 40
-        Me.Button1.Text = "Save Changes"
-        Me.Button1.UseVisualStyleBackColor = True
-        '
-        'Button2
-        '
-        Me.Button2.Location = New System.Drawing.Point(436, 9)
-        Me.Button2.Name = "Button2"
-        Me.Button2.Size = New System.Drawing.Size(46, 23)
-        Me.Button2.TabIndex = 41
-        Me.Button2.Text = "Exit"
-        Me.Button2.UseVisualStyleBackColor = True
-        '
-        'Button3
-        '
-        Me.Button3.Enabled = False
-        Me.Button3.Location = New System.Drawing.Point(210, 9)
-        Me.Button3.Name = "Button3"
-        Me.Button3.Size = New System.Drawing.Size(88, 23)
-        Me.Button3.TabIndex = 42
-        Me.Button3.Text = "Save and Exit"
-        Me.Button3.UseVisualStyleBackColor = True
-        '
-        'GroupBox1
-        '
-        Me.GroupBox1.Controls.Add(Me.EqualTo)
-        Me.GroupBox1.Controls.Add(Me.CheckForDataChange)
-        Me.GroupBox1.Controls.Add(Me.TextBox1)
-        Me.GroupBox1.Controls.Add(Me.DisplayFormat)
-        Me.GroupBox1.Controls.Add(Me.Label18)
-        Me.GroupBox1.Controls.Add(Me.AlsoAssocWith)
-        Me.GroupBox1.Controls.Add(Me.Label14)
-        Me.GroupBox1.Controls.Add(Me.RasterName)
-        Me.GroupBox1.Controls.Add(Me.DeviceName)
-        Me.GroupBox1.Controls.Add(Me.VariableName)
-        Me.GroupBox1.Controls.Add(Me.LowThreshForeColor)
-        Me.GroupBox1.Controls.Add(Me.HighThreshForeColor)
-        Me.GroupBox1.Controls.Add(Me.LowThreshBackColor)
-        Me.GroupBox1.Controls.Add(Me.HighThreshBackColor)
-        Me.GroupBox1.Controls.Add(Me.DefaultForeColorCombo)
-        Me.GroupBox1.Controls.Add(Me.DefaultBackColorCombo)
-        Me.GroupBox1.Controls.Add(Me.LowThreshold)
-        Me.GroupBox1.Controls.Add(Me.HighThreshold)
-        Me.GroupBox1.Controls.Add(Me.ControlName)
-        Me.GroupBox1.Controls.Add(Me.DisplayName)
-        Me.GroupBox1.Controls.Add(Me.DisplayWindowName)
-        Me.GroupBox1.Controls.Add(Me.Label13)
-        Me.GroupBox1.Controls.Add(Me.Label15)
-        Me.GroupBox1.Controls.Add(Me.Label16)
-        Me.GroupBox1.Controls.Add(Me.Label17)
-        Me.GroupBox1.Controls.Add(Me.Label20)
-        Me.GroupBox1.Controls.Add(Me.Label7)
-        Me.GroupBox1.Controls.Add(Me.Label8)
-        Me.GroupBox1.Controls.Add(Me.Label9)
-        Me.GroupBox1.Controls.Add(Me.Label10)
-        Me.GroupBox1.Controls.Add(Me.Label11)
-        Me.GroupBox1.Controls.Add(Me.Label12)
-        Me.GroupBox1.Controls.Add(Me.Label4)
-        Me.GroupBox1.Controls.Add(Me.Label5)
-        Me.GroupBox1.Controls.Add(Me.Label6)
-        Me.GroupBox1.Controls.Add(Me.Label3)
-        Me.GroupBox1.Controls.Add(Me.Label2)
-        Me.GroupBox1.Controls.Add(Me.Label1)
-        Me.GroupBox1.Controls.Add(Me.PictureBox2)
-        Me.GroupBox1.Controls.Add(Me.VScrollBar1)
-        Me.GroupBox1.Controls.Add(Me.PictureBox1)
-        Me.GroupBox1.Location = New System.Drawing.Point(12, 38)
-        Me.GroupBox1.Name = "GroupBox1"
-        Me.GroupBox1.Size = New System.Drawing.Size(478, 448)
-        Me.GroupBox1.TabIndex = 43
-        Me.GroupBox1.TabStop = False
-        '
-        'EqualTo
-        '
-        Me.EqualTo.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.EqualTo.Location = New System.Drawing.Point(181, 264)
-        Me.EqualTo.Name = "EqualTo"
-        Me.EqualTo.Size = New System.Drawing.Size(251, 22)
-        Me.EqualTo.TabIndex = 86
-        '
-        'CheckForDataChange
-        '
-        Me.CheckForDataChange.FormattingEnabled = True
-        Me.CheckForDataChange.Items.AddRange(New Object() {"False", "True"})
-        Me.CheckForDataChange.Location = New System.Drawing.Point(181, 373)
-        Me.CheckForDataChange.Name = "CheckForDataChange"
-        Me.CheckForDataChange.Size = New System.Drawing.Size(251, 21)
-        Me.CheckForDataChange.TabIndex = 85
-        '
-        'TextBox1
-        '
-        Me.TextBox1.Location = New System.Drawing.Point(3, 1)
-        Me.TextBox1.Name = "TextBox1"
-        Me.TextBox1.Size = New System.Drawing.Size(65, 20)
-        Me.TextBox1.TabIndex = 84
-        Me.TextBox1.Text = "V*"
-        Me.TextBox1.TextAlign = System.Windows.Forms.HorizontalAlignment.Center
-        '
-        'DisplayFormat
-        '
-        Me.DisplayFormat.FormattingEnabled = True
-        Me.DisplayFormat.Items.AddRange(New Object() {"TRUE/FALSE", "FALSE/TRUE", "VALID/INVALID", "INVALID/VALID", "ENUM", "HEX", "BINARY", "0", "0.0", "0.00", "0.000"})
-        Me.DisplayFormat.Location = New System.Drawing.Point(181, 352)
-        Me.DisplayFormat.Name = "DisplayFormat"
-        Me.DisplayFormat.Size = New System.Drawing.Size(251, 21)
-        Me.DisplayFormat.TabIndex = 82
-        '
-        'Label18
-        '
-        Me.Label18.BackColor = System.Drawing.Color.Silver
-        Me.Label18.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label18.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label18.Location = New System.Drawing.Point(0, 352)
-        Me.Label18.Name = "Label18"
-        Me.Label18.Size = New System.Drawing.Size(184, 21)
-        Me.Label18.TabIndex = 81
-        Me.Label18.Text = "Display Format"
-        Me.Label18.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'AlsoAssocWith
-        '
-        Me.AlsoAssocWith.FormattingEnabled = True
-        Me.AlsoAssocWith.Items.AddRange(New Object() {"GO/NOGO", "FUSION OBJID", "FUSION TD Y", "FUSION TD X", "LRR TD X", "LRR TD Y", "LRR OBJID", "VIS TD X", "VIS TD Y", "VIS OBJID", "LFSRR TD X", "LFSRR TD Y", "LFSRR OBJID", "RFSRR TD X", "RFSRR TD Y", "RFSRR OBJID", "RRSRR TD Y", "RRSRR TD X", "RRSRR OBJID", "LRSRR TD X", "LRSRR TD Y", "LRSRR OBJID", "VPATH LONG OFST", "VPATH LAT OFST", "VPATH YAW RATE", "VPATH LONG VEL", "VPATH LAT VEL"})
-        Me.AlsoAssocWith.Location = New System.Drawing.Point(181, 330)
-        Me.AlsoAssocWith.Name = "AlsoAssocWith"
-        Me.AlsoAssocWith.Size = New System.Drawing.Size(251, 21)
-        Me.AlsoAssocWith.TabIndex = 80
-        '
-        'Label14
-        '
-        Me.Label14.AutoSize = True
-        Me.Label14.BackColor = System.Drawing.Color.Yellow
-        Me.Label14.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label14.Font = New System.Drawing.Font("Microsoft Sans Serif", 11.25!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label14.Location = New System.Drawing.Point(0, 67)
-        Me.Label14.Name = "Label14"
-        Me.Label14.Size = New System.Drawing.Size(61, 20)
-        Me.Label14.TabIndex = 61
-        Me.Label14.Text = "Label14"
-        '
-        'RasterName
-        '
-        Me.RasterName.FormattingEnabled = True
-        Me.RasterName.Location = New System.Drawing.Point(181, 66)
-        Me.RasterName.Name = "RasterName"
-        Me.RasterName.Size = New System.Drawing.Size(251, 21)
-        Me.RasterName.TabIndex = 79
-        '
-        'DeviceName
-        '
-        Me.DeviceName.FormattingEnabled = True
-        Me.DeviceName.Location = New System.Drawing.Point(181, 44)
-        Me.DeviceName.Name = "DeviceName"
-        Me.DeviceName.Size = New System.Drawing.Size(251, 21)
-        Me.DeviceName.TabIndex = 78
-        '
-        'VariableName
-        '
-        Me.VariableName.FormattingEnabled = True
-        Me.VariableName.Location = New System.Drawing.Point(181, 0)
-        Me.VariableName.Name = "VariableName"
-        Me.VariableName.Size = New System.Drawing.Size(251, 21)
-        Me.VariableName.TabIndex = 77
-        '
-        'LowThreshForeColor
-        '
-        Me.LowThreshForeColor.FormattingEnabled = True
-        Me.LowThreshForeColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
-        Me.LowThreshForeColor.Location = New System.Drawing.Point(181, 198)
-        Me.LowThreshForeColor.Name = "LowThreshForeColor"
-        Me.LowThreshForeColor.Size = New System.Drawing.Size(251, 21)
-        Me.LowThreshForeColor.TabIndex = 76
-        '
-        'HighThreshForeColor
-        '
-        Me.HighThreshForeColor.FormattingEnabled = True
-        Me.HighThreshForeColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
-        Me.HighThreshForeColor.Location = New System.Drawing.Point(181, 176)
-        Me.HighThreshForeColor.Name = "HighThreshForeColor"
-        Me.HighThreshForeColor.Size = New System.Drawing.Size(251, 21)
-        Me.HighThreshForeColor.TabIndex = 75
-        '
-        'LowThreshBackColor
-        '
-        Me.LowThreshBackColor.FormattingEnabled = True
-        Me.LowThreshBackColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
-        Me.LowThreshBackColor.Location = New System.Drawing.Point(181, 154)
-        Me.LowThreshBackColor.Name = "LowThreshBackColor"
-        Me.LowThreshBackColor.Size = New System.Drawing.Size(251, 21)
-        Me.LowThreshBackColor.TabIndex = 74
-        '
-        'HighThreshBackColor
-        '
-        Me.HighThreshBackColor.FormattingEnabled = True
-        Me.HighThreshBackColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
-        Me.HighThreshBackColor.Location = New System.Drawing.Point(181, 132)
-        Me.HighThreshBackColor.Name = "HighThreshBackColor"
-        Me.HighThreshBackColor.Size = New System.Drawing.Size(251, 21)
-        Me.HighThreshBackColor.TabIndex = 73
-        '
-        'DefaultForeColorCombo
-        '
-        Me.DefaultForeColorCombo.FormattingEnabled = True
-        Me.DefaultForeColorCombo.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
-        Me.DefaultForeColorCombo.Location = New System.Drawing.Point(181, 110)
-        Me.DefaultForeColorCombo.Name = "DefaultForeColorCombo"
-        Me.DefaultForeColorCombo.Size = New System.Drawing.Size(251, 21)
-        Me.DefaultForeColorCombo.TabIndex = 72
-        '
-        'DefaultBackColorCombo
-        '
-        Me.DefaultBackColorCombo.FormattingEnabled = True
-        Me.DefaultBackColorCombo.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
-        Me.DefaultBackColorCombo.Location = New System.Drawing.Point(181, 88)
-        Me.DefaultBackColorCombo.Name = "DefaultBackColorCombo"
-        Me.DefaultBackColorCombo.Size = New System.Drawing.Size(251, 21)
-        Me.DefaultBackColorCombo.TabIndex = 71
-        '
-        'LowThreshold
-        '
-        Me.LowThreshold.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.LowThreshold.Location = New System.Drawing.Point(181, 242)
-        Me.LowThreshold.Name = "LowThreshold"
-        Me.LowThreshold.Size = New System.Drawing.Size(251, 22)
-        Me.LowThreshold.TabIndex = 65
-        '
-        'HighThreshold
-        '
-        Me.HighThreshold.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.HighThreshold.Location = New System.Drawing.Point(181, 220)
-        Me.HighThreshold.Name = "HighThreshold"
-        Me.HighThreshold.Size = New System.Drawing.Size(251, 22)
-        Me.HighThreshold.TabIndex = 64
-        '
-        'ControlName
-        '
-        Me.ControlName.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.ControlName.Location = New System.Drawing.Point(181, 308)
-        Me.ControlName.Name = "ControlName"
-        Me.ControlName.Size = New System.Drawing.Size(251, 22)
-        Me.ControlName.TabIndex = 63
-        '
-        'DisplayName
-        '
-        Me.DisplayName.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.DisplayName.Location = New System.Drawing.Point(181, 22)
-        Me.DisplayName.Name = "DisplayName"
-        Me.DisplayName.Size = New System.Drawing.Size(251, 22)
-        Me.DisplayName.TabIndex = 61
-        '
-        'DisplayWindowName
-        '
-        Me.DisplayWindowName.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.DisplayWindowName.Location = New System.Drawing.Point(181, 286)
-        Me.DisplayWindowName.Name = "DisplayWindowName"
-        Me.DisplayWindowName.Size = New System.Drawing.Size(251, 22)
-        Me.DisplayWindowName.TabIndex = 60
-        '
-        'Label13
-        '
-        Me.Label13.BackColor = System.Drawing.Color.Silver
-        Me.Label13.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label13.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label13.Location = New System.Drawing.Point(0, 308)
-        Me.Label13.Name = "Label13"
-        Me.Label13.Size = New System.Drawing.Size(184, 21)
-        Me.Label13.TabIndex = 59
-        Me.Label13.Text = "Control Name"
-        Me.Label13.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label15
-        '
-        Me.Label15.BackColor = System.Drawing.Color.Silver
-        Me.Label15.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label15.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label15.Location = New System.Drawing.Point(0, 286)
-        Me.Label15.Name = "Label15"
-        Me.Label15.Size = New System.Drawing.Size(184, 21)
-        Me.Label15.TabIndex = 57
-        Me.Label15.Text = "Display Window Name"
-        Me.Label15.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label16
-        '
-        Me.Label16.BackColor = System.Drawing.Color.Silver
-        Me.Label16.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label16.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label16.Location = New System.Drawing.Point(0, 373)
-        Me.Label16.Name = "Label16"
-        Me.Label16.Size = New System.Drawing.Size(184, 21)
-        Me.Label16.TabIndex = 56
-        Me.Label16.Text = "Check For Data Change"
-        Me.Label16.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label17
-        '
-        Me.Label17.BackColor = System.Drawing.Color.Silver
-        Me.Label17.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label17.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label17.Location = New System.Drawing.Point(0, 330)
-        Me.Label17.Name = "Label17"
-        Me.Label17.Size = New System.Drawing.Size(184, 21)
-        Me.Label17.TabIndex = 55
-        Me.Label17.Text = "Also Associated With"
-        Me.Label17.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label20
-        '
-        Me.Label20.BackColor = System.Drawing.Color.Silver
-        Me.Label20.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label20.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label20.Location = New System.Drawing.Point(0, 264)
-        Me.Label20.Name = "Label20"
-        Me.Label20.Size = New System.Drawing.Size(184, 21)
-        Me.Label20.TabIndex = 52
-        Me.Label20.Text = "Equal To"
-        Me.Label20.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label7
-        '
-        Me.Label7.BackColor = System.Drawing.Color.Silver
-        Me.Label7.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label7.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label7.Location = New System.Drawing.Point(0, 242)
-        Me.Label7.Name = "Label7"
-        Me.Label7.Size = New System.Drawing.Size(184, 21)
-        Me.Label7.TabIndex = 51
-        Me.Label7.Text = "Low Threshold"
-        Me.Label7.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label8
-        '
-        Me.Label8.BackColor = System.Drawing.Color.Silver
-        Me.Label8.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label8.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label8.Location = New System.Drawing.Point(0, 220)
-        Me.Label8.Name = "Label8"
-        Me.Label8.Size = New System.Drawing.Size(184, 21)
-        Me.Label8.TabIndex = 50
-        Me.Label8.Text = "High Threshold"
-        Me.Label8.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label9
-        '
-        Me.Label9.BackColor = System.Drawing.Color.Silver
-        Me.Label9.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label9.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label9.Location = New System.Drawing.Point(0, 198)
-        Me.Label9.Name = "Label9"
-        Me.Label9.Size = New System.Drawing.Size(184, 21)
-        Me.Label9.TabIndex = 49
-        Me.Label9.Text = "Low Thresh Fore Color"
-        Me.Label9.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label10
-        '
-        Me.Label10.BackColor = System.Drawing.Color.Silver
-        Me.Label10.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label10.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label10.Location = New System.Drawing.Point(0, 176)
-        Me.Label10.Name = "Label10"
-        Me.Label10.Size = New System.Drawing.Size(184, 21)
-        Me.Label10.TabIndex = 48
-        Me.Label10.Text = "High Thresh Fore Color"
-        Me.Label10.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label11
-        '
-        Me.Label11.BackColor = System.Drawing.Color.Silver
-        Me.Label11.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label11.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label11.Location = New System.Drawing.Point(0, 154)
-        Me.Label11.Name = "Label11"
-        Me.Label11.Size = New System.Drawing.Size(184, 21)
-        Me.Label11.TabIndex = 47
-        Me.Label11.Text = "Low Thresh Back Color"
-        Me.Label11.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label12
-        '
-        Me.Label12.BackColor = System.Drawing.Color.Silver
-        Me.Label12.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label12.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label12.Location = New System.Drawing.Point(0, 132)
-        Me.Label12.Name = "Label12"
-        Me.Label12.Size = New System.Drawing.Size(184, 21)
-        Me.Label12.TabIndex = 46
-        Me.Label12.Text = "High Thresh Back Color"
-        Me.Label12.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label4
-        '
-        Me.Label4.BackColor = System.Drawing.Color.Silver
-        Me.Label4.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label4.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label4.Location = New System.Drawing.Point(0, 110)
-        Me.Label4.Name = "Label4"
-        Me.Label4.Size = New System.Drawing.Size(184, 21)
-        Me.Label4.TabIndex = 45
-        Me.Label4.Text = "Default Fore Color"
-        Me.Label4.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label5
-        '
-        Me.Label5.BackColor = System.Drawing.Color.Silver
-        Me.Label5.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label5.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label5.Location = New System.Drawing.Point(0, 88)
-        Me.Label5.Name = "Label5"
-        Me.Label5.Size = New System.Drawing.Size(184, 21)
-        Me.Label5.TabIndex = 44
-        Me.Label5.Text = "Default Back Color"
-        Me.Label5.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label6
-        '
-        Me.Label6.BackColor = System.Drawing.Color.Silver
-        Me.Label6.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label6.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label6.Location = New System.Drawing.Point(0, 66)
-        Me.Label6.Name = "Label6"
-        Me.Label6.Size = New System.Drawing.Size(184, 21)
-        Me.Label6.TabIndex = 43
-        Me.Label6.Text = "Raster Name"
-        Me.Label6.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label3
-        '
-        Me.Label3.BackColor = System.Drawing.Color.Silver
-        Me.Label3.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label3.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label3.Location = New System.Drawing.Point(0, 44)
-        Me.Label3.Name = "Label3"
-        Me.Label3.Size = New System.Drawing.Size(184, 21)
-        Me.Label3.TabIndex = 42
-        Me.Label3.Text = "Device Name"
-        Me.Label3.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label2
-        '
-        Me.Label2.BackColor = System.Drawing.Color.Silver
-        Me.Label2.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label2.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label2.Location = New System.Drawing.Point(0, 22)
-        Me.Label2.Name = "Label2"
-        Me.Label2.Size = New System.Drawing.Size(184, 21)
-        Me.Label2.TabIndex = 41
-        Me.Label2.Text = "Display Name"
-        Me.Label2.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'Label1
-        '
-        Me.Label1.BackColor = System.Drawing.Color.Silver
-        Me.Label1.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D
-        Me.Label1.Font = New System.Drawing.Font("Microsoft Sans Serif", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.Label1.Location = New System.Drawing.Point(67, 0)
-        Me.Label1.Name = "Label1"
-        Me.Label1.Size = New System.Drawing.Size(117, 21)
-        Me.Label1.TabIndex = 40
-        Me.Label1.Text = "Variable Name"
-        Me.Label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight
-        '
-        'PictureBox2
-        '
-        Me.PictureBox2.BackColor = System.Drawing.SystemColors.ControlDark
-        Me.PictureBox2.Location = New System.Drawing.Point(0, 1)
-        Me.PictureBox2.Name = "PictureBox2"
-        Me.PictureBox2.Size = New System.Drawing.Size(450, 568)
-        Me.PictureBox2.TabIndex = 2
-        Me.PictureBox2.TabStop = False
-        '
-        'VScrollBar1
-        '
-        Me.VScrollBar1.Location = New System.Drawing.Point(453, 22)
-        Me.VScrollBar1.Maximum = 250
-        Me.VScrollBar1.Name = "VScrollBar1"
-        Me.VScrollBar1.Size = New System.Drawing.Size(17, 372)
-        Me.VScrollBar1.TabIndex = 1
-        '
-        'PictureBox1
-        '
-        Me.PictureBox1.Location = New System.Drawing.Point(16, 19)
-        Me.PictureBox1.Name = "PictureBox1"
-        Me.PictureBox1.Size = New System.Drawing.Size(450, 430)
-        Me.PictureBox1.TabIndex = 0
-        Me.PictureBox1.TabStop = False
-        '
-        'Button4
-        '
-        Me.Button4.Location = New System.Drawing.Point(12, 9)
-        Me.Button4.Name = "Button4"
-        Me.Button4.Size = New System.Drawing.Size(98, 23)
-        Me.Button4.TabIndex = 44
-        Me.Button4.Text = "Restore Defaults"
-        Me.Button4.UseVisualStyleBackColor = True
-        '
-        'Button5
-        '
-        Me.Button5.Enabled = False
-        Me.Button5.Location = New System.Drawing.Point(304, 9)
-        Me.Button5.Name = "Button5"
-        Me.Button5.Size = New System.Drawing.Size(126, 23)
-        Me.Button5.TabIndex = 45
-        Me.Button5.Text = "Save, Register, Exit"
-        Me.Button5.UseVisualStyleBackColor = True
-        '
-        'GridCellPropConfig
-        '
-        Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
-        Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(491, 488)
-        Me.ControlBox = False
-        Me.Controls.Add(Me.Button5)
-        Me.Controls.Add(Me.Button4)
-        Me.Controls.Add(Me.Button3)
-        Me.Controls.Add(Me.Button2)
-        Me.Controls.Add(Me.Button1)
-        Me.Controls.Add(Me.GroupBox1)
-        Me.Name = "GridCellPropConfig"
-        Me.Text = "Grid Cell Property Configuration"
-        Me.GroupBox1.ResumeLayout(False)
-        Me.GroupBox1.PerformLayout()
-        CType(Me.PictureBox2, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.PictureBox1, System.ComponentModel.ISupportInitialize).EndInit()
-        Me.ResumeLayout(False)
+        Button1 = New Button()
+        Button2 = New Button()
+        Button3 = New Button()
+        GroupBox1 = New GroupBox()
+        EqualTo = New TextBox()
+        CheckForDataChange = New ComboBox()
+        TextBox1 = New TextBox()
+        DisplayFormat = New ComboBox()
+        Label18 = New Label()
+        AlsoAssocWith = New ComboBox()
+        Label14 = New Label()
+        RasterName = New ComboBox()
+        DeviceName = New ComboBox()
+        VariableName = New ComboBox()
+        LowThreshForeColor = New ComboBox()
+        HighThreshForeColor = New ComboBox()
+        LowThreshBackColor = New ComboBox()
+        HighThreshBackColor = New ComboBox()
+        DefaultForeColorCombo = New ComboBox()
+        DefaultBackColorCombo = New ComboBox()
+        LowThreshold = New TextBox()
+        HighThreshold = New TextBox()
+        ControlName = New TextBox()
+        DisplayName = New TextBox()
+        DisplayWindowName = New TextBox()
+        Label13 = New Label()
+        Label15 = New Label()
+        Label16 = New Label()
+        Label17 = New Label()
+        Label20 = New Label()
+        Label7 = New Label()
+        Label8 = New Label()
+        Label9 = New Label()
+        Label10 = New Label()
+        Label11 = New Label()
+        Label12 = New Label()
+        Label4 = New Label()
+        Label5 = New Label()
+        Label6 = New Label()
+        Label3 = New Label()
+        Label2 = New Label()
+        Label1 = New Label()
+        PictureBox2 = New PictureBox()
+        VScrollBar1 = New VScrollBar()
+        PictureBox1 = New PictureBox()
+        Button4 = New Button()
+        Button5 = New Button()
+        GroupBox1.SuspendLayout()
+        CType(PictureBox2, ISupportInitialize).BeginInit()
+        CType(PictureBox1, ISupportInitialize).BeginInit()
+        SuspendLayout()
+        ' 
+        ' Button1
+        ' 
+        Button1.Enabled = False
+        Button1.Location = New Point(135, 10)
+        Button1.Margin = New Padding(4, 3, 4, 3)
+        Button1.Name = "Button1"
+        Button1.Size = New Size(103, 27)
+        Button1.TabIndex = 40
+        Button1.Text = "Save Changes"
+        Button1.UseVisualStyleBackColor = True
+        ' 
+        ' Button2
+        ' 
+        Button2.Location = New Point(509, 10)
+        Button2.Margin = New Padding(4, 3, 4, 3)
+        Button2.Name = "Button2"
+        Button2.Size = New Size(54, 27)
+        Button2.TabIndex = 41
+        Button2.Text = "Exit"
+        Button2.UseVisualStyleBackColor = True
+        ' 
+        ' Button3
+        ' 
+        Button3.Enabled = False
+        Button3.Location = New Point(245, 10)
+        Button3.Margin = New Padding(4, 3, 4, 3)
+        Button3.Name = "Button3"
+        Button3.Size = New Size(103, 27)
+        Button3.TabIndex = 42
+        Button3.Text = "Save and Exit"
+        Button3.UseVisualStyleBackColor = True
+        ' 
+        ' GroupBox1
+        ' 
+        GroupBox1.AutoSize = True
+        GroupBox1.Controls.Add(EqualTo)
+        GroupBox1.Controls.Add(CheckForDataChange)
+        GroupBox1.Controls.Add(TextBox1)
+        GroupBox1.Controls.Add(DisplayFormat)
+        GroupBox1.Controls.Add(Label18)
+        GroupBox1.Controls.Add(AlsoAssocWith)
+        GroupBox1.Controls.Add(Label14)
+        GroupBox1.Controls.Add(RasterName)
+        GroupBox1.Controls.Add(DeviceName)
+        GroupBox1.Controls.Add(VariableName)
+        GroupBox1.Controls.Add(LowThreshForeColor)
+        GroupBox1.Controls.Add(HighThreshForeColor)
+        GroupBox1.Controls.Add(LowThreshBackColor)
+        GroupBox1.Controls.Add(HighThreshBackColor)
+        GroupBox1.Controls.Add(DefaultForeColorCombo)
+        GroupBox1.Controls.Add(DefaultBackColorCombo)
+        GroupBox1.Controls.Add(LowThreshold)
+        GroupBox1.Controls.Add(HighThreshold)
+        GroupBox1.Controls.Add(ControlName)
+        GroupBox1.Controls.Add(DisplayName)
+        GroupBox1.Controls.Add(DisplayWindowName)
+        GroupBox1.Controls.Add(Label13)
+        GroupBox1.Controls.Add(Label15)
+        GroupBox1.Controls.Add(Label16)
+        GroupBox1.Controls.Add(Label17)
+        GroupBox1.Controls.Add(Label20)
+        GroupBox1.Controls.Add(Label7)
+        GroupBox1.Controls.Add(Label8)
+        GroupBox1.Controls.Add(Label9)
+        GroupBox1.Controls.Add(Label10)
+        GroupBox1.Controls.Add(Label11)
+        GroupBox1.Controls.Add(Label12)
+        GroupBox1.Controls.Add(Label4)
+        GroupBox1.Controls.Add(Label5)
+        GroupBox1.Controls.Add(Label6)
+        GroupBox1.Controls.Add(Label3)
+        GroupBox1.Controls.Add(Label2)
+        GroupBox1.Controls.Add(Label1)
+        GroupBox1.Controls.Add(PictureBox2)
+        GroupBox1.Controls.Add(VScrollBar1)
+        GroupBox1.Controls.Add(PictureBox1)
+        GroupBox1.Location = New Point(14, 44)
+        GroupBox1.Margin = New Padding(4, 3, 4, 3)
+        GroupBox1.Name = "GroupBox1"
+        GroupBox1.Padding = New Padding(4, 3, 4, 3)
+        GroupBox1.Size = New Size(558, 678)
+        GroupBox1.TabIndex = 43
+        GroupBox1.TabStop = False
+        ' 
+        ' EqualTo
+        ' 
+        EqualTo.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        EqualTo.Location = New Point(219, 305)
+        EqualTo.Margin = New Padding(4, 3, 4, 3)
+        EqualTo.Name = "EqualTo"
+        EqualTo.Size = New Size(292, 22)
+        EqualTo.TabIndex = 86
+        ' 
+        ' CheckForDataChange
+        ' 
+        CheckForDataChange.FormattingEnabled = True
+        CheckForDataChange.Items.AddRange(New Object() {"False", "True"})
+        CheckForDataChange.Location = New Point(218, 430)
+        CheckForDataChange.Margin = New Padding(4, 3, 4, 3)
+        CheckForDataChange.Name = "CheckForDataChange"
+        CheckForDataChange.Size = New Size(292, 23)
+        CheckForDataChange.TabIndex = 85
+        ' 
+        ' TextBox1
+        ' 
+        TextBox1.Location = New Point(4, 1)
+        TextBox1.Margin = New Padding(4, 3, 4, 3)
+        TextBox1.Name = "TextBox1"
+        TextBox1.Size = New Size(75, 23)
+        TextBox1.TabIndex = 84
+        TextBox1.Text = "V*"
+        TextBox1.TextAlign = HorizontalAlignment.Center
+        ' 
+        ' DisplayFormat
+        ' 
+        DisplayFormat.FormattingEnabled = True
+        DisplayFormat.Items.AddRange(New Object() {"TRUE/FALSE", "FALSE/TRUE", "VALID/INVALID", "INVALID/VALID", "ENUM", "HEX", "BINARY", "0", "0.0", "0.00", "0.000"})
+        DisplayFormat.Location = New Point(219, 406)
+        DisplayFormat.Margin = New Padding(4, 3, 4, 3)
+        DisplayFormat.Name = "DisplayFormat"
+        DisplayFormat.Size = New Size(292, 23)
+        DisplayFormat.TabIndex = 82
+        ' 
+        ' Label18
+        ' 
+        Label18.BackColor = Color.Silver
+        Label18.BorderStyle = BorderStyle.Fixed3D
+        Label18.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label18.Location = New Point(0, 406)
+        Label18.Margin = New Padding(4, 0, 4, 0)
+        Label18.Name = "Label18"
+        Label18.Size = New Size(215, 24)
+        Label18.TabIndex = 81
+        Label18.Text = "Display Format"
+        Label18.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' AlsoAssocWith
+        ' 
+        AlsoAssocWith.FormattingEnabled = True
+        AlsoAssocWith.Items.AddRange(New Object() {"GO/NOGO", "FUSION OBJID", "FUSION TD Y", "FUSION TD X", "LRR TD X", "LRR TD Y", "LRR OBJID", "VIS TD X", "VIS TD Y", "VIS OBJID", "LFSRR TD X", "LFSRR TD Y", "LFSRR OBJID", "RFSRR TD X", "RFSRR TD Y", "RFSRR OBJID", "RRSRR TD Y", "RRSRR TD X", "RRSRR OBJID", "LRSRR TD X", "LRSRR TD Y", "LRSRR OBJID", "VPATH LONG OFST", "VPATH LAT OFST", "VPATH YAW RATE", "VPATH LONG VEL", "VPATH LAT VEL"})
+        AlsoAssocWith.Location = New Point(219, 381)
+        AlsoAssocWith.Margin = New Padding(4, 3, 4, 3)
+        AlsoAssocWith.Name = "AlsoAssocWith"
+        AlsoAssocWith.Size = New Size(292, 23)
+        AlsoAssocWith.TabIndex = 80
+        ' 
+        ' Label14
+        ' 
+        Label14.AutoSize = True
+        Label14.BackColor = Color.Yellow
+        Label14.BorderStyle = BorderStyle.Fixed3D
+        Label14.Font = New Font("Microsoft Sans Serif", 11.25F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        Label14.Location = New Point(0, 77)
+        Label14.Margin = New Padding(4, 0, 4, 0)
+        Label14.Name = "Label14"
+        Label14.Size = New Size(61, 20)
+        Label14.TabIndex = 61
+        Label14.Text = "Label14"
+        ' 
+        ' RasterName
+        ' 
+        RasterName.FormattingEnabled = True
+        RasterName.Location = New Point(219, 76)
+        RasterName.Margin = New Padding(4, 3, 4, 3)
+        RasterName.Name = "RasterName"
+        RasterName.Size = New Size(292, 23)
+        RasterName.TabIndex = 79
+        ' 
+        ' DeviceName
+        ' 
+        DeviceName.FormattingEnabled = True
+        DeviceName.Location = New Point(219, 51)
+        DeviceName.Margin = New Padding(4, 3, 4, 3)
+        DeviceName.Name = "DeviceName"
+        DeviceName.Size = New Size(292, 23)
+        DeviceName.TabIndex = 78
+        ' 
+        ' VariableName
+        ' 
+        VariableName.FormattingEnabled = True
+        VariableName.Location = New Point(219, 0)
+        VariableName.Margin = New Padding(4, 3, 4, 3)
+        VariableName.Name = "VariableName"
+        VariableName.Size = New Size(292, 23)
+        VariableName.TabIndex = 77
+        ' 
+        ' LowThreshForeColor
+        ' 
+        LowThreshForeColor.FormattingEnabled = True
+        LowThreshForeColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
+        LowThreshForeColor.Location = New Point(219, 228)
+        LowThreshForeColor.Margin = New Padding(4, 3, 4, 3)
+        LowThreshForeColor.Name = "LowThreshForeColor"
+        LowThreshForeColor.Size = New Size(292, 23)
+        LowThreshForeColor.TabIndex = 76
+        ' 
+        ' HighThreshForeColor
+        ' 
+        HighThreshForeColor.FormattingEnabled = True
+        HighThreshForeColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
+        HighThreshForeColor.Location = New Point(219, 203)
+        HighThreshForeColor.Margin = New Padding(4, 3, 4, 3)
+        HighThreshForeColor.Name = "HighThreshForeColor"
+        HighThreshForeColor.Size = New Size(292, 23)
+        HighThreshForeColor.TabIndex = 75
+        ' 
+        ' LowThreshBackColor
+        ' 
+        LowThreshBackColor.FormattingEnabled = True
+        LowThreshBackColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
+        LowThreshBackColor.Location = New Point(219, 178)
+        LowThreshBackColor.Margin = New Padding(4, 3, 4, 3)
+        LowThreshBackColor.Name = "LowThreshBackColor"
+        LowThreshBackColor.Size = New Size(292, 23)
+        LowThreshBackColor.TabIndex = 74
+        ' 
+        ' HighThreshBackColor
+        ' 
+        HighThreshBackColor.FormattingEnabled = True
+        HighThreshBackColor.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
+        HighThreshBackColor.Location = New Point(219, 152)
+        HighThreshBackColor.Margin = New Padding(4, 3, 4, 3)
+        HighThreshBackColor.Name = "HighThreshBackColor"
+        HighThreshBackColor.Size = New Size(292, 23)
+        HighThreshBackColor.TabIndex = 73
+        ' 
+        ' DefaultForeColorCombo
+        ' 
+        DefaultForeColorCombo.FormattingEnabled = True
+        DefaultForeColorCombo.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
+        DefaultForeColorCombo.Location = New Point(219, 127)
+        DefaultForeColorCombo.Margin = New Padding(4, 3, 4, 3)
+        DefaultForeColorCombo.Name = "DefaultForeColorCombo"
+        DefaultForeColorCombo.Size = New Size(292, 23)
+        DefaultForeColorCombo.TabIndex = 72
+        ' 
+        ' DefaultBackColorCombo
+        ' 
+        DefaultBackColorCombo.FormattingEnabled = True
+        DefaultBackColorCombo.Items.AddRange(New Object() {"White", "Black", "Red", "Green", "Yellow", "Orange"})
+        DefaultBackColorCombo.Location = New Point(219, 102)
+        DefaultBackColorCombo.Margin = New Padding(4, 3, 4, 3)
+        DefaultBackColorCombo.Name = "DefaultBackColorCombo"
+        DefaultBackColorCombo.Size = New Size(292, 23)
+        DefaultBackColorCombo.TabIndex = 71
+        ' 
+        ' LowThreshold
+        ' 
+        LowThreshold.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        LowThreshold.Location = New Point(219, 279)
+        LowThreshold.Margin = New Padding(4, 3, 4, 3)
+        LowThreshold.Name = "LowThreshold"
+        LowThreshold.Size = New Size(292, 22)
+        LowThreshold.TabIndex = 65
+        ' 
+        ' HighThreshold
+        ' 
+        HighThreshold.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        HighThreshold.Location = New Point(219, 254)
+        HighThreshold.Margin = New Padding(4, 3, 4, 3)
+        HighThreshold.Name = "HighThreshold"
+        HighThreshold.Size = New Size(292, 22)
+        HighThreshold.TabIndex = 64
+        ' 
+        ' ControlName
+        ' 
+        ControlName.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        ControlName.Location = New Point(219, 355)
+        ControlName.Margin = New Padding(4, 3, 4, 3)
+        ControlName.Name = "ControlName"
+        ControlName.Size = New Size(292, 22)
+        ControlName.TabIndex = 63
+        ' 
+        ' DisplayName
+        ' 
+        DisplayName.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        DisplayName.Location = New Point(219, 25)
+        DisplayName.Margin = New Padding(4, 3, 4, 3)
+        DisplayName.Name = "DisplayName"
+        DisplayName.Size = New Size(292, 22)
+        DisplayName.TabIndex = 61
+        ' 
+        ' DisplayWindowName
+        ' 
+        DisplayWindowName.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Regular, GraphicsUnit.Point, CByte(0))
+        DisplayWindowName.Location = New Point(219, 330)
+        DisplayWindowName.Margin = New Padding(4, 3, 4, 3)
+        DisplayWindowName.Name = "DisplayWindowName"
+        DisplayWindowName.Size = New Size(292, 22)
+        DisplayWindowName.TabIndex = 60
+        ' 
+        ' Label13
+        ' 
+        Label13.BackColor = Color.Silver
+        Label13.BorderStyle = BorderStyle.Fixed3D
+        Label13.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label13.Location = New Point(0, 355)
+        Label13.Margin = New Padding(4, 0, 4, 0)
+        Label13.Name = "Label13"
+        Label13.Size = New Size(215, 24)
+        Label13.TabIndex = 59
+        Label13.Text = "Control Name"
+        Label13.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label15
+        ' 
+        Label15.BackColor = Color.Silver
+        Label15.BorderStyle = BorderStyle.Fixed3D
+        Label15.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label15.Location = New Point(0, 330)
+        Label15.Margin = New Padding(4, 0, 4, 0)
+        Label15.Name = "Label15"
+        Label15.Size = New Size(215, 24)
+        Label15.TabIndex = 57
+        Label15.Text = "Display Window Name"
+        Label15.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label16
+        ' 
+        Label16.BackColor = Color.Silver
+        Label16.BorderStyle = BorderStyle.Fixed3D
+        Label16.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label16.Location = New Point(0, 430)
+        Label16.Margin = New Padding(4, 0, 4, 0)
+        Label16.Name = "Label16"
+        Label16.Size = New Size(215, 24)
+        Label16.TabIndex = 56
+        Label16.Text = "Check For Data Change"
+        Label16.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label17
+        ' 
+        Label17.BackColor = Color.Silver
+        Label17.BorderStyle = BorderStyle.Fixed3D
+        Label17.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label17.Location = New Point(0, 381)
+        Label17.Margin = New Padding(4, 0, 4, 0)
+        Label17.Name = "Label17"
+        Label17.Size = New Size(215, 24)
+        Label17.TabIndex = 55
+        Label17.Text = "Also Associated With"
+        Label17.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label20
+        ' 
+        Label20.BackColor = Color.Silver
+        Label20.BorderStyle = BorderStyle.Fixed3D
+        Label20.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label20.Location = New Point(0, 305)
+        Label20.Margin = New Padding(4, 0, 4, 0)
+        Label20.Name = "Label20"
+        Label20.Size = New Size(215, 24)
+        Label20.TabIndex = 52
+        Label20.Text = "Equal To"
+        Label20.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label7
+        ' 
+        Label7.BackColor = Color.Silver
+        Label7.BorderStyle = BorderStyle.Fixed3D
+        Label7.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label7.Location = New Point(0, 279)
+        Label7.Margin = New Padding(4, 0, 4, 0)
+        Label7.Name = "Label7"
+        Label7.Size = New Size(215, 24)
+        Label7.TabIndex = 51
+        Label7.Text = "Low Threshold"
+        Label7.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label8
+        ' 
+        Label8.BackColor = Color.Silver
+        Label8.BorderStyle = BorderStyle.Fixed3D
+        Label8.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label8.Location = New Point(0, 254)
+        Label8.Margin = New Padding(4, 0, 4, 0)
+        Label8.Name = "Label8"
+        Label8.Size = New Size(215, 24)
+        Label8.TabIndex = 50
+        Label8.Text = "High Threshold"
+        Label8.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label9
+        ' 
+        Label9.BackColor = Color.Silver
+        Label9.BorderStyle = BorderStyle.Fixed3D
+        Label9.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label9.Location = New Point(0, 228)
+        Label9.Margin = New Padding(4, 0, 4, 0)
+        Label9.Name = "Label9"
+        Label9.Size = New Size(215, 24)
+        Label9.TabIndex = 49
+        Label9.Text = "Low Thresh Fore Color"
+        Label9.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label10
+        ' 
+        Label10.BackColor = Color.Silver
+        Label10.BorderStyle = BorderStyle.Fixed3D
+        Label10.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label10.Location = New Point(0, 203)
+        Label10.Margin = New Padding(4, 0, 4, 0)
+        Label10.Name = "Label10"
+        Label10.Size = New Size(215, 24)
+        Label10.TabIndex = 48
+        Label10.Text = "High Thresh Fore Color"
+        Label10.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label11
+        ' 
+        Label11.BackColor = Color.Silver
+        Label11.BorderStyle = BorderStyle.Fixed3D
+        Label11.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label11.Location = New Point(0, 178)
+        Label11.Margin = New Padding(4, 0, 4, 0)
+        Label11.Name = "Label11"
+        Label11.Size = New Size(215, 24)
+        Label11.TabIndex = 47
+        Label11.Text = "Low Thresh Back Color"
+        Label11.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label12
+        ' 
+        Label12.BackColor = Color.Silver
+        Label12.BorderStyle = BorderStyle.Fixed3D
+        Label12.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label12.Location = New Point(0, 152)
+        Label12.Margin = New Padding(4, 0, 4, 0)
+        Label12.Name = "Label12"
+        Label12.Size = New Size(215, 24)
+        Label12.TabIndex = 46
+        Label12.Text = "High Thresh Back Color"
+        Label12.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label4
+        ' 
+        Label4.BackColor = Color.Silver
+        Label4.BorderStyle = BorderStyle.Fixed3D
+        Label4.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label4.Location = New Point(0, 127)
+        Label4.Margin = New Padding(4, 0, 4, 0)
+        Label4.Name = "Label4"
+        Label4.Size = New Size(215, 24)
+        Label4.TabIndex = 45
+        Label4.Text = "Default Fore Color"
+        Label4.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label5
+        ' 
+        Label5.BackColor = Color.Silver
+        Label5.BorderStyle = BorderStyle.Fixed3D
+        Label5.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label5.Location = New Point(0, 102)
+        Label5.Margin = New Padding(4, 0, 4, 0)
+        Label5.Name = "Label5"
+        Label5.Size = New Size(215, 24)
+        Label5.TabIndex = 44
+        Label5.Text = "Default Back Color"
+        Label5.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label6
+        ' 
+        Label6.BackColor = Color.Silver
+        Label6.BorderStyle = BorderStyle.Fixed3D
+        Label6.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label6.Location = New Point(0, 76)
+        Label6.Margin = New Padding(4, 0, 4, 0)
+        Label6.Name = "Label6"
+        Label6.Size = New Size(215, 24)
+        Label6.TabIndex = 43
+        Label6.Text = "Raster Name"
+        Label6.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label3
+        ' 
+        Label3.BackColor = Color.Silver
+        Label3.BorderStyle = BorderStyle.Fixed3D
+        Label3.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label3.Location = New Point(0, 51)
+        Label3.Margin = New Padding(4, 0, 4, 0)
+        Label3.Name = "Label3"
+        Label3.Size = New Size(215, 24)
+        Label3.TabIndex = 42
+        Label3.Text = "Device Name"
+        Label3.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label2
+        ' 
+        Label2.BackColor = Color.Silver
+        Label2.BorderStyle = BorderStyle.Fixed3D
+        Label2.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label2.Location = New Point(0, 25)
+        Label2.Margin = New Padding(4, 0, 4, 0)
+        Label2.Name = "Label2"
+        Label2.Size = New Size(215, 24)
+        Label2.TabIndex = 41
+        Label2.Text = "Display Name"
+        Label2.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' Label1
+        ' 
+        Label1.BackColor = Color.Silver
+        Label1.BorderStyle = BorderStyle.Fixed3D
+        Label1.Font = New Font("Microsoft Sans Serif", 9.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
+        Label1.Location = New Point(78, 0)
+        Label1.Margin = New Padding(4, 0, 4, 0)
+        Label1.Name = "Label1"
+        Label1.Size = New Size(136, 24)
+        Label1.TabIndex = 40
+        Label1.Text = "Variable Name"
+        Label1.TextAlign = ContentAlignment.MiddleRight
+        ' 
+        ' PictureBox2
+        ' 
+        PictureBox2.BackColor = SystemColors.ControlDark
+        PictureBox2.Location = New Point(0, 1)
+        PictureBox2.Margin = New Padding(4, 3, 4, 3)
+        PictureBox2.Name = "PictureBox2"
+        PictureBox2.Size = New Size(525, 655)
+        PictureBox2.TabIndex = 2
+        PictureBox2.TabStop = False
+        ' 
+        ' VScrollBar1
+        ' 
+        VScrollBar1.Location = New Point(528, 25)
+        VScrollBar1.Maximum = 250
+        VScrollBar1.Name = "VScrollBar1"
+        VScrollBar1.Size = New Size(17, 429)
+        VScrollBar1.TabIndex = 1
+        ' 
+        ' PictureBox1
+        ' 
+        PictureBox1.Location = New Point(19, 22)
+        PictureBox1.Margin = New Padding(4, 3, 4, 3)
+        PictureBox1.Name = "PictureBox1"
+        PictureBox1.Size = New Size(525, 496)
+        PictureBox1.TabIndex = 0
+        PictureBox1.TabStop = False
+        ' 
+        ' Button4
+        ' 
+        Button4.Location = New Point(14, 10)
+        Button4.Margin = New Padding(4, 3, 4, 3)
+        Button4.Name = "Button4"
+        Button4.Size = New Size(114, 27)
+        Button4.TabIndex = 44
+        Button4.Text = "Restore Defaults"
+        Button4.UseVisualStyleBackColor = True
+        ' 
+        ' Button5
+        ' 
+        Button5.Enabled = False
+        Button5.Location = New Point(355, 10)
+        Button5.Margin = New Padding(4, 3, 4, 3)
+        Button5.Name = "Button5"
+        Button5.Size = New Size(147, 27)
+        Button5.TabIndex = 45
+        Button5.Text = "Save, Register, Exit"
+        Button5.UseVisualStyleBackColor = True
+        ' 
+        ' GridCellPropConfig
+        ' 
+        AutoScaleDimensions = New SizeF(7F, 15F)
+        AutoScaleMode = AutoScaleMode.Font
+        ClientSize = New Size(575, 503)
+        ControlBox = False
+        Controls.Add(Button5)
+        Controls.Add(Button4)
+        Controls.Add(Button3)
+        Controls.Add(Button2)
+        Controls.Add(Button1)
+        Controls.Add(GroupBox1)
+        Margin = New Padding(4, 3, 4, 3)
+        Name = "GridCellPropConfig"
+        Text = "Grid Cell Property Configuration"
+        GroupBox1.ResumeLayout(False)
+        GroupBox1.PerformLayout()
+        CType(PictureBox2, ISupportInitialize).EndInit()
+        CType(PictureBox1, ISupportInitialize).EndInit()
+        ResumeLayout(False)
+        PerformLayout()
 
     End Sub
     Friend WithEvents Button1 As System.Windows.Forms.Button

@@ -12,9 +12,6 @@ Public Class OnVehicleScreen
     ' Add constants at the top of the class
     Private Const MIN_FORM_WIDTH As Integer = 800
     Private Const MIN_FORM_HEIGHT As Integer = 605
-    Private Const RIGHT_MARGIN As Integer = 10
-    Private Const BUTTON_SPACING As Integer = 20
-    Private Const STATUS_LABEL_MARGIN As Integer = 445
     Private Const MAX_LISTBOX_HEIGHT As Integer = 350
     Private Const MAX_LISTBOX_WIDTH As Integer = 300
 
@@ -434,49 +431,6 @@ Public Class OnVehicleScreen
         HideListBox4IfClickedOutside()
     End Sub
 
-    Private Sub OnVehicleScreen_Resize(ByVal sender As Object, ByVal e As EventArgs) Handles Me.Resize
-        ' Only adjust layout if form is maximized or being resized
-        If Me.WindowState = FormWindowState.Maximized Then
-            'OrElse Me.WindowState = FormWindowState.Normal Then
-            AdjustControlLayout()
-        End If
-    End Sub
-
-    Private Sub AdjustControlLayout()
-        ' Calculate available space
-        Dim formWidth As Integer = Me.ClientSize.Width
-        Dim formHeight As Integer = Me.ClientSize.Height
-
-        ' Adjust main status label to span the width
-        If Label5 IsNot Nothing Then
-            Label5.Width = formWidth - STATUS_LABEL_MARGIN ' Leave room for right-side controls
-        End If
-
-        ' Reposition right-aligned buttons
-        If Button1 IsNot Nothing Then ' EXIT button
-            Button1.Left = formWidth - Button1.Width - RIGHT_MARGIN
-        End If
-
-        If Button23 IsNot Nothing Then ' Voice command button
-            Button23.Left = formWidth - Button23.Width - Button1.Width - BUTTON_SPACING
-        End If
-
-        ' Adjust the main content area
-        If GroupBox1 IsNot Nothing Then
-            GroupBox1.Width = formWidth - 20
-            GroupBox1.Height = formHeight - GroupBox1.Top - RIGHT_MARGIN
-        End If
-
-        ' Adjust ListBox1 if visible
-        If ListBox1 IsNot Nothing AndAlso ListBox1.Visible Then
-            ListBox1.Width = formWidth - 120
-            ListBox1.Height = formHeight - ListBox1.Top - 10
-        End If
-
-        ' Center popup groupboxes when they're shown
-        'CenterPopupControls()
-    End Sub
-
     Private Sub CenterPopupControls()
         ' Center the popup GroupBoxes when they're visible
         If GroupBox3 IsNot Nothing AndAlso GroupBox3.Visible Then
@@ -719,11 +673,14 @@ Public Class OnVehicleScreen
         ' GroupBox4 - stretch across the width
         GroupBox4.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
 
-        ' Main content area - GroupBox1 should expand with form
+        ' Main content area and its contents expand with the form
         GroupBox1.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
-
-        ' ListBox1 should also expand
+        Label2.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
         ListBox1.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
+
+        ' LiDAR status stays at the top-left while its status text uses available width
+        GroupBox_LidarStatus.Anchor = AnchorStyles.Top Or AnchorStyles.Left
+        Label_LidarStatus.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
 
         ' Popup groupboxes maintain their current behavior
         GroupBox3.Anchor = AnchorStyles.None ' Cameras dropdown

@@ -495,7 +495,7 @@ Public Class LoginForm
                  If(compTypes.Count > 0, String.Join(", ", compTypes), "None")))
 
         ' Camera(s)
-        Dim enabledCameras As New List(Of CameraConfig)(ConfiguredCameras.Values.Where(Function(c) c.Enabled))
+        Dim enabledCameras As New List(Of CameraConfig)(OrderedCameras.Where(Function(c) c.Enabled))
         If enabledCameras.Count = 0 Then
             rows.Add(New KeyValuePair(Of String, String)("Camera(s):", "None configured"))
         Else

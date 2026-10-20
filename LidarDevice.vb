@@ -1151,14 +1151,6 @@ Public NotInheritable Class LidarDevice
     ''' gracefully (missing/null fields) rather than blocking capture shutdown.
     ''' Firetimes have no HTTP object, so they are always sourced from the
     ''' configured file path, if present.
-    ''' </summary>
-    ''' <summary>
-    ''' ✅ NEW: Assembles and writes the sidecar capture manifest JSON next to the
-    ''' just-finished PCAP file. Live device metadata (identity/config/status/angle
-    ''' correction) is queried over the Hesai HTTP JSON API; any failure degrades
-    ''' gracefully (missing/null fields) rather than blocking capture shutdown.
-    ''' Firetimes have no HTTP object, so they are always sourced from the
-    ''' configured file path, if present.
     '''
     ''' ✅ CHANGED: Only the cheap state snapshot happens on the caller's thread.
     ''' The expensive work — HTTP metadata queries and the PCAP SHA-256 — is

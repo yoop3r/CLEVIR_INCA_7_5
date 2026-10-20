@@ -47,9 +47,6 @@ Public Class CameraEditorForm
                 camerasNode.RemoveAll()
             End If
 
-            ' Count enabled cameras for MaxCameras
-            Dim enabledCount As Integer = 0
-
             For Each row As DataGridViewRow In DataGridViewCameras.Rows
                 If row.IsNewRow Then Continue For
 
@@ -66,17 +63,11 @@ Public Class CameraEditorForm
                 camElem.SetAttribute("ipAddress", ipAddress)
                 camElem.SetAttribute("enabled", enabledStr)
                 camerasNode.AppendChild(camElem)
-
-                If enabledStr = "true" Then enabledCount += 1
             Next
 
-            ' Update MaxCameras to the actual count of enabled cameras
+            ' MaxCameras is derived at load time from the enabled <Camera> entries; drop the obsolete element.
             Dim maxCamsNode As XmlNode = cfgNode.SelectSingleNode("MaxCameras")
-            If maxCamsNode Is Nothing Then
-                maxCamsNode = _xmlDoc.CreateElement("MaxCameras")
-                cfgNode.InsertBefore(maxCamsNode, camerasNode)
-            End If
-            maxCamsNode.InnerText = enabledCount.ToString()
+            If maxCamsNode IsNot Nothing Then cfgNode.RemoveChild(maxCamsNode)
 
             Me.DialogResult = DialogResult.OK
             Me.Close()

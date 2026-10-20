@@ -21,8 +21,6 @@ Public Class InitForm
     ' ✅ DELETED: myThread and HowLongHaveIBeenUp (obsolete timer - see commit notes)
     Private myform As Form
 
-    Public VehicleNumbersList As List(Of String)
-
     ' Module-level variables to track original state
     Private _originalConfigData As String = ""
 
@@ -105,78 +103,12 @@ Public Class InitForm
     End Function
 
 
-    Public Sub PopulateVehicleNumbersList()
-        ' Populate the in-memory vehicle numbers list from the configuration file.
-        VehicleNumbersList = New List(Of String)
-
-        ' ── XML-first path ──────────────────────────────────────────────────
-        Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
-        Dim loadedFromXml As Boolean = False
-        If File.Exists(configPath) Then
-            Try
-                Dim xmlDoc As New System.Xml.XmlDocument()
-                xmlDoc.Load(configPath)
-                Dim xmlVehicles As List(Of VehicleConfig) = ReadVehiclesFromXml(xmlDoc)
-                If xmlVehicles IsNot Nothing Then
-                    For Each v As VehicleConfig In xmlVehicles
-                        If Not String.IsNullOrWhiteSpace(v.VehicleNumber) Then
-                            Try
-                                Dim processors As ProcessorIdentity() = ProcessorIdentity.ParseList(v.Processors, v.VehicleNumber)
-                                AddVehicleToList(v.VehicleNumber, processors(0).VariantName)
-                            Catch ex As FormatException
-                                HandleUserMessageLogging("GMRC", ex.Message)
-                                AddVehicleToList(v.VehicleNumber, "Invalid")
-                            End Try
-                        End If
-                    Next
-                    loadedFromXml = True
-                    HandleUserMessageLogging("GMRC",
-                        $"PopulateVehicleNumbersList: loaded {xmlVehicles.Count} vehicle(s) from config.xml")
-                End If
-            Catch ex As Exception
-                HandleUserMessageLogging("GMRC",
-                    "PopulateVehicleNumbersList: XML read failed: " & ex.Message)
-            End Try
-        End If
-
-        If Not loadedFromXml Then
-            HandleUserMessageLogging("GMRC", "PopulateVehicleNumbersList: no <Vehicles> section found in config.xml.")
-        End If
-
-        VehicleNumbersList.Sort()
-    End Sub
-
-
-    Private Sub AddVehicleToList(ByVal vehicleNumber As String, ByVal projectName As String)
-        Dim added As Boolean = False
-
-        ' Handle case where PTP lookup info doesn't exist
-        If VehiclePTPLookupInfo Is Nothing Then
-            VehicleNumbersList.Add(vehicleNumber & "," & projectName)
-            Return
-        End If
-
-        ' Try to find a match in the PTP lookup data
-        For y As Integer = 0 To VehiclePTPLookupInfo.Count - 1
-            Dim lookupArray() As String = Split(VehiclePTPLookupInfo(y).ToString, ",")
-
-            If lookupArray(0) = vehicleNumber Then
-                VehicleNumbersList.Add(vehicleNumber & "," & projectName & "," & lookupArray(1))
-                Return
-            End If
-        Next
-
-        ' If no match found in PTP lookup, add with just project name
-        VehicleNumbersList.Add(vehicleNumber & "," & projectName & ",")
-    End Sub
-
-
     Private Function GetVehicleNumber() As String
-        ' Called from InitForm_Load and when Save Vehicle Number Change button is pressed.
-        ' Reads the selected vehicle number from <SelectedVehicleNumber> in config.xml.
+        ' Called from Drive and after the Configuration Editor reloads settings.
+        ' Read-only: the vehicle number comes from <Vehicle>/<VehicleNumber> in config.xml.
         ' Falls back to "UNDEFINED" when the element is absent (first run, fresh install).
         If String.IsNullOrEmpty(VehicleNumber) Then
-            VehicleNumber = ReadSelectedVehicleNumber()
+            VehicleNumber = ReadConfiguredVehicleNumber()
         End If
         If UCase(VehicleNumber) = "6LDN4666" AndAlso Not ClevirAdministrator Then
             HandleUserMessageLogging("GMRC", "GetVehicleNumber: Vehicle number 6LDN4666 is not a valid number. You must select a valid vehicle number to continue.", DisplayMsgBox, )
@@ -293,28 +225,6 @@ Public Class InitForm
             HandleUserMessageLogging("GMRC", $"ConfigEditor launch failed: {ex.Message}", DisplayMsgBox)
         End Try
     End Sub
-
-    Public Sub SaveVehicleNumber(ByVal l_VehicleNumber As String)
-        ' Saves the selected vehicle number to <SelectedVehicleNumber> in config.xml.
-        ' Called from the Save and continue button on InitForm.
-        If l_VehicleNumber <> " VEHICLE ID NOT IN LIST" Then
-            HandleUserMessageLogging("GMRC", "SaveVehicleNumber: Vehicle Number changed from " & VehicleNumber & " to " & l_VehicleNumber)
-            If Not SaveSelectedVehicleNumber(l_VehicleNumber) Then Return
-        End If
-
-        VehicleNumber = l_VehicleNumber
-
-        'Here we re-call ReadVehicleConfigsFile which sets internal parameters based on newly saved vehicle number...
-        If ReadVehicleConfigsFile() = False Then
-            Close()
-            End
-        End If
-
-        GmResidentClient.Text = "Vehicle " & VehicleNumber
-        GmResidentClient.Text = GmResidentClient.Text & " - ON VEHICLE MODE"
-
-    End Sub
-
 
     Private Function CheckForCLEVIRRunning() As Boolean
 
@@ -676,7 +586,7 @@ Public Class InitForm
     Private Sub InitFormAfterInitialization()
         Try
             ' ✅ CRITICAL: Add logging to see what we're working with
-            HandleUserMessageLogging("GMRC", $"InitFormInitialization: CLEVIRFlavor='{CLEVIRFlavor}' CurrentVehicleUsage='{CurrentVehicleUsage}'")
+            HandleUserMessageLogging("GMRC", $"InitFormInitialization: CLEVIRFlavor='{CLEVIRFlavor}'")
 
             ' ✅ ONLY bypass InitForm if DATALOGGING mode is EXPLICITLY enabled
             If CLEVIRFlavor.ToUpper().Contains("DATALOGGING") Then
@@ -830,15 +740,10 @@ Public Class InitForm
 
         UserStatusInfo.Hide()
         ConfigureMenuItems()
-
-        ' Ensure VALIDATION is the active mode
-        CurrentVehicleUsage = "VALIDATION"
-        ZipTheMF4Files = False
-        HandleUserMessageLogging("GMRC", "InitForm: Vehicle usage defaulted to VALIDATION")
     End Sub
 
     Private Sub ConfigureMenuItems()
-        GmResidentClient.ChangeVehicleNumberToolStripMenuItem.Visible = True
+        GmResidentClient.ChangeVehicleNumberToolStripMenuItem.Visible = ClevirAdministrator
         GmResidentClient.SetDataCollectionRatemsecToolStripMenuItem.Visible = True
         GmResidentClient.SwitchINCAUserToolStripMenuItem.Visible = True
         GmResidentClient.RestartINCAToolStripMenuItem.Visible = True

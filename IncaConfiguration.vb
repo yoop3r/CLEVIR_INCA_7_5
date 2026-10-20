@@ -50,7 +50,7 @@ Public NotInheritable Class IncaConfiguration
     Public ReadOnly Property ExperimentTemplate As String
     Public ReadOnly Property VariableFile As String
     Public ReadOnly Property EtasUserPath As String
-    Public ReadOnly Property SelectedVehicle As String
+    Public ReadOnly Property VehicleNumber As String
     Public ReadOnly Property Processors As ProcessorIdentity()
     Public ReadOnly Property DataDictionary As String
     Public ReadOnly Property VehicleSpySetup As String
@@ -76,29 +76,68 @@ Public NotInheritable Class IncaConfiguration
         ElseIf VehicleSpySetup.Length > 0 Then
             VehicleSpySetup = ResolveFile(baseDirectory, VehicleSpySetup)
         End If
-        SelectedVehicle = If(root.SelectSingleNode("SelectedVehicleNumber")?.InnerText, "UNDEFINED").Trim()
-        If SelectedVehicle.Length = 0 Then SelectedVehicle = "UNDEFINED"
-        Dim matches As New List(Of XmlNode)
-        If root.SelectNodes("Vehicles/Vehicle").Count = 0 Then
-            Throw New FormatException("Missing config.xml <Vehicles>/<Vehicle> entries.")
-        End If
-        For Each vehicle As XmlNode In root.SelectNodes("Vehicles/Vehicle")
-            If String.Equals(vehicle.SelectSingleNode("VehicleNumber")?.InnerText?.Trim(), SelectedVehicle, StringComparison.OrdinalIgnoreCase) Then
-                matches.Add(vehicle)
-            End If
-        Next
-        If matches.Count > 1 Then Throw New FormatException($"Duplicate config.xml <VehicleNumber> '{SelectedVehicle}'.")
+        Dim vehicle As XmlNode = ResolveVehicleNode(root)
+        If vehicle Is Nothing Then Throw New FormatException("Missing config.xml <Vehicle> element.")
+        VehicleNumber = If(vehicle.SelectSingleNode("VehicleNumber")?.InnerText, String.Empty).Trim()
+        If VehicleNumber.Length = 0 Then VehicleNumber = "UNDEFINED"
         Processors = Array.Empty(Of ProcessorIdentity)()
-        If matches.Count = 1 AndAlso Not String.Equals(SelectedVehicle, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
-            Dim text As String = If(matches(0).SelectSingleNode("Processors")?.InnerText, String.Empty)
-            Processors = ProcessorIdentity.ParseList(text.Split(","c), SelectedVehicle)
+        If Not String.Equals(VehicleNumber, "UNDEFINED", StringComparison.OrdinalIgnoreCase) Then
+            Dim text As String = If(vehicle.SelectSingleNode("Processors")?.InnerText, String.Empty)
+            Processors = ProcessorIdentity.ParseList(text.Split(","c), VehicleNumber)
         End If
     End Sub
 
+    ''' <summary>
+    ''' Returns the vehicle described by config.xml: the root &lt;Vehicle&gt; element, or for legacy
+    ''' files the &lt;Vehicles&gt;/&lt;Vehicle&gt; named by &lt;SelectedVehicleNumber&gt; (otherwise the first).
+    ''' Returns Nothing when no vehicle is defined.
+    ''' </summary>
+    Public Shared Function ResolveVehicleNode(root As XmlNode) As XmlNode
+        If root Is Nothing Then Return Nothing
+        Dim current As XmlNodeList = root.SelectNodes("Vehicle")
+        If current.Count > 1 Then Throw New FormatException("config.xml must contain exactly one <Vehicle> element.")
+        If current.Count = 1 Then Return current(0)
+        Dim legacy As XmlNodeList = root.SelectNodes("Vehicles/Vehicle")
+        If legacy.Count = 0 Then Return Nothing
+        Dim selected As String = If(root.SelectSingleNode("SelectedVehicleNumber")?.InnerText, String.Empty).Trim()
+        For Each node As XmlNode In legacy
+            If String.Equals(node.SelectSingleNode("VehicleNumber")?.InnerText?.Trim(), selected, StringComparison.OrdinalIgnoreCase) Then Return node
+        Next
+        Return legacy(0)
+    End Function
+
+    Public Shared Function IsLegacyVehicleLayout(root As XmlNode) As Boolean
+        Return root IsNot Nothing AndAlso
+            (root.SelectSingleNode("Vehicles") IsNot Nothing OrElse root.SelectSingleNode("SelectedVehicleNumber") IsNot Nothing)
+    End Function
+
+    ''' <summary>
+    ''' Rewrites a legacy &lt;Vehicles&gt;/&lt;SelectedVehicleNumber&gt; layout as a single root &lt;Vehicle&gt;.
+    ''' Returns True when the document was changed.
+    ''' </summary>
+    Public Shared Function MigrateLegacyVehicleLayout(document As XmlDocument) As Boolean
+        Dim root As XmlNode = document?.DocumentElement
+        If Not IsLegacyVehicleLayout(root) Then Return False
+        Dim vehicle As XmlNode = ResolveVehicleNode(root)
+        Dim legacyVehicles As XmlNode = root.SelectSingleNode("Vehicles")
+        If vehicle IsNot Nothing AndAlso vehicle.ParentNode IsNot root Then
+            Dim migrated As XmlNode = vehicle.CloneNode(True)
+            If legacyVehicles IsNot Nothing Then
+                root.InsertBefore(migrated, legacyVehicles)
+            Else
+                root.AppendChild(migrated)
+            End If
+        End If
+        If legacyVehicles IsNot Nothing Then root.RemoveChild(legacyVehicles)
+        Dim selected As XmlNode = root.SelectSingleNode("SelectedVehicleNumber")
+        If selected IsNot Nothing Then root.RemoveChild(selected)
+        Return True
+    End Function
+
     Public Function HasSameSessionSettings(other As IncaConfiguration) As Boolean
         If other Is Nothing Then Return False
-        Dim values As String() = {Database, Workspace, Experiment, ExperimentTemplate, VariableFile, EtasUserPath, SelectedVehicle, DataDictionary, VehicleSpySetup, AlternateRecordConfig}
-        Dim otherValues As String() = {other.Database, other.Workspace, other.Experiment, other.ExperimentTemplate, other.VariableFile, other.EtasUserPath, other.SelectedVehicle, other.DataDictionary, other.VehicleSpySetup, other.AlternateRecordConfig}
+        Dim values As String() = {Database, Workspace, Experiment, ExperimentTemplate, VariableFile, EtasUserPath, VehicleNumber, DataDictionary, VehicleSpySetup, AlternateRecordConfig}
+        Dim otherValues As String() = {other.Database, other.Workspace, other.Experiment, other.ExperimentTemplate, other.VariableFile, other.EtasUserPath, other.VehicleNumber, other.DataDictionary, other.VehicleSpySetup, other.AlternateRecordConfig}
         Return values.SequenceEqual(otherValues, StringComparer.OrdinalIgnoreCase) AndAlso
             Processors.Select(Function(p) p.DeviceName).SequenceEqual(other.Processors.Select(Function(p) p.DeviceName), StringComparer.OrdinalIgnoreCase)
     End Function
@@ -118,7 +157,7 @@ Public NotInheritable Class IncaConfiguration
     Public Shared Sub MergeRuntimeSettings(target As XmlDocument, updates As XmlDocument, master As XmlDocument)
         Dim identityNames As New HashSet(Of String)(StringComparer.Ordinal) From {
             "INCADatabase", "INCAWorkspace", "INCAExperiment", "INCAExperimentTemplate", "INCAVariableFile", "ETAS_USER_PATH",
-            "Vehicles", "SelectedVehicleNumber", "DataDictionary", "VehicleSpySetup", "AlternateRecordConfig"
+            "Vehicle", "Vehicles", "SelectedVehicleNumber", "DataDictionary", "VehicleSpySetup", "AlternateRecordConfig"
         }
         For Each update As XmlElement In updates.DocumentElement.SelectNodes("*")
             If Not identityNames.Contains(update.Name) Then MergeElement(target.DocumentElement, update)

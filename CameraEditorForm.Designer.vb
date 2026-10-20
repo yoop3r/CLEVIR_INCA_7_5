@@ -66,7 +66,7 @@ Partial Class CameraEditorForm
         Me.LabelHint.AutoSize = False
         Me.LabelHint.Location = New System.Drawing.Point(12, 12)
         Me.LabelHint.Size = New System.Drawing.Size(560, 28)
-        Me.LabelHint.Text = "Each row is a <Camera> entry. Position = mount label (FRONT/REAR/…). MaxCameras is auto-calculated."
+        Me.LabelHint.Text = "Each row is a <Camera> entry. Enabled cameras are used in row order (row order = timecode signal order)."
         Me.LabelHint.Font = New System.Drawing.Font("Segoe UI", 8.5F)
         Me.LabelHint.ForeColor = System.Drawing.Color.DarkSlateGray
         '

@@ -1,8 +1,49 @@
 CLEVIR_INCA_7_5 - Revision History
 ===================================
 
-Version 7.5.3.0
+Version 7.5.4.0
 ----------------
+- INCA COMM / lost-device checks now apply only after measurement or
+  recording has started. Previously the PROCESSOR COMMUNICATION ALERT
+  could fire while idle (before Start Measure/Start Record) when a
+  processor failed to initialize. Lost-device flagging in the background
+  health monitor (toast and "D" indicator paths) and CheckForLostDevice
+  are gated on measure/record state.
+- Data-frozen tracking (per-cell frozen counters/flags, stale-data and
+  lost-device flags, frozen/lost device name lists) is reset when
+  measurement starts and again when recording starts, so detection
+  counts from the moment that state begins.
+- INCA COMM Status always reflects the true link state: it returns to
+  GREEN as soon as monitored signals resume updating and stays RED
+  otherwise, including after "Ignore All Alerts for This Drive" (which
+  now only suppresses the operator alert dialog).
+- Fixed the PROCESSOR COMMUNICATION ALERT repeating the same device name
+  (e.g. ACP3_MCU,ACP3_MCU,...); lost-device names are de-duplicated and
+  cleared after the alert is handled.
+- config.xml consolidation (one vehicle per config.xml):
+  * Replaced <Vehicles>/<Vehicle>, <SelectedVehicleNumber> and
+    <CurrentVehicleUsage> with a single root <Vehicle> holding
+    <VehicleNumber> and <Processors>. Legacy files are still read.
+  * Removed <CameraPositions> and <MaxCameras>; cameras come only from
+    <CameraConfiguration>/<Cameras>, used in row order (row order =
+    timecode signal order).
+  * Folded <ZipMF4Files> into the Compression/Compress* flags; removed
+    the unused ZipMyFilesNew routine.
+  * InitForm shows the vehicle number read-only; Change Vehicle Number
+    and Create New Experiment are administrator-only.
+- Fixed an ArgumentOutOfRangeException in GridCellPropConfig when adding
+  signals (DataGridView indexer arguments were swapped).
+- Removed obsolete INCA 7.2/7.3/7.4 version checks; window title now
+  reports INCA 7.5.
+- Added an acknowledgment-only VehicleSpy Communication Failure dialog
+  using CustomDialogForm when starting or resetting its measurement fails
+  during an INCA recording, including measurement-start timeouts. The dialog
+  replaces the temporary toast and appears after capture startup completes,
+  so acknowledgment does not delay LiDAR/OXTS initialization. It explains that
+  VehicleSpy data may be missing while INCA recording continues. The warning
+  and acknowledgment are logged; no Exit or disable-recorder action is offered.
+  Windows speech synthesis also announces "Lost communication with VehicleSpy"
+  without blocking recording; speech failures are logged separately.
 - Made config.xml authoritative for INCA database, workspace, experiment,
   selected vehicle, and generic Variant_Controller processor identities.
   Removed variant aliases and hardcoded identity allowlists; all configured

@@ -69,7 +69,6 @@
   <!-- ================================================================ -->
   <NetworkAdapterDescription />
   <CameraConfiguration>
-    <MaxCameras>2</MaxCameras>
     <Cameras>
       <Camera position="FRONT" ipAddress="192.168.40.101" enabled="true" />
       <Camera position="REAR" ipAddress="192.168.40.102" enabled="true" />
@@ -207,17 +206,11 @@
   <!-- ================================================================ -->
   <!-- Application Configuration -->
   <!-- ================================================================ -->
-  <Vehicles>
-    <!-- Add a <Vehicle> child for each fleet vehicle. Example: -->
-    <Vehicle>
-      <VehicleNumber>6SME5384</VehicleNumber>
-      <Processors>ACP3_MCU,NA,NA,NA,NA,NA</Processors>
-      <CameraPositions>FRONT,REAR,NA,NA,NA,NA,NA,NA,NA</CameraPositions>
-      <ZipMF4Files>False</ZipMF4Files>
-    </Vehicle>
-  </Vehicles>
-  <CurrentVehicleUsage>VALIDATION</CurrentVehicleUsage>
-  <SelectedVehicleNumber>6SME5384</SelectedVehicleNumber>
+  <!-- One vehicle per config.xml. Cameras come from <CameraConfiguration>/<Cameras>. -->
+  <Vehicle>
+    <VehicleNumber>6SME5384</VehicleNumber>
+    <Processors>ACP3_MCU,NA,NA,NA,NA,NA</Processors>
+  </Vehicle>
   <SaveCalSnapshotEnabled>False</SaveCalSnapshotEnabled>
   <APICommErrorMsgDelayTime>90</APICommErrorMsgDelayTime>
   <SkipSubscriptionOnCacheHit>False</SkipSubscriptionOnCacheHit>

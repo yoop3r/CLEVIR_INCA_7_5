@@ -326,7 +326,7 @@ Module VehicleSpyStuff
         End If
     End Sub
 
-    Public Function StartVehicleSpy(Optional ByVal Mode As String = "") As Boolean
+    Public Function StartVehicleSpy(Optional ByVal Mode As String = "", Optional ByVal deferCommunicationWarning As Boolean = False) As Boolean
         ' Ensures VehicleSpy is running and ready for a new measurement session.
         ' This involves a start-stop-start sequence for a clean state.
         Try
@@ -355,13 +355,13 @@ Module VehicleSpyStuff
                     OnVehicleScreen.Label3.BackColor = Color.Green
                 End If
             Else
-                HandleStartFailure("Failed to start or reset VehicleSpy measurement.")
+                HandleStartFailure("Failed to start or reset VehicleSpy measurement.", deferCommunicationWarning)
             End If
 
             Return success
 
         Catch ex As Exception
-            HandleStartFailure($"StartVehicleSpy Exception: {ex.Message}")
+            HandleStartFailure($"StartVehicleSpy Exception: {ex.Message}", deferCommunicationWarning)
             Return False
         End Try
     End Function
@@ -426,13 +426,54 @@ Module VehicleSpyStuff
         Return True
     End Function
 
-    Private Sub HandleStartFailure(errorMessage As String)
+    Private Sub HandleStartFailure(errorMessage As String, deferCommunicationWarning As Boolean)
         ' Centralized handler for any failure during the start sequence.
-        HandleUserMessageLogging("GMRC", errorMessage,,, FlashMsg3Sec)
+        If MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.Recording Then
+            HandleUserMessageLogging("GMRC", errorMessage)
+        Else
+            HandleUserMessageLogging("GMRC", errorMessage,,, FlashMsg3Sec)
+        End If
         OnVehicleScreen.Label3.BackColor = Color.Red
         If VSpySelectedConfigFileName = VSpyDefaultConfigFileName Then
             AlternateRecordEnabled = False
         End If
+
+        If Not deferCommunicationWarning Then
+            ShowVehicleSpyCommunicationFailure()
+        End If
+    End Sub
+
+    Public Sub ShowVehicleSpyCommunicationFailure()
+        If MyIncaInterface Is Nothing OrElse Not MyIncaInterface.Recording Then Return
+
+        Dim warningMessage As String = "Failed to establish or maintain communication with VehicleSpy." & vbCrLf & vbCrLf &
+            "VehicleSpy measurement could not be started or reset, and VehicleSpy data may be missing." & vbCrLf & vbCrLf &
+            "INCA recording is continuing. Please check VehicleSpy."
+        HandleUserMessageLogging("GMRC", warningMessage)
+        System.Threading.Tasks.Task.Run(
+            Sub()
+                Try
+                    Using synth As New System.Speech.Synthesis.SpeechSynthesizer()
+                        synth.SelectVoice("Microsoft Zira Desktop")
+                        synth.Rate = 0
+                        synth.Speak("Lost communication with VehicleSpy.")
+                    End Using
+                Catch ex As Exception
+                    HandleUserMessageLogging("GMRC", $"VehicleSpy speech warning failed: {ex.Message}")
+                End Try
+            End Sub)
+
+        Using dialog As New CustomDialogForm(warningMessage, "VehicleSpy Communication Failure", "Acknowledge", Nothing, Nothing, Nothing)
+            dialog.StartPosition = FormStartPosition.CenterParent
+            dialog.TopMost = True
+            dialog.ControlBox = False
+            dialog.AcceptButton = dialog.Button1
+            dialog.lblErrorMessage.Dock = DockStyle.None
+            dialog.lblErrorMessage.SetBounds(12, 12, dialog.ClientSize.Width - 24, dialog.Button1.Top - 24)
+            dialog.Button1.Left = (dialog.ClientSize.Width - dialog.Button1.Width) \ 2
+            dialog.ShowDialog(OnVehicleScreen)
+        End Using
+        HandleUserMessageLogging("GMRC", "VehicleSpy communication failure acknowledged by user.")
     End Sub
 
     Public Sub QuitVehicleSpy()

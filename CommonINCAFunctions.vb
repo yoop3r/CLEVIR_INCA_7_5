@@ -13,15 +13,9 @@ Module CommonIncaFunctions
     Public Function VerifyCorrectIncaVersion(ByVal CurrentIncaVersion As String, Optional displayError As Boolean = True) As Boolean
         Dim requiredIncaVersion As String = ""
 
-        If Not CurrentIncaVersion Is Nothing Then
+        If CurrentIncaVersion IsNot Nothing Then
 
-            If InStr(My.Application.Info.AssemblyName, "INCA_7_2") > 0 And InStr(CurrentIncaVersion, "7.2") > 0 Then
-                requiredIncaVersion = "7.2.x"
-            ElseIf InStr(My.Application.Info.AssemblyName, "INCA_7_3") > 0 And InStr(CurrentIncaVersion, "7.3") = 0 Then
-                requiredIncaVersion = "7.3.x"
-            ElseIf InStr(My.Application.Info.AssemblyName, "INCA_7_4") > 0 And InStr(CurrentIncaVersion, "7.4") = 0 Then
-                requiredIncaVersion = "7.4.x"
-            ElseIf InStr(My.Application.Info.AssemblyName, "INCA_7_5") > 0 And InStr(CurrentIncaVersion, "7.5") = 0 Then
+            If InStr(My.Application.Info.AssemblyName, "INCA_7_5") > 0 And InStr(CurrentIncaVersion, "7.5") = 0 Then
                 requiredIncaVersion = "7.5.x"
             End If
 
