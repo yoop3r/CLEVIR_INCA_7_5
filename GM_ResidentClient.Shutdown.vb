@@ -9,7 +9,6 @@ Imports System.Speech.Synthesis
 Imports System.Text
 Imports System.Threading
 Imports System.Threading.Tasks
-Imports System.Windows.Forms.DataVisualization.Charting
 Imports System.Xml
 Imports SharpPcap
 
@@ -616,10 +615,7 @@ Partial Public Class GmResidentClient
         ' Close other forms
         ' Call the method with the name of the form you want to check and close
         CloseFormIfLoaded("DeviceStatus")
-        CloseFormIfLoaded("TargetStatusDisplay")
-        CloseFormIfLoaded("PedestrianStatusDisplay")
         CloseFormIfLoaded("FusionStatusDisplay")
-        CloseFormIfLoaded("CopilotStatusDisplay")
         CloseFormIfLoaded("MyTdGraphicsContainer")
         CloseFormIfLoaded("LkaForm")
     End Sub

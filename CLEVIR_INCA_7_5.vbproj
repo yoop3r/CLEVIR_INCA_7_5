@@ -149,14 +149,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\Interop\RCI2dotNet.dll</HintPath>
     </Reference>
-    <!-- No modern replacement is shipped by Microsoft for the WinForms Chart control, so this
-         still binds to the .NET Framework 4.8 Reference Assemblies. $(MSBuildProgramFiles32) is
-         a reserved MSBuild property that resolves to "Program Files (x86)" (or "Program Files" on
-         a 32-bit OS) - unlike a hardcoded relative path, it does not depend on the repo's folder
-         depth or drive letter. -->
-    <Reference Include="System.Windows.Forms.DataVisualization">
-      <HintPath>$(MSBuildProgramFiles32)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Windows.Forms.DataVisualization.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Import Include="Microsoft.VisualBasic" />
@@ -244,17 +236,11 @@
     <Compile Update="GridDataClass.vb">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Update="OscilloscopeDisplay\oscilloscope.designer.vb">
-      <DependentUpon>oscilloscope.vb</DependentUpon>
-    </Compile>
     <Compile Update="AddRecordOnlySignals.designer.vb">
       <DependentUpon>AddRecordOnlySignals.vb</DependentUpon>
     </Compile>
     <Compile Update="CLEVIRCalibrationInterface.designer.vb">
       <DependentUpon>CLEVIRCalibrationInterface.vb</DependentUpon>
-    </Compile>
-    <Compile Update="CopilotStatusDisplay.designer.vb">
-      <DependentUpon>CopilotStatusDisplay.vb</DependentUpon>
     </Compile>
     <Compile Update="Cusmsgbox.designer.vb">
       <DependentUpon>Cusmsgbox.vb</DependentUpon>
@@ -283,12 +269,6 @@
     <Compile Update="LKAForm.designer.vb">
       <DependentUpon>LKAForm.vb</DependentUpon>
     </Compile>
-    <Compile Update="LMFR_Status_Display_Global_A.designer.vb">
-      <DependentUpon>LMFR_Status_Display_Global_A.vb</DependentUpon>
-    </Compile>
-    <Compile Update="LMFR_Status_Screen_HC.designer.vb">
-      <DependentUpon>LMFR_Status_Screen_HC.vb</DependentUpon>
-    </Compile>
     <Compile Update="LoginForm.designer.vb">
       <DependentUpon>LoginForm.vb</DependentUpon>
     </Compile>
@@ -298,9 +278,6 @@
     <Compile Update="OperationHistory.designer.vb">
       <DependentUpon>OperationHistory.vb</DependentUpon>
     </Compile>
-    <Compile Update="PedestrianStatusDisplay.designer.vb">
-      <DependentUpon>PedestrianStatusDisplay.vb</DependentUpon>
-    </Compile>
     <Compile Update="RecordPlayback.designer.vb">
       <DependentUpon>RecordPlayback.vb</DependentUpon>
     </Compile>
@@ -309,9 +286,6 @@
     </Compile>
     <Compile Update="SelectExperiment.designer.vb">
       <DependentUpon>SelectExperiment.vb</DependentUpon>
-    </Compile>
-    <Compile Update="TargetStatusDisplay.designer.vb">
-      <DependentUpon>TargetStatusDisplay.vb</DependentUpon>
     </Compile>
     <Compile Update="TD_TargetObjectsClass.vb">
       <SubType>Component</SubType>
@@ -692,10 +666,6 @@
     <Compile Remove="_Archive\CalibrationInterface.designer.vb" />
     <Compile Remove="SignalListCompare.vb" />
     <Compile Remove="SignalListCompare.Designer.vb" />
-    <Compile Remove="OscilloscopeDisplay\My Project\Settings.Designer.vb" />
-    <Compile Remove="OscilloscopeDisplay\My Project\Resources.Designer.vb" />
-    <Compile Remove="OscilloscopeDisplay\My Project\AssemblyInfo.vb" />
-    <Compile Remove="OscilloscopeDisplay\My Project\Application.Designer.vb" />
     <Compile Remove="GridDataClass_prior to refactor.vb" />
     <Compile Remove="GlobalCommonFunctions.vb" />
     <Compile Remove="CalibrationInterface.vb" />
@@ -750,7 +720,6 @@
     <EmbeddedResource Remove="_Archive\CommonFiles\AddRecordOnlySignals.resx" />
     <EmbeddedResource Remove="_Archive\CalibrationInterface.resx" />
     <EmbeddedResource Remove="SignalListCompare.resx" />
-    <EmbeddedResource Remove="OscilloscopeDisplay\My Project\Resources.resx" />
     <EmbeddedResource Remove="NAVsdk\Examples\NAVdisplayPlugins\NavLibWPFExample\NavLibWPFExample\Properties\Resources.resx" />
     <EmbeddedResource Remove="NAVsdk\Examples\NAVdisplayPlugins\DisplayDataStore\DisplayDatastoreStreamInfo.resx" />
     <EmbeddedResource Remove="CalibrationInterface.resx" />

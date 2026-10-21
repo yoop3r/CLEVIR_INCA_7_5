@@ -1263,14 +1263,6 @@ Public Class INCA_InterfaceClass
             End If
 
             ' ================================================================
-            ' Enable LMFR Status Display Buttons (if visible)
-            ' ================================================================
-            If LmfrStatusDisplayGlobalA.Visible Then
-                LmfrStatusDisplayGlobalA.Button1.Enabled = True
-                LmfrStatusDisplayGlobalA.Refresh()
-            End If
-
-            ' ================================================================
             ' Log Reference Dataset Paths
             ' ================================================================
             If ReferenceDataSetDataBasePaths IsNot Nothing Then
@@ -1486,11 +1478,6 @@ Public Class INCA_InterfaceClass
             FusionStatusDisplay.Refresh()
         End If
 
-        If LmfrStatusDisplayGlobalA.Visible Then
-            LmfrStatusDisplayGlobalA.Button1.Enabled = False
-            LmfrStatusDisplayGlobalA.Refresh()
-        End If
-
         HandleUserMessageLogging("GMRC", "StopRecording: Stop Recording Requested...")
 
         ' Handle alternate recording stop/restart
@@ -1625,11 +1612,6 @@ Public Class INCA_InterfaceClass
                 FusionStatusDisplay.Button6.Enabled = False
                 FusionStatusDisplay.Button8.Enabled = False
                 FusionStatusDisplay.Refresh()
-            End If
-
-            If LmfrStatusDisplayGlobalA.Visible Then
-                LmfrStatusDisplayGlobalA.Button1.Enabled = False
-                LmfrStatusDisplayGlobalA.Refresh()
             End If
 
             If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then

@@ -9,7 +9,6 @@ Imports System.Speech.Synthesis
 Imports System.Text
 Imports System.Threading
 Imports System.Threading.Tasks
-Imports System.Windows.Forms.DataVisualization.Charting
 Imports System.Xml
 Imports SharpPcap
 
@@ -805,19 +804,12 @@ Partial Public Class GmResidentClient
 
                         If myDGs(z).CS_CPSTOS_X_POS > 0 And myDGs(z).CS_CPSTOS_Y_POS > 0 Then
 
-                            If TargetStatusDisplay.Visible = True Then
-                                TargetStatusDisplay.Label2.Text = Format$(Math.Abs(Math.Sqrt((MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData * MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData) +
-                        (MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData * MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData))), "0.00")
-                            End If
-
                             Dim xPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData
                             Dim yPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData
                             Dim distText As String = Format$(Math.Abs(Math.Sqrt((xPos * xPos) + (yPos * yPos))), "0.00")
                             OnVehicleScreen.Label17.Text = distText
 
                         End If
-
-                        If PedestrianStatusDisplay.Visible = True Then HandlePedestrianStatusDisplay(myDGs(z))
 
                         ' ============================================================
                         ' SUSPEND LAYOUT FOR BATCHED GRID UPDATES
