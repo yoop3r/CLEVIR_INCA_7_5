@@ -56,8 +56,11 @@ Public Class GmResidentClient
     '  GM_ResidentClient.ProcessKiller.vb   - ProcessKiller watchdog thread and killer form
     '  GM_ResidentClient.InitMonitor.vb     - InitializationMonitor progress UI
     '  GM_ResidentClient.MenuHandlers.vb    - designer menu/control event handlers
+    'Form-independent logic extracted into Friend helper classes (unit tested in CLEVIR_INCA_7_5.Tests):
+    '  PropertyGeofence, DisplayValueFormatter, ResidentClientText, ConfigValueReader, ResidentConfigRules,
+    '  ResidentConfigXmlWriter (+ ResidentConfigSnapshot), LidarExtrinsicParser
 
-    'Note: the former CLEVIR 7.2 (FlexGridFiles) / 7.3 (NoFlexGridFiles) variants of this form are not part of this
+    'Note: the former CLEVIR 7.2
     'repository; changes here no longer need to be mirrored into separate copies.
 
     ' ═══════════════════════════════════════════════════════════════

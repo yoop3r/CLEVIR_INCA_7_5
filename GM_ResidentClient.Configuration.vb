@@ -73,15 +73,7 @@ Partial Public Class GmResidentClient
     Private Function ReadBooleanConfig(parentNode As XmlNode,
                                        nodeName As String,
                                        defaultValue As Boolean) As Boolean
-        Dim node = parentNode.SelectSingleNode(nodeName)
-        If node IsNot Nothing Then
-            Dim value As Boolean = CBool(node.InnerText)
-            HandleUserMessageLogging("GMRC", $"{nodeName} set to: {value}")
-            Return value
-        End If
-
-        HandleUserMessageLogging("GMRC", $"{nodeName} not found, using default: {defaultValue}")
-        Return defaultValue
+        Return ConfigValueReader.ReadBoolean(parentNode, nodeName, defaultValue, AddressOf LogConfigMessage)
     End Function
 
     ''' <summary>
@@ -90,15 +82,7 @@ Partial Public Class GmResidentClient
     Private Function ReadStringConfig(parentNode As XmlNode,
                                       nodeName As String,
                                       defaultValue As String) As String
-        Dim node = parentNode.SelectSingleNode(nodeName)
-        If node IsNot Nothing Then
-            Dim value As String = node.InnerText.Trim()
-            HandleUserMessageLogging("GMRC", $"{nodeName} set to: {value}")
-            Return value
-        End If
-
-        HandleUserMessageLogging("GMRC", $"{nodeName} not found, using default: {defaultValue}")
-        Return defaultValue
+        Return ConfigValueReader.ReadString(parentNode, nodeName, defaultValue, AddressOf LogConfigMessage)
     End Function
 
     ''' <summary>
@@ -107,16 +91,12 @@ Partial Public Class GmResidentClient
     Private Function ReadIntegerConfig(parentNode As XmlNode,
                                        nodeName As String,
                                        defaultValue As Integer) As Integer
-        Dim node = parentNode.SelectSingleNode(nodeName)
-        If node IsNot Nothing Then
-            Dim value As Integer = CInt(node.InnerText)
-            HandleUserMessageLogging("GMRC", $"{nodeName} set to: {value}")
-            Return value
-        End If
-
-        HandleUserMessageLogging("GMRC", $"{nodeName} not found, using default: {defaultValue}")
-        Return defaultValue
+        Return ConfigValueReader.ReadInteger(parentNode, nodeName, defaultValue, AddressOf LogConfigMessage)
     End Function
+
+    Private Shared Sub LogConfigMessage(message As String)
+        HandleUserMessageLogging("GMRC", message)
+    End Sub
     Public Function ReadConfiguration(configFilePath As String, Optional failureReporter As Action(Of String) = Nothing) As Boolean
         ' Centralized helper to read any XML-based configuration file.
         ' Returns True on success, False on failure.
@@ -201,19 +181,10 @@ Partial Public Class GmResidentClient
             LidarCaptureEnabled = ReadBooleanConfig(root, "LidarCaptureEnabled", False)
 
             ' Signal registration mode (radio buttons will be set later in LoginForm_Load)
+            ' Unrecognized modes are normalized to DISPLAYS
             Dim signalRegMode = ReadStringConfig(root, "SignalRegistrationMode", "DISPLAYS").ToUpper()
-            SignalRegistrationMode = signalRegMode
-            SaveSignalRegistrationMode = signalRegMode
-
-            ' Validate and normalize the value
-            Select Case signalRegMode
-                Case "FULL", "DISPLAYS", "GO/NOGO", "NEW FULL"
-                    ' Valid mode - keep as-is
-                Case Else
-                    ' Invalid mode - default to DISPLAYS
-                    SignalRegistrationMode = "DISPLAYS"
-                    SaveSignalRegistrationMode = "DISPLAYS"
-            End Select
+            SignalRegistrationMode = ResidentConfigRules.NormalizeSignalRegistrationMode(signalRegMode)
+            SaveSignalRegistrationMode = SignalRegistrationMode
 
             HandleUserMessageLogging("GMRC", $"ReadConfiguration: SignalRegistrationMode set to '{SignalRegistrationMode}' (UI update deferred)")
 
@@ -324,7 +295,7 @@ Partial Public Class GmResidentClient
                 TimeMachinePtpAssumeLocked = True
             End If
 
-            If TimeSyncProviderType = "TIMEMACHINE" AndAlso Not TimeMachineEnabled Then
+            If ResidentConfigRules.ShouldFallBackToOxts(TimeSyncProviderType, TimeMachineEnabled) Then
                 HandleUserMessageLogging("GMRC", "TimeSync provider set to TimeMachine but TimeMachineConfiguration.Enabled is False - falling back to OXTS")
                 TimeSyncProviderType = "OXTS"
             End If
@@ -435,15 +406,6 @@ Partial Public Class GmResidentClient
         End Try
     End Sub
 
-    ''' <summary>
-    ''' ✅ NEW: Parses a whitespace-separated vector of doubles (e.g. "0 0 0") from
-    ''' config.xml, falling back to the provided default if the text is missing,
-    ''' malformed, or the wrong length.
-    ''' </summary>
-    Private Function ParseDoubleVector(text As String, expectedLength As Integer, fallback As Double()) As Double()
-        Return ResidentClientText.ParseDoubleVector(text, expectedLength, fallback)
-    End Function
-
     Private Sub ReadLidarConfiguration(root As XmlNode)
         Try
             ' ================================================================
@@ -513,41 +475,11 @@ Partial Public Class GmResidentClient
                     Try
                         Dim extrinsicNode As XmlNode = lidarNode.SelectSingleNode("Extrinsic")
                         If extrinsicNode IsNot Nothing Then
-                            Dim isCalibratedAttr As String = extrinsicNode.Attributes("IsCalibrated")?.Value
-                            Dim isCalibrated As Boolean = If(String.IsNullOrEmpty(isCalibratedAttr), False, Boolean.Parse(isCalibratedAttr))
-
-                            Dim translationText As String = extrinsicNode.SelectSingleNode("Translation")?.InnerText
-                            Dim rotationText As String = extrinsicNode.SelectSingleNode("RotationQuaternion")?.InnerText
-                            Dim residualText As String = extrinsicNode.SelectSingleNode("ResidualError")?.InnerText
-                            Dim dateText As String = extrinsicNode.SelectSingleNode("DatePerformed")?.InnerText
-
-                            Dim translation As Double() = ParseDoubleVector(translationText, 3, {0.0, 0.0, 0.0})
-                            Dim rotation As Double() = ParseDoubleVector(rotationText, 4, {0.0, 0.0, 0.0, 1.0})
-
-                            Dim residual As Double? = Nothing
-                            Dim residualParsed As Double
-                            If Double.TryParse(residualText, residualParsed) Then
-                                residual = residualParsed
-                            End If
-
-                            Dim datePerformed As DateTime? = Nothing
-                            Dim dateParsed As DateTime
-                            If DateTime.TryParse(dateText, dateParsed) Then
-                                datePerformed = dateParsed
-                            End If
-
-                            device.ExtrinsicConfig = New PcapEventBridge.ExtrinsicRecord With {
-                                .CalibrationId = extrinsicNode.SelectSingleNode("CalibrationId")?.InnerText,
-                                .DatePerformed = datePerformed,
-                                .Method = extrinsicNode.SelectSingleNode("Method")?.InnerText,
-                                .TranslationMeters = translation,
-                                .RotationQuaternion = rotation,
-                                .ResidualError = residual,
-                                .IsCalibrated = isCalibrated
-                            }
+                            Dim extrinsic As PcapEventBridge.ExtrinsicRecord = LidarExtrinsicParser.Parse(extrinsicNode)
+                            device.ExtrinsicConfig = extrinsic
                             device.HasExtrinsicConfig = True
 
-                            If isCalibrated Then
+                            If extrinsic.IsCalibrated Then
                                 HandleUserMessageLogging("GMRC", $"✅ Extrinsic loaded for {deviceId} (calibration ID: {device.ExtrinsicConfig.CalibrationId})")
                             Else
                                 HandleUserMessageLogging("GMRC", $"⚠️ Extrinsic for {deviceId} is uncalibrated (identity placeholder)")
@@ -681,216 +613,10 @@ Partial Public Class GmResidentClient
             master.Load(Path.Combine(My.Application.Info.DirectoryPath, "config.xml"))
             Dim existing As XmlDocument = CType(master.CloneNode(True), XmlDocument)
             If File.Exists(filePath) Then existing.Load(filePath)
-            Dim generated As New System.Text.StringBuilder()
-            ' Use XmlWriter with proper settings for indentation and readability
-            Dim settings As New XmlWriterSettings With {
-            .Indent = True,
-            .IndentChars = vbTab,
-            .NewLineOnAttributes = False
-        }
-
-            Using writer As XmlWriter = XmlWriter.Create(generated, settings)
-                writer.WriteStartDocument()
-                writer.WriteStartElement("Configuration") ' Root element
-
-                ' ════════════════════════════════════════════════════════════
-                ' INCA CONFIGURATION SECTION
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" INCA Configuration ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("INCADatabase", INCADatabase)
-                writer.WriteElementString("INCAWorkspace", INCAWorkspace)
-                writer.WriteElementString("INCAExperiment", InitialINCAExperiment)
-                writer.WriteElementString("INCAVariableFile", INCAVariableFile)
-                writer.WriteElementString("ETAS_USER_PATH", ETAS_USER_PATH)
-                writer.WriteElementString("SignalRegistrationMode", SignalRegistrationMode)
-
-                ' ════════════════════════════════════════════════════════════
-                ' RECORDING CONFIGURATION SECTION
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" Recording Configuration ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("RecordWAVTime", RecordWAVTime.ToString())
-                writer.WriteElementString("RecordFileDurationMinutes", RecordFileDurationMinutes.ToString())
-                writer.WriteElementString("MuteVoiceRecordingMessages", MuteVoiceRecordingMessages.ToString())
-                writer.WriteElementString("AudioToTextConversion", AudioToTextConversion.ToString())
-
-                ' ════════════════════════════════════════════════════════════
-                ' ALTERNATE RECORDING SECTION
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" Alternate Recording (CANalyzer/VehicleSpy) ")
-                writer.WriteComment(" Valid AlternateRecordConfig values: VehicleSpy, CANalyzer, None ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("AlternateRecordEnabled", AlternateRecordEnabled.ToString())
-                writer.WriteElementString("AlternateRecordConfig", AlternateRecordConfig)
-                writer.WriteElementString("EnableAltRecReStartAfterRecordStop", EnableAltRecReStartAfterRecordStop.ToString())
-
-                ' ════════════════════════════════════════════════════════════
-                ' DATA STORAGE & NETWORK SECTION
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" Data Storage & Network ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("BaseDataCollectionPath", BaseDataCollectionPath)
-
-                writer.WriteElementString("NetworkDriveLetter", NetworkDriveLetter)
-
-                writer.WriteElementString("NetworkDriveMapping", NetworkDriveMapping)
-
-                ' ════════════════════════════════════════════════════════════
-                ' LOCAL TOOL & SCRIPT PATHS SECTION
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" Local Tool & Script Paths ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("CSVScriptsPath", CSVScriptsPath)
-                writer.WriteElementString("SevenZipPath", SevenZipPath)
-
-                ' ════════════════════════════════════════════════════════════
-                ' COMPRESSION CONFIGURATION SECTION (NESTED)
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" Compression Configuration ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteStartElement("Compression")
-
-                ' File type compression switches
-                writer.WriteComment(" File type compression switches ")
-                writer.WriteElementString("CompressMF4", CompressMF4.ToString())
-                writer.WriteElementString("CompressPCAP", CompressPCAP.ToString())
-                writer.WriteElementString("CompressASC", CompressASC.ToString())
-                writer.WriteElementString("CompressVSB", CompressVSB.ToString())
-
-                ' Deletion policy
-                writer.WriteComment(" Deletion policy (SAFE DEFAULT = False) ")
-                writer.WriteElementString("DeleteAfterCompression", DeleteAfterCompression.ToString())
-
-                ' Compression parameters
-                writer.WriteComment(" Compression parameters ")
-                writer.WriteElementString("CompressionLevel", CompressionLevel.ToString())
-                writer.WriteComment(" 1=Fastest, 9=Best ")
-
-                ' ✅ FIX: Use simple XML names to match ReadConfiguration
-                writer.WriteElementString("MaxRetries", ZipCompressionMaxRetries.ToString())
-                writer.WriteElementString("RetryDelaySeconds", ZipCompressionRetryDelay.ToString())
-
-                ' Lock detection
-                writer.WriteComment(" Lock detection ")
-                writer.WriteElementString("FileLockTimeoutSeconds", ZipFileLockTimeout.ToString())
-
-                writer.WriteEndElement() ' Close <Compression>
-
-                ' ════════════════════════════════════════════════════════════
-                ' HARDWARE CONFIGURATION SECTION
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" Hardware Configuration ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("NetworkAdapterDescription", NetworkAdapterDescription)
-
-                ' ════════════════════════════════════════════════════════════
-                ' OXTS CONFIGURATION SECTION (GPS/INS Integration)
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" OXTS GPS/INS Configuration ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteStartElement("OxtsConfiguration")
-
-                ' Write OXTS settings
-                writer.WriteComment(" Enable/disable OXTS INS integration ")
-                writer.WriteElementString("OxtsEnabled", OxtsEnabled.ToString())
-
-                writer.WriteComment(" NCOM UDP listener settings ")
-                writer.WriteElementString("NcomIpAddress", OxtsNcomIpAddress)
-                writer.WriteElementString("NcomPort", OxtsNcomPort.ToString())
-
-                writer.WriteComment(" GPS lock behavior ")
-                writer.WriteElementString("GpsLockTimeout", OxtsGpsLockTimeout.ToString())
-                writer.WriteElementString("WaitForLockOnStart", OxtsWaitForLockOnStart.ToString())
-
-                writer.WriteEndElement() ' Close OxtsConfiguration
-
-                writer.WriteComment(" Time Sync provider selection ")
-                writer.WriteStartElement("TimeSyncConfiguration")
-                writer.WriteElementString("EnableTimeSync", TimeSyncEnabled.ToString())
-                writer.WriteElementString("Provider", TimeSyncProviderType)
-                writer.WriteEndElement()
-
-                writer.WriteComment(" TimeMachine Locator protocol settings ")
-                writer.WriteStartElement("TimeMachineConfiguration")
-                writer.WriteElementString("Enabled", TimeMachineEnabled.ToString())
-                writer.WriteElementString("DeviceIp", TimeMachineIpAddress)
-                writer.WriteElementString("Port", TimeMachinePort.ToString())
-                writer.WriteElementString("PollMs", TimeMachinePollMs.ToString())
-                writer.WriteElementString("PtpAssumeLocked", TimeMachinePtpAssumeLocked.ToString())
-                writer.WriteEndElement()
-
-                ' ════════════════════════════════════════════════════════════
-                ' LIDAR CONFIGURATION SECTION (Legacy + Multi-Device)
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" LiDAR Configuration (Legacy + Multi-Device) ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("LidarCaptureEnabled", LidarCaptureEnabled.ToString())
-
-                ' Write legacy single-device tags for backward compatibility
-                writer.WriteComment(" Legacy single-device (backward compatibility) ")
-                If LidarDevices.Count > 0 Then
-                    writer.WriteElementString("LidarAdapterGuid", LidarDevices(0).LidarAdapterGuid)
-                    writer.WriteElementString("LidarIpAddress", LidarDevices(0).LidarIpAddress)
-                    writer.WriteElementString("LidarDataPort", LidarDevices(0).LidarDataPort.ToString())
-                    writer.WriteElementString("LidarImuPort", LidarDevices(0).LidarImuPort.ToString())
-                End If
-
-                ' Write new multi-device structure
-                writer.WriteComment(" Multi-device configuration ")
-                writer.WriteStartElement("LidarDevices")
-
-                If LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 Then
-                    For i As Integer = 0 To LidarDevices.Count - 1
-                        ' ✅ CRITICAL: Write device even if Enabled=False
-                        writer.WriteStartElement("Lidar")
-                        writer.WriteAttributeString("id", (i + 1).ToString())
-                        writer.WriteAttributeString("enabled", LidarDevices(i).Enabled.ToString())
-
-                        writer.WriteElementString("AdapterGuid", LidarDevices(i).LidarAdapterGuid)
-                        writer.WriteElementString("IpAddress", LidarDevices(i).LidarIpAddress)
-                        writer.WriteElementString("DataPort", LidarDevices(i).LidarDataPort.ToString())
-                        writer.WriteElementString("ImuPort", LidarDevices(i).LidarImuPort.ToString())
-
-                        writer.WriteEndElement() ' Close Lidar
-                    Next
-                End If
-
-                writer.WriteEndElement() ' Close LidarDevices
-
-                ' ════════════════════════════════════════════════════════════
-                ' APPLICATION CONFIGURATION SECTION
-                ' ════════════════════════════════════════════════════════════
-                writer.WriteComment(" ================================================================ ")
-                writer.WriteComment(" Application Configuration ")
-                writer.WriteComment(" ================================================================ ")
-
-                writer.WriteElementString("APICommErrorMsgDelayTime", APICommErrorMsgDelayTime.ToString())
-
-                writer.WriteEndElement() ' Close root element
-                writer.WriteEndDocument()
-            End Using
+            Dim generatedXml As String = ResidentConfigXmlWriter.BuildRuntimeSettingsXml(CaptureConfigSnapshot())
 
             Dim updates As New XmlDocument()
-            updates.LoadXml(generated.ToString())
+            updates.LoadXml(generatedXml)
             IncaConfiguration.MergeRuntimeSettings(existing, updates, master)
             existing.Save(filePath)
             HandleUserMessageLogging("GMRC", $"WriteConfiguration: Configuration file written to {filePath}")
@@ -899,5 +625,56 @@ Partial Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", $"WriteConfiguration: Error writing to '{filePath}' - {ex.Message}")
         End Try
     End Sub
+
+    ''' <summary>
+    ''' Copies the globals persisted by WriteConfiguration into a ResidentConfigSnapshot.
+    ''' </summary>
+    Private Function CaptureConfigSnapshot() As ResidentConfigSnapshot
+        Return New ResidentConfigSnapshot With {
+            .INCADatabase = INCADatabase,
+            .INCAWorkspace = INCAWorkspace,
+            .InitialINCAExperiment = InitialINCAExperiment,
+            .INCAVariableFile = INCAVariableFile,
+            .ETAS_USER_PATH = ETAS_USER_PATH,
+            .SignalRegistrationMode = SignalRegistrationMode,
+            .RecordWAVTime = RecordWAVTime,
+            .RecordFileDurationMinutes = RecordFileDurationMinutes,
+            .MuteVoiceRecordingMessages = MuteVoiceRecordingMessages,
+            .AudioToTextConversion = AudioToTextConversion,
+            .AlternateRecordEnabled = AlternateRecordEnabled,
+            .AlternateRecordConfig = AlternateRecordConfig,
+            .EnableAltRecReStartAfterRecordStop = EnableAltRecReStartAfterRecordStop,
+            .BaseDataCollectionPath = BaseDataCollectionPath,
+            .NetworkDriveLetter = NetworkDriveLetter,
+            .NetworkDriveMapping = NetworkDriveMapping,
+            .CSVScriptsPath = CSVScriptsPath,
+            .SevenZipPath = SevenZipPath,
+            .CompressMF4 = CompressMF4,
+            .CompressPCAP = CompressPCAP,
+            .CompressASC = CompressASC,
+            .CompressVSB = CompressVSB,
+            .DeleteAfterCompression = DeleteAfterCompression,
+            .CompressionLevel = CompressionLevel,
+            .ZipCompressionMaxRetries = ZipCompressionMaxRetries,
+            .ZipCompressionRetryDelay = ZipCompressionRetryDelay,
+            .ZipFileLockTimeout = ZipFileLockTimeout,
+            .NetworkAdapterDescription = NetworkAdapterDescription,
+            .OxtsEnabled = OxtsEnabled,
+            .OxtsNcomIpAddress = OxtsNcomIpAddress,
+            .OxtsNcomPort = OxtsNcomPort,
+            .OxtsGpsLockTimeout = OxtsGpsLockTimeout,
+            .OxtsWaitForLockOnStart = OxtsWaitForLockOnStart,
+            .TimeSyncEnabled = TimeSyncEnabled,
+            .TimeSyncProviderType = TimeSyncProviderType,
+            .TimeMachineEnabled = TimeMachineEnabled,
+            .TimeMachineIpAddress = TimeMachineIpAddress,
+            .TimeMachinePort = TimeMachinePort,
+            .TimeMachinePollMs = TimeMachinePollMs,
+            .TimeMachinePtpAssumeLocked = TimeMachinePtpAssumeLocked,
+            .LidarCaptureEnabled = LidarCaptureEnabled,
+            .LidarDevices = LidarDevices,
+            .APICommErrorMsgDelayTime = APICommErrorMsgDelayTime
+        }
+    End Function
 
 End Class
