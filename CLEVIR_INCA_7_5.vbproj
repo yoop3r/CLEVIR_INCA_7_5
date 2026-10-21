@@ -782,8 +782,7 @@
     <None Remove="Migration_StopCapture_New.vb.exclude" />
     <None Remove="Migration_StopCapture_New.vb.txt" />
     <None Remove="Migration_TestChecklist.md" />
-    <None Remove="OxtsCaptureConfig_Example.xml" />
-    <!-- Same rationale as build_output_*.log above: these are untracked, gitignored
+    <!-- Same rationale
          (*.log) scratch logs from ad-hoc build/debug investigations. Wildcarded to
          avoid re-adding one explicit entry per future stderr/stdout/wix log run. -->
     <None Remove="stderr_*.log" />
