@@ -10,7 +10,6 @@ Imports System.Speech.Synthesis
 Imports System.Text
 Imports System.Threading
 Imports System.Threading.Tasks
-Imports System.Windows.Forms.DataVisualization.Charting
 Imports System.Xml
 Imports SharpPcap
 

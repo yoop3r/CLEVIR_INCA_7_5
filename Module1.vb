@@ -7,7 +7,6 @@ Imports System.Runtime.InteropServices
 Imports System.Speech.Synthesis
 Imports System.Threading
 Imports System.Threading.Tasks
-Imports System.Windows.Forms.DataVisualization.Charting
 Imports System.Xml
 Imports de.etas.cebra.toolAPI.Common
 Imports de.etas.cebra.toolAPI.Inca
