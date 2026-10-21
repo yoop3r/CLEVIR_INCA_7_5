@@ -186,7 +186,7 @@ Partial Public Class GmResidentClient
             End If
 
             If String.IsNullOrEmpty(FinalPathToSaveData) Then
-                FinalPathToSaveData = Path.Combine(BaseDataCollectionPath, "Data", "gmcsv" & VehicleNumber)
+                FinalPathToSaveData = FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber)
                 HandleUserMessageLogging("GMRC", $"FinalPathToSaveData set to: {FinalPathToSaveData}")
             End If
 
@@ -337,7 +337,7 @@ Partial Public Class GmResidentClient
         ' Find all orphaned files (those without corresponding .zip) and compress them
         ' based on configuration settings.
 
-        Dim dataRoot = Path.Combine(BaseDataCollectionPath, "Data", "gmcsv" & VehicleNumber)
+        Dim dataRoot = FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber)
 
         If Not Directory.Exists(dataRoot) Then
             HandleUserMessageLogging("GMRC", "CompressOrphanedFiles: Data directory not found")
@@ -350,14 +350,7 @@ Partial Public Class GmResidentClient
         ' ✅ FIX: Check CompressMF4 flag BEFORE processing .mf4 files
         ' ════════════════════════════════════════════════════════════
         If CompressMF4 Then
-            For Each mf4File In Directory.GetFiles(dataRoot, "*.mf4", SearchOption.AllDirectories)
-                Dim zipFile = Path.ChangeExtension(mf4File, ".zip")
-                If Not File.Exists(zipFile) Then
-                    HandleUserMessageLogging("GMRC", $"Found orphaned MF4: {Path.GetFileName(mf4File)}")
-                    CompressSingleFileWithRetryAsync(mf4File, zipFile)
-                    orphanedCount += 1
-                End If
-            Next
+            orphanedCount += QueueOrphanedFiles(dataRoot, "*.mf4", "MF4")
         Else
             HandleUserMessageLogging("GMRC", "CompressOrphanedFiles: MF4 compression disabled - skipping .mf4 files")
         End If
@@ -366,14 +359,7 @@ Partial Public Class GmResidentClient
         ' ✅ FIX: Check CompressPCAP flag BEFORE processing .pcap files
         ' ════════════════════════════════════════════════════════════
         If CompressPCAP Then
-            For Each pcapFile In Directory.GetFiles(dataRoot, "*.pcap", SearchOption.AllDirectories)
-                Dim zipFile = Path.ChangeExtension(pcapFile, ".zip")
-                If Not File.Exists(zipFile) Then
-                    HandleUserMessageLogging("GMRC", $"Found orphaned PCAP: {Path.GetFileName(pcapFile)}")
-                    CompressSingleFileWithRetryAsync(pcapFile, zipFile)
-                    orphanedCount += 1
-                End If
-            Next
+            orphanedCount += QueueOrphanedFiles(dataRoot, "*.pcap", "PCAP")
         Else
             HandleUserMessageLogging("GMRC", "CompressOrphanedFiles: PCAP compression disabled - skipping .pcap files")
         End If
@@ -382,25 +368,11 @@ Partial Public Class GmResidentClient
         ' ✅ OPTIONAL: Add .asc and .vsb support if needed
         ' ════════════════════════════════════════════════════════════
         If CompressASC Then
-            For Each ascFile In Directory.GetFiles(dataRoot, "*.asc", SearchOption.AllDirectories)
-                Dim zipFile = Path.ChangeExtension(ascFile, ".zip")
-                If Not File.Exists(zipFile) Then
-                    HandleUserMessageLogging("GMRC", $"Found orphaned ASC: {Path.GetFileName(ascFile)}")
-                    CompressSingleFileWithRetryAsync(ascFile, zipFile)
-                    orphanedCount += 1
-                End If
-            Next
+            orphanedCount += QueueOrphanedFiles(dataRoot, "*.asc", "ASC")
         End If
 
         If CompressVSB Then
-            For Each vsbFile In Directory.GetFiles(dataRoot, "*.vsb", SearchOption.AllDirectories)
-                Dim zipFile = Path.ChangeExtension(vsbFile, ".zip")
-                If Not File.Exists(zipFile) Then
-                    HandleUserMessageLogging("GMRC", $"Found orphaned VSB: {Path.GetFileName(vsbFile)}")
-                    CompressSingleFileWithRetryAsync(vsbFile, zipFile)
-                    orphanedCount += 1
-                End If
-            Next
+            orphanedCount += QueueOrphanedFiles(dataRoot, "*.vsb", "VSB")
         End If
 
         If orphanedCount > 0 Then
@@ -409,6 +381,20 @@ Partial Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", "CompressOrphanedFiles: No orphaned files found (or all compression disabled)")
         End If
     End Sub
+
+    ''' <summary>
+    ''' Queues background compression for each orphaned file (no sibling .zip) matching <paramref name="searchPattern"/>
+    ''' under <paramref name="dataRoot"/>. Returns the number queued.
+    ''' </summary>
+    Private Function QueueOrphanedFiles(dataRoot As String, searchPattern As String, kind As String) As Integer
+        Dim count As Integer = 0
+        For Each orphan In FileMaintenance.FindOrphanedFiles(dataRoot, searchPattern)
+            HandleUserMessageLogging("GMRC", $"Found orphaned {kind}: {Path.GetFileName(orphan)}")
+            CompressSingleFileWithRetryAsync(orphan, FileMaintenance.ZipPathFor(orphan))
+            count += 1
+        Next
+        Return count
+    End Function
 
     Private Sub Handle7ZipProcess()
         ' ════════════════════════════════════════════════════════════
@@ -522,14 +508,14 @@ Partial Public Class GmResidentClient
 
             If Len(FinalPathToSaveData) > 0 AndAlso Directory.Exists(FinalPathToSaveData) Then
                 HandleUserMessageLogging("GMRC", "Copying GM_INCA_Comm.log...",,, FlashMsgOn)
-                Dim destPath As String = Path.Combine(BaseDataCollectionPath, "Data", "gmcsv" & VehicleNumber, $"{Format(DateTime.Now, "yyyMMdd_hhmmss")}_GM_INCA_Comm.log")
+                Dim destPath As String = Path.Combine(FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber), FileMaintenance.CommLogArchiveFileName(DateTime.Now))
                 FileCopy(sourceLogFile, destPath)
             Else
                 ' Fallback to application directory
                 Dim info As New FileInfo(sourceLogFile)
                 If info.Length > 10000 Then
                     HandleUserMessageLogging("GMRC", "Copying GM_INCA_Comm.log to fallback location...",,, FlashMsgOn)
-                    Dim fallbackPath As String = Path.Combine(My.Application.Info.DirectoryPath, $"{Format(DateTime.Now, "MMddyyyy_hhmmss")}_GM_INCA_Comm.log")
+                    Dim fallbackPath As String = Path.Combine(My.Application.Info.DirectoryPath, FileMaintenance.CommLogFallbackFileName(DateTime.Now))
                     FileCopy(sourceLogFile, fallbackPath)
                 End If
             End If
@@ -567,10 +553,10 @@ Partial Public Class GmResidentClient
         Dim sourceLogPath As String = Path.Combine(My.Application.Info.DirectoryPath, "GM_ResidentClient.log")
         Dim aggregateAnnoFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, $"{VehicleNumber}_AggregateAnnotations.csv")
         Dim driverAnnoFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, $"{VehicleNumber}_Driver_Anno_Cons.xlsx")
-        Dim baseDataPath As String = Path.Combine(BaseDataCollectionPath, "Data")
+        Dim vehicleDataRoot As String = FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber)
 
         ' Log destination
-        Dim destinationLogPath As String = Path.Combine(baseDataPath, "gmcsv" & VehicleNumber, "GM_ResidentClient.log")
+        Dim destinationLogPath As String = Path.Combine(vehicleDataRoot, "GM_ResidentClient.log")
 
         Try
             Directory.CreateDirectory(Path.GetDirectoryName(destinationLogPath))
@@ -581,7 +567,7 @@ Partial Public Class GmResidentClient
 
         ' Aggregate anno
         If File.Exists(aggregateAnnoFilePath) Then
-            Dim aggregateDestinationPath As String = Path.Combine(baseDataPath, "gmcsv" & VehicleNumber, $"{VehicleNumber}_AggregateAnnotations.csv")
+            Dim aggregateDestinationPath As String = Path.Combine(vehicleDataRoot, $"{VehicleNumber}_AggregateAnnotations.csv")
             Try
                 Directory.CreateDirectory(Path.GetDirectoryName(aggregateDestinationPath))
                 File.Copy(aggregateAnnoFilePath, aggregateDestinationPath, overwrite:=True)
@@ -592,11 +578,11 @@ Partial Public Class GmResidentClient
 
         ' Driver anno (single, consolidated copy with wait + retries)
         If File.Exists(driverAnnoFilePath) Then
-            Dim driverAnnoDestinationPath As String = Path.Combine(baseDataPath, "gmcsv" & VehicleNumber, $"{VehicleNumber}_Driver_Anno_Cons.xlsx")
+            Dim driverAnnoDestinationPath As String = Path.Combine(vehicleDataRoot, $"{VehicleNumber}_Driver_Anno_Cons.xlsx")
 
             ' Wait for exclusive access, then copy with retries
-            If WaitUntilFileReady(driverAnnoFilePath, 10, 500) Then
-                If Not CopyWithRetries(driverAnnoFilePath, driverAnnoDestinationPath, maxRetries:=5, delayMs:=1000) Then
+            If FileMaintenance.WaitUntilFileReady(driverAnnoFilePath, 10, 500, AddressOf LogShutdownMessage) Then
+                If Not FileMaintenance.CopyWithRetries(driverAnnoFilePath, driverAnnoDestinationPath, maxRetries:=5, delayMs:=1000, log:=AddressOf LogShutdownMessage) Then
                     HandleUserMessageLogging("GMRC", $"Failed to copy Driver_Anno_Cons.xlsx after retries")
                 End If
             Else
@@ -605,35 +591,9 @@ Partial Public Class GmResidentClient
         End If
     End Sub
 
-    ' -- Helpers at class scope (e.g., near other helper functions) --
-    Private Function WaitUntilFileReady(path As String, tries As Integer, delayMs As Integer) As Boolean
-        For i = 1 To Math.Max(0, tries)
-            Try
-                Using fs As New FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None)
-                    Return True
-                End Using
-            Catch exWait As Exception
-                HandleUserMessageLogging("GMRC", $"WaitUntilFileReady: {path} not ready - {exWait.Message}")
-                Thread.Sleep(Math.Max(0, delayMs))
-            End Try
-        Next
-        Return False
-    End Function
-
-    Private Function CopyWithRetries(src As String, dest As String, maxRetries As Integer, delayMs As Integer) As Boolean
-        For i = 1 To Math.Max(1, maxRetries)
-            Try
-                File.Copy(src, dest, overwrite:=True)
-                HandleUserMessageLogging("GMRC", $"Copied Driver_Anno_Cons.xlsx to {dest}")
-                Return True
-            Catch ex As Exception
-                HandleUserMessageLogging("GMRC", $"Retry {i}/{maxRetries} - Copy failed: {ex.Message}")
-                Thread.Sleep(Math.Max(0, delayMs))
-            End Try
-        Next
-        Return False
-    End Function
-    ' --- END ADDED HELPERS ---
+    Private Shared Sub LogShutdownMessage(message As String)
+        HandleUserMessageLogging("GMRC", message)
+    End Sub
 
     Private Sub CloseDisplayForms()
 
