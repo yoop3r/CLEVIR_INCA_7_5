@@ -42,61 +42,7 @@ Partial Public Class GmResidentClient
             ' ══════════════════════════════════════════════════════════════
             ' STOP BACKGROUND WORKERS FIRST
             ' ══════════════════════════════════════════════════════════════
-            _enableMyBackgroundTasks = False
-            FormDisplayed = False
-
-            ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX 2: CANCEL ONGOING OPERATIONS
-            ' ════════════════════════════════════════════════════════════════
-            If _initCts IsNot Nothing Then
-                Try
-                    _initCts.Cancel()
-                    HandleUserMessageLogging("GMRC", "ExitApp: Cancelled ongoing initialization")
-                Catch ex As Exception
-                    ' Ignore cancellation errors
-                End Try
-            End If
-
-            ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX 3: STOP BACKGROUND WORKERS
-            ' ════════════════════════════════════════════════════════════════
-            _enableMyBackgroundTasks = False
-
-            ' Cancel background tasks immediately for faster shutdown
-            If _backgroundTasksCts IsNot Nothing Then
-                Try
-                    _backgroundTasksCts.Cancel()
-                    HandleUserMessageLogging("GMRC", "ExitApp: Cancelled background tasks via CancellationToken")
-                Catch ex As Exception
-                    ' Ignore cancellation errors
-                End Try
-            End If
-
-            FormDisplayed = False
-            Cursor = Cursors.WaitCursor
-            HandleUserMessageLogging("GMRC", "ExitApp: Stopping background tasks...")
-
-            ' Wait for background worker to stop (with timeout)
-            If BackgroundWorker1.IsBusy Then
-                HandleUserMessageLogging("GMRC", "Waiting for background tasks to complete...")
-                Dim startTime As DateTime = DateTime.Now
-                Const timeoutMs As Integer = 10000 ' 10 second timeout
-
-                While BackgroundWorker1.IsBusy AndAlso (DateTime.Now - startTime).TotalMilliseconds < timeoutMs
-                    Application.DoEvents()
-                    Thread.Sleep(100)
-                End While
-
-                If BackgroundWorker1.IsBusy Then
-                    HandleUserMessageLogging("GMRC", "Warning: Background tasks did not stop within timeout")
-                End If
-            End If
-
-            ' Dispose the background tasks CancellationTokenSource
-            If _backgroundTasksCts IsNot Nothing Then
-                _backgroundTasksCts.Dispose()
-                _backgroundTasksCts = Nothing
-            End If
+            StopBackgroundWorkersForExit()
 
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 4: SHUTDOWN ALL LIDAR DEVICES
@@ -121,78 +67,15 @@ Partial Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 7: USER CONFIRMATION (IF NEEDED)
             ' ════════════════════════════════════════════════════════════════
-            If String.IsNullOrEmpty(exitParameter) Then
-                ' Display the ExitAppForm modally.
-                ' ✅ WPF PILOT: ExitAppForm was migrated from WinForms to WPF (ExitAppFormWpf).
-                ' System.Windows.Window is not IDisposable (unlike WinForms Form), so the
-                ' previous "Using...End Using" wrapper is replaced with a plain Dim; there was
-                ' no unmanaged/disposable state on the original form to clean up.
-                Dim exitForm As New ExitAppFormWpf()
-                exitForm.Topmost = True
-                exitForm.ShowDialog()
-                selectedOption = exitForm.SelectedExitOption
-
-                Select Case selectedOption
-                    Case ExitOption.CancelExit
-                        HandleUserMessageLogging("GMRC", "ExitApp: Exit Cancelled by user")
-                        ExitApp = False
-                        Return False
-
-                    Case ExitOption.ExitClevirAndCloseInca
-                        HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR and Close INCA selected")
-                        CheckForExperiment = False
-                        MyIncaInterface?.CloseINCA()
-                        If Not PlaybackMode Then CopyINCADatabase()
-                        ' ✅ SET FLAG: User committed to exiting
-                        exitInProgress = True
-                        HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
-
-                    Case ExitOption.ExitClevirOnly
-                        HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR Only selected (leaving INCA running)")
-                        CheckForExperiment = False
-                        ' ✅ SET FLAG: User committed to exiting
-                        exitInProgress = True
-                        HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
-
-                    Case ExitOption.ExitClevirCloseIncaShutdownWindows
-                        HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR, Close INCA and Shutdown Windows selected")
-                        CheckForExperiment = False
-                        MyIncaInterface?.CloseINCA()
-                        If Not PlaybackMode Then CopyINCADatabase()
-                        ShutdownWindows = True
-                        ' ✅ SET FLAG: User committed to exiting
-                        exitInProgress = True
-                        HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
-                    Case Else
-                        ' Unknown option - treat as cancel
-                        ExitApp = False
-                        Return False
-                End Select
-
-            ElseIf exitParameter = "Complete" Then
-                ' Force a complete shutdown without user interaction
-                HandleUserMessageLogging("GMRC", "ExitApp: Exit complete - Closing INCA")
-                CheckForExperiment = False
-                MyIncaInterface?.CloseINCA()
+            If Not PromptForExitOption(exitParameter, selectedOption) Then
+                ExitApp = False
+                Return False
             End If
 
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 8: VALIDATE CRITICAL PATHS
             ' ════════════════════════════════════════════════════════════════
-            If String.IsNullOrEmpty(BaseDataCollectionPath) Then
-                HandleUserMessageLogging("GMRC", "BaseDataCollectionPath is null/empty during exit - using fallback")
-                BaseDataCollectionPath = My.Application.Info.DirectoryPath
-            End If
-
-            If String.IsNullOrEmpty(FinalPathToSaveData) Then
-                FinalPathToSaveData = FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber)
-                HandleUserMessageLogging("GMRC", $"FinalPathToSaveData set to: {FinalPathToSaveData}")
-            End If
-
-            If String.IsNullOrEmpty(VehicleNumber) Then
-                HandleUserMessageLogging("GMRC", "VehicleNumber is null/empty during exit - using fallback")
-                VehicleNumber = "UNKNOWN"
-            End If
+            EnsureExitPathsValid()
 
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 9: FILE OPERATIONS & HOUSEKEEPING
@@ -208,24 +91,7 @@ Partial Public Class GmResidentClient
             ' ✅ FIX: Set _killProcesses based on user's selected exit option
             ' ════════════════════════════════════════════════════════════════
             ' Stop killer thread
-            If _MyKillerThread IsNot Nothing AndAlso _MyKillerThread.IsAlive Then
-                ' Only kill INCA processes if user explicitly chose that option
-                Select Case selectedOption
-                    Case ExitOption.ExitClevirOnly
-                        _killProcesses = False  ' ✅ Keep INCA running
-                        HandleUserMessageLogging("GMRC", "Killer thread: _killProcesses = False (Exit CLEVIR Only)")
-                    Case ExitOption.ExitClevirAndCloseInca, ExitOption.ExitClevirCloseIncaShutdownWindows
-                        _killProcesses = True   ' ✅ Terminate INCA
-                        HandleUserMessageLogging("GMRC", "Killer thread: _killProcesses = True (Close INCA)")
-                    Case Else
-                        ' exitParameter = "Complete" or unknown scenario - default to killing INCA
-                        _killProcesses = True
-                        HandleUserMessageLogging("GMRC", "Killer thread: _killProcesses = True (Default)")
-                End Select
-
-                _MyKillerThread.Join(2000) ' Wait up to 2 seconds
-                HandleUserMessageLogging("GMRC", "Stopped killer thread.")
-            End If
+            StopKillerThreadForExit(selectedOption)
 
             ' Stop recording monitor task
             StopRecordingMonitorTask()
@@ -237,28 +103,7 @@ Partial Public Class GmResidentClient
             ' ✅ FIX 10: AUDIO-TO-TEXT CONVERSION (IF ENABLED)
             ' ════════════════════════════════════════════════════════════════
             If AudioToTextConversion Then
-                Try
-                    Dim progressForm As New AudioToTextProgressForm()
-                    LoginForm.Hide()
-                    OnVehicleScreen.Hide()
-
-                    progressForm.Show()
-                    Dim conversionTask = progressForm.RunConversionAsync()
-
-                    While Not progressForm.IsCompleted
-                        Application.DoEvents()
-                        Thread.Sleep(100)
-                    End While
-
-                    conversionTask.Wait(TimeSpan.FromSeconds(5))
-                    progressForm.Close()
-                    progressForm.Dispose()
-                    Thread.Sleep(2000)
-
-                    HandleUserMessageLogging("GMRC", "Audio-to-text conversion completed successfully")
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"Audio conversion error: {ex.Message}")
-                End Try
+                RunAudioToTextConversionOnExit()
             End If
 
             ' ════════════════════════════════════════════════════════════════
@@ -272,12 +117,7 @@ Partial Public Class GmResidentClient
             ' ✅ FIX 12: OXTS INTERFACE CLEANUP
             ' ════════════════════════════════════════════════════════════════
             If MyOxtsInterface IsNot Nothing Then
-                Try
-                    MyOxtsInterface.OxtsStopListening()
-                    HandleUserMessageLogging("GMRC", "OXTS interface stopped")
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"Error stopping OXTS: {ex.Message}")
-                End Try
+                StopOxtsInterfaceOnExit()
             End If
 
             ' ════════════════════════════════════════════════════════════════
@@ -670,17 +510,7 @@ Partial Public Class GmResidentClient
 
             Cursor = Cursors.WaitCursor
 
-            'We cant shut down until we transition out of Measure Mode
-
-            If MyIncaInterface.GetMeasurementStatus() = "True" Then
-                MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
-                    .GetAwaiter().GetResult()
-            End If
-
-            HandleUserMessageLogging("GMRC", "ShutdownAndRestartINCA: Shutting Down INCA...")
-
-            CheckForExperiment = False
-            MyIncaInterface.CloseINCA()
+            StopMeasurementAndCloseInca()
 
             RedisplayOnVehicleForm("GroupBox1")
 
@@ -704,15 +534,7 @@ Partial Public Class GmResidentClient
             'Here we initialize INCA based on information read in from the config.xml file
             If MyIncaInterface.InitINCA(INCADatabase, INCAWorkspace, INCAExperiment, forceInit, errorMsg, False) <> IGM_INCA_Comm.INIT_STATUS.INIT_UNSUCCESSFUL Then
 
-                RedisplayOnVehicleForm("GroupBox1")
-
-                'Here is where we register the signals from our signal list with INCA using the RCI2 interface (see the GM_INCA_Comm project).
-
-                MyIncaInterface.RegisterSignals()
-
-                HandleUserMessageLogging("GMRC", "ShutdownAndRestartINCA: Initialization Complete")
-
-                OnVehicleScreen.Refresh()
+                RegisterSignalsAfterIncaInit()
 
             Else
 
@@ -729,41 +551,269 @@ Partial Public Class GmResidentClient
 
                 End If
 
-                RedisplayOnVehicleForm("GroupBox1")
-
-                'Here is where we register the signals from our signal list with INCA using the RCI2 interface (see the GM_INCA_Comm project).
-
-                MyIncaInterface.RegisterSignals()
-
-                HandleUserMessageLogging("GMRC", "ShutdownAndRestartINCA: Initialization Complete")
-
-                OnVehicleScreen.Refresh()
+                RegisterSignalsAfterIncaInit()
 
             End If
 
-            Thread.Sleep(2000)
-
-            GroupBox1.Visible = False
-
-            FormDisplayed = True
-            _initializing = False
-
-            If PlaybackMode = False Then
-                CheckForExperiment = True
-            End If
-
-            Cursor = Cursors.Arrow
-
-            RedisplayOnVehicleForm("Main")
-
-            OnVehicleScreen.TopMost = False
-
-            HandleUserMessageLogging("GMRC", "INCA Restarted.",,)
+            FinishIncaRestart()
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "ShutdownAndRestartINCA: " & ex.Message, DisplayMsgBox,)
         End Try
 
+    End Sub
+
+    Private Sub StopBackgroundWorkersForExit()
+        'Called from ExitApp. Cancels init/background work and waits (up to 10 s) for BackgroundWorker1 to stop.
+
+        _enableMyBackgroundTasks = False
+        FormDisplayed = False
+
+        ' ════════════════════════════════════════════════════════════════
+        ' ✅ FIX 2: CANCEL ONGOING OPERATIONS
+        ' ════════════════════════════════════════════════════════════════
+        If _initCts IsNot Nothing Then
+            Try
+                _initCts.Cancel()
+                HandleUserMessageLogging("GMRC", "ExitApp: Cancelled ongoing initialization")
+            Catch ex As Exception
+                ' Ignore cancellation errors
+            End Try
+        End If
+
+        ' ════════════════════════════════════════════════════════════════
+        ' ✅ FIX 3: STOP BACKGROUND WORKERS
+        ' ════════════════════════════════════════════════════════════════
+        _enableMyBackgroundTasks = False
+
+        ' Cancel background tasks immediately for faster shutdown
+        If _backgroundTasksCts IsNot Nothing Then
+            Try
+                _backgroundTasksCts.Cancel()
+                HandleUserMessageLogging("GMRC", "ExitApp: Cancelled background tasks via CancellationToken")
+            Catch ex As Exception
+                ' Ignore cancellation errors
+            End Try
+        End If
+
+        FormDisplayed = False
+        Cursor = Cursors.WaitCursor
+        HandleUserMessageLogging("GMRC", "ExitApp: Stopping background tasks...")
+
+        ' Wait for background worker to stop (with timeout)
+        If BackgroundWorker1.IsBusy Then
+            HandleUserMessageLogging("GMRC", "Waiting for background tasks to complete...")
+            Dim startTime As DateTime = DateTime.Now
+            Const timeoutMs As Integer = 10000 ' 10 second timeout
+
+            While BackgroundWorker1.IsBusy AndAlso (DateTime.Now - startTime).TotalMilliseconds < timeoutMs
+                Application.DoEvents()
+                Thread.Sleep(100)
+            End While
+
+            If BackgroundWorker1.IsBusy Then
+                HandleUserMessageLogging("GMRC", "Warning: Background tasks did not stop within timeout")
+            End If
+        End If
+
+        ' Dispose the background tasks CancellationTokenSource
+        If _backgroundTasksCts IsNot Nothing Then
+            _backgroundTasksCts.Dispose()
+            _backgroundTasksCts = Nothing
+        End If
+    End Sub
+
+    Private Function PromptForExitOption(ByVal exitParameter As String, ByRef selectedOption As ExitOption) As Boolean
+        'Called from ExitApp. Returns False when ExitApp must return False (cancelled/unknown option).
+        'selectedOption is ByRef so it is updated before any later statement can throw (ExitApp Finally depends on it).
+
+        If String.IsNullOrEmpty(exitParameter) Then
+            ' Display the ExitAppForm modally.
+            ' ✅ WPF PILOT: ExitAppForm was migrated from WinForms to WPF (ExitAppFormWpf).
+            ' System.Windows.Window is not IDisposable (unlike WinForms Form), so the
+            ' previous "Using...End Using" wrapper is replaced with a plain Dim; there was
+            ' no unmanaged/disposable state on the original form to clean up.
+            Dim exitForm As New ExitAppFormWpf()
+            exitForm.Topmost = True
+            exitForm.ShowDialog()
+            selectedOption = exitForm.SelectedExitOption
+
+            Select Case selectedOption
+                Case ExitOption.CancelExit
+                    HandleUserMessageLogging("GMRC", "ExitApp: Exit Cancelled by user")
+                    Return False
+
+                Case ExitOption.ExitClevirAndCloseInca
+                    HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR and Close INCA selected")
+                    CheckForExperiment = False
+                    MyIncaInterface?.CloseINCA()
+                    If Not PlaybackMode Then CopyINCADatabase()
+                    ' ✅ SET FLAG: User committed to exiting
+                    exitInProgress = True
+                    HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
+
+                Case ExitOption.ExitClevirOnly
+                    HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR Only selected (leaving INCA running)")
+                    CheckForExperiment = False
+                    ' ✅ SET FLAG: User committed to exiting
+                    exitInProgress = True
+                    HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
+
+                Case ExitOption.ExitClevirCloseIncaShutdownWindows
+                    HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR, Close INCA and Shutdown Windows selected")
+                    CheckForExperiment = False
+                    MyIncaInterface?.CloseINCA()
+                    If Not PlaybackMode Then CopyINCADatabase()
+                    ShutdownWindows = True
+                    ' ✅ SET FLAG: User committed to exiting
+                    exitInProgress = True
+                    HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
+                Case Else
+                    ' Unknown option - treat as cancel
+                    Return False
+            End Select
+
+        ElseIf exitParameter = "Complete" Then
+            ' Force a complete shutdown without user interaction
+            HandleUserMessageLogging("GMRC", "ExitApp: Exit complete - Closing INCA")
+            CheckForExperiment = False
+            MyIncaInterface?.CloseINCA()
+        End If
+
+        Return True
+    End Function
+
+    Private Sub EnsureExitPathsValid()
+        'Called from ExitApp. Fallbacks for paths/vehicle number used by the exit housekeeping.
+
+        If String.IsNullOrEmpty(BaseDataCollectionPath) Then
+            HandleUserMessageLogging("GMRC", "BaseDataCollectionPath is null/empty during exit - using fallback")
+            BaseDataCollectionPath = My.Application.Info.DirectoryPath
+        End If
+
+        If String.IsNullOrEmpty(FinalPathToSaveData) Then
+            FinalPathToSaveData = FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber)
+            HandleUserMessageLogging("GMRC", $"FinalPathToSaveData set to: {FinalPathToSaveData}")
+        End If
+
+        If String.IsNullOrEmpty(VehicleNumber) Then
+            HandleUserMessageLogging("GMRC", "VehicleNumber is null/empty during exit - using fallback")
+            VehicleNumber = "UNKNOWN"
+        End If
+    End Sub
+
+    Private Sub StopKillerThreadForExit(ByVal selectedOption As ExitOption)
+        'Called from ExitApp. Sets _killProcesses from the chosen exit option and joins the killer thread.
+
+        If _MyKillerThread IsNot Nothing AndAlso _MyKillerThread.IsAlive Then
+            ' Only kill INCA processes if user explicitly chose that option
+            Select Case selectedOption
+                Case ExitOption.ExitClevirOnly
+                    _killProcesses = False  ' ✅ Keep INCA running
+                    HandleUserMessageLogging("GMRC", "Killer thread: _killProcesses = False (Exit CLEVIR Only)")
+                Case ExitOption.ExitClevirAndCloseInca, ExitOption.ExitClevirCloseIncaShutdownWindows
+                    _killProcesses = True   ' ✅ Terminate INCA
+                    HandleUserMessageLogging("GMRC", "Killer thread: _killProcesses = True (Close INCA)")
+                Case Else
+                    ' exitParameter = "Complete" or unknown scenario - default to killing INCA
+                    _killProcesses = True
+                    HandleUserMessageLogging("GMRC", "Killer thread: _killProcesses = True (Default)")
+            End Select
+
+            _MyKillerThread.Join(2000) ' Wait up to 2 seconds
+            HandleUserMessageLogging("GMRC", "Stopped killer thread.")
+        End If
+    End Sub
+
+    Private Sub RunAudioToTextConversionOnExit()
+        'Called from ExitApp when AudioToTextConversion is enabled.
+
+        Try
+            Dim progressForm As New AudioToTextProgressForm()
+            LoginForm.Hide()
+            OnVehicleScreen.Hide()
+
+            progressForm.Show()
+            Dim conversionTask = progressForm.RunConversionAsync()
+
+            While Not progressForm.IsCompleted
+                Application.DoEvents()
+                Thread.Sleep(100)
+            End While
+
+            conversionTask.Wait(TimeSpan.FromSeconds(5))
+            progressForm.Close()
+            progressForm.Dispose()
+            Thread.Sleep(2000)
+
+            HandleUserMessageLogging("GMRC", "Audio-to-text conversion completed successfully")
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"Audio conversion error: {ex.Message}")
+        End Try
+    End Sub
+
+    Private Sub StopOxtsInterfaceOnExit()
+        'Called from ExitApp when MyOxtsInterface exists.
+
+        Try
+            MyOxtsInterface.OxtsStopListening()
+            HandleUserMessageLogging("GMRC", "OXTS interface stopped")
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"Error stopping OXTS: {ex.Message}")
+        End Try
+    End Sub
+
+    Private Sub StopMeasurementAndCloseInca()
+        'Called from ShutdownAndRestartInca.
+
+        'We cant shut down until we transition out of Measure Mode
+
+        If MyIncaInterface.GetMeasurementStatus() = "True" Then
+            MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
+                .GetAwaiter().GetResult()
+        End If
+
+        HandleUserMessageLogging("GMRC", "ShutdownAndRestartINCA: Shutting Down INCA...")
+
+        CheckForExperiment = False
+        MyIncaInterface.CloseINCA()
+    End Sub
+
+    Private Sub RegisterSignalsAfterIncaInit()
+        'Called from ShutdownAndRestartInca after InitINCA (both success and continue-after-error paths).
+
+        RedisplayOnVehicleForm("GroupBox1")
+
+        'Here is where we register the signals from our signal list with INCA using the RCI2 interface (see the GM_INCA_Comm project).
+
+        MyIncaInterface.RegisterSignals()
+
+        HandleUserMessageLogging("GMRC", "ShutdownAndRestartINCA: Initialization Complete")
+
+        OnVehicleScreen.Refresh()
+    End Sub
+
+    Private Sub FinishIncaRestart()
+        'Called from ShutdownAndRestartInca. Restores normal display/experiment polling after the restart.
+
+        Thread.Sleep(2000)
+
+        GroupBox1.Visible = False
+
+        FormDisplayed = True
+        _initializing = False
+
+        If PlaybackMode = False Then
+            CheckForExperiment = True
+        End If
+
+        Cursor = Cursors.Arrow
+
+        RedisplayOnVehicleForm("Main")
+
+        OnVehicleScreen.TopMost = False
+
+        HandleUserMessageLogging("GMRC", "INCA Restarted.",,)
     End Sub
 
 End Class
