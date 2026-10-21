@@ -46,6 +46,66 @@ Public Class FileMaintenanceTests
     End Sub
 
     <TestMethod>
+    Public Sub SessionCompressionFolder_ExistingSessionUnderVehicleRoot_ReturnsSession()
+        Dim vehicleRoot = Path.Combine(_root, "Data", "gmcsv1234")
+        Dim session = Path.Combine(vehicleRoot, "20261021_153000_jdoe")
+        Directory.CreateDirectory(session)
+
+        Assert.AreEqual(session, FileMaintenance.SessionCompressionFolder(session, vehicleRoot))
+    End Sub
+
+    <TestMethod>
+    <DataRow("")>
+    <DataRow("\")>
+    <DataRow("UPPER")>
+    Public Sub SessionCompressionFolder_SessionIsVehicleRoot_ReturnsNothing(form As String)
+        Dim vehicleRoot = Path.Combine(_root, "Data", "gmcsv1234")
+        Directory.CreateDirectory(vehicleRoot)
+        Dim session = If(form = "UPPER", vehicleRoot.ToUpperInvariant(), vehicleRoot & form)
+
+        Assert.IsNull(FileMaintenance.SessionCompressionFolder(session, vehicleRoot))
+    End Sub
+
+    <TestMethod>
+    Public Sub SessionCompressionFolder_SessionIsAncestorOfVehicleRoot_ReturnsNothing()
+        Dim vehicleRoot = Path.Combine(_root, "Data", "gmcsv1234")
+        Directory.CreateDirectory(vehicleRoot)
+
+        Assert.IsNull(FileMaintenance.SessionCompressionFolder(Path.Combine(_root, "Data"), vehicleRoot))
+        Assert.IsNull(FileMaintenance.SessionCompressionFolder(_root, vehicleRoot))
+        Assert.IsNull(FileMaintenance.SessionCompressionFolder(Path.GetPathRoot(_root), vehicleRoot))
+    End Sub
+
+    <TestMethod>
+    Public Sub SessionCompressionFolder_SiblingWithCommonPrefix_IsNotTreatedAsAncestor()
+        Dim vehicleRoot = Path.Combine(_root, "Data", "gmcsv12")
+        Dim sibling = Path.Combine(_root, "Data", "gmcsv1")
+        Directory.CreateDirectory(sibling)
+
+        Assert.AreEqual(sibling, FileMaintenance.SessionCompressionFolder(sibling, vehicleRoot))
+    End Sub
+
+    <TestMethod>
+    <DataRow(Nothing)>
+    <DataRow("")>
+    <DataRow("   ")>
+    Public Sub SessionCompressionFolder_NoSessionPath_ReturnsNothing(sessionPath As String)
+        Assert.IsNull(FileMaintenance.SessionCompressionFolder(sessionPath, Path.Combine(_root, "Data", "gmcsv1")))
+    End Sub
+
+    <TestMethod>
+    Public Sub SessionCompressionFolder_MissingSessionFolder_ReturnsNothing()
+        Dim vehicleRoot = Path.Combine(_root, "Data", "gmcsv1")
+
+        Assert.IsNull(FileMaintenance.SessionCompressionFolder(Path.Combine(vehicleRoot, "gone"), vehicleRoot))
+    End Sub
+
+    <TestMethod>
+    Public Sub SessionCompressionFolder_NoVehicleRoot_ReturnsExistingSession()
+        Assert.AreEqual(_root, FileMaintenance.SessionCompressionFolder(_root, Nothing))
+    End Sub
+
+    <TestMethod>
     Public Sub FindOrphanedFiles_ReturnsMatchingFilesWithoutSiblingZipRecursively()
         Dim orphanTop = Touch("a.mf4")
         Dim orphanNested = Touch("s1", "s2", "b.mf4")

@@ -26,6 +26,25 @@ Friend NotInheritable Class FileMaintenance
     End Function
 
     ''' <summary>
+    ''' Folder a compression pass may scan: <paramref name="sessionPath"/> when it is an existing folder that is
+    ''' neither <paramref name="vehicleDataRoot"/> nor one of its ancestors; otherwise Nothing. Compression is per
+    ''' recording session, so scanning the vehicle root would sweep every previous session.
+    ''' </summary>
+    Friend Shared Function SessionCompressionFolder(sessionPath As String, vehicleDataRoot As String) As String
+        If String.IsNullOrWhiteSpace(sessionPath) OrElse Not Directory.Exists(sessionPath) Then Return Nothing
+        If Not String.IsNullOrWhiteSpace(vehicleDataRoot) AndAlso
+           WithTrailingSeparator(vehicleDataRoot).StartsWith(WithTrailingSeparator(sessionPath), StringComparison.OrdinalIgnoreCase) Then
+            Return Nothing
+        End If
+        Return sessionPath
+    End Function
+
+    Private Shared Function WithTrailingSeparator(folder As String) As String
+        Dim full As String = Path.GetFullPath(folder)
+        Return If(Path.EndsInDirectorySeparator(full), full, full & Path.DirectorySeparatorChar)
+    End Function
+
+    ''' <summary>
     ''' Files under <paramref name="dataRoot"/> (recursive) matching <paramref name="searchPattern"/> that have no
     ''' sibling .zip. Lazy: each file's .zip is checked only when that file is reached, so archives created while
     ''' the caller processes earlier files are seen.
