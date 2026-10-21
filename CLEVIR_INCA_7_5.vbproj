@@ -59,6 +59,12 @@
     <None Remove="NAVsdk\**" />
     <None Remove="HesaiWrapper\**" />
     <None Remove="PcapEventBridge\**" />
+    <!-- Unit test project lives under this project's directory; keep its sources and obj\ output
+         (generated AssemblyAttributes.vb etc.) out of this project's implicit Compile glob. -->
+    <Compile Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <None Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <EmbeddedResource Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <Page Remove="CLEVIR_INCA_7_5.Tests\**" />
     <!-- Legacy NuGet packages.config cache folder - superseded by PackageReference, not project content -->
     <None Remove="packages\**" />
     <!-- Leftover backup folder from a prior automated NuGet PackageReference migration -->
@@ -176,6 +182,61 @@
     </Compile>
     <Compile Update="GM_ResidentClient.designer.vb">
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+    </Compile>
+    <!-- GmResidentClient partial-class code files (listed explicitly; a GM_ResidentClient.*.vb
+         glob would also match GM_ResidentClient.designer.vb). SubType=Code keeps VS from
+         treating them as designable forms. -->
+    <Compile Update="GM_ResidentClient.MenuHandlers.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.InitMonitor.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.ProcessKiller.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.Shutdown.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.Configuration.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.SignalList.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.Mileage.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.DisplayForms.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.DeviceHealth.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.Startup.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.Recording.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.StatusScreens.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.BackgroundLoop.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
     </Compile>
     <Compile Update="GridCellPropConfig.designer.vb">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
