@@ -278,6 +278,7 @@ Public Class GmResidentClient
     Private Delegate Sub BackgroundTasks()
     Private _recordingMonitorCts As CancellationTokenSource
     Private _backgroundTasksCts As CancellationTokenSource  ' Cancellation token for MyBackgroundTasks loop
+    Private _backgroundLoopActive As Boolean  ' True while MyBackgroundTasks is running (Volatile access)
     Private Shared saveStatus() As Boolean
     Private Shared videoMessageLastDisplayed As Boolean = True
     Private Shared dataMessageLastDisplayed As Boolean = True

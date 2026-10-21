@@ -343,6 +343,8 @@ Partial Public Class GmResidentClient
         Dim MyDiskSpaceCheckTime As DateTime = DateTime.Now
         Const DiskSpaceCheckIntervalMinutes As Integer = 5
 
+        Volatile.Write(_backgroundLoopActive, True)
+
         Try
 
             If Debugger.IsAttached Then
@@ -710,6 +712,8 @@ Partial Public Class GmResidentClient
                 logMsgWritten = True
             End If
 
+        Finally
+            Volatile.Write(_backgroundLoopActive, False)
         End Try
 
     End Function
