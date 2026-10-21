@@ -225,63 +225,16 @@ Public Class GridDataClass
     Private _CS_ObjectLeft As Integer
     Private _CS_ObjectRight As Integer
 
-    Private _CS_K1C_COPR_SYSSTAT As Integer
-    Private _CS_K2C_COPR_SYSSTAT As Integer
 
-    Private _CS_PriAutoBrkSysDrInfcStat As Integer
-    Private _CS__PriAutoBrkSysDrInfcStatRed As Integer
-    Private _CS_SecAutoBrkSysDrInfcStat As Integer
-    Private _CS__SecAutoBrkSysDrInfcStatRed As Integer
-    Private _CS_CE_AutoStrgCmndStat As Integer
-    Private _CS_HS_AutoStrgCmndStat As Integer
-    Private _CS_AutoPropAxlTrqArbStat As Integer
     Private _CS_ESADSS_CntrlStat As Integer
-    Private _CS_AATPCS_PropSysStat As Integer
-    Private _CS_PriBrkSysStat As Integer
-    Private _CS__PriBrkSysStatRed As Integer
-    Private _CS_SecBrkSysStat As Integer
-    Private _CS__SecBrkSysStatRed As Integer
-    Private _CS_PriGdVolt As Integer
-    Private _CS_SecGdVolt As Integer
-    Private _CS_SysPwrMd As Integer
-    Private _CS_PrplsnSysAtv As Integer
-    Private _CS_CE_VehMdMngrSt As Integer
     Private _CS_CE_VehHlthMngrSt As Integer
-    Private _CS_AutoBrkSysRdcPerDet As Integer
-    Private _CS_ADIMCntrlFailed As Integer
     Private _CS_HS_VehMdMngrSt As Integer
     Private _CS_HS_VehHlthMngrSt As Integer
-    Private _CS_RedVehMdMngrSt As Integer
-    Private _CS_PriCoPCmdMsgStat As Integer
-    Private _CS_RedAutoBrkSysRdcPerDet As Integer
-    Private _CS_RedADIMCntrlFailed As Integer
 
-    Private _CS_VeTSTR_e_HiThreatObjType As Integer
     Private _CS_VeTSTR_Cnt_HiThreatObjID As Integer
-    Private _CS_VeTSTR_t_HiThreatTTC As Integer
 
-    Private _CS_AtGradeAnchor As Integer
-    Private _CS_AnchorSelect As Integer
 
-    Private _CS_HostLaneIndexLeft As Integer
-    Private _CS_HostLaneIndexRight As Integer
-    Private _CS_MapHostLaneIndex As Integer
-    Private _CS_TargetsHostLaneIndex As Integer
-    Private _CS_DistToNextAtGradeXing As Integer
-    Private _CS_DistToRoadClassTrans As Integer
-    Private _CS_DistToNextTrfcCntrDev As Integer
-    Private _CS_OnFreeway As Integer
-    Private _CS_RoadClass_Crnt As Integer
-    Private _CS_CmplxIntrsct_Prsnt As Integer
-    Private _CS_CntrlPtLatOffsetHPP As Integer
-    Private _CS_CntrlPtLatOffsetL As Integer
-    Private _CS_CntrlPtLatOffsetR As Integer
-    Private _CS_CntrlPtLatOffsetPrev As Integer
 
-    Private _CS_IFC_HeadingWgt As Integer
-    Private _CS_PrevCoefWgt As Integer
-    Private _CS_MapWgt As Integer
-    Private _CS_IMU_BlueLine As Integer
     Private _CS_AlertIUncertainLnLines As Integer
 
     Private _CS_LCC_CLUSTER_MSG As Integer
@@ -322,33 +275,16 @@ Public Class GridDataClass
     Private _CS_LKA_STDBYIND As Integer
     Private _CS_LKA_ACTVIND As Integer
 
-    Private _CS_FOAI_VAIR As Integer
-    Private _CS_FOAI_AWIR As Integer
     'Private _CS_CPS_AUTOBRKREQ As Integer
 
-    Private _CS_AUTOBRKREQ As Integer
-    Private _CS_AUTOBRKREQTYPE As Integer
-    Private _CS_CPSCBSC_CTRLACC As Integer
 
-    Private _CS_COLPRSYSBRKPRFREQ As Integer
 
-    Private _CS_PEDWARN As Integer
-    Private _CS_BRAKING_FLAG As Integer
-    Private _CS_ALERT_FLAG As Integer
-    Private _CS_NOTIFICATION_FLAG As Integer
 
-    Private _CS_ACC_GAPSETTING As Integer
-    Private _CS_CPSTOS_TTC As Integer
     'Private _CS_CPSTOS_RANGE As Integer
     Private _CS_CPSTOS_X_POS As Integer
     Private _CS_CPSTOS_Y_POS As Integer
     'Private _CS_CPSTOS_VEL As Integer
-    Private _CS_CPSTOS_X_VEL As Integer
-    Private _CS_CPSTOS_Y_VEL As Integer
 
-    Private _CS_FSRACC_ENGAGED As Integer
-    Private _CS_FSRACC_BRAKE_ACTIVE As Integer
-    Private _CS_FSRACC_ACCEL_ACTIVE As Integer
     Private _CS_ODOMETER As Integer
     Private _CS_LCC_CONTROL_ACTIVE As Integer
     Private _AUTOANNO As Integer
@@ -599,92 +535,8 @@ Public Class GridDataClass
         End Set
     End Property
 
-    Property CS_K1C_COPR_SYSSTAT() As Integer
-        Get
-            Return _CS_K1C_COPR_SYSSTAT
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_K1C_COPR_SYSSTAT = value
-        End Set
-    End Property
-
-    Property CS_K2C_COPR_SYSSTAT() As Integer
-        Get
-            Return _CS_K2C_COPR_SYSSTAT
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_K2C_COPR_SYSSTAT = value
-        End Set
-    End Property
 
 
-    Property CS_PriAutoBrkSysDrInfcStat() As Integer
-        Get
-            Return _CS_PriAutoBrkSysDrInfcStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_PriAutoBrkSysDrInfcStat = value
-        End Set
-    End Property
-    Property CS__PriAutoBrkSysDrInfcStatRed() As Integer
-        Get
-            Return _CS__PriAutoBrkSysDrInfcStatRed
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS__PriAutoBrkSysDrInfcStatRed = value
-        End Set
-    End Property
-    Property CS_SecAutoBrkSysDrInfcStat() As Integer
-        Get
-            Return _CS_SecAutoBrkSysDrInfcStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_SecAutoBrkSysDrInfcStat = value
-        End Set
-    End Property
-    Property CS__SecAutoBrkSysDrInfcStatRed() As Integer
-        Get
-            Return _CS__SecAutoBrkSysDrInfcStatRed
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS__SecAutoBrkSysDrInfcStatRed = value
-        End Set
-    End Property
-    Property CS_CE_AutoStrgCmndStat() As Integer
-        Get
-            Return _CS_CE_AutoStrgCmndStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CE_AutoStrgCmndStat = value
-        End Set
-    End Property
-    Property CS_HS_AutoStrgCmndStat() As Integer
-        Get
-            Return _CS_HS_AutoStrgCmndStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_HS_AutoStrgCmndStat = value
-        End Set
-    End Property
-
-
-    Property CS_AutoPropAxlTrqArbStat() As Integer
-        Get
-            Return _CS_AutoPropAxlTrqArbStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_AutoPropAxlTrqArbStat = value
-        End Set
-    End Property
     <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_ESADSS_CntrlStat() As Integer
         Get
@@ -695,98 +547,7 @@ Public Class GridDataClass
             _CS_ESADSS_CntrlStat = value
         End Set
     End Property
-    Property CS_AATPCS_PropSysStat() As Integer
-        Get
-            Return _CS_AATPCS_PropSysStat
 
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_AATPCS_PropSysStat = value
-        End Set
-    End Property
-    Property CS_PriBrkSysStat() As Integer
-        Get
-            Return _CS_PriBrkSysStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_PriBrkSysStat = value
-        End Set
-    End Property
-    Property CS__PriBrkSysStatRed() As Integer
-        Get
-            Return _CS__PriBrkSysStatRed
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS__PriBrkSysStatRed = value
-        End Set
-    End Property
-
-
-    Property CS_SecBrkSysStat() As Integer
-        Get
-            Return _CS_SecBrkSysStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_SecBrkSysStat = value
-        End Set
-    End Property
-    Property CS__SecBrkSysStatRed() As Integer
-        Get
-            Return _CS__SecBrkSysStatRed
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS__SecBrkSysStatRed = value
-        End Set
-    End Property
-    Property CS_PriGdVolt() As Integer
-        Get
-            Return _CS_PriGdVolt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_PriGdVolt = value
-        End Set
-    End Property
-    Property CS_SecGdVolt() As Integer
-        Get
-            Return _CS_SecGdVolt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_SecGdVolt = value
-        End Set
-    End Property
-    Property CS_SysPwrMd() As Integer
-        Get
-            Return _CS_SysPwrMd
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_SysPwrMd = value
-        End Set
-    End Property
-    Property CS_PrplsnSysAtv() As Integer
-        Get
-            Return _CS_PrplsnSysAtv
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_PrplsnSysAtv = value
-        End Set
-    End Property
-    Property CS_CE_VehMdMngrSt() As Integer
-        Get
-            Return _CS_CE_VehMdMngrSt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CE_VehMdMngrSt = value
-        End Set
-    End Property
     <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_CE_VehHlthMngrSt() As Integer
         Get
@@ -798,24 +559,6 @@ Public Class GridDataClass
         End Set
     End Property
 
-    Property CS_AutoBrkSysRdcPerDet() As Integer
-        Get
-            Return _CS_AutoBrkSysRdcPerDet
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_AutoBrkSysRdcPerDet = value
-        End Set
-    End Property
-    Property CS_ADIMCntrlFailed() As Integer
-        Get
-            Return _CS_ADIMCntrlFailed
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_ADIMCntrlFailed = value
-        End Set
-    End Property
     <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_HS_VehMdMngrSt() As Integer
         Get
@@ -839,53 +582,6 @@ Public Class GridDataClass
     End Property
 
 
-    Property CS_RedVehMdMngrSt() As Integer
-        Get
-            Return _CS_RedVehMdMngrSt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_RedVehMdMngrSt = value
-        End Set
-    End Property
-    Property CS_RedAutoBrkSysRdcPerDet() As Integer
-        Get
-            Return _CS_RedAutoBrkSysRdcPerDet
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_RedAutoBrkSysRdcPerDet = value
-        End Set
-    End Property
-    Property CS_PriCoPCmdMsgStat() As Integer
-        Get
-            Return _CS_PriCoPCmdMsgStat
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_PriCoPCmdMsgStat = value
-        End Set
-    End Property
-    Property CS_RedADIMCntrlFailed() As Integer
-        Get
-            Return _CS_RedADIMCntrlFailed
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_RedADIMCntrlFailed = value
-        End Set
-    End Property
-
-    Property CS_VeTSTR_e_HiThreatObjType() As Integer
-        Get
-            Return _CS_VeTSTR_e_HiThreatObjType
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_VeTSTR_e_HiThreatObjType = value
-        End Set
-    End Property
-
     <System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)>
     Property CS_VeTSTR_Cnt_HiThreatObjID() As Integer
         Get
@@ -894,166 +590,6 @@ Public Class GridDataClass
         End Get
         Set(ByVal value As Integer)
             _CS_VeTSTR_Cnt_HiThreatObjID = value
-        End Set
-    End Property
-
-    Property CS_VeTSTR_t_HiThreatTTC() As Integer
-        Get
-            Return _CS_VeTSTR_t_HiThreatTTC
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_VeTSTR_t_HiThreatTTC = value
-        End Set
-    End Property
-
-    Property CS_AtGradeAnchor() As Integer
-        Get
-            Return _CS_AtGradeAnchor
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_AtGradeAnchor = value
-        End Set
-    End Property
-
-    Property CS_AnchorSelect() As Integer
-        Get
-            Return _CS_AnchorSelect
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_AnchorSelect = value
-        End Set
-    End Property
-
-    Property CS_HostLaneIndexLeft() As Integer
-        Get
-            Return _CS_HostLaneIndexLeft
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_HostLaneIndexLeft = value
-        End Set
-    End Property
-
-    Property CS_HostLaneIndexRight() As Integer
-        Get
-            Return _CS_HostLaneIndexRight
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_HostLaneIndexRight = value
-        End Set
-    End Property
-
-    Property CS_MapHostLaneIndex() As Integer
-        Get
-            Return _CS_MapHostLaneIndex
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_MapHostLaneIndex = value
-        End Set
-    End Property
-
-    Property CS_TargetsHostLaneIndex() As Integer
-        Get
-            Return _CS_TargetsHostLaneIndex
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_TargetsHostLaneIndex = value
-        End Set
-    End Property
-
-    Property CS_DistToNextAtGradeXing() As Integer
-        Get
-            Return _CS_DistToNextAtGradeXing
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_DistToNextAtGradeXing = value
-        End Set
-    End Property
-
-    Property CS_DistToRoadClassTrans() As Integer
-        Get
-            Return _CS_DistToRoadClassTrans
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_DistToRoadClassTrans = value
-        End Set
-    End Property
-
-    Property CS_DistToNextTrfcCntrDev() As Integer
-        Get
-            Return _CS_DistToNextTrfcCntrDev
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_DistToNextTrfcCntrDev = value
-        End Set
-    End Property
-
-    Property CS_OnFreeway() As Integer
-        Get
-            Return _CS_OnFreeway
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_OnFreeway = value
-        End Set
-    End Property
-
-    Property CS_RoadClass_Crnt() As Integer
-        Get
-            Return _CS_RoadClass_Crnt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_RoadClass_Crnt = value
-        End Set
-    End Property
-
-    Property CS_CntrlPtLatOffsetHPP() As Integer
-        Get
-            Return _CS_CntrlPtLatOffsetHPP
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CntrlPtLatOffsetHPP = value
-        End Set
-    End Property
-
-    Property CS_CntrlPtLatOffsetL() As Integer
-        Get
-            Return _CS_CntrlPtLatOffsetL
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CntrlPtLatOffsetL = value
-        End Set
-    End Property
-
-    Property CS_CntrlPtLatOffsetR() As Integer
-        Get
-            Return _CS_CntrlPtLatOffsetR
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CntrlPtLatOffsetR = value
-        End Set
-    End Property
-
-    Property CS_CntrlPtLatOffsetPrev() As Integer
-        Get
-            Return _CS_CntrlPtLatOffsetPrev
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CntrlPtLatOffsetPrev = value
         End Set
     End Property
 
@@ -1071,56 +607,6 @@ Public Class GridDataClass
         End Get
         Set(ByVal value As Integer)
             _CS_AlertIUncertainLnLines = value
-        End Set
-    End Property
-
-    Property CS_IFC_HeadingWgt() As Integer
-        Get
-            Return _CS_IFC_HeadingWgt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_IFC_HeadingWgt = value
-        End Set
-    End Property
-
-    Property CS_PrevCoefWgt() As Integer
-        Get
-            Return _CS_PrevCoefWgt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_PrevCoefWgt = value
-        End Set
-    End Property
-
-    Property CS_MapWgt() As Integer
-        Get
-            Return _CS_MapWgt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_MapWgt = value
-        End Set
-    End Property
-
-    Property CS_IMU_BlueLine() As Integer
-        Get
-            Return _CS_IMU_BlueLine
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_IMU_BlueLine = value
-        End Set
-    End Property
-
-    Property CS_CmplxIntrsct_Prsnt() As Integer
-        Get
-            Return _CS_CmplxIntrsct_Prsnt
-
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CmplxIntrsct_Prsnt = value
         End Set
     End Property
 
@@ -1418,116 +904,8 @@ Public Class GridDataClass
         End Set
     End Property
 
-    Property CS_FOAI_VAIR() As Integer
-        Get
-            Return _CS_FOAI_VAIR
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_FOAI_VAIR = value
-        End Set
-    End Property
-
-    Property CS_FOAI_AWIR() As Integer
-        Get
-            Return _CS_FOAI_AWIR
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_FOAI_AWIR = value
-        End Set
-    End Property
-
     'Private _CS_PEDWARN As Integer
 
-    Property CS_PEDWARN() As Integer
-        Get
-            Return _CS_PEDWARN
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_PEDWARN = value
-        End Set
-    End Property
-
-    Property CS_BRAKING_FLAG() As Integer
-        Get
-            Return _CS_BRAKING_FLAG
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_BRAKING_FLAG = value
-        End Set
-    End Property
-
-    Property CS_ALERT_FLAG() As Integer
-        Get
-            Return _CS_ALERT_FLAG
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_ALERT_FLAG = value
-        End Set
-    End Property
-
-    Property CS_NOTIFICATION_FLAG() As Integer
-        Get
-            Return _CS_NOTIFICATION_FLAG
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_NOTIFICATION_FLAG = value
-        End Set
-    End Property
-
-
-    Property CS_COLPRSYSBRKPRFREQ() As Integer
-        Get
-            Return _CS_COLPRSYSBRKPRFREQ
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_COLPRSYSBRKPRFREQ = value
-        End Set
-    End Property
-
-    Property CS_AUTOBRKREQ() As Integer
-        Get
-            Return _CS_AUTOBRKREQ
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_AUTOBRKREQ = value
-        End Set
-    End Property
-
-    Property CS_AUTOBRKREQTYPE() As Integer
-        Get
-            Return _CS_AUTOBRKREQTYPE
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_AUTOBRKREQTYPE = value
-        End Set
-    End Property
-
-    Property CS_CPSCBSC_CTRLACC() As Integer
-        Get
-            Return _CS_CPSCBSC_CTRLACC
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CPSCBSC_CTRLACC = value
-        End Set
-    End Property
-
-    Property CS_ACC_GAPSETTING() As Integer
-        Get
-            Return _CS_ACC_GAPSETTING
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_ACC_GAPSETTING = value
-        End Set
-    End Property
-
-    Property CS_CPSTOS_TTC() As Integer
-        Get
-            Return _CS_CPSTOS_TTC
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CPSTOS_TTC = value
-        End Set
-    End Property
 
     Property LXCR_BLEND_PATH_LENGTH() As Integer
         Get
@@ -1589,51 +967,6 @@ Public Class GridDataClass
     '        _CS_CPSTOS_VEL = value
     '    End Set
     'End Property
-
-    Property CS_CPSTOS_X_VEL() As Integer
-        Get
-            Return _CS_CPSTOS_X_VEL
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CPSTOS_X_VEL = value
-        End Set
-    End Property
-
-    Property CS_CPSTOS_Y_VEL() As Integer
-        Get
-            Return _CS_CPSTOS_Y_VEL
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_CPSTOS_Y_VEL = value
-        End Set
-    End Property
-
-    Property CS_FSRACC_ENGAGED() As Integer
-        Get
-            Return _CS_FSRACC_ENGAGED
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_FSRACC_ENGAGED = value
-        End Set
-    End Property
-
-    Property CS_FSRACC_BRAKE_ACTIVE() As Integer
-        Get
-            Return _CS_FSRACC_BRAKE_ACTIVE
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_FSRACC_BRAKE_ACTIVE = value
-        End Set
-    End Property
-
-    Property CS_FSRACC_ACCEL_ACTIVE() As Integer
-        Get
-            Return _CS_FSRACC_ACCEL_ACTIVE
-        End Get
-        Private Set(ByVal value As Integer)
-            _CS_FSRACC_ACCEL_ACTIVE = value
-        End Set
-    End Property
 
     Property CS_LaneClass_Crnt() As Integer
         Get
@@ -3500,127 +2833,19 @@ Public Class GridDataClass
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_ObjectRight") > 0 Then
             myDGs(z).CS_ObjectRight = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_K1C_COPR_SYSSTAT") > 0 Then
-            myDGs(z).CS_K1C_COPR_SYSSTAT = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_K2C_COPR_SYSSTAT") > 0 Then
-            myDGs(z).CS_K2C_COPR_SYSSTAT = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_PriAutoBrkSysDrInfcStat") > 0 Then
-            myDGs(z).CS_PriAutoBrkSysDrInfcStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS__PriAutoBrkSysDrInfcStatRed") > 0 Then
-            myDGs(z).CS__PriAutoBrkSysDrInfcStatRed = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_SecAutoBrkSysDrInfcStat") > 0 Then
-            myDGs(z).CS_SecAutoBrkSysDrInfcStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS__SecAutoBrkSysDrInfcStatRed") > 0 Then
-            myDGs(z).CS__SecAutoBrkSysDrInfcStatRed = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CE_AutoStrgCmndStat") > 0 Then
-            myDGs(z).CS_CE_AutoStrgCmndStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_HS_AutoStrgCmndStat") > 0 Then
-            myDGs(z).CS_HS_AutoStrgCmndStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AutoPropAxlTrqArbStat") > 0 Then
-            myDGs(z).CS_AutoPropAxlTrqArbStat = exceldata(y, EXCEL_DATA.Row)
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_ESADSS_CntrlStat") > 0 Then
             myDGs(z).CS_ESADSS_CntrlStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AATPCS_PropSysStat") > 0 Then
-            myDGs(z).CS_AATPCS_PropSysStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_PriBrkSysStat") > 0 Then
-            myDGs(z).CS_PriBrkSysStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS__PriBrkSysStatRed") > 0 Then
-            myDGs(z).CS__PriBrkSysStatRed = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_SecBrkSysStat") > 0 Then
-            myDGs(z).CS_SecBrkSysStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS__SecBrkSysStatRed") > 0 Then
-            myDGs(z).CS__SecBrkSysStatRed = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_PriGdVolt") > 0 Then
-            myDGs(z).CS_PriGdVolt = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_SecGdVolt") > 0 Then
-            myDGs(z).CS_SecGdVolt = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_SysPwrMd") > 0 Then
-            myDGs(z).CS_SysPwrMd = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_PrplsnSysAtv") > 0 Then
-            myDGs(z).CS_PrplsnSysAtv = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CE_VehMdMngrSt") > 0 Then
-            myDGs(z).CS_CE_VehMdMngrSt = exceldata(y, EXCEL_DATA.Row)
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CE_VehHlthMngrSt") > 0 Then
             myDGs(z).CS_CE_VehHlthMngrSt = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AutoBrkSysRdcPerDet") > 0 Then
-            myDGs(z).CS_AutoBrkSysRdcPerDet = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_ADIMCntrlFailed") > 0 Then
-            myDGs(z).CS_ADIMCntrlFailed = exceldata(y, EXCEL_DATA.Row)
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_HS_VehMdMngrSt") > 0 Then
             myDGs(z).CS_HS_VehMdMngrSt = exceldata(y, EXCEL_DATA.Row)
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_HS_VehHlthMngrSt") > 0 Then
             myDGs(z).CS_HS_VehHlthMngrSt = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_RedVehMdMngrSt") > 0 Then
-            myDGs(z).CS_RedVehMdMngrSt = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_PriCoPCmdMsgStat") > 0 Then
-            myDGs(z).CS_PriCoPCmdMsgStat = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_RedAutoBrkSysRdcPerDet") > 0 Then
-            myDGs(z).CS_RedAutoBrkSysRdcPerDet = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_RedADIMCntrlFailed") > 0 Then
-            myDGs(z).CS_RedADIMCntrlFailed = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_VeTSTR_e_HiThreatObjType") > 0 Then
-            myDGs(z).CS_VeTSTR_e_HiThreatObjType = exceldata(y, EXCEL_DATA.Row)
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_VeTSTR_Cnt_HiThreatObjID") > 0 Then
             myDGs(z).CS_VeTSTR_Cnt_HiThreatObjID = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_VeTSTR_t_HiThreatTTC") > 0 Then
-            myDGs(z).CS_VeTSTR_t_HiThreatTTC = exceldata(y, EXCEL_DATA.Row)
             '***********************************************************
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AtGradeAnchor") > 0 Then
-            myDGs(z).CS_AtGradeAnchor = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AnchorSelect") > 0 Then
-            myDGs(z).CS_AnchorSelect = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_HostLaneIndexLeft") > 0 Then
-            myDGs(z).CS_HostLaneIndexLeft = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_HostLaneIndexRight") > 0 Then
-            myDGs(z).CS_HostLaneIndexRight = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_MapHostLaneIndex") > 0 Then
-            myDGs(z).CS_MapHostLaneIndex = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_TargetsHostLaneIndex") > 0 Then
-            myDGs(z).CS_TargetsHostLaneIndex = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_DistToNextAtGradeXing") > 0 Then
-            myDGs(z).CS_DistToNextAtGradeXing = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_DistToRoadClassTrans") > 0 Then
-            myDGs(z).CS_DistToRoadClassTrans = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_DistToNextTrfcCntrDev") > 0 Then
-            myDGs(z).CS_DistToNextTrfcCntrDev = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_OnFreeway") > 0 Then
-            myDGs(z).CS_OnFreeway = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_RoadClass_Crnt") > 0 Then
-            myDGs(z).CS_RoadClass_Crnt = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CmplxIntrsct_Prsnt") > 0 Then
-            myDGs(z).CS_CmplxIntrsct_Prsnt = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CntrlPtLatOffsetHPP") > 0 Then
-            myDGs(z).CS_CntrlPtLatOffsetHPP = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CntrlPtLatOffsetL") > 0 Then
-            myDGs(z).CS_CntrlPtLatOffsetL = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CntrlPtLatOffsetR") > 0 Then
-            myDGs(z).CS_CntrlPtLatOffsetR = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CntrlPtLatOffsetPrev") > 0 Then
-            myDGs(z).CS_CntrlPtLatOffsetPrev = exceldata(y, EXCEL_DATA.Row)
-
-            'CS_IFC_HeadingWgt
-            'CS_PrevCoefWgt
-            'CS_MapWgt
-            'CS_IMU_BlueLine
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_IFC_HeadingWgt") > 0 Then
-            myDGs(z).CS_IFC_HeadingWgt = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_PrevCoefWgt") > 0 Then
-            myDGs(z).CS_PrevCoefWgt = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_MapWgt") > 0 Then
-            myDGs(z).CS_MapWgt = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_IMU_BlueLine") > 0 Then
-            myDGs(z).CS_IMU_BlueLine = exceldata(y, EXCEL_DATA.Row)
 
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AlertIUncertainLnLines") > 0 Then
             myDGs(z).CS_AlertIUncertainLnLines = exceldata(y, EXCEL_DATA.Row)
@@ -3716,43 +2941,19 @@ Public Class GridDataClass
             myDGs(z).CS_LKA_STDBYIND = exceldata(y, EXCEL_DATA.Row)
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_LKA_ACTVIND") > 0 Then
             myDGs(z).CS_LKA_ACTVIND = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_FOAI_VAIR") > 0 Then
-            myDGs(z).CS_FOAI_VAIR = exceldata(y, EXCEL_DATA.Row)
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_FOAI_AWIR") > 0 Then
-            myDGs(z).CS_FOAI_AWIR = exceldata(y, EXCEL_DATA.Row)
             'ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPS_AUTOBRKREQ") > 0 Then
             '    myDGs(z).CS_CPS_AUTOBRKREQ = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AUTOBRKREQ") > 0 Then
-            myDGs(z).CS_AUTOBRKREQ = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_AUTOBRKREQTYPE") > 0 Then
-            myDGs(z).CS_AUTOBRKREQTYPE = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPSCBSC_CTRLACC") > 0 Then
-            myDGs(z).CS_CPSCBSC_CTRLACC = exceldata(y, EXCEL_DATA.Row)
-
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_COLPRSYSBRKPRFREQ") > 0 Then
-            myDGs(z).CS_COLPRSYSBRKPRFREQ = exceldata(y, EXCEL_DATA.Row)
 
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_PEDWARN") > 0 Then
-            myDGs(z).CS_PEDWARN = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_BRAKING_FLAG") > 0 Then
-            myDGs(z).CS_BRAKING_FLAG = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_ALERT_FLAG") > 0 Then
-            myDGs(z).CS_ALERT_FLAG = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_NOTIFICATION_FLAG") > 0 Then
-            myDGs(z).CS_NOTIFICATION_FLAG = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_ACC_GAPSETTING") > 0 Then
-            myDGs(z).CS_ACC_GAPSETTING = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPSTOS_TTC") > 0 Then
-            myDGs(z).CS_CPSTOS_TTC = exceldata(y, EXCEL_DATA.Row)
+
+
+
 
             'ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPSTOS_RANGE") > 0 Then
             '    myDGs(z).CS_CPSTOS_RANGE = exceldata(y, EXCEL_DATA.Row)
@@ -3763,23 +2964,13 @@ Public Class GridDataClass
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPSTOS_Y_POS") > 0 Then
             myDGs(z).CS_CPSTOS_Y_POS = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPSTOS_X_VEL") > 0 Then
-            myDGs(z).CS_CPSTOS_X_VEL = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPSTOS_Y_VEL") > 0 Then
-            myDGs(z).CS_CPSTOS_Y_VEL = exceldata(y, EXCEL_DATA.Row)
 
             'ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_CPSTOS_VEL") > 0 Then
             '    myDGs(z).CS_CPSTOS_VEL = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_FSRACC_ENGAGED") > 0 Then
-            myDGs(z).CS_FSRACC_ENGAGED = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_FSRACC_BRAKE_ACTIVE") > 0 Then
-            myDGs(z).CS_FSRACC_BRAKE_ACTIVE = exceldata(y, EXCEL_DATA.Row)
 
-        ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_FSRACC_ACCEL_ACTIVE") > 0 Then
-            myDGs(z).CS_FSRACC_ACCEL_ACTIVE = exceldata(y, EXCEL_DATA.Row)
 
         ElseIf InStr(exceldata(y, EXCEL_DATA.AlsoAssociatedWith), "CS_GPS_LAT") > 0 Then
             myDGs(z).CS_GPS_LAT = exceldata(y, EXCEL_DATA.Row)

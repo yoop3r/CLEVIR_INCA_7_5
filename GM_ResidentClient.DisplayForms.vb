@@ -490,55 +490,25 @@ Partial Public Class GmResidentClient
                 'CUSTOM SCREENS
 
 
-                MyToolStripMenuItem.DropDownItems.Add("Secret Squirrel Screen")
+                MyToolStripMenuItem.DropDownItems.Add("LKA Screen")
                 AddHandler MyToolStripMenuItem.DropDownItems(1).Click, AddressOf MyToolStripMenuItem_Click
 
                 ReDim Preserve SelectDisplays.MyDisplaySelectButtons(1)
                 SelectDisplays.MyDisplaySelectButtons(1) = New Button
 
-                MyToolStripMenuItem.DropDownItems.Add("LKA Screen")
+                MyToolStripMenuItem.DropDownItems.Add("Fusion Status Display")
                 AddHandler MyToolStripMenuItem.DropDownItems(2).Click, AddressOf MyToolStripMenuItem_Click
 
                 ReDim Preserve SelectDisplays.MyDisplaySelectButtons(2)
                 SelectDisplays.MyDisplaySelectButtons(2) = New Button
 
-                MyToolStripMenuItem.DropDownItems.Add("Pedestrian Status Display")
+                MyToolStripMenuItem.DropDownItems.Add("INCA Hardware Status")
                 AddHandler MyToolStripMenuItem.DropDownItems(3).Click, AddressOf MyToolStripMenuItem_Click
 
                 ReDim Preserve SelectDisplays.MyDisplaySelectButtons(3)
                 SelectDisplays.MyDisplaySelectButtons(3) = New Button
 
-                MyToolStripMenuItem.DropDownItems.Add("Fusion Status Display")
-                AddHandler MyToolStripMenuItem.DropDownItems(4).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(4)
-                SelectDisplays.MyDisplaySelectButtons(4) = New Button
-
-                MyToolStripMenuItem.DropDownItems.Add("CoPilot Status Display")
-                AddHandler MyToolStripMenuItem.DropDownItems(5).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(5)
-                SelectDisplays.MyDisplaySelectButtons(5) = New Button
-
-                MyToolStripMenuItem.DropDownItems.Add("LMFR Global A Status Display")
-                AddHandler MyToolStripMenuItem.DropDownItems(6).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(6)
-                SelectDisplays.MyDisplaySelectButtons(6) = New Button
-
-                MyToolStripMenuItem.DropDownItems.Add("LMFR High Content Status Display")
-                AddHandler MyToolStripMenuItem.DropDownItems(7).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(7)
-                SelectDisplays.MyDisplaySelectButtons(7) = New Button
-
-                MyToolStripMenuItem.DropDownItems.Add("INCA Hardware Status")
-                AddHandler MyToolStripMenuItem.DropDownItems(8).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(8)
-                SelectDisplays.MyDisplaySelectButtons(8) = New Button
-
-                'Add new custom screens above this...
+                'Add new custom screens above this (and update NumPredefinedDisplays)...
 
                 _MyRecordPlayback = New ToolStripMenuItem("Record/PlayBack", Nothing, Nothing, "Record/PlayBack")
 
@@ -1152,20 +1122,6 @@ Partial Public Class GmResidentClient
                 Else
 
                     RegisterDisplaySignals(j)
-
-                    'CompareString
-
-                    Select Case MyDFs(j).Text
-                        Case "CS_CoPilot Status"
-
-                            CopilotStatusDisplay.Left = 0
-                            CopilotStatusDisplay.Top = 45
-
-                            CopilotStatusDisplay.Show()
-                            CopilotStatusDisplay.BringToFront()
-                            CopilotStatusDisplay.Activate()
-
-                    End Select
 
                 End If
 

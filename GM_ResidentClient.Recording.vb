@@ -354,16 +354,6 @@ Partial Public Class GmResidentClient
                     FusionStatusDisplay.Refresh()
                 End If
 
-                If LmfrStatusDisplayGlobalA.Visible = True Then
-                    LmfrStatusDisplayGlobalA.Button1.Enabled = True
-                    LmfrStatusDisplayGlobalA.Refresh()
-                End If
-
-                If LmfrStatusScreenHc.Visible = True Then
-                    LmfrStatusScreenHc.Button1.Enabled = True
-                    LmfrStatusScreenHc.Refresh()
-                End If
-
             ElseIf lRecordingState = False And MyIncaInterface.Recording = True Then
 
                 'HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Recording Stopped in INCA")
@@ -405,7 +395,7 @@ Partial Public Class GmResidentClient
                     End Try
                 End If
 
-                'Fusion Status Display, and LMFR Status Display(s) have custom annotation buttons, these
+                'Fusion Status Display has custom annotation buttons, these
                 'must be disabled if we see that we are in record mode...
 
                 If FusionStatusDisplay.Visible = True Then
@@ -416,16 +406,6 @@ Partial Public Class GmResidentClient
                     FusionStatusDisplay.Button5.Enabled = False
                     FusionStatusDisplay.Button6.Enabled = False
                     FusionStatusDisplay.Button8.Enabled = False
-                End If
-
-                If LmfrStatusDisplayGlobalA.Visible = True Then
-                    LmfrStatusDisplayGlobalA.Button1.Enabled = False
-                    LmfrStatusDisplayGlobalA.Refresh()
-                End If
-
-                If LmfrStatusScreenHc.Visible = True Then
-                    LmfrStatusScreenHc.Button1.Enabled = False
-                    LmfrStatusScreenHc.Refresh()
                 End If
 
             End If

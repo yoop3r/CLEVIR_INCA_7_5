@@ -688,10 +688,6 @@ Public Class OnVehicleScreen
         GroupBox6.Anchor = AnchorStyles.None ' Voice Commands dropdown
     End Sub
 
-    Private Sub Label17_Click(ByVal sender As Object, ByVal e As EventArgs) Handles Label17.Click
-        GmResidentClient.ShowCustomScreen("Secret Squirrel Screen")
-    End Sub
-
     Private Sub Button5_Click(ByVal sender As Object, ByVal e As EventArgs) Handles Button5.Click
 
         'Save Cal Snap Shot button on OnVehicleScreen form...

@@ -154,7 +154,7 @@ Public Class GmResidentClient
     Public Const MenuFontSize As Integer = 14
     Public Const DefaultFormWidth800 As Integer = 800
 
-    Public Const NumPredefinedDisplays As Integer = 9
+    Public Const NumPredefinedDisplays As Integer = 4
 
     Public RecordTransitionDelay As Integer
     Public UserConfigFileName As String
@@ -191,24 +191,11 @@ Public Class GmResidentClient
 
     Public ReadOnly AvailableObjectIDs() As String = {"FUSION", "LRR", "LFSRR", "RFSRR", "VIS"}
     'Private PerformanceData(,) As String
-    Private _chartXIncrement As Double ' HandleLmfrStatusScreenGlobalA
 
     ' LKA Custom Display
     Private _saveLkaDistRtLnEdge As Double
     Private _saveLkaDistLtLnEdge As Double
 
-    ' Target Status Display
-    Private _saveFoaiVairValue As Integer
-    Private _saveFoaiAwirValue As Integer
-    Private _saveAutobrkreqValue As Integer
-    Private _saveColprsysbrkprfreq_Target As Integer
-
-    ' Pedestrian Status Display
-    Private _savePedwarn As Integer
-    Private _saveBrakingFlag As Integer
-    Private _saveAlertFlag As Integer
-    Private _saveNotificationFlag As Integer
-    Private _saveColprsysbrkprfreq_Ped As Integer
     Private _MyMiscInfo As ToolStripMenuItem
     Private _MyRecordPlayback As ToolStripMenuItem
     Private _lccActiveStartingMileage As Double
