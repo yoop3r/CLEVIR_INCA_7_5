@@ -40,11 +40,25 @@ Public Class GmResidentClient
     'including for instance, the main background tasks loop (MyBackgroundTasks), InitializationMonitor, Initialize routine
     'and ProcessKiller thread...
 
-    'While most of the code is shared between the CLEVIR_INCA_7_2 and CLEVIR_INCA_7_3 versions, there are different
-    'GmResidentClient modules used for the two CLEVIR versions.  This is due to the fact that the handling of configured
-    'displays must be different between 7.2 and 7.3, and much of the code related to the configured displays is in this
-    'module.  So, whenever any changes are made to GmResidentClient, the same changes must be made to both the 7.2 version
-    'which is located in FlexGridFiles and the 7.3 version which is located in in NoFlexGridFiles...
+    'GmResidentClient is split across Partial Class files by responsibility. Class-level fields, constants and
+    'nested types stay in this file so their initialization order is preserved.
+    '  GM_ResidentClient.vb                 - fields/types, form lifecycle events, GetCurrentConfigData
+    '  GM_ResidentClient.Startup.vb         - Initialize and INCA/camera/login startup sequence
+    '  GM_ResidentClient.Shutdown.vb        - ExitApp, INCA shutdown/restart, file compression and upload prep
+    '  GM_ResidentClient.Configuration.vb   - config.xml / user config / Lidar configuration read & write
+    '  GM_ResidentClient.SignalList.vb      - signal list read (CSV/XLSX), write and display signal registration
+    '  GM_ResidentClient.DisplayForms.vb    - dynamic display forms, grids, menus, context menus, tab controls
+    '  GM_ResidentClient.DeviceHealth.vb    - device status, lost-device detection and reinitialization
+    '  GM_ResidentClient.Mileage.vb         - odometer/geofence status and annotation file mileage
+    '  GM_ResidentClient.Recording.vb       - INCA/WAV/alternate recording, progress bar, CLEVIR record/playback data
+    '  GM_ResidentClient.StatusScreens.vb   - custom status screens (ALC, CoPilot, LMFR, Fusion, LKA, Target, Pedestrian)
+    '  GM_ResidentClient.BackgroundLoop.vb  - MyBackgroundTasks, ProcessGrids, GO/NOGO and grid color updates
+    '  GM_ResidentClient.ProcessKiller.vb   - ProcessKiller watchdog thread and killer form
+    '  GM_ResidentClient.InitMonitor.vb     - InitializationMonitor progress UI
+    '  GM_ResidentClient.MenuHandlers.vb    - designer menu/control event handlers
+
+    'Note: the former CLEVIR 7.2 (FlexGridFiles) / 7.3 (NoFlexGridFiles) variants of this form are not part of this
+    'repository; changes here no longer need to be mirrored into separate copies.
 
     ' ═══════════════════════════════════════════════════════════════
     ' ASYNC/AWAIT PATTERN USAGE:
