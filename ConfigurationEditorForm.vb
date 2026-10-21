@@ -866,7 +866,7 @@ Public Class ConfigurationEditorForm
             Case "INCAWorkspace" : Return "INCA workspace name"
             Case "INCAExperiment" : Return "INCA experiment file name"
             Case "INCAExperimentTemplate" : Return "Existing INCA experiment template; required only for NEW FULL registration"
-            Case "INCAVariableFile" : Return "Signal list file path (.csv or .xlsx)"
+            Case "INCAVariableFile" : Return "Signal list file path (.csv)"
             Case "SignalRegistrationMode" : Return "Signal registration mode (DISPLAYS/ALL)"
             Case "DataDictionary" : Return "Annotation GUI dictionary CSV; absolute path or relative to the application directory"
             Case "VehicleSpySetup" : Return "User-configured VehicleSpy setup; required for VehicleSpy, absolute path or relative to the application directory"

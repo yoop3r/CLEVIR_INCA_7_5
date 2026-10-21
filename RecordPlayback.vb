@@ -192,7 +192,7 @@
                 OpenFileDialog1.Filter = "csv | *.csv"
                 OpenFileDialog1.DefaultExt = "csv"
                 'OpenFileDialog1.FileName = My.Application.Info.DirectoryPath & "\" & Mid(GmResidentClient.INCAVariableFile, 1, InStr(GmResidentClient.INCAVariableFile, ".") - 1) & ".csv"
-                OpenFileDialog1.FileName = Mid(INCAVariableFile, 1, InStr(INCAVariableFile, ".") - 1) & "_RecordFile.csv"
+                OpenFileDialog1.FileName = SignalListFile.RecordFilePathFor(INCAVariableFile)
 
 
                 If OpenFileDialog1.ShowDialog() = DialogResult.OK Then

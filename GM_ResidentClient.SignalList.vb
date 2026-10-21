@@ -17,10 +17,10 @@ Partial Public Class GmResidentClient
 
     Private Sub WriteSignalListFile(ByVal signalListFileName As String)
 
-        'Save data back to the Excel or .csv file which contains the variable and display information
+        'Save data back to the .csv file which contains the variable and display information
         'If anything has been changed (using the online dynamic re-configuration), the changes will be saved into the
-        'previously used excel spreadsheet or .csv file.  So, if we re-start the GmResidentClient
-        'we will be using the spreadsheet or .csv file with changes made during the previous session.
+        'previously used .csv file.  So, if we re-start the GmResidentClient
+        'we will be using the .csv file with changes made during the previous session.
 
         'This is called when we exit the main form, but only if changes have been made.
 
@@ -31,10 +31,6 @@ Partial Public Class GmResidentClient
         Dim z As Integer
         Dim i As Integer
         Dim n As Integer
-
-        Dim excelApp As Object = Nothing
-        Dim wrkbk As Object = Nothing
-        Dim MyWorkSheet As Object = Nothing
 
         Dim ccon As ColorConverter
 
@@ -55,10 +51,6 @@ Partial Public Class GmResidentClient
             ccon = New ColorConverter()
 
             fileExtension = Path.GetExtension(signalListFileName)
-
-            If fileExtension = ".xlsx" Then
-                excelApp = CreateObject("Excel.Application")
-            End If
 
             'Must allow for additional data to have been added so we add 'NumSignalsAdded' to the current upper bound
             'of the exceldata array which was read in at startup. NumSignalsAdded is incremented whenever we add a new signal via
@@ -222,80 +214,35 @@ Partial Public Class GmResidentClient
                     HandleUserMessageLogging("GMRC", "WriteSignalListFile: Creating New INCA Variable File (" & savefilename & ")")
                     If ConfigureForNewSoftwareVersion = True Then
                         MsgBox("A new signal list file will now be created called " & savefilename & " This signal list has been modified by removing the signals flagged in the InvalidSignalsLog.csv File...")
-                        MsgBox("Open this file, verify that it is correct, then rename the file based on the total number of signals removing '_NEW' from the filename.  Save both as .xlsx and .csv file type...")
+                        MsgBox("Open this file, verify that it is correct, then rename the file based on the total number of signals removing '_NEW' from the filename...")
                     End If
                 End If
 
-                If fileExtension = ".xlsx" Then
+                fnum = FreeFile()
 
-                    wrkbk = excelApp.Workbooks.Open(INCAVariableFile)
-                    MyWorkSheet = wrkbk.Sheets(1)
-                    MyWorkSheet.Activate()
+                FileOpen(fnum, savefilename, OpenMode.Output)
 
-                    If File.Exists(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv") And Not (ValidExcelData Is Nothing) Then
-
-                        If UBound(exceldataforsave, 1) >= UBound(exceldata, 1) Then
-
-                            MyWorkSheet.Range("A1").Resize(UBound(exceldataforsave, 1) + 1, UBound(ValidExcelData, 2) + 1).Value = exceldataforsave
-
+                For x = 0 To UBound(exceldataforsave, 1) - 1
+                    For y = 0 To UBound(exceldataforsave, 2) - 1
+                        If y = 0 Then
+                            inputline = exceldataforsave(x, y)
                         Else
-
-                            MyWorkSheet.UsedRange.Clear()
-                            MyWorkSheet.Range("A1").Resize(UBound(exceldataforsave, 1) + 1, UBound(ValidExcelData, 2) + 1).Value = exceldataforsave
-
+                            inputline = inputline & "," & exceldataforsave(x, y)
                         End If
-                    Else
-
-                        MyWorkSheet.Range("A1").Resize(UBound(exceldataforsave, 1), UBound(exceldata, 2)).Value = exceldataforsave
-                    End If
-
-                    HandleUserMessageLogging("GMRC", "WriteSignalListFile: Excel File Written successfully")
-
-                    If savefilename = INCAVariableFile Then
-                        wrkbk.Save()
-                    Else
-                        wrkbk.SaveAs(savefilename)
-
-                        If ConfigureForNewSoftwareVersion = False Then
-                            If MsgBox("Do you wish to update the configuration file to use this newly saved variable file?", vbYesNo) = vbYes Then
-                                INCAVariableFile = savefilename
-                            End If
-                        End If
-
-                    End If
-
-                    excelApp.Quit()
-                    excelApp = Nothing
-
-                Else '.csv file...
-
-                    fnum = FreeFile()
-
-                    FileOpen(fnum, savefilename, OpenMode.Output)
-
-                    For x = 0 To UBound(exceldataforsave, 1) - 1
-                        For y = 0 To UBound(exceldataforsave, 2) - 1
-                            If y = 0 Then
-                                inputline = exceldataforsave(x, y)
-                            Else
-                                inputline = inputline & "," & exceldataforsave(x, y)
-                            End If
-                        Next
-                        PrintLine(fnum, inputline)
                     Next
+                    PrintLine(fnum, inputline)
+                Next
 
-                    FileClose(fnum)
+                FileClose(fnum)
 
-                    HandleUserMessageLogging("GMRC", "WriteSignalListFile: Signal List File Written successfully")
+                HandleUserMessageLogging("GMRC", "WriteSignalListFile: Signal List File Written successfully")
 
-                    If savefilename <> INCAVariableFile Then
+                If savefilename <> INCAVariableFile Then
 
-                        If ConfigureForNewSoftwareVersion = False Then
-                            If MsgBox("Do you wish to update the configuration file to use this newly saved variable file?", vbYesNo) = vbYes Then
-                                INCAVariableFile = savefilename
-                            End If
+                    If ConfigureForNewSoftwareVersion = False Then
+                        If MsgBox("Do you wish to update the configuration file to use this newly saved variable file?", vbYesNo) = vbYes Then
+                            INCAVariableFile = savefilename
                         End If
-
                     End If
 
                 End If
@@ -328,7 +275,7 @@ Partial Public Class GmResidentClient
     End Sub
 
     Private Function ReadInSignalList(ByVal signalListFileName As String) As Boolean
-        ' Reads and processes an INCA signal list from either a .CSV or .XLSX file.
+        ' Reads and processes an INCA signal list from a .CSV file (the only supported signal list format).
         ' Depending on the SignalRegistrationMode, signals may be flagged for forced registration.
         ' Visible signals (with a DisplayWindowName) are handled first; invisible signals are processed
         ' later. In FULL registration mode, all signals (visible + invisible) are processed.
@@ -346,15 +293,11 @@ Partial Public Class GmResidentClient
         End If
 
         Dim invalidSignalsArray() As String = Nothing
-        Dim fileExtension As String
         Dim duplicate As Boolean = False
         Dim invalidSignal As Boolean = False
         Dim fileValid As Boolean = False
         Dim cameraNumber As Integer = 0
         Dim timeCodeCounter As Integer = 0
-        Dim excelApp As Object = Nothing
-        Dim wrkbk As Object = Nothing
-        Dim MyWorkSheet As Object = Nothing
         Dim returnStr As String = ""
         Dim tempStr As String = ""
         Dim fnum As Integer = 0
@@ -364,15 +307,14 @@ Partial Public Class GmResidentClient
         Dim y As Integer = 0
 
         Try
-            fileExtension = Path.GetExtension(signalListFileName)
             ReadInSignalList = True
 
             ' --------------------------------------------------------------------------
             ' Basic File Checks & Handling
             ' --------------------------------------------------------------------------
             HandleUserMessageLogging("GMRC", "In ReadInSignalList SignalListFileName = " & signalListFileName)
-            If Not File.Exists(signalListFileName) OrElse Not signalListFileName.Contains(fileExtension) Then
-                If Not HandleMissingSignalListFile(signalListFileName, fileExtension, fileValid) Then
+            If Not File.Exists(signalListFileName) OrElse Not SignalListFile.IsCsv(signalListFileName) Then
+                If Not HandleMissingSignalListFile(signalListFileName, fileValid) Then
                     ' If user decides to abort or exit, then return immediately
                     Return False
                 End If
@@ -414,15 +356,11 @@ Partial Public Class GmResidentClient
             beenHere = True
 
             ' --------------------------------------------------------------------------
-            ' Open the file (.XLSX vs .CSV) and load data into excelData array
+            ' Open the .CSV file and load data into excelData array
             ' --------------------------------------------------------------------------
             HandleUserMessageLogging("GMRC", $"ReadInSignalList: Reading In Signal/Display Configuration File {signalListFileName}...")
 
-            If fileExtension.ToUpper().Equals(".XLSX") Then
-                exceldata = ReadSignalListFromXlsx(signalListFileName, excelApp, wrkbk, MyWorkSheet)
-            Else
-                exceldata = ReadSignalListFromCsv(signalListFileName)
-            End If
+            exceldata = ReadSignalListFromCsv(signalListFileName)
 
             ' --------------------------------------------------------------------------
             ' If FULL registration and InvalidSignalsLog.csv exists, prepare ValidExcelData
@@ -574,13 +512,6 @@ Partial Public Class GmResidentClient
                 HandleUserMessageLogging("GMRC", "ReadInSignalList: Forms auto-sized.")
             End If
 
-            If fileExtension.ToUpper() = ".XLSX" Then
-                If excelApp IsNot Nothing Then
-                    excelApp.Quit()
-                    excelApp = Nothing
-                End If
-            End If
-
             HandleUserMessageLogging("GMRC", "ReadInSignalList: SignalList File Processed successfully.")
             OnVehicleScreen.Refresh()
             Return True
@@ -596,14 +527,6 @@ Partial Public Class GmResidentClient
 
         Finally
             Cursor = Cursors.Arrow
-            If excelApp IsNot Nothing Then
-                Try
-                    excelApp.Quit()
-                Catch exQuit As Exception
-                    ' suppress any cleanup error
-                    HandleUserMessageLogging("GMRC", $"ReadInSignalList: excelApp.Quit failed - {exQuit.Message}")
-                End Try
-            End If
         End Try
     End Function
 
@@ -765,10 +688,10 @@ Partial Public Class GmResidentClient
     ''' </summary>
     Private Function HandleMissingSignalListFile(
         ByRef signalListFileName As String,
-        ByVal fileExtension As String,
         ByRef fileValid As Boolean
     ) As Boolean
 
+        Dim fileExtension As String = SignalListFile.Extension
         Dim answer As Integer
         Using msgBox As New Cusmsgbox()
             answer = msgBox.DisplayCusMsgBox(
@@ -798,9 +721,7 @@ Partial Public Class GmResidentClient
                 Dim files As FileInfo() = dir.GetFiles()
 
                 For Each f As FileInfo In files
-                    If Not f.Name.Contains("SAVE") AndAlso
-                       Not f.Name.Contains("~") AndAlso
-                       f.Name.EndsWith(fileExtension, StringComparison.OrdinalIgnoreCase) Then
+                    If SignalListFile.IsSignalListCandidate(f.Name) Then
 
                         If File.GetLastWriteTime(f.FullName) > saveDate Then
                             saveDate = File.GetLastWriteTime(f.FullName)
@@ -861,7 +782,7 @@ Partial Public Class GmResidentClient
                         StatusNotifier.Toast($"Using Signal List {signalListFileName} and Experiment {INCAExperiment}", "INCA", 2000)
 
                     Else
-                        Dim res = MsgBox("Invalid signal configuration filename. Please select a .csv or .xlsx file. Try Again?", vbYesNo)
+                        Dim res = MsgBox("Invalid signal configuration filename. Please select a .csv file. Try Again?", vbYesNo)
                         If res = vbNo Then
                             Return False
                         End If
@@ -888,98 +809,16 @@ Partial Public Class GmResidentClient
     End Sub
 
     ''' <summary>
-    ''' Reads the signal list from an XLSX file using late binding (COM).
-    ''' Returns a 2D object array with Excel data.
-    ''' </summary>
-    Private Function ReadSignalListFromXlsx(
-        ByVal signalListFileName As String,
-        ByRef excelApp As Object,
-        ByRef wrkbk As Object,
-        ByRef MyWorkSheet As Object
-    ) As Object(,)
-
-        HandleUserMessageLogging("GMRC", "ReadInSignalList: Creating Excel Object...")
-        excelApp = CreateObject("Excel.Application")
-        HandleUserMessageLogging("GMRC", "ReadInSignalList: Excel Object created.")
-
-        wrkbk = excelApp.Workbooks.Open(signalListFileName)
-        MyWorkSheet = wrkbk.Sheets(1)
-        MyWorkSheet.Activate()
-
-        Dim data = MyWorkSheet.UsedRange.Value
-        Return data
-    End Function
-
-    ''' <summary>
     ''' Reads the signal list from a CSV file and returns a 2D object array analogous to reading an Excel range.
-    ''' Uses modern .NET 4.8 methods for better performance and error handling.
+    ''' Parsing lives in <see cref="SignalListCsvReader"/>; this wrapper adds logging and error context.
     ''' </summary>
     Private Function ReadSignalListFromCsv(ByVal signalListFileName As String) As Object(,)
         HandleUserMessageLogging("GMRC", $"ReadInSignalList: Opening {signalListFileName} file...")
 
         Try
-            ' 1) Detect delimiter from the first non-empty line (supports comma, tab, semicolon)
-            Dim firstNonEmpty As String = File.ReadLines(signalListFileName).FirstOrDefault(Function(l) Not String.IsNullOrWhiteSpace(l))
-            If firstNonEmpty Is Nothing Then Throw New InvalidDataException("CSV file is empty")
+            Dim excelData As Object(,) = SignalListCsvReader.Read(signalListFileName)
 
-            Dim delim As String = ","
-            Dim tabCount = firstNonEmpty.Count(Function(ch) ch = vbTab(0))
-            Dim commaCount = firstNonEmpty.Count(Function(ch) ch = ","c)
-            Dim semiCount = firstNonEmpty.Count(Function(ch) ch = ";"c)
-            If tabCount >= commaCount AndAlso tabCount >= semiCount Then
-                delim = vbTab
-            ElseIf semiCount >= commaCount AndAlso semiCount >= tabCount Then
-                delim = ";"
-            Else
-                delim = ","
-            End If
-
-            ' 2) Parse with TextFieldParser (handles quotes and embedded delimiters correctly)
-            Dim rows As New List(Of String())()
-            Dim maxColumns As Integer = 0
-
-            Using parser As New Microsoft.VisualBasic.FileIO.TextFieldParser(signalListFileName)
-                parser.TextFieldType = Microsoft.VisualBasic.FileIO.FieldType.Delimited
-                parser.SetDelimiters(delim)
-                parser.HasFieldsEnclosedInQuotes = True
-                parser.TrimWhiteSpace = False
-
-                While Not parser.EndOfData
-                    Dim fields As String() = parser.ReadFields()
-                    If fields Is Nothing Then Continue While
-
-                    ' Normalize whitespace; preserve inner spaces, trim around the field
-                    For i As Integer = 0 To fields.Length - 1
-                        If fields(i) IsNot Nothing Then fields(i) = fields(i).Trim()
-                    Next
-
-                    ' Skip fully empty lines
-                    If fields.All(Function(f) String.IsNullOrEmpty(f)) Then Continue While
-
-                    rows.Add(fields)
-                    If fields.Length > maxColumns Then maxColumns = fields.Length
-                End While
-            End Using
-
-            If rows.Count = 0 Then Throw New InvalidDataException("CSV contained no data rows")
-
-            ' 3) Ensure at least expected columns (23) to match EXCEL_DATA usage
-            maxColumns = Math.Max(maxColumns, 23)
-
-            ' 4) Build a 1-based 2D array (Excel-like indexing)
-            Dim excelData(rows.Count, maxColumns) As Object
-            For r As Integer = 0 To rows.Count - 1
-                Dim fields = rows(r)
-                For c As Integer = 0 To maxColumns - 1
-                    If c < fields.Length Then
-                        excelData(r + 1, c + 1) = fields(c)
-                    Else
-                        excelData(r + 1, c + 1) = String.Empty
-                    End If
-                Next
-            Next
-
-            HandleUserMessageLogging("GMRC", $"Successfully loaded {rows.Count} rows with {maxColumns} columns from CSV file")
+            HandleUserMessageLogging("GMRC", $"Successfully loaded {UBound(excelData, 1)} rows with {UBound(excelData, 2)} columns from CSV file")
             Return excelData
 
         Catch ex As FileNotFoundException

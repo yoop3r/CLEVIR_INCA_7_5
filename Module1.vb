@@ -203,7 +203,7 @@ Public Module Module1
     Public INCADatabase As String                    'This is the INCA Database name
     Public INCAExperiment As String                  'This is the INCA Experiment name
     Public InitialINCAExperiment As String           'Stores the name of the INCA Experiment that was first referenced when CLEVIR started, in case we need to revert back to it
-    Public INCAVariableFile As String                'This is the INCA Signal List file (.xlsx) file. 
+    Public INCAVariableFile As String                'This is the INCA Signal List (.csv) file. 
     Public INCAWorkspaceTemplateName As String
     Public ConfiguredDataDictionaryFile As String
 
@@ -1882,12 +1882,7 @@ Public Module Module1
                                 Dim extIndex As Integer = baseFileName.IndexOf("."c)
                                 Dim baseName As String = If(extIndex > 0, baseFileName.Substring(0, extIndex), baseFileName)
 
-                                Dim variableFile As String
-                                If Not CSVFileInFolder Then
-                                    variableFile = Path.Combine(My.Application.Info.DirectoryPath, "SignalLists", baseName & ".xlsx")
-                                Else
-                                    variableFile = Path.Combine(My.Application.Info.DirectoryPath, "SignalLists", baseName & ".csv")
-                                End If
+                                Dim variableFile As String = Path.Combine(My.Application.Info.DirectoryPath, "SignalLists", baseName & SignalListFile.Extension)
 
                                 lines(3) = "INCAVariableFile" & vbTab & variableFile
                                 INCAVariableFile = variableFile
@@ -2547,6 +2542,9 @@ Public Module Module1
         InitialINCAExperiment = configuration.Experiment
         CanTemplateExperimentName = configuration.ExperimentTemplate
         INCAVariableFile = configuration.VariableFile
+        If configuration.LegacyVariableFile IsNot Nothing Then
+            HandleUserMessageLogging("GMRC", $"ApplyIncaConfiguration: Signal list '{configuration.LegacyVariableFile}' is not a .csv file (only .csv signal lists are supported); using '{INCAVariableFile}'")
+        End If
         ETAS_USER_PATH = configuration.EtasUserPath
         VehicleNumber = configuration.VehicleNumber
         ConfiguredDataDictionaryFile = configuration.DataDictionary

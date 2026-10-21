@@ -980,9 +980,7 @@ Partial Public Class GmResidentClient
         End If
 
         Dim newExpName As String = Path.GetFileName(INCAVariableFile)
-        If InStr(newExpName, ".xlsx") > 0 Then
-            newExpName = Mid(newExpName, 1, InStr(newExpName, ".xlsx") - 1)
-        ElseIf InStr(newExpName, ".csv") > 0 Then
+        If InStr(newExpName, ".csv") > 0 Then
             newExpName = Mid(newExpName, 1, InStr(newExpName, ".csv") - 1)
         Else
             HandleUserMessageLogging("GMRC", "Invalid Signal List Name. Exiting...", DisplayMsgBox)

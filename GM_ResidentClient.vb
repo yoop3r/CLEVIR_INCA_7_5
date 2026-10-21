@@ -46,7 +46,7 @@ Public Class GmResidentClient
     '  GM_ResidentClient.Startup.vb         - Initialize and INCA/camera/login startup sequence
     '  GM_ResidentClient.Shutdown.vb        - ExitApp, INCA shutdown/restart, file compression and upload prep
     '  GM_ResidentClient.Configuration.vb   - config.xml / user config / Lidar configuration read & write
-    '  GM_ResidentClient.SignalList.vb      - signal list read (CSV/XLSX), write and display signal registration
+    '  GM_ResidentClient.SignalList.vb      - signal list read (CSV), write and display signal registration
     '  GM_ResidentClient.DisplayForms.vb    - dynamic display forms, grids, menus, context menus, tab controls
     '  GM_ResidentClient.DeviceHealth.vb    - device status, lost-device detection and reinitialization
     '  GM_ResidentClient.Mileage.vb         - odometer/geofence status and annotation file mileage
@@ -58,7 +58,7 @@ Public Class GmResidentClient
     '  GM_ResidentClient.MenuHandlers.vb    - designer menu/control event handlers
     'Form-independent logic extracted into Friend helper classes (unit tested in CLEVIR_INCA_7_5.Tests):
     '  PropertyGeofence, DisplayValueFormatter, ResidentClientText, ConfigValueReader, ResidentConfigRules,
-    '  ResidentConfigXmlWriter (+ ResidentConfigSnapshot), LidarExtrinsicParser
+    '  ResidentConfigXmlWriter (+ ResidentConfigSnapshot), LidarExtrinsicParser, SignalListFile, SignalListCsvReader
 
     'Note: the former CLEVIR 7.2
     'repository; changes here no longer need to be mirrored into separate copies.

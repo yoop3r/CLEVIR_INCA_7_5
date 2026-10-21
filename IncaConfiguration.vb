@@ -49,6 +49,8 @@ Public NotInheritable Class IncaConfiguration
     Public ReadOnly Property Experiment As String
     Public ReadOnly Property ExperimentTemplate As String
     Public ReadOnly Property VariableFile As String
+    ''' <summary>Original non-.csv INCAVariableFile entry that was mapped to the .csv <see cref="VariableFile"/>; Nothing when none.</summary>
+    Public ReadOnly Property LegacyVariableFile As String
     Public ReadOnly Property EtasUserPath As String
     Public ReadOnly Property VehicleNumber As String
     Public ReadOnly Property Processors As ProcessorIdentity()
@@ -66,6 +68,10 @@ Public NotInheritable Class IncaConfiguration
         VariableFile = RequiredValue(root, "INCAVariableFile")
         If Not Path.IsPathRooted(VariableFile) Then
             VariableFile = Path.Combine(If(String.IsNullOrEmpty(Path.GetDirectoryName(VariableFile)), Path.Combine(baseDirectory, "SignalLists"), baseDirectory), VariableFile)
+        End If
+        If Not SignalListFile.IsCsv(VariableFile) Then
+            LegacyVariableFile = VariableFile
+            VariableFile = SignalListFile.ToCsvPath(VariableFile)
         End If
         EtasUserPath = If(root.SelectSingleNode("ETAS_USER_PATH")?.InnerText, String.Empty).Trim()
         DataDictionary = ResolveFile(baseDirectory, RequiredValue(root, "DataDictionary"))

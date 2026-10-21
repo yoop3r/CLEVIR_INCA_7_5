@@ -895,7 +895,7 @@ Partial Public Class GmResidentClient
         Dim savestring As String = ""
 
         fnum = FreeFile()
-        filename = Mid(INCAVariableFile, 1, InStr(INCAVariableFile, ".xlsx") - 1) & ".csv"
+        filename = SignalListFile.RecordFilePathFor(INCAVariableFile)
         FileOpen(fnum, filename, OpenMode.Output)
 
         For x = 0 To lineNum
