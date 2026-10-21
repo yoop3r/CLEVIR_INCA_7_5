@@ -196,6 +196,18 @@
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="GM_ResidentClient.Configuration.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.SignalList.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.Mileage.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="GridCellPropConfig.designer.vb">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
     </Compile>
