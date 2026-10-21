@@ -436,16 +436,8 @@ Partial Public Class GmResidentClient
 
         'This routine is also called when the user creates a new display form.
 
-        Dim gonogo As Integer
-
         Dim ctr As Integer = -1
         Dim offset As Integer = 0
-
-        Dim z As Integer
-
-        Dim whatrowamion As Integer
-
-        Dim answer As Integer
 
         Try
 
@@ -473,65 +465,11 @@ Partial Public Class GmResidentClient
                 '    MyLogin.Enabled = False
                 'End If
 
-                MyToolStripMenuItem = New ToolStripMenuItem("Displays")
+                BuildDisplaysMenu()
 
-                MyToolStripMenuItem.Font = New Font(MyToolStripMenuItem.Font.FontFamily, MenuFontSize - 2)
-                MyToolStripMenuItem.Font = New Font(MyToolStripMenuItem.Font, FontStyle.Bold)
+                BuildRecordPlaybackMenu()
 
-                _MyMenuStrip.Items.Add(MyToolStripMenuItem)
-
-                MyToolStripMenuItem.DropDownItems.Add(MyTdGraphicsContainer.Name)
-                AddHandler MyToolStripMenuItem.DropDownItems(0).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim SelectDisplays.MyDisplaySelectButtons(0)
-                SelectDisplays.MyDisplaySelectButtons(0) = New Button
-
-                'CUSTOM SCREENS
-
-
-                MyToolStripMenuItem.DropDownItems.Add("LKA Screen")
-                AddHandler MyToolStripMenuItem.DropDownItems(1).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(1)
-                SelectDisplays.MyDisplaySelectButtons(1) = New Button
-
-                MyToolStripMenuItem.DropDownItems.Add("Fusion Status Display")
-                AddHandler MyToolStripMenuItem.DropDownItems(2).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(2)
-                SelectDisplays.MyDisplaySelectButtons(2) = New Button
-
-                MyToolStripMenuItem.DropDownItems.Add("INCA Hardware Status")
-                AddHandler MyToolStripMenuItem.DropDownItems(3).Click, AddressOf MyToolStripMenuItem_Click
-
-                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(3)
-                SelectDisplays.MyDisplaySelectButtons(3) = New Button
-
-                'Add new custom screens above this (and update NumPredefinedDisplays)...
-
-                _MyRecordPlayback = New ToolStripMenuItem("Record/PlayBack", Nothing, Nothing, "Record/PlayBack")
-
-                _MyRecordPlayback.Font = New Font(_MyRecordPlayback.Font.FontFamily, MenuFontSize - 2)
-                _MyRecordPlayback.Font = New Font(_MyRecordPlayback.Font, FontStyle.Bold)
-
-                _MyMenuStrip.Items.Add(_MyRecordPlayback)
-                AddHandler _MyRecordPlayback.Click, AddressOf MyRecordPlayback_Click
-
-                _MyMiscInfo = New ToolStripMenuItem("Misc Info", Nothing, Nothing, "Misc Info")
-
-                _MyMiscInfo.Font = New Font(_MyMiscInfo.Font.FontFamily, MenuFontSize - 2)
-                _MyMiscInfo.Font = New Font(_MyMiscInfo.Font, FontStyle.Bold)
-
-                _MyMenuStrip.Items.Add(_MyMiscInfo)
-
-                'MyMiscInfo.DropDownItems.Add("Display Operation History")
-                'AddHandler MyMiscInfo.DropDownItems(0).Click, AddressOf MyMiscInfo_Click
-
-                _MyMiscInfo.DropDownItems.Add("Display Record Path/Filename")
-                AddHandler _MyMiscInfo.DropDownItems(0).Click, AddressOf MyMiscInfo_Click
-
-                _MyMiscInfo.DropDownItems.Add("Display Update Rates")
-                AddHandler _MyMiscInfo.DropDownItems(1).Click, AddressOf MyMiscInfo_Click
+                BuildMiscInfoMenu()
 
             Else
 
@@ -544,130 +482,11 @@ Partial Public Class GmResidentClient
             'StatusNotifier.Toast("CreateMenus: Adding item(s) to Displays Menu...", "CLEVIR", 2000)
             'OnVehicleScreen.Refresh()
 
-            If MyLabel Is Nothing Then
-                gonogo = startFormIdx
-            Else
-                gonogo = UBound(MyLabel) + 1
-            End If
+            AddDisplayFormMenuItems(startFormIdx, newForm)
 
-            If MyDFs(0) IsNot Nothing Then
+            LayoutDisplaySelectButtons()
 
-                For z = startFormIdx To MyDFs.Count - 1
-
-                    MyToolStripMenuItem.DropDownItems.Add((MyDFs(z).Name))
-
-                    If InStr(MyDFs(z).AlsoAssociatedWith, "GO/NOGO") > 0 Then
-
-                        ReDim Preserve MyLabel(gonogo)
-
-                        MyDFs(z).GoNoGoIndex = gonogo
-
-                        MyLabel(gonogo) = New Label With {
-                            .Parent = OnVehicleScreen.GroupBox4,
-                            .AutoSize = False,
-                            .Visible = True,
-                            .BackColor = Color.Green,
-                            .ForeColor = Color.White,
-                            .BorderStyle = BorderStyle.Fixed3D,
-                            .TabStop = False,
-                            .Width = _statusLabelWidth,
-                            .Height = StatusLabelHeight
-                            }
-
-                        OnVehicleScreen.GroupBox4.ResumeLayout(False)
-
-                        MyLabel(gonogo).Top = MyLabel(gonogo).Parent.Height - MyLabel(gonogo).Height - 5
-
-                        MyLabel(gonogo).TextAlign = ContentAlignment.MiddleCenter
-
-                        MyLabel(gonogo).Font = New Font(MyLabel(gonogo).Font.FontFamily, DefaultFontSize - 2)
-
-                        If InStr(MyDFs(z).Name, "CS_") = 0 Then
-                            MyLabel(gonogo).Text = MyDFs(z).Name
-                        Else
-                            MyLabel(gonogo).Text = Mid(MyDFs(z).Name, 4, Len(MyDFs(z).Name))
-                        End If
-
-                        AddHandler MyLabel(gonogo).Click, AddressOf MyLabel_Click
-
-                        If gonogo = 0 Then
-                            MyLabel(gonogo).Left = StatusLabelSpacing
-                        Else
-                            MyLabel(gonogo).Left = MyLabel(gonogo - 1).Left + MyLabel(gonogo - 1).Width + StatusLabelSpacing
-                        End If
-                        gonogo += 1
-                    Else
-                        MyDFs(z).GoNoGoIndex = -1
-                    End If
-
-                    'CUSTOM SCREENS,need to add 1 to NumPredefinedDisplays, every time we add a new custom screen
-
-                    AddHandler MyToolStripMenuItem.DropDownItems(z + NumPredefinedDisplays).Click, AddressOf MyToolStripMenuItem_Click
-
-                    ReDim Preserve SelectDisplays.MyDisplaySelectButtons(z + NumPredefinedDisplays)
-                    SelectDisplays.MyDisplaySelectButtons(z + NumPredefinedDisplays) = New Button
-
-                    If newForm = False Then
-                        MyDFs(z).Hide()
-                    End If
-
-                Next z
-
-            End If
-
-            whatrowamion = -1
-
-            For z = 0 To UBound(SelectDisplays.MyDisplaySelectButtons)
-
-                SelectDisplays.MyDisplaySelectButtons(z).Parent = SelectDisplays
-
-                SelectDisplays.MyDisplaySelectButtons(z).Visible = True
-                SelectDisplays.MyDisplaySelectButtons(z).Height = 70
-                SelectDisplays.MyDisplaySelectButtons(z).Width = 100
-                SelectDisplays.MyDisplaySelectButtons(z).Text = MyToolStripMenuItem.DropDownItems(z).Text
-                SelectDisplays.MyDisplaySelectButtons(z).Font = New Font(SelectDisplays.MyDisplaySelectButtons(z).Font.FontFamily, DefaultFontSize)
-                SelectDisplays.MyDisplaySelectButtons(z).Font = New Font(SelectDisplays.MyDisplaySelectButtons(z).Font, FontStyle.Bold)
-
-                answer = z Mod 7
-
-                If answer = 0 Then
-                    whatrowamion += 1
-                End If
-
-                If whatrowamion = 0 Then
-                    SelectDisplays.MyDisplaySelectButtons(z).Top = 50
-                Else
-                    SelectDisplays.MyDisplaySelectButtons(z).Top = SelectDisplays.MyDisplaySelectButtons(0).Top + ((SelectDisplays.MyDisplaySelectButtons(0).Height + 5) * whatrowamion)
-                End If
-
-                If z Mod 7 <> 0 Then
-                    SelectDisplays.MyDisplaySelectButtons(z).Left = SelectDisplays.MyDisplaySelectButtons(z - 1).Left + SelectDisplays.MyDisplaySelectButtons(z - 1).Width + 10
-                Else
-                    SelectDisplays.MyDisplaySelectButtons(z).Left = 10
-                End If
-
-                AddHandler SelectDisplays.MyDisplaySelectButtons(z).Click, AddressOf SelectDisplays.myDisplaySelectButtons_Click
-
-            Next
-
-            _MyCreateNewDisplayMenuItem = New ToolStripMenuItem With {
-                .Text = "Create New Display - Enter Display Name"
-            }
-
-            _MyCreateNewDisplayMenuItem.DropDownItems.Add(New ToolStripTextBox())
-
-            _MyCreateNewDisplayMenuItem.DropDownItems(0).Font = New Font(_MyCreateNewDisplayMenuItem.DropDownItems(0).Font.FontFamily, MenuFontSize)
-            _MyCreateNewDisplayMenuItem.DropDownItems(0).Font = New Font(_MyCreateNewDisplayMenuItem.DropDownItems(0).Font, FontStyle.Bold)
-            _MyCreateNewDisplayMenuItem.DropDownItems(0).BackColor = Color.LightGray
-
-            _MyCreateNewDisplayMenuItem.DropDownItems(0).AutoSize = False
-            _MyCreateNewDisplayMenuItem.DropDownItems(0).Width = 400
-
-            _MyCreateNewDisplayMenuItem.DropDownItems.Add("Click Here after entering Display Name")
-
-            MyToolStripMenuItem.DropDownItems.Add(_MyCreateNewDisplayMenuItem)
-
-            AddHandler _MyCreateNewDisplayMenuItem.DropDownItems(1).Click, AddressOf MyCreateNewDisplayMenuItem_Click
+            AddCreateNewDisplayMenuItem()
 
             HandleUserMessageLogging("GMRC", "CreateMenus:Menu Item(s) Created")
             'StatusNotifier.Toast("CreateMenus:Menu Item(s) Created", "CLEVIR", 2000)
@@ -679,6 +498,234 @@ Partial Public Class GmResidentClient
 
         End Try
 
+    End Sub
+
+    Private Sub BuildDisplaysMenu()
+        'Called from CreateMenus (first call only). Displays menu: Top Down View plus the predefined custom screens,
+        'each with its SelectDisplays button (NumPredefinedDisplays entries).
+
+        MyToolStripMenuItem = New ToolStripMenuItem("Displays")
+
+        MyToolStripMenuItem.Font = New Font(MyToolStripMenuItem.Font.FontFamily, MenuFontSize - 2)
+        MyToolStripMenuItem.Font = New Font(MyToolStripMenuItem.Font, FontStyle.Bold)
+
+        _MyMenuStrip.Items.Add(MyToolStripMenuItem)
+
+        MyToolStripMenuItem.DropDownItems.Add(MyTdGraphicsContainer.Name)
+        AddHandler MyToolStripMenuItem.DropDownItems(0).Click, AddressOf MyToolStripMenuItem_Click
+
+        ReDim SelectDisplays.MyDisplaySelectButtons(0)
+        SelectDisplays.MyDisplaySelectButtons(0) = New Button
+
+        'CUSTOM SCREENS
+
+
+        MyToolStripMenuItem.DropDownItems.Add("LKA Screen")
+        AddHandler MyToolStripMenuItem.DropDownItems(1).Click, AddressOf MyToolStripMenuItem_Click
+
+        ReDim Preserve SelectDisplays.MyDisplaySelectButtons(1)
+        SelectDisplays.MyDisplaySelectButtons(1) = New Button
+
+        MyToolStripMenuItem.DropDownItems.Add("Fusion Status Display")
+        AddHandler MyToolStripMenuItem.DropDownItems(2).Click, AddressOf MyToolStripMenuItem_Click
+
+        ReDim Preserve SelectDisplays.MyDisplaySelectButtons(2)
+        SelectDisplays.MyDisplaySelectButtons(2) = New Button
+
+        MyToolStripMenuItem.DropDownItems.Add("INCA Hardware Status")
+        AddHandler MyToolStripMenuItem.DropDownItems(3).Click, AddressOf MyToolStripMenuItem_Click
+
+        ReDim Preserve SelectDisplays.MyDisplaySelectButtons(3)
+        SelectDisplays.MyDisplaySelectButtons(3) = New Button
+
+        'Add new custom screens above this (and update NumPredefinedDisplays)...
+    End Sub
+
+    Private Sub BuildRecordPlaybackMenu()
+        'Called from CreateMenus (first call only).
+
+        _MyRecordPlayback = New ToolStripMenuItem("Record/PlayBack", Nothing, Nothing, "Record/PlayBack")
+
+        _MyRecordPlayback.Font = New Font(_MyRecordPlayback.Font.FontFamily, MenuFontSize - 2)
+        _MyRecordPlayback.Font = New Font(_MyRecordPlayback.Font, FontStyle.Bold)
+
+        _MyMenuStrip.Items.Add(_MyRecordPlayback)
+        AddHandler _MyRecordPlayback.Click, AddressOf MyRecordPlayback_Click
+    End Sub
+
+    Private Sub BuildMiscInfoMenu()
+        'Called from CreateMenus (first call only).
+
+        _MyMiscInfo = New ToolStripMenuItem("Misc Info", Nothing, Nothing, "Misc Info")
+
+        _MyMiscInfo.Font = New Font(_MyMiscInfo.Font.FontFamily, MenuFontSize - 2)
+        _MyMiscInfo.Font = New Font(_MyMiscInfo.Font, FontStyle.Bold)
+
+        _MyMenuStrip.Items.Add(_MyMiscInfo)
+
+        'MyMiscInfo.DropDownItems.Add("Display Operation History")
+        'AddHandler MyMiscInfo.DropDownItems(0).Click, AddressOf MyMiscInfo_Click
+
+        _MyMiscInfo.DropDownItems.Add("Display Record Path/Filename")
+        AddHandler _MyMiscInfo.DropDownItems(0).Click, AddressOf MyMiscInfo_Click
+
+        _MyMiscInfo.DropDownItems.Add("Display Update Rates")
+        AddHandler _MyMiscInfo.DropDownItems(1).Click, AddressOf MyMiscInfo_Click
+    End Sub
+
+    Private Sub AddDisplayFormMenuItems(ByVal startFormIdx As Integer, ByVal newForm As Boolean)
+        'Called from CreateMenus. Adds a Displays menu item and SelectDisplays button for each display form from startFormIdx,
+        'plus a GO/NOGO banner label for forms associated with "GO/NOGO".
+
+        Dim gonogo As Integer
+
+        Dim z As Integer
+
+        If MyLabel Is Nothing Then
+            gonogo = startFormIdx
+        Else
+            gonogo = UBound(MyLabel) + 1
+        End If
+
+        If MyDFs(0) IsNot Nothing Then
+
+            For z = startFormIdx To MyDFs.Count - 1
+
+                MyToolStripMenuItem.DropDownItems.Add((MyDFs(z).Name))
+
+                If InStr(MyDFs(z).AlsoAssociatedWith, "GO/NOGO") > 0 Then
+
+                    AddGoNoGoStatusLabel(z, gonogo)
+
+                    gonogo += 1
+                Else
+                    MyDFs(z).GoNoGoIndex = -1
+                End If
+
+                'CUSTOM SCREENS,need to add 1 to NumPredefinedDisplays, every time we add a new custom screen
+
+                AddHandler MyToolStripMenuItem.DropDownItems(z + NumPredefinedDisplays).Click, AddressOf MyToolStripMenuItem_Click
+
+                ReDim Preserve SelectDisplays.MyDisplaySelectButtons(z + NumPredefinedDisplays)
+                SelectDisplays.MyDisplaySelectButtons(z + NumPredefinedDisplays) = New Button
+
+                If newForm = False Then
+                    MyDFs(z).Hide()
+                End If
+
+            Next z
+
+        End If
+    End Sub
+
+    Private Sub AddGoNoGoStatusLabel(ByVal z As Integer, ByVal gonogo As Integer)
+        'Called from AddDisplayFormMenuItems. Creates GO/NOGO banner label MyLabel(gonogo) on the OnVehicleScreen for MyDFs(z).
+
+        ReDim Preserve MyLabel(gonogo)
+
+        MyDFs(z).GoNoGoIndex = gonogo
+
+        MyLabel(gonogo) = New Label With {
+            .Parent = OnVehicleScreen.GroupBox4,
+            .AutoSize = False,
+            .Visible = True,
+            .BackColor = Color.Green,
+            .ForeColor = Color.White,
+            .BorderStyle = BorderStyle.Fixed3D,
+            .TabStop = False,
+            .Width = _statusLabelWidth,
+            .Height = StatusLabelHeight
+            }
+
+        OnVehicleScreen.GroupBox4.ResumeLayout(False)
+
+        MyLabel(gonogo).Top = MyLabel(gonogo).Parent.Height - MyLabel(gonogo).Height - 5
+
+        MyLabel(gonogo).TextAlign = ContentAlignment.MiddleCenter
+
+        MyLabel(gonogo).Font = New Font(MyLabel(gonogo).Font.FontFamily, DefaultFontSize - 2)
+
+        If InStr(MyDFs(z).Name, "CS_") = 0 Then
+            MyLabel(gonogo).Text = MyDFs(z).Name
+        Else
+            MyLabel(gonogo).Text = Mid(MyDFs(z).Name, 4, Len(MyDFs(z).Name))
+        End If
+
+        AddHandler MyLabel(gonogo).Click, AddressOf MyLabel_Click
+
+        If gonogo = 0 Then
+            MyLabel(gonogo).Left = StatusLabelSpacing
+        Else
+            MyLabel(gonogo).Left = MyLabel(gonogo - 1).Left + MyLabel(gonogo - 1).Width + StatusLabelSpacing
+        End If
+    End Sub
+
+    Private Sub LayoutDisplaySelectButtons()
+        'Called from CreateMenus. Lays out every SelectDisplays button (7 per row) and wires its click handler.
+
+        Dim z As Integer
+
+        Dim whatrowamion As Integer
+
+        Dim answer As Integer
+
+        whatrowamion = -1
+
+        For z = 0 To UBound(SelectDisplays.MyDisplaySelectButtons)
+
+            SelectDisplays.MyDisplaySelectButtons(z).Parent = SelectDisplays
+
+            SelectDisplays.MyDisplaySelectButtons(z).Visible = True
+            SelectDisplays.MyDisplaySelectButtons(z).Height = 70
+            SelectDisplays.MyDisplaySelectButtons(z).Width = 100
+            SelectDisplays.MyDisplaySelectButtons(z).Text = MyToolStripMenuItem.DropDownItems(z).Text
+            SelectDisplays.MyDisplaySelectButtons(z).Font = New Font(SelectDisplays.MyDisplaySelectButtons(z).Font.FontFamily, DefaultFontSize)
+            SelectDisplays.MyDisplaySelectButtons(z).Font = New Font(SelectDisplays.MyDisplaySelectButtons(z).Font, FontStyle.Bold)
+
+            answer = z Mod 7
+
+            If answer = 0 Then
+                whatrowamion += 1
+            End If
+
+            If whatrowamion = 0 Then
+                SelectDisplays.MyDisplaySelectButtons(z).Top = 50
+            Else
+                SelectDisplays.MyDisplaySelectButtons(z).Top = SelectDisplays.MyDisplaySelectButtons(0).Top + ((SelectDisplays.MyDisplaySelectButtons(0).Height + 5) * whatrowamion)
+            End If
+
+            If z Mod 7 <> 0 Then
+                SelectDisplays.MyDisplaySelectButtons(z).Left = SelectDisplays.MyDisplaySelectButtons(z - 1).Left + SelectDisplays.MyDisplaySelectButtons(z - 1).Width + 10
+            Else
+                SelectDisplays.MyDisplaySelectButtons(z).Left = 10
+            End If
+
+            AddHandler SelectDisplays.MyDisplaySelectButtons(z).Click, AddressOf SelectDisplays.myDisplaySelectButtons_Click
+
+        Next
+    End Sub
+
+    Private Sub AddCreateNewDisplayMenuItem()
+        'Called from CreateMenus. Appends the "Create New Display" entry (removed again at the start of the next CreateMenus call).
+
+        _MyCreateNewDisplayMenuItem = New ToolStripMenuItem With {
+            .Text = "Create New Display - Enter Display Name"
+        }
+
+        _MyCreateNewDisplayMenuItem.DropDownItems.Add(New ToolStripTextBox())
+
+        _MyCreateNewDisplayMenuItem.DropDownItems(0).Font = New Font(_MyCreateNewDisplayMenuItem.DropDownItems(0).Font.FontFamily, MenuFontSize)
+        _MyCreateNewDisplayMenuItem.DropDownItems(0).Font = New Font(_MyCreateNewDisplayMenuItem.DropDownItems(0).Font, FontStyle.Bold)
+        _MyCreateNewDisplayMenuItem.DropDownItems(0).BackColor = Color.LightGray
+
+        _MyCreateNewDisplayMenuItem.DropDownItems(0).AutoSize = False
+        _MyCreateNewDisplayMenuItem.DropDownItems(0).Width = 400
+
+        _MyCreateNewDisplayMenuItem.DropDownItems.Add("Click Here after entering Display Name")
+
+        MyToolStripMenuItem.DropDownItems.Add(_MyCreateNewDisplayMenuItem)
+
+        AddHandler _MyCreateNewDisplayMenuItem.DropDownItems(1).Click, AddressOf MyCreateNewDisplayMenuItem_Click
     End Sub
 
     Private Sub MyLogin_Click(ByVal sender As System.Object, ByVal e As EventArgs)
