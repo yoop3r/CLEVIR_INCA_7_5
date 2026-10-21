@@ -177,6 +177,17 @@
     <Compile Update="GM_ResidentClient.designer.vb">
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
     </Compile>
+    <!-- GmResidentClient partial-class code files (listed explicitly; a GM_ResidentClient.*.vb
+         glob would also match GM_ResidentClient.designer.vb). SubType=Code keeps VS from
+         treating them as designable forms. -->
+    <Compile Update="GM_ResidentClient.MenuHandlers.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.InitMonitor.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="GridCellPropConfig.designer.vb">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
     </Compile>
