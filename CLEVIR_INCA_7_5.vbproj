@@ -220,6 +220,18 @@
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="GM_ResidentClient.Recording.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.StatusScreens.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="GM_ResidentClient.BackgroundLoop.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="GridCellPropConfig.designer.vb">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
     </Compile>
