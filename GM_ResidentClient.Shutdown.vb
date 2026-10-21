@@ -334,13 +334,13 @@ Partial Public Class GmResidentClient
     End Function
 
     Private Sub CompressOrphanedFiles()
-        ' Find all orphaned files (those without corresponding .zip) and compress them
-        ' based on configuration settings.
+        ' Find orphaned files (those without corresponding .zip) in the current recording session only and compress
+        ' them based on configuration settings. Earlier sessions were compressed per sequence and are not rescanned.
 
-        Dim dataRoot = FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber)
+        Dim dataRoot = FileMaintenance.SessionCompressionFolder(FinalPathToSaveData, FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber))
 
-        If Not Directory.Exists(dataRoot) Then
-            HandleUserMessageLogging("GMRC", "CompressOrphanedFiles: Data directory not found")
+        If dataRoot Is Nothing Then
+            HandleUserMessageLogging("GMRC", $"CompressOrphanedFiles: No recording session folder ('{FinalPathToSaveData}') - skipping")
             Return
         End If
 
