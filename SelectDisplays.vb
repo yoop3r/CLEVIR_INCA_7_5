@@ -38,7 +38,7 @@
 
         'CUSTOM SCREENS and "Special" Screens
 
-        GmResidentClient.ShowCustomScreen(sender.Text)
+        GmResidentClient.ShowCustomScreen(sender.Text, SelectDisplays)
 
     End Sub
 

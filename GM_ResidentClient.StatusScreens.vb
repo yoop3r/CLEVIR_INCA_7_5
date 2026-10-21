@@ -946,10 +946,10 @@ Partial Public Class GmResidentClient
         If LkaForm.Visible Then HandleLkaCustomDisplay(MyDg)
     End Sub
 
-    Public Sub ShowCustomScreen(ByVal screenName As String)
+    Public Sub ShowCustomScreen(ByVal screenName As String, Optional ByVal anchor As Form = Nothing)
 
         'Called from various places when a custom screen is to be displayed.  Displays, positions and sizes the proper form
-        'based on the custom screen selection.
+        'based on the custom screen selection. anchor is the form the screen was requested from (defaults to this form).
 
         Select Case screenName
             Case "LKA Screen"
@@ -975,8 +975,10 @@ Partial Public Class GmResidentClient
                 DeviceStatus.BringToFront()
             Case "Top Down View"
                 If MyTdGraphicsContainer.Visible = False Then
-                    MyTdGraphicsContainer.Left = Left
-                    MyTdGraphicsContainer.Top = Top
+                    ' This form is minimized in vehicle mode (Left/Top = -32000), which opened the view off-screen.
+                    Dim from As Form = If(anchor, Me)
+                    MyTdGraphicsContainer.Location = OpenAtAnchor(from.Visible, from.WindowState, from.Location,
+                                                                  Screen.PrimaryScreen.WorkingArea.Location)
                 End If
                 MyTdGraphicsContainer.ControlBox = True
                 MyTdGraphicsContainer.Show()
