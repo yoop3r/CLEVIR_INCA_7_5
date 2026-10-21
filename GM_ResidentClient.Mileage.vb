@@ -74,27 +74,7 @@ Partial Public Class GmResidentClient
 
         If latPos <> 0 And lonPos <> 0 Then
 
-            If latPos > NorthMidpointLat Or latPos < SouthwestCornerLat Then
-                whereAmI = "Off Property"
-            ElseIf lonPos < NorthwestCornerLon Or lonPos > NortheastCornerLon Then
-                whereAmI = "Off Property"
-            ElseIf latPos < NortheastCornerLat And latPos > SoutheastCornerLat And
-                   lonPos > SouthwestCornerLon And lonPos < NortheastCornerLon Then
-                whereAmI = "On Property"
-            ElseIf latPos < NorthwestCornerLat And latPos > NortheastCornerLat And
-                   lonPos > NorthwestCornerLon And lonPos < NorthMidpointLon Then
-                whereAmI = "On Property"
-            Else 'this handles the "bermuda triangle" at the north east corner of MPG
-                'If we are on property when we get here, we stay on property, if we are
-                'off property when we get here, we stay off property...
-
-                If saveWhereTheHeckAmIAt = "Off Property" Then
-                    whereAmI = "Off Property"
-                Else
-                    whereAmI = "On Property"
-                End If
-
-            End If
+            whereAmI = PropertyGeofence.Classify(latPos, lonPos, saveWhereTheHeckAmIAt)
 
             saveWhereTheHeckAmIAt = whereAmI
             OnVehicleScreen.Label1.BackColor = Color.Green

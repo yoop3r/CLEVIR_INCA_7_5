@@ -59,6 +59,12 @@
     <None Remove="NAVsdk\**" />
     <None Remove="HesaiWrapper\**" />
     <None Remove="PcapEventBridge\**" />
+    <!-- Unit test project lives under this project's directory; keep its sources and obj\ output
+         (generated AssemblyAttributes.vb etc.) out of this project's implicit Compile glob. -->
+    <Compile Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <None Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <EmbeddedResource Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <Page Remove="CLEVIR_INCA_7_5.Tests\**" />
     <!-- Legacy NuGet packages.config cache folder - superseded by PackageReference, not project content -->
     <None Remove="packages\**" />
     <!-- Leftover backup folder from a prior automated NuGet PackageReference migration -->

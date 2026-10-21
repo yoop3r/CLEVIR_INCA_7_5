@@ -441,23 +441,7 @@ Partial Public Class GmResidentClient
     ''' malformed, or the wrong length.
     ''' </summary>
     Private Function ParseDoubleVector(text As String, expectedLength As Integer, fallback As Double()) As Double()
-        If String.IsNullOrWhiteSpace(text) Then
-            Return fallback
-        End If
-
-        Dim parts As String() = text.Split(New Char() {" "c, ","c}, StringSplitOptions.RemoveEmptyEntries)
-        If parts.Length <> expectedLength Then
-            Return fallback
-        End If
-
-        Dim result(expectedLength - 1) As Double
-        For i As Integer = 0 To expectedLength - 1
-            If Not Double.TryParse(parts(i), result(i)) Then
-                Return fallback
-            End If
-        Next
-
-        Return result
+        Return ResidentClientText.ParseDoubleVector(text, expectedLength, fallback)
     End Function
 
     Private Sub ReadLidarConfiguration(root As XmlNode)

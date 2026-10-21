@@ -128,16 +128,7 @@ Public Class GmResidentClient
     Private Const ConvertToLatLon As Double = 3600000
 
     Private Const KilometersToMiles As Double = 0.62137119
-    Private Const NorthwestCornerLat As Double = 153378676.8
-    Private Const NorthwestCornerLon As Double = -301326109.2
-    Private Const SouthwestCornerLat As Double = 153217998.0
-    Private Const SouthwestCornerLon As Double = -301313210.4
-    Private Const SoutheastCornerLat As Double = 153232621.2
-    Private Const SoutheastCornerLon As Double = -301173238.8
-    Private Const NortheastCornerLat As Double = 153357580.8
-    Private Const NortheastCornerLon As Double = -301181194.8
-    Private Const NorthMidpointLat As Double = 153381236.4
-    Private Const NorthMidpointLon As Double = -301250563.2
+    ' Property geofence corner constants live in PropertyGeofence.vb.
 
     Private Const DefaultDataCollectionRateMsec As Integer = 50
     Private Const DefaultDisplayRefreshRateMsec As Integer = 50

@@ -703,24 +703,7 @@ Partial Public Class GmResidentClient
     ''' Prevents string comparison failures due to hidden Unicode artifacts.
     ''' </summary>
     Private Function NormalizeFilename(ByVal filename As String) As String
-        If String.IsNullOrEmpty(filename) Then Return String.Empty
-
-        ' Step 1: Trim leading/trailing whitespace
-        Dim result As String = filename.Trim()
-
-        ' Step 2: Remove zero-width characters (U+200B, U+FEFF, etc.)
-        result = result.Replace(ChrW(&H200B), String.Empty)  ' Zero-width space
-        result = result.Replace(ChrW(&HFEFF), String.Empty)  ' BOM
-        result = result.Replace(ChrW(&H200C), String.Empty)  ' Zero-width non-joiner
-        result = result.Replace(ChrW(&H200D), String.Empty)  ' Zero-width joiner
-
-        ' Step 3: Remove any null characters
-        result = result.Replace(vbNullChar, String.Empty)
-
-        ' Step 4: Normalize Unicode form (combine decomposed characters)
-        result = result.Normalize(NormalizationForm.FormC)  ' ← FIXED
-
-        Return result
+        Return ResidentClientText.NormalizeFilename(filename)
     End Function
     Private Async Sub HandleRecordingDurationRotation(ByVal durationMinutes As Integer)
         If durationMinutes <= 0 Then

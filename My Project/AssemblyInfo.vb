@@ -1,5 +1,6 @@
 ﻿Imports System.Resources
 Imports System.Reflection
+Imports System.Runtime.CompilerServices
 Imports System.Runtime.InteropServices
 Imports System.Runtime.Versioning
 
@@ -26,6 +27,9 @@ Imports System.Runtime.Versioning
 <Assembly: AssemblyTrademark("")>
 
 <Assembly: ComVisible(False)>
+
+' Lets CLEVIR_INCA_7_5.Tests exercise Friend helpers extracted from GmResidentClient.
+<Assembly: InternalsVisibleTo("CLEVIR_INCA_7_5.Tests")>
 
 'The following GUID is for the ID of the typelib if this project is exposed to COM
 <Assembly: Guid("90dbc298-bfae-42df-a951-93396b9090f4")>

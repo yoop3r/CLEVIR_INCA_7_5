@@ -615,10 +615,7 @@ Partial Public Class GmResidentClient
     ''' Trim whitespace and leading/trailing quotes that may come from CSV export
     ''' </summary>
     Private Shared Function IsVideoTimecode(name As String) As Boolean
-        If name Is Nothing Then Return False
-        ' Trim whitespace and leading/trailing quotes that may come from CSV export
-        Dim s = name.Trim().Trim(""""c)
-        Return s.Equals("VIDEO_CAMERA_TIMECODE", StringComparison.OrdinalIgnoreCase)
+        Return ResidentClientText.IsVideoTimecode(name)
     End Function
 
     ''' <summary>
@@ -1004,10 +1001,7 @@ Partial Public Class GmResidentClient
     ''' Cleans up a raster name that might end in "_f" by converting it to "-f".
     ''' </summary>
     Private Function CleanUpRasterName(ByVal raster As String) As String
-        If raster.EndsWith("_f", StringComparison.OrdinalIgnoreCase) Then
-            raster = raster.Substring(0, raster.Length - 2) & "-f"
-        End If
-        Return raster
+        Return ResidentClientText.CleanUpRasterName(raster)
     End Function
 
     ''' <summary>
