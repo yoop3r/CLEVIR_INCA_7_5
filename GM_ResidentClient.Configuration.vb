@@ -392,7 +392,7 @@ Partial Public Class GmResidentClient
                 INCAExperiment
             )
 
-                ' Format: "SignalList.xlsx / ExperimentName"
+                ' Format: "SignalList.csv / ExperimentName"
                 LoginForm.Label4.Text = $"{signalListFileName} / {experimentName}"
 
                 HandleUserMessageLogging("GMRC",

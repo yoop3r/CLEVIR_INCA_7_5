@@ -26,7 +26,7 @@ Public Class ResidentConfigXmlWriterTests
             .INCADatabase = "DB1",
             .INCAWorkspace = "WS1",
             .InitialINCAExperiment = "EXP_INIT",
-            .INCAVariableFile = "C:\Signals\list.xlsx",
+            .INCAVariableFile = "C:\Signals\list.csv",
             .ETAS_USER_PATH = "C:\ETAS",
             .SignalRegistrationMode = "FULL",
             .RecordWAVTime = "30",
@@ -91,7 +91,7 @@ Public Class ResidentConfigXmlWriterTests
             L(1, "<INCADatabase>DB1</INCADatabase>"),
             L(1, "<INCAWorkspace>WS1</INCAWorkspace>"),
             L(1, "<INCAExperiment>EXP_INIT</INCAExperiment>"),
-            L(1, "<INCAVariableFile>C:\Signals\list.xlsx</INCAVariableFile>"),
+            L(1, "<INCAVariableFile>C:\Signals\list.csv</INCAVariableFile>"),
             L(1, "<ETAS_USER_PATH>C:\ETAS</ETAS_USER_PATH>"),
             L(1, "<SignalRegistrationMode>FULL</SignalRegistrationMode>")})
         expected.AddRange(Section("Recording Configuration"))
