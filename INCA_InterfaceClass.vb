@@ -370,17 +370,7 @@ Public Class INCA_InterfaceClass
                 StopLidarCapture()
             End If
 
-            ' ================================================================
-            ' ✅ FIXED: Use CompressRecordingFiles() wrapper instead of direct call
-            ' ================================================================
-            Dim dataPath As String
-
-            dataPath = Path.Combine(BaseDataCollectionPath, "Data", "gmcsv" & VehicleNumber)
-
-            ' Use high-level wrapper for consistency
-            If Not CompressRecordingFiles(dataPath) Then
-                HandleUserMessageLogging("GMRC", "StopRecordingProcess: Compression completed with warnings")
-            End If
+            CompressSessionFiles(FinalPathToSaveData, "StopRecordingProcess")
 
             SaveFinalPathToSaveData = FinalPathToSaveData
             WriteFinalPathToSaveData()
@@ -455,11 +445,8 @@ Public Class INCA_InterfaceClass
                     ReadFinalDataSavePath()
                 End If
                 If Not String.IsNullOrEmpty(SaveFinalPathToSaveData) Then
-                    ' ✅ FIXED: Use CompressRecordingFiles() for consistency
                     ' This compresses the LAST file from previous session
-                    If Not CompressRecordingFiles(SaveFinalPathToSaveData) Then
-                        HandleUserMessageLogging("GMRC", "HandleStartRecording: Previous session compression completed with warnings")
-                    End If
+                    CompressSessionFiles(SaveFinalPathToSaveData, "HandleStartRecording (previous session)")
                     SaveFinalPathToSaveData = ""
                 End If
             End If
@@ -575,23 +562,28 @@ Public Class INCA_InterfaceClass
     End Sub
 
     ''' <summary>
+    ''' Compresses one recording session folder. Never scans the vehicle data root: earlier sessions were
+    ''' compressed per sequence, so sweeping them again only blocks the caller.
+    ''' </summary>
+    Private Shared Sub CompressSessionFiles(sessionPath As String, caller As String)
+        Dim sessionFolder As String = FileMaintenance.SessionCompressionFolder(
+            sessionPath, FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber))
+
+        If sessionFolder Is Nothing Then
+            HandleUserMessageLogging("GMRC", $"{caller}: No recording session folder ('{sessionPath}') - skipping compression")
+        ElseIf Not CompressRecordingFiles(sessionFolder) Then
+            HandleUserMessageLogging("GMRC", $"{caller}: Compression completed with warnings")
+        End If
+    End Sub
+
+    ''' <summary>
     ''' Handles final logging and file processing at the end of a session.
     ''' </summary>
     Private Sub FinalizeSessionFiles()
         GmResidentClient.WriteMileageToAnnoFile("Stop Record")
         GmResidentClient.StartingMileage = 0
 
-        ' ================================================================
-        ' ✅ FIXED: Use CompressRecordingFiles() wrapper instead of direct call
-        ' ================================================================
-        Dim dataPath As String
-
-        dataPath = Path.Combine(BaseDataCollectionPath, "Data", "gmcsv" & VehicleNumber)
-
-        ' Use high-level wrapper for consistency
-        If Not CompressRecordingFiles(dataPath) Then
-            HandleUserMessageLogging("GMRC", "FinalizeSessionFiles: Compression completed with warnings")
-        End If
+        CompressSessionFiles(FinalPathToSaveData, "FinalizeSessionFiles")
 
         SaveFinalPathToSaveData = FinalPathToSaveData
         WriteFinalPathToSaveData()
