@@ -299,6 +299,9 @@ Partial Public Class GmResidentClient
         End If
     End Sub
 
+    Private Const dataFrozenMaxCountMeasurementMode As Integer = 100
+    Private Const dataFrozenMaxCountRecordMode As Integer = 200
+
     'Private Async Sub MyBackgroundTasks()
     Private Async Function MyBackgroundTasks() As Task
         'This routine handles all the background tasks for the GmResidentClient.  It is responsible for making calls to
@@ -308,7 +311,7 @@ Partial Public Class GmResidentClient
         Dim oneShot As Boolean
         Dim whereAmI As String = "undefined"
         Dim saveWhereAmIAt As String = "Undefined"
-        Dim i, j, k As Integer
+        Dim k As Integer
         Dim MySaveTime As DateTime
         Dim MyElapseTime As TimeSpan
         Dim MySaveTime2 As DateTime
@@ -316,9 +319,7 @@ Partial Public Class GmResidentClient
         Dim MyMeasureTime As TimeSpan
         Dim MySaveMeasureTime As DateTime
         Dim noOfRecords As Integer
-        Dim MyRci2Data As IGM_INCA_Comm.INCAData
         Dim lineNum As Integer
-        Dim liveDataElapseTime As TimeSpan
         Dim saveLiveDataTime As DateTime
         Dim lTotalnumsignalsdisplayed As Integer
         Dim lMeasurementStatus As String
@@ -332,16 +333,12 @@ Partial Public Class GmResidentClient
         Dim MySaveTime3 As DateTime
         Dim MyElapseTime3 As TimeSpan
 
-        Const dataFrozenMaxCountMeasurementMode As Integer = 100
-        Const dataFrozenMaxCountRecordMode As Integer = 200
-
         Dim dataFrozenMaxCount As Integer = dataFrozenMaxCountRecordMode
 
         Const lostDeviceDelayTime As Integer = 20 'seconds
 
         ' ✅ NEW: Disk space check timer
         Dim MyDiskSpaceCheckTime As DateTime = DateTime.Now
-        Const DiskSpaceCheckIntervalMinutes As Integer = 5
 
         Volatile.Write(_backgroundLoopActive, True)
 
@@ -367,38 +364,13 @@ Partial Public Class GmResidentClient
                 ' ════════════════════════════════════════════════════════════
                 ' ✅ NEW: DISK SPACE CHECK (Every 5 minutes)
                 ' ════════════════════════════════════════════════════════════
-                Dim diskCheckElapsed = DateTime.Now.Subtract(MyDiskSpaceCheckTime)
-                If diskCheckElapsed.TotalMinutes >= DiskSpaceCheckIntervalMinutes Then
-                    MyDiskSpaceCheckTime = DateTime.Now
+                CheckDiskSpaceIfDue(MyDiskSpaceCheckTime)
 
-                    ' Check disk space on recording path
-                    Dim pathToCheck As String = FinalPathToSaveData
-                    If Not String.IsNullOrEmpty(pathToCheck) Then
-                        CheckDiskSpace(pathToCheck,
-                                       minimumSpaceGB:=10.0,
-                                       showDialog:=False,
-                                       allowOverride:=True)
-                    End If
-                End If
-
-                If INCACommCheckStopWatch IsNot Nothing Then
-                    INCACommCheckStopWatch.Reset()
-                    INCACommCheckStopWatch.Start()
-                    INCACommCheckWarningTime = Val(APICommErrorMsgDelayTime)
-                End If
+                RestartIncaCommCheckStopWatch()
 
                 'SwitchToMain flag is used in conjunction with INCA Status window (see ProcessKiller)
                 ' ✅ FIX: Don't switch forms when LoginForm is active
-                If _switchToMain = True AndAlso Not OnLoginScreen Then
-                    _switchToMain = False
-                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: RedisplayOnVehicleForm(Main) Called...")
-                    RedisplayOnVehicleForm("Main")
-                    OnVehicleScreen.TopMost = False
-                ElseIf _switchToMain = True AndAlso OnLoginScreen Then
-                    ' Clear the flag but don't redisplay - LoginForm has priority
-                    _switchToMain = False
-                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: Skipping RedisplayOnVehicleForm - LoginForm active")
-                End If
+                HandleSwitchToMainRequest()
 
                 'This redimensioning would only be required if a new go/nogo label was to be created at runtime, very unlikely
                 'based on current use cases...
@@ -415,10 +387,7 @@ Partial Public Class GmResidentClient
                     'Here we are updating the HealthMonitor counter which is monitored by ProcessKiller running in a separate thread.
                     'If HealthMonitor is no longer counting up, it indicates that a periodic call made  to INCA in MyBackgoundtasks
                     'has hung - This circumstance would be handled in ProcessKiller in separate thread...
-                    _healthMonitor += 1
-                    If _healthMonitor > 30000 Then
-                        _healthMonitor = 0
-                    End If
+                    BumpHealthMonitor()
 
                     'Every second (currently) we check INCA Measurement status and INCA Record Status
                     'we use this info to direct logic throughout this background task...
@@ -427,42 +396,9 @@ Partial Public Class GmResidentClient
                     If (DateTime.Now - _lastMeasurementCheckTime).TotalSeconds >= MeasurementCheckIntervalSeconds Then
                         _lastMeasurementCheckTime = DateTime.Now
 
-                        whereAmI = "MyIncaInterface.GetMeasurementStatus"
-                        lMeasurementStatus = MyIncaInterface.GetMeasurementStatus()
+                        UpdateMeasurementStatus(whereAmI, lMeasurementStatus, oneShot, dataFrozenMaxCount, MySaveMeasureTime, MySaveTime, MySaveTime3)
 
-                        If lMeasurementStatus = "True" Then
-
-                            If _inMeasureMode = False Then
-                                _inMeasureMode = True
-                                MySaveMeasureTime = DateTime.Now
-                                MySaveTime = DateTime.Now
-                                MySaveTime3 = DateTime.Now
-
-                                dataFrozenMaxCount = dataFrozenMaxCountMeasurementMode
-                                ResetDataFrozenTracking("Measurement started")
-
-                            End If
-
-                        ElseIf lMeasurementStatus = "INCA Communication Failure" Or lMeasurementStatus = "GetMeasurementStatus Failure" Then
-
-                            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: L_MeasurementStatus = " & lMeasurementStatus)
-
-                        Else
-                            _inMeasureMode = False 'InMeasureMode is also monitored by ProcessKiller thread...
-                            oneShot = False 'OneShot flag is passed to HandleAutomaticStartRecord, below... 
-
-                        End If
-
-                        whereAmI = "MyIncaInterface.GetRecordingState"
-                        lRecordingState = MyIncaInterface.GetRecordingState()
-                        If lSaveRecordingState = False And lRecordingState = True Then
-                            dataFrozenMaxCount = dataFrozenMaxCountRecordMode
-                            ' Discard counts accumulated during measure-only so INCA COMM/data-frozen
-                            ' detection for the recording starts from the moment recording begins.
-                            ResetDataFrozenTracking("Recording started")
-                            MySaveTime3 = DateTime.Now
-                        End If
-                        lSaveRecordingState = lRecordingState
+                        UpdateRecordingState(whereAmI, lRecordingState, lSaveRecordingState, dataFrozenMaxCount, MySaveTime3)
 
                         'This routine handles the case where measurement or record button has been pressed on INCA display
                         'rather than on CLEVIR display...
@@ -520,132 +456,22 @@ Partial Public Class GmResidentClient
                    RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackScrolling Or
                    RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepFwd Then
 
-                    whereAmI = "Before HandleRecordingProgressBar"
+                    RefreshRecordingProgressAndTopDownView(whereAmI)
 
-                    If Visible = True Or RecordPlayback.Visible = True Then
-                        'This routine handles the green recording progress bar that is displayed either on the RecordPlayback form
-                        'or on the main CLEVIR screen...
-                        HandleRecordingProgressBar(RecordPlayback.RecordMode, RecordPlayback.ProgressBar1)
-                    Else
-                        ' OnVehicleScreen-only mode: hide EXIT button so Label17 (distance-to-object) can occupy that slot
-                        If OnVehicleScreen.Button1.Visible Then
-                            OnVehicleScreen.Button1.Visible = False
-                        End If
-                        'This routine handles the green recording progress bar that is displayed either on the RecordPlayback form
-                        'or on the main CLEVIR screen...
-                        'HandleRecordingProgressBar(MyIncaInterface.Recording, OnVehicleScreen.ProgressBar1)
-                    End If
-
-                    '********************************Here is where we are refreshing top down view **************************************
-
-                    whereAmI = "Before If Not MyTdGraphicsContainer.IsDisposed"
-
-                    If Not MyTdGraphicsContainer.IsDisposed Then
-
-                        If MyTdGraphicsContainer.Visible = True Then
-                            MyTdGraphicsContainer.Invalidate() 'this triggers paint event on topdown view...
-
-                        End If
-                    End If
-
-                    '**********************************************************************************************************
-
-                    whereAmI = "Before WAV Recording"
-                    'This routine handles the color of the frame around the microphone to indicate whether a WAV recording
-                    'is in progress.  Red, we are not recording WAV, Green we are...
-                    'There is a preset amount of time that the WAV recording is enabled, and it needs to shut off after that time.
-                    'This routine handles that...
-                    HandleWavRecording()
-
-                    If lRecordingState = True Then
-
-                        'This routine handles, among other things, stopping and starting the INCA recording based
-                        'on the time interval set...
-                        HandleUpdatesWhenRecording()
-
-                    Else 'L_RecordingState = False
-                        ' When recording stops, ensure the monitor task is stopped as well.
-                        If _isMonitorTaskRunning Then
-                            StopRecordingMonitorTask()
-                        End If
-
-                    End If
+                    HandleWavAndRecordingUpdates(whereAmI, lRecordingState)
 
                     'Here we are initializing the data array that will be used to save CLEVIR recorded data if the
                     'CLEVIR data recorder is set to RecordMode.  Not to be confused with recording INCA mf4 data.
                     'This recording creates a spreadsheet that CLEVIR can read back in so that it can play back
                     'data.  This would be used primarily to test CLEVIR or be used for DEMOs.
 
-                    If RecordPlayback.RecordMode = True Then
-                        whereAmI = "RecordPlayback.RecordMode = True"
-                        k = 0
-                        lineNum += 1
-                        'ReDim Preserve VariableNameDataArray(UBound(MyIncaInterface.MyDisplaySignals) + 2, lineNum)
-                        EnsureRecordingBufferCapacity(lineNum)
-
-                        If lineNum = 0 Then
-                            VariableNameDataArray(0, 0) = "Time"
-                            VariableNameDataArray(1, 0) = "TimeStamp"
-                        Else
-                            VariableNameDataArray(0, lineNum) = ""
-                            VariableNameDataArray(1, lineNum) = ""
-                        End If
-
-                    End If
+                    InitRecordBufferLine(whereAmI, k, lineNum)
 
                     'This section executes if we are processing live data....
                     If RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStop Then
-                        If saveLiveDataTime = Nothing Then
-                            liveDataElapseTime = DateTime.Now.Subtract(DateTime.Now)
-                        Else
-                            liveDataElapseTime = DateTime.Now.Subtract(saveLiveDataTime)
-                        End If
-
-                        whereAmI = "MyIncaInterface.GetSignalDataWithTime"
-                        MySignalDataWithTime = MyIncaInterface.GetSignalDataWithTime() 'here is where we get all live data from INCA...
-
-                        If MySignalDataWithTime IsNot Nothing Then
-
-                            saveLiveDataTime = DateTime.Now
-
-                            For j = 0 To UBound(MySignalDataWithTime)
-
-                                'We can record live data to be played back in CLEVIR, here is where we capture that
-                                'live data if we are recording...
-                                If RecordPlayback.RecordMode = True And lineNum >= 0 Then
-                                    If lineNum = 0 Then
-                                        VariableNameDataArray(k + 2, 0) = MyIncaInterface.myDisplaySignals(j).SignalName
-                                    Else
-                                        If Len(VariableNameDataArray(0, lineNum)) = 0 Then
-                                            VariableNameDataArray(0, lineNum) = Format$(liveDataElapseTime.Milliseconds, "0.000")
-                                            VariableNameDataArray(1, lineNum) = Format$(MySignalDataWithTime(j).TimeStamp, "0.000")
-                                        End If
-                                        VariableNameDataArray(k + 2, lineNum) = MySignalDataWithTime(j).SignalData
-                                    End If
-                                    k += 1
-                                End If
-
-                            Next j
-
-                        End If
-
+                        CaptureLiveSignalData(whereAmI, saveLiveDataTime, k, lineNum)
                     Else 'This else case executes if we are playing back CLEVIR recorded data....
-
-                        whereAmI = "This else case executes if we are playing back recorded data...."
-
-                        ReDim MySignalDataWithTime(0)
-
-                        MyRci2Data = GetRecordedData(UBound(MyIncaInterface.myDisplaySignals) + 2, RecordPlayback.PlaybackMode)
-
-                        For i = 0 To UBound(MyRci2Data.myData)
-                            If i > UBound(MySignalDataWithTime) Then
-                                ReDim Preserve MySignalDataWithTime(i)
-                            End If
-
-                            MySignalDataWithTime(i).SignalData = MyRci2Data.myData(i)
-                            MySignalDataWithTime(i).TimeStamp = MyRci2Data.myTime(i)
-                        Next i
-
+                        LoadPlaybackSignalData(whereAmI)
                     End If
 
                     'If we have valid data (live or recorded) this section executes...
@@ -666,15 +492,7 @@ Partial Public Class GmResidentClient
                     End Try
 
                     'Here is where we save the CLEVIR record file if we transitioned out of RecordPlayBack.RecordMode = True
-                    If RecordPlayback.RecordMode = False And lineNum > 0 Then
-                        SaveRecordFile(lineNum)
-                        lineNum = -1
-                    End If
-
-                    If RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepFwd Or
-                    RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepBack Then
-                        RecordPlayback.GroupBox2.Text = "PLAYBACK (Pause)"
-                    End If
+                    SaveEndedRecordingAndUpdatePlaybackLabel(lineNum)
 
                     TotalNumSignalsDisplayed = lTotalnumsignalsdisplayed
 
@@ -685,13 +503,7 @@ Partial Public Class GmResidentClient
                     HandleNonMeasureModeUpdates(saveOdoReading, saveWhereAmIAt, goNoGoFault)
 
                     'Save CLEVIR Recording when transitioning out of measure mode if we were recording...
-                    If RecordPlayback.RecordMode = True Then
-                        If lineNum > 0 Then
-                            SaveRecordFile(lineNum)
-                        End If
-                        RecordPlayback.RecordMode = False
-                        lineNum = -1
-                    End If
+                    SaveRecordFileOnMeasureStop(lineNum)
                     Try
                         Await Task.Delay(100, If(_backgroundTasksCts?.Token, CancellationToken.None))
                     Catch ex As TaskCanceledException
@@ -717,6 +529,250 @@ Partial Public Class GmResidentClient
         End Try
 
     End Function
+
+    Private Sub CheckDiskSpaceIfDue(ByRef MyDiskSpaceCheckTime As DateTime)
+        Const DiskSpaceCheckIntervalMinutes As Integer = 5
+
+        Dim diskCheckElapsed = DateTime.Now.Subtract(MyDiskSpaceCheckTime)
+        If diskCheckElapsed.TotalMinutes >= DiskSpaceCheckIntervalMinutes Then
+            MyDiskSpaceCheckTime = DateTime.Now
+
+            ' Check disk space on recording path
+            Dim pathToCheck As String = FinalPathToSaveData
+            If Not String.IsNullOrEmpty(pathToCheck) Then
+                CheckDiskSpace(pathToCheck,
+                               minimumSpaceGB:=10.0,
+                               showDialog:=False,
+                               allowOverride:=True)
+            End If
+        End If
+    End Sub
+
+    Private Sub RestartIncaCommCheckStopWatch()
+        If INCACommCheckStopWatch IsNot Nothing Then
+            INCACommCheckStopWatch.Reset()
+            INCACommCheckStopWatch.Start()
+            INCACommCheckWarningTime = Val(APICommErrorMsgDelayTime)
+        End If
+    End Sub
+
+    Private Sub HandleSwitchToMainRequest()
+        If _switchToMain = True AndAlso Not OnLoginScreen Then
+            _switchToMain = False
+            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: RedisplayOnVehicleForm(Main) Called...")
+            RedisplayOnVehicleForm("Main")
+            OnVehicleScreen.TopMost = False
+        ElseIf _switchToMain = True AndAlso OnLoginScreen Then
+            ' Clear the flag but don't redisplay - LoginForm has priority
+            _switchToMain = False
+            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: Skipping RedisplayOnVehicleForm - LoginForm active")
+        End If
+    End Sub
+
+    Private Sub BumpHealthMonitor()
+        _healthMonitor += 1
+        If _healthMonitor > 30000 Then
+            _healthMonitor = 0
+        End If
+    End Sub
+
+    Private Sub UpdateMeasurementStatus(ByRef whereAmI As String, ByRef lMeasurementStatus As String, ByRef oneShot As Boolean, ByRef dataFrozenMaxCount As Integer,
+                                        ByRef MySaveMeasureTime As DateTime, ByRef MySaveTime As DateTime, ByRef MySaveTime3 As DateTime)
+        whereAmI = "MyIncaInterface.GetMeasurementStatus"
+        lMeasurementStatus = MyIncaInterface.GetMeasurementStatus()
+
+        If lMeasurementStatus = "True" Then
+
+            If _inMeasureMode = False Then
+                _inMeasureMode = True
+                MySaveMeasureTime = DateTime.Now
+                MySaveTime = DateTime.Now
+                MySaveTime3 = DateTime.Now
+
+                dataFrozenMaxCount = dataFrozenMaxCountMeasurementMode
+                ResetDataFrozenTracking("Measurement started")
+
+            End If
+
+        ElseIf lMeasurementStatus = "INCA Communication Failure" Or lMeasurementStatus = "GetMeasurementStatus Failure" Then
+
+            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: L_MeasurementStatus = " & lMeasurementStatus)
+
+        Else
+            _inMeasureMode = False 'InMeasureMode is also monitored by ProcessKiller thread...
+            oneShot = False 'OneShot flag is passed to HandleAutomaticStartRecord, below... 
+
+        End If
+    End Sub
+
+    Private Sub UpdateRecordingState(ByRef whereAmI As String, ByRef lRecordingState As Boolean, ByRef lSaveRecordingState As Boolean, ByRef dataFrozenMaxCount As Integer,
+                                     ByRef MySaveTime3 As DateTime)
+        whereAmI = "MyIncaInterface.GetRecordingState"
+        lRecordingState = MyIncaInterface.GetRecordingState()
+        If lSaveRecordingState = False And lRecordingState = True Then
+            dataFrozenMaxCount = dataFrozenMaxCountRecordMode
+            ' Discard counts accumulated during measure-only so INCA COMM/data-frozen
+            ' detection for the recording starts from the moment recording begins.
+            ResetDataFrozenTracking("Recording started")
+            MySaveTime3 = DateTime.Now
+        End If
+        lSaveRecordingState = lRecordingState
+    End Sub
+
+    Private Sub RefreshRecordingProgressAndTopDownView(ByRef whereAmI As String)
+        whereAmI = "Before HandleRecordingProgressBar"
+
+        If Visible = True Or RecordPlayback.Visible = True Then
+            'This routine handles the green recording progress bar that is displayed either on the RecordPlayback form
+            'or on the main CLEVIR screen...
+            HandleRecordingProgressBar(RecordPlayback.RecordMode, RecordPlayback.ProgressBar1)
+        Else
+            ' OnVehicleScreen-only mode: hide EXIT button so Label17 (distance-to-object) can occupy that slot
+            If OnVehicleScreen.Button1.Visible Then
+                OnVehicleScreen.Button1.Visible = False
+            End If
+            'This routine handles the green recording progress bar that is displayed either on the RecordPlayback form
+            'or on the main CLEVIR screen...
+            'HandleRecordingProgressBar(MyIncaInterface.Recording, OnVehicleScreen.ProgressBar1)
+        End If
+
+        '********************************Here is where we are refreshing top down view **************************************
+
+        whereAmI = "Before If Not MyTdGraphicsContainer.IsDisposed"
+
+        If Not MyTdGraphicsContainer.IsDisposed Then
+
+            If MyTdGraphicsContainer.Visible = True Then
+                MyTdGraphicsContainer.Invalidate() 'this triggers paint event on topdown view...
+
+            End If
+        End If
+
+        '**********************************************************************************************************
+    End Sub
+
+    Private Sub HandleWavAndRecordingUpdates(ByRef whereAmI As String, ByVal lRecordingState As Boolean)
+        whereAmI = "Before WAV Recording"
+        'This routine handles the color of the frame around the microphone to indicate whether a WAV recording
+        'is in progress.  Red, we are not recording WAV, Green we are...
+        'There is a preset amount of time that the WAV recording is enabled, and it needs to shut off after that time.
+        'This routine handles that...
+        HandleWavRecording()
+
+        If lRecordingState = True Then
+
+            'This routine handles, among other things, stopping and starting the INCA recording based
+            'on the time interval set...
+            HandleUpdatesWhenRecording()
+
+        Else 'L_RecordingState = False
+            ' When recording stops, ensure the monitor task is stopped as well.
+            If _isMonitorTaskRunning Then
+                StopRecordingMonitorTask()
+            End If
+
+        End If
+    End Sub
+
+    Private Sub InitRecordBufferLine(ByRef whereAmI As String, ByRef k As Integer, ByRef lineNum As Integer)
+        If RecordPlayback.RecordMode = True Then
+            whereAmI = "RecordPlayback.RecordMode = True"
+            k = 0
+            lineNum += 1
+            'ReDim Preserve VariableNameDataArray(UBound(MyIncaInterface.MyDisplaySignals) + 2, lineNum)
+            EnsureRecordingBufferCapacity(lineNum)
+
+            If lineNum = 0 Then
+                VariableNameDataArray(0, 0) = "Time"
+                VariableNameDataArray(1, 0) = "TimeStamp"
+            Else
+                VariableNameDataArray(0, lineNum) = ""
+                VariableNameDataArray(1, lineNum) = ""
+            End If
+
+        End If
+    End Sub
+
+    Private Sub CaptureLiveSignalData(ByRef whereAmI As String, ByRef saveLiveDataTime As DateTime, ByRef k As Integer, ByVal lineNum As Integer)
+        Dim j As Integer
+        Dim liveDataElapseTime As TimeSpan
+
+        If saveLiveDataTime = Nothing Then
+            liveDataElapseTime = DateTime.Now.Subtract(DateTime.Now)
+        Else
+            liveDataElapseTime = DateTime.Now.Subtract(saveLiveDataTime)
+        End If
+
+        whereAmI = "MyIncaInterface.GetSignalDataWithTime"
+        MySignalDataWithTime = MyIncaInterface.GetSignalDataWithTime() 'here is where we get all live data from INCA...
+
+        If MySignalDataWithTime IsNot Nothing Then
+
+            saveLiveDataTime = DateTime.Now
+
+            For j = 0 To UBound(MySignalDataWithTime)
+
+                'We can record live data to be played back in CLEVIR, here is where we capture that
+                'live data if we are recording...
+                If RecordPlayback.RecordMode = True And lineNum >= 0 Then
+                    If lineNum = 0 Then
+                        VariableNameDataArray(k + 2, 0) = MyIncaInterface.myDisplaySignals(j).SignalName
+                    Else
+                        If Len(VariableNameDataArray(0, lineNum)) = 0 Then
+                            VariableNameDataArray(0, lineNum) = Format$(liveDataElapseTime.Milliseconds, "0.000")
+                            VariableNameDataArray(1, lineNum) = Format$(MySignalDataWithTime(j).TimeStamp, "0.000")
+                        End If
+                        VariableNameDataArray(k + 2, lineNum) = MySignalDataWithTime(j).SignalData
+                    End If
+                    k += 1
+                End If
+
+            Next j
+
+        End If
+    End Sub
+
+    Private Sub LoadPlaybackSignalData(ByRef whereAmI As String)
+        Dim i As Integer
+        Dim MyRci2Data As IGM_INCA_Comm.INCAData
+
+        whereAmI = "This else case executes if we are playing back recorded data...."
+
+        ReDim MySignalDataWithTime(0)
+
+        MyRci2Data = GetRecordedData(UBound(MyIncaInterface.myDisplaySignals) + 2, RecordPlayback.PlaybackMode)
+
+        For i = 0 To UBound(MyRci2Data.myData)
+            If i > UBound(MySignalDataWithTime) Then
+                ReDim Preserve MySignalDataWithTime(i)
+            End If
+
+            MySignalDataWithTime(i).SignalData = MyRci2Data.myData(i)
+            MySignalDataWithTime(i).TimeStamp = MyRci2Data.myTime(i)
+        Next i
+    End Sub
+
+    Private Sub SaveEndedRecordingAndUpdatePlaybackLabel(ByRef lineNum As Integer)
+        If RecordPlayback.RecordMode = False And lineNum > 0 Then
+            SaveRecordFile(lineNum)
+            lineNum = -1
+        End If
+
+        If RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepFwd Or
+        RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepBack Then
+            RecordPlayback.GroupBox2.Text = "PLAYBACK (Pause)"
+        End If
+    End Sub
+
+    Private Sub SaveRecordFileOnMeasureStop(ByRef lineNum As Integer)
+        If RecordPlayback.RecordMode = True Then
+            If lineNum > 0 Then
+                SaveRecordFile(lineNum)
+            End If
+            RecordPlayback.RecordMode = False
+            lineNum = -1
+        End If
+    End Sub
 
     Private Sub ProcessGrids(
                                   ByVal saveOdoReading As Double,
