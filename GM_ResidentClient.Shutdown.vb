@@ -174,7 +174,11 @@ Partial Public Class GmResidentClient
                 exitInProgress = False
                 Cursor = Cursors.Arrow
                 HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress reset (user cancelled)")
-                If Not teardownStarted Then ResumeBackgroundTasksAfterCancelledExit()
+                If Not teardownStarted Then
+                    ' OnVehicleScreen's EXIT button sets ExitPressed; left True, its window X would close the form without ExitApp.
+                    Volatile.Write(ExitPressed, False)
+                    ResumeBackgroundTasksAfterCancelledExit()
+                End If
             Else
                 HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress remains True (exit committed)")
                 ' Force termination (point of no return)
