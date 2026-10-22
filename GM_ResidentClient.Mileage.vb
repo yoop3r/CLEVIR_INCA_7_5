@@ -95,18 +95,20 @@ Partial Public Class GmResidentClient
         Static recordingStateStable As Boolean = True
         Const StableThreshold As Integer = 3  ' Require 3 consecutive consistent readings
 
+        ' All mileage (session, LCC, ANNO header and annotation rows) is in km - the odometer's native unit.
+
         ' The caller's saveOdoReading does not persist between loop iterations, so seed it
         ' with the last valid reading (keeps LCC segment math off a 0 odometer).
-        saveOdoReading = _lastOdoReadingMiles
+        saveOdoReading = _lastOdoReadingKm
 
         ' ====================================================================================
         ' 1. Read Odometer Value (before session transitions so they see the current reading)
         ' ====================================================================================
         Dim haveOdoReading As Boolean = False
         If MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData > 0 Then
-            saveOdoReading = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData * KilometersToMiles
-            CurrentMileage = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData
-            _lastOdoReadingMiles = saveOdoReading
+            saveOdoReading = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData
+            CurrentMileage = saveOdoReading
+            _lastOdoReadingKm = saveOdoReading
             haveOdoReading = True
 
             ' Initialize starting mileage if not set
@@ -224,7 +226,7 @@ Partial Public Class GmResidentClient
         ' reading from before recording can never be counted as session distance.
         _sessionPreviousOdo = 0
         If _lccActive = 1 Then
-            _lccActiveStartingMileage = _lastOdoReadingMiles
+            _lccActiveStartingMileage = _lastOdoReadingKm
         End If
         _mileageSessionActive = True
         HandleUserMessageLogging("GMRC", $"BeginSessionMileage ({caller}): Recording started - session mileage reset")
@@ -238,38 +240,38 @@ Partial Public Class GmResidentClient
     Friend Sub EndSessionMileage(ByVal caller As String)
         If Not _mileageSessionActive Then Exit Sub
 
-        AccumulateSessionMileage(_lastOdoReadingMiles)
+        AccumulateSessionMileage(_lastOdoReadingKm)
 
-        If _lccActive = 1 AndAlso _lccActiveStartingMileage > 0 AndAlso _lastOdoReadingMiles > 0 Then
-            Dim segmentMileage As Double = _lastOdoReadingMiles - _lccActiveStartingMileage
+        If _lccActive = 1 AndAlso _lccActiveStartingMileage > 0 AndAlso _lastOdoReadingKm > 0 Then
+            Dim segmentMileage As Double = _lastOdoReadingKm - _lccActiveStartingMileage
             If segmentMileage >= 0 Then
                 _lccActiveMileage += segmentMileage
             End If
             ' Re-base so the eventual LCC-inactive transition doesn't count this segment again
-            _lccActiveStartingMileage = _lastOdoReadingMiles
+            _lccActiveStartingMileage = _lastOdoReadingKm
         End If
 
         _mileageSessionActive = False
-        HandleUserMessageLogging("GMRC", $"EndSessionMileage ({caller}): Recording stopped - Session mileage = {Format(recordedMileage, "0.0")}, LCC active mileage = {Format(_lccActiveMileage, "0.0")}")
+        HandleUserMessageLogging("GMRC", $"EndSessionMileage ({caller}): Recording stopped - Session mileage = {Format(recordedMileage, "0.0")} km, LCC active mileage = {Format(_lccActiveMileage, "0.0")} km")
     End Sub
 
-    Private Sub AccumulateSessionMileage(ByVal odoReadingMiles As Double)
-        If odoReadingMiles <= 0 Then Exit Sub
+    Private Sub AccumulateSessionMileage(ByVal odoReadingKm As Double)
+        If odoReadingKm <= 0 Then Exit Sub
 
         If _sessionPreviousOdo <= 0 Then
-            _sessionPreviousOdo = odoReadingMiles
-            HandleUserMessageLogging("GMRC", "AccumulateSessionMileage: Session start odometer = " & Format(odoReadingMiles, "0.0"))
+            _sessionPreviousOdo = odoReadingKm
+            HandleUserMessageLogging("GMRC", "AccumulateSessionMileage: Session start odometer = " & Format(odoReadingKm, "0.0") & " km")
             Exit Sub
         End If
 
-        Dim delta As Double = odoReadingMiles - _sessionPreviousOdo
+        Dim delta As Double = odoReadingKm - _sessionPreviousOdo
         If delta >= 0 Then
             recordedMileage += delta
         Else
             ' Odometer went backwards (e.g. replay restarted) - re-base without counting
-            HandleUserMessageLogging("GMRC", "AccumulateSessionMileage: WARNING - Odometer decreased by " & Format(-delta, "0.0") & " - re-basing")
+            HandleUserMessageLogging("GMRC", "AccumulateSessionMileage: WARNING - Odometer decreased by " & Format(-delta, "0.0") & " km - re-basing")
         End If
-        _sessionPreviousOdo = odoReadingMiles
+        _sessionPreviousOdo = odoReadingKm
     End Sub
 
 End Class
