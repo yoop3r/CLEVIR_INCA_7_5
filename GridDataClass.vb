@@ -3243,6 +3243,7 @@ Public Class GridDataClass
 
                         Width = SaveGridWidth + (e.X - GridMouseEntry_X)
                         myDGs(x).GridHeader.Width = Width
+                        myDGs(x).GridSize = "W" & Width & " H" & Height
 
                         GridCellPropConfig._changesMade = True
 
@@ -3259,6 +3260,10 @@ Public Class GridDataClass
 
                         Height = SaveGridHeight + (e.Y - GridMouseEntry_Y)
                         Width = SaveGridWidth + (e.X - GridMouseEntry_X)
+                        myDGs(x).GridSize = "W" & Width & " H" & Height
+                        myDGs(x).GridHeader.Width = Width
+
+                        GridCellPropConfig._changesMade = True
 
                     End If
 
@@ -3324,6 +3329,8 @@ Public Class GridDataClass
 
                     Height = SaveGridHeight + (e.Y - GridMouseEntry_Y)
                     Width = SaveGridWidth + (e.X - GridMouseEntry_X)
+                    myDGs(x).GridSize = "W" & Width & " H" & Height
+                    myDGs(x).GridHeader.Width = Width
 
                     GridCellPropConfig._changesMade = True
 
