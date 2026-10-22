@@ -35,13 +35,27 @@ Partial Public Class GmResidentClient
         ' Local working variables
         Dim uflags As Long = 0
         Dim selectedOption As ExitOption = ExitOption.CancelExit
+        Dim teardownStarted As Boolean = False
 
         Try
             HandleUserMessageLogging("GMRC", $"ExitApp ({If(String.IsNullOrEmpty(exitParameter), "User Initiated", exitParameter)}) called...")
 
+            ' ════════════════════════════════════════════════════════════════
+            ' ✅ FIX 7: USER CONFIRMATION (IF NEEDED) - asked BEFORE any teardown so that
+            ' Cancel leaves CLEVIR fully running (display forms, LiDAR, background loop).
+            ' ════════════════════════════════════════════════════════════════
+            If String.IsNullOrEmpty(exitParameter) Then
+                selectedOption = ShowExitOptionDialog()
+                If selectedOption = ExitOption.CancelExit Then
+                    ExitApp = False
+                    Return False
+                End If
+            End If
+
             ' ══════════════════════════════════════════════════════════════
             ' STOP BACKGROUND WORKERS FIRST
             ' ══════════════════════════════════════════════════════════════
+            teardownStarted = True
             StopBackgroundWorkersForExit()
 
             ' ════════════════════════════════════════════════════════════════
@@ -65,12 +79,9 @@ Partial Public Class GmResidentClient
             End If
 
             ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX 7: USER CONFIRMATION (IF NEEDED)
+            ' ✅ FIX 7b: APPLY THE SELECTED EXIT OPTION (close INCA, copy DB, ...)
             ' ════════════════════════════════════════════════════════════════
-            If Not PromptForExitOption(exitParameter, selectedOption) Then
-                ExitApp = False
-                Return False
-            End If
+            ApplyExitOption(exitParameter, selectedOption)
 
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 8: VALIDATE CRITICAL PATHS
@@ -163,6 +174,11 @@ Partial Public Class GmResidentClient
                 exitInProgress = False
                 Cursor = Cursors.Arrow
                 HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress reset (user cancelled)")
+                If Not teardownStarted Then
+                    ' OnVehicleScreen's EXIT button sets ExitPressed; left True, its window X would close the form without ExitApp.
+                    Volatile.Write(ExitPressed, False)
+                    ResumeBackgroundTasksAfterCancelledExit()
+                End If
             Else
                 HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress remains True (exit committed)")
                 ' Force termination (point of no return)
@@ -623,26 +639,45 @@ Partial Public Class GmResidentClient
         End If
     End Sub
 
-    Private Function PromptForExitOption(ByVal exitParameter As String, ByRef selectedOption As ExitOption) As Boolean
-        'Called from ExitApp. Returns False when ExitApp must return False (cancelled/unknown option).
-        'selectedOption is ByRef so it is updated before any later statement can throw (ExitApp Finally depends on it).
+    Private Function ShowExitOptionDialog() As ExitOption
+        'Called from ExitApp before any teardown. Returns the user's choice; CancelExit when cancelled
+        'or when the dialog was closed without a selection.
+
+        ' Display the ExitAppForm modally.
+        ' ✅ WPF PILOT: ExitAppForm was migrated from WinForms to WPF (ExitAppFormWpf).
+        ' System.Windows.Window is not IDisposable (unlike WinForms Form), so the
+        ' previous "Using...End Using" wrapper is replaced with a plain Dim; there was
+        ' no unmanaged/disposable state on the original form to clean up.
+        Dim exitForm As New ExitAppFormWpf()
+        exitForm.Topmost = True
+        exitForm.ShowDialog()
+
+        Dim selected As ExitOption = NormalizeExitDialogOption(exitForm.SelectedExitOption)
+        If selected = ExitOption.CancelExit Then
+            If exitForm.SelectedExitOption = ExitOption.CancelExit Then
+                HandleUserMessageLogging("GMRC", "ExitApp: Exit Cancelled by user")
+            Else
+                HandleUserMessageLogging("GMRC", $"ExitApp: Exit dialog closed without a selection ({exitForm.SelectedExitOption}) - treating as cancel")
+            End If
+        End If
+        Return selected
+    End Function
+
+    Friend Shared Function NormalizeExitDialogOption(ByVal dialogOption As ExitOption) As ExitOption
+        'Only the three exit choices commit to exiting; anything else (Cancel, window closed = None) is a cancel.
+        Select Case dialogOption
+            Case ExitOption.ExitClevirAndCloseInca, ExitOption.ExitClevirOnly, ExitOption.ExitClevirCloseIncaShutdownWindows
+                Return dialogOption
+            Case Else
+                Return ExitOption.CancelExit
+        End Select
+    End Function
+
+    Private Sub ApplyExitOption(ByVal exitParameter As String, ByVal selectedOption As ExitOption)
+        'Called from ExitApp after teardown/compression (original position of these actions), once the user has committed.
 
         If String.IsNullOrEmpty(exitParameter) Then
-            ' Display the ExitAppForm modally.
-            ' ✅ WPF PILOT: ExitAppForm was migrated from WinForms to WPF (ExitAppFormWpf).
-            ' System.Windows.Window is not IDisposable (unlike WinForms Form), so the
-            ' previous "Using...End Using" wrapper is replaced with a plain Dim; there was
-            ' no unmanaged/disposable state on the original form to clean up.
-            Dim exitForm As New ExitAppFormWpf()
-            exitForm.Topmost = True
-            exitForm.ShowDialog()
-            selectedOption = exitForm.SelectedExitOption
-
             Select Case selectedOption
-                Case ExitOption.CancelExit
-                    HandleUserMessageLogging("GMRC", "ExitApp: Exit Cancelled by user")
-                    Return False
-
                 Case ExitOption.ExitClevirAndCloseInca
                     HandleUserMessageLogging("GMRC", "ExitApp: Exit CLEVIR and Close INCA selected")
                     CheckForExperiment = False
@@ -668,9 +703,6 @@ Partial Public Class GmResidentClient
                     ' ✅ SET FLAG: User committed to exiting
                     exitInProgress = True
                     HandleUserMessageLogging("GMRC", $"ExitApp: exitInProgress set to True for option {selectedOption}")
-                Case Else
-                    ' Unknown option - treat as cancel
-                    Return False
             End Select
 
         ElseIf exitParameter = "Complete" Then
@@ -679,9 +711,22 @@ Partial Public Class GmResidentClient
             CheckForExperiment = False
             MyIncaInterface?.CloseINCA()
         End If
+    End Sub
 
-        Return True
-    End Function
+    Private Sub ResumeBackgroundTasksAfterCancelledExit()
+        'Called from ExitApp when the exit was cancelled before any teardown. MyBackgroundTasks ends as soon as it
+        'sees exitInProgress (e.g. while the exit dialog is open), so restart it unless it is still running.
+
+        If Volatile.Read(_backgroundLoopActive) Then Return
+
+        _enableMyBackgroundTasks = True
+        If _backgroundTasksCts Is Nothing Then _backgroundTasksCts = New CancellationTokenSource()
+
+        If Not BackgroundWorker1.IsBusy Then
+            BackgroundWorker1.RunWorkerAsync(2000)
+            HandleUserMessageLogging("GMRC", "ExitApp: Background tasks resumed after cancelled exit")
+        End If
+    End Sub
 
     Private Sub EnsureExitPathsValid()
         'Called from ExitApp. Fallbacks for paths/vehicle number used by the exit housekeeping.
