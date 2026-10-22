@@ -743,13 +743,6 @@ Partial Public Class GmResidentClient
 
         Dim saveHealthCounter As Integer
 
-        Dim MyDtCsSaveTime As DateTime
-        Dim MyDtCsElapseTime As TimeSpan
-        Dim activeDtc As Boolean
-        Dim dtcTimerActive As Boolean
-
-        'Dim saveDtcStrings As ArrayList = Nothing
-
         Dim acpDebugOneShot As Boolean
 
         Try
@@ -1103,45 +1096,10 @@ Partial Public Class GmResidentClient
 
                                                         If myDGs(z).Name = "DTCs" Then
 
-                                                            If activeDtc = False Then
-                                                                ' First DTC detected - initialize the collection and log it
-                                                                saveDtcStrings = New ArrayList From {
-            myDGs(z).DeviceName(x, y) & " - " & FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
-        }
-
-                                                                Dim firstDtc As String = CStr(saveDtcStrings(0))
-
-                                                                ' Only log if we haven't logged this exact DTC yet
-                                                                If Not loggedDtcStrings.Contains(firstDtc) Then
-                                                                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: Active DTC = " & firstDtc)
-                                                                    loggedDtcStrings.Add(firstDtc)
-                                                                End If
-
-                                                                activeDtc = True
-
-                                                                ' Start the timer for potential DTC clear detection
-                                                                MyDtCsSaveTime = DateTime.Now
-                                                                dtcTimerActive = True
-                                                            Else
-                                                                ' Already have active DTCs - check if this is a new unique DTC
-                                                                Dim currentDtc As String = myDGs(z).DeviceName(x, y) & " - " & FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
-
-                                                                If saveDtcStrings IsNot Nothing Then
-                                                                    ' Add to active list if not already there
-                                                                    If Not saveDtcStrings.Contains(currentDtc) Then
-                                                                        saveDtcStrings.Add(currentDtc)
-                                                                    End If
-
-                                                                    ' Log only if we haven't logged this specific DTC yet
-                                                                    If Not loggedDtcStrings.Contains(currentDtc) Then
-                                                                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: Active DTC = " & currentDtc)
-                                                                        loggedDtcStrings.Add(currentDtc)
-                                                                    End If
-                                                                End If
-
-                                                                ' Reset the timer since we still have active DTCs
-                                                                MyDtCsSaveTime = DateTime.Now
-                                                                dtcTimerActive = True
+                                                            ' Log each unique DTC once per session
+                                                            Dim currentDtc As String = myDGs(z).DeviceName(x, y) & " - " & FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
+                                                            If loggedDtcStrings.Add(currentDtc) Then
+                                                                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: Active DTC = " & currentDtc)
                                                             End If
 
                                                             ' Set GO/NOGO status to red while DTCs are present
@@ -1150,33 +1108,6 @@ Partial Public Class GmResidentClient
                                                                 UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
                                                             End If
 
-                                                        End If
-                                                    End If
-
-                                                ElseIf Mytempval <= myDGs(z).HighThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 And myDGs(z).Name = "DTCs" Then
-
-                                                    ' DTC value has dropped below threshold - check if timer has expired
-                                                    If dtcTimerActive = True Then
-                                                        MyDtCsElapseTime = DateTime.Now.Subtract(MyDtCsSaveTime)
-
-                                                        If MyDtCsElapseTime.Seconds > 5 Then
-                                                            ' 5 seconds have passed with no active DTCs - log the clear status once
-                                                            If activeDtc = True Then
-                                                                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: No Active DTCs")
-                                                                activeDtc = False
-                                                            End If
-
-                                                            dtcTimerActive = False
-                                                            MyDtCsSaveTime = DateTime.Now
-
-                                                            ' Clear both the active DTC list and the logged set
-                                                            saveDtcStrings?.Clear()
-
-                                                            loggedDtcStrings.Clear()  ' ← Reset the "already logged" tracker
-
-                                                            ' Reset GO/NOGO status to green
-                                                            goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = False
-                                                            UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Green)
                                                         End If
                                                     End If
                                                 End If
