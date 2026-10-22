@@ -25,19 +25,9 @@ Partial Public Class GmResidentClient
 
         'It is also possible to call this routine from a button press on the GM Resident Client Configuration form (GridCellPropConfig.vb)
 
-        Dim x As Integer
-        Dim y As Integer
-        Dim z As Integer
-        Dim i As Integer
-        Dim n As Integer
-
         Dim ccon As ColorConverter
 
         Dim fileExtension As String
-
-        Dim fnum As Integer
-
-        Dim inputline As String = ""
 
         Try
 
@@ -59,102 +49,11 @@ Partial Public Class GmResidentClient
             'exceldata is 1 based because it is derived from exceldata = MyWorkSheet.UsedRange.Value, which is Excel way of doing things,
             'in vb.net, any array that we create  must be a 0 based array...
 
-            If File.Exists(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv") And ValidExcelData IsNot Nothing Then
-
-                ReDim exceldataforsave((UBound(ValidExcelData, 1) - _numInvalid) + NumSignalsAdded, UBound(exceldata, 2))
-
-                For x = 0 To UBound(exceldataforsave, 1)
-
-                    If Len(ValidExcelData(x, 0)) > 0 Then
-                        For i = 0 To EXCEL_DATA.DisplayFormat - 1
-                            exceldataforsave(x, i) = ValidExcelData(x, i)
-                        Next i
-                    Else
-                        exceldataforsave(x, i) = Nothing
-                        HandleUserMessageLogging("GMRC", "WriteSignalListFile: ValidExcelData " & x & " = ***" & ValidExcelData(x, 0) & "***")
-                    End If
-
-                Next x
-
-            Else
-                ReDim exceldataforsave(UBound(exceldata, 1) + NumSignalsAdded, UBound(exceldata, 2))
-
-                For x = 1 To UBound(exceldata, 1)
-
-                    For i = 1 To EXCEL_DATA.DisplayFormat
-                        exceldataforsave(x - 1, i - 1) = exceldata(x, i)
-                    Next i
-
-                Next x
-            End If
+            BuildSignalListSaveArray()
 
             'now go thru all datagrids and populate the exceldataforsave array with the data associated with each datagrid
 
-            i = 1
-
-            For x = 0 To myDGs.Count - 1
-
-                For n = 0 To MyDFs.Count - 1
-                    If MyDFs(n).Name = myDGs(x).Parent.Name Then
-                        Exit For
-                    End If
-                Next n
-
-                If n < MyDFs.Count Then
-
-                    exceldataforsave(i, EXCEL_DATA.DisplayWindowSize - 1) = MyDFs(n).DisplayWindowSize
-                    exceldataforsave(i, EXCEL_DATA.AlsoAssociatedWith - 1) = MyDFs(n).AlsoAssociatedWith
-                    exceldataforsave(i, EXCEL_DATA.LocationOnForm - 1) = myDGs(x).LocationOnForm
-                    exceldataforsave(i, EXCEL_DATA.GridSize - 1) = myDGs(x).GridSize
-
-                    For y = 1 To myDGs(x).RowCount
-                        For z = 1 To myDGs(x).ColumnCount - 1
-
-                            exceldataforsave(i, EXCEL_DATA.DisplayWindowName - 1) = MyDFs(n).Name
-                            exceldataforsave(i, EXCEL_DATA.AssociatedControlName - 1) = myDGs(x).Name
-
-                            exceldataforsave(i, EXCEL_DATA.DisplayName - 1) = myDGs(x).DisplayName(y, 1)
-
-                            If Len(myDGs(x).VariableName(y, z)) > 0 Then
-                                exceldataforsave(i, EXCEL_DATA.VariableName - 1) = myDGs(x).VariableName(y, z)
-                            Else
-                                exceldataforsave(i, EXCEL_DATA.VariableName - 1) = "undefined"
-                            End If
-
-                            If Len(myDGs(x).DeviceName(y, z)) > 0 Then
-                                exceldataforsave(i, EXCEL_DATA.DeviceName - 1) = myDGs(x).DeviceName(y, z)
-                            Else
-                                exceldataforsave(i, EXCEL_DATA.DeviceName - 1) = "undefined"
-                            End If
-
-                            If Len(myDGs(x).Raster(y, z)) > 0 Then
-                                exceldataforsave(i, EXCEL_DATA.Raster - 1) = myDGs(x).Raster(y, z)
-                            Else
-                                exceldataforsave(i, EXCEL_DATA.Raster - 1) = "undefined"
-                            End If
-
-                            exceldataforsave(i, EXCEL_DATA.DefaultBackColor - 1) = ccon.ConvertToString(myDGs(x).DefaultCellBackColor(y, z))
-                            exceldataforsave(i, EXCEL_DATA.DefaultForeColor - 1) = ccon.ConvertToString(myDGs(x).DefaultCellForeColor(y, z))
-                            exceldataforsave(i, EXCEL_DATA.HighThreshBackColor - 1) = ccon.ConvertToString(myDGs(x).HighThreshBackColor(y, z))
-                            exceldataforsave(i, EXCEL_DATA.LowThreshBackColor - 1) = ccon.ConvertToString(myDGs(x).LowThreshBackColor(y, z))
-                            exceldataforsave(i, EXCEL_DATA.HighThreshForeColor - 1) = ccon.ConvertToString(myDGs(x).HighThreshForeColor(y, z))
-                            exceldataforsave(i, EXCEL_DATA.LowThreshForeColor - 1) = ccon.ConvertToString(myDGs(x).LowThreshForeColor(y, z))
-                            exceldataforsave(i, EXCEL_DATA.HighThresh - 1) = myDGs(x).HighThresh(y, z)
-                            exceldataforsave(i, EXCEL_DATA.LowThresh - 1) = myDGs(x).LowThresh(y, z)
-                            exceldataforsave(i, EXCEL_DATA.EqualTo - 1) = myDGs(x).EqualTo(y, z)
-                            exceldataforsave(i, EXCEL_DATA.CheckForDataChange - 1) = IIf(Len(myDGs(x).CheckForDataChange(y, z)) > 0, UCase(myDGs(x).CheckForDataChange(y, z).ToString), "FALSE")
-                            exceldataforsave(i, EXCEL_DATA.Row - 1) = y
-                            exceldataforsave(i, EXCEL_DATA.Col - 1) = z
-                            exceldataforsave(i, EXCEL_DATA.AlsoAssociatedWith - 1) = myDGs(x).AlsoAssociatedWith(y, z)
-                            exceldataforsave(i, EXCEL_DATA.DisplayFormat - 1) = IIf(Len(myDGs(x).DisplayFormat(y, z)) > 0, myDGs(x).DisplayFormat(y, z), """0.000""")
-
-                            i += 1
-                        Next z
-                    Next y
-
-                End If
-
-            Next x
+            CopyGridSignalsToSaveArray(ccon)
 
             'Here we must take care of all of the signals remaining in the file after the display signals
             'we must also handle if there have been new "invisible" signals added.  This code below does
@@ -162,32 +61,7 @@ Partial Public Class GmResidentClient
             'or invisible signals.  This is because we are stepping on all invisible signals with the
             'newly added record only signals...
 
-            If NumSignalsAdded > 0 Then
-
-                y = 0
-
-                If File.Exists(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv") Then
-
-                    For x = UBound(ValidExcelData, 1) - _numInvalid To (UBound(exceldataforsave, 1) - 1)
-
-                        exceldataforsave(x, EXCEL_DATA.VariableName - 1) = MyIncaInterface.myAddedSignals(y).SignalName
-                        exceldataforsave(x, EXCEL_DATA.DeviceName - 1) = MyIncaInterface.myAddedSignals(y).DeviceName
-                        exceldataforsave(x, EXCEL_DATA.Raster - 1) = MyIncaInterface.myAddedSignals(y).RasterName
-                        y += 1
-
-                    Next
-                Else
-                    For x = UBound(exceldata, 1) To UBound(exceldataforsave, 1) - 1
-
-                        exceldataforsave(x, EXCEL_DATA.VariableName - 1) = MyIncaInterface.myAddedSignals(y).SignalName
-                        exceldataforsave(x, EXCEL_DATA.DeviceName - 1) = MyIncaInterface.myAddedSignals(y).DeviceName
-                        exceldataforsave(x, EXCEL_DATA.Raster - 1) = MyIncaInterface.myAddedSignals(y).RasterName
-                        y += 1
-
-                    Next
-                End If
-
-            End If
+            AppendAddedSignalsToSaveArray()
 
             Dim savefilename As String = ""
 
@@ -217,22 +91,7 @@ Partial Public Class GmResidentClient
                     End If
                 End If
 
-                fnum = FreeFile()
-
-                FileOpen(fnum, savefilename, OpenMode.Output)
-
-                For x = 0 To UBound(exceldataforsave, 1) - 1
-                    For y = 0 To UBound(exceldataforsave, 2) - 1
-                        If y = 0 Then
-                            inputline = exceldataforsave(x, y)
-                        Else
-                            inputline = inputline & "," & exceldataforsave(x, y)
-                        End If
-                    Next
-                    PrintLine(fnum, inputline)
-                Next
-
-                FileClose(fnum)
+                WriteSignalListSaveArray(savefilename)
 
                 HandleUserMessageLogging("GMRC", "WriteSignalListFile: Signal List File Written successfully")
 
@@ -273,6 +132,179 @@ Partial Public Class GmResidentClient
 
     End Sub
 
+    Private Sub BuildSignalListSaveArray()
+        'Called from WriteSignalListFile. Sizes exceldataforsave (room for NumSignalsAdded) and copies the startup signal list
+        '(ValidExcelData when an InvalidSignalsLog.csv exists, else the 1-based exceldata) into it (0-based).
+
+        Dim x As Integer
+        Dim i As Integer
+
+        If File.Exists(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv") And ValidExcelData IsNot Nothing Then
+
+            ReDim exceldataforsave((UBound(ValidExcelData, 1) - _numInvalid) + NumSignalsAdded, UBound(exceldata, 2))
+
+            For x = 0 To UBound(exceldataforsave, 1)
+
+                If Len(ValidExcelData(x, 0)) > 0 Then
+                    For i = 0 To EXCEL_DATA.DisplayFormat - 1
+                        exceldataforsave(x, i) = ValidExcelData(x, i)
+                    Next i
+                Else
+                    exceldataforsave(x, i) = Nothing
+                    HandleUserMessageLogging("GMRC", "WriteSignalListFile: ValidExcelData " & x & " = ***" & ValidExcelData(x, 0) & "***")
+                End If
+
+            Next x
+
+        Else
+            ReDim exceldataforsave(UBound(exceldata, 1) + NumSignalsAdded, UBound(exceldata, 2))
+
+            For x = 1 To UBound(exceldata, 1)
+
+                For i = 1 To EXCEL_DATA.DisplayFormat
+                    exceldataforsave(x - 1, i - 1) = exceldata(x, i)
+                Next i
+
+            Next x
+        End If
+    End Sub
+
+    Private Sub CopyGridSignalsToSaveArray(ByVal ccon As ColorConverter)
+        'Called from WriteSignalListFile. Writes the current display/grid configuration of every grid cell into exceldataforsave.
+
+        Dim x As Integer
+        Dim y As Integer
+        Dim z As Integer
+        Dim i As Integer
+        Dim n As Integer
+
+        i = 1
+
+        For x = 0 To myDGs.Count - 1
+
+            For n = 0 To MyDFs.Count - 1
+                If MyDFs(n).Name = myDGs(x).Parent.Name Then
+                    Exit For
+                End If
+            Next n
+
+            If n < MyDFs.Count Then
+
+                exceldataforsave(i, EXCEL_DATA.DisplayWindowSize - 1) = MyDFs(n).DisplayWindowSize
+                exceldataforsave(i, EXCEL_DATA.AlsoAssociatedWith - 1) = MyDFs(n).AlsoAssociatedWith
+                exceldataforsave(i, EXCEL_DATA.LocationOnForm - 1) = myDGs(x).LocationOnForm
+                exceldataforsave(i, EXCEL_DATA.GridSize - 1) = myDGs(x).GridSize
+
+                For y = 1 To myDGs(x).RowCount
+                    For z = 1 To myDGs(x).ColumnCount - 1
+
+                        exceldataforsave(i, EXCEL_DATA.DisplayWindowName - 1) = MyDFs(n).Name
+                        exceldataforsave(i, EXCEL_DATA.AssociatedControlName - 1) = myDGs(x).Name
+
+                        exceldataforsave(i, EXCEL_DATA.DisplayName - 1) = myDGs(x).DisplayName(y, 1)
+
+                        If Len(myDGs(x).VariableName(y, z)) > 0 Then
+                            exceldataforsave(i, EXCEL_DATA.VariableName - 1) = myDGs(x).VariableName(y, z)
+                        Else
+                            exceldataforsave(i, EXCEL_DATA.VariableName - 1) = "undefined"
+                        End If
+
+                        If Len(myDGs(x).DeviceName(y, z)) > 0 Then
+                            exceldataforsave(i, EXCEL_DATA.DeviceName - 1) = myDGs(x).DeviceName(y, z)
+                        Else
+                            exceldataforsave(i, EXCEL_DATA.DeviceName - 1) = "undefined"
+                        End If
+
+                        If Len(myDGs(x).Raster(y, z)) > 0 Then
+                            exceldataforsave(i, EXCEL_DATA.Raster - 1) = myDGs(x).Raster(y, z)
+                        Else
+                            exceldataforsave(i, EXCEL_DATA.Raster - 1) = "undefined"
+                        End If
+
+                        exceldataforsave(i, EXCEL_DATA.DefaultBackColor - 1) = ccon.ConvertToString(myDGs(x).DefaultCellBackColor(y, z))
+                        exceldataforsave(i, EXCEL_DATA.DefaultForeColor - 1) = ccon.ConvertToString(myDGs(x).DefaultCellForeColor(y, z))
+                        exceldataforsave(i, EXCEL_DATA.HighThreshBackColor - 1) = ccon.ConvertToString(myDGs(x).HighThreshBackColor(y, z))
+                        exceldataforsave(i, EXCEL_DATA.LowThreshBackColor - 1) = ccon.ConvertToString(myDGs(x).LowThreshBackColor(y, z))
+                        exceldataforsave(i, EXCEL_DATA.HighThreshForeColor - 1) = ccon.ConvertToString(myDGs(x).HighThreshForeColor(y, z))
+                        exceldataforsave(i, EXCEL_DATA.LowThreshForeColor - 1) = ccon.ConvertToString(myDGs(x).LowThreshForeColor(y, z))
+                        exceldataforsave(i, EXCEL_DATA.HighThresh - 1) = myDGs(x).HighThresh(y, z)
+                        exceldataforsave(i, EXCEL_DATA.LowThresh - 1) = myDGs(x).LowThresh(y, z)
+                        exceldataforsave(i, EXCEL_DATA.EqualTo - 1) = myDGs(x).EqualTo(y, z)
+                        exceldataforsave(i, EXCEL_DATA.CheckForDataChange - 1) = IIf(Len(myDGs(x).CheckForDataChange(y, z)) > 0, UCase(myDGs(x).CheckForDataChange(y, z).ToString), "FALSE")
+                        exceldataforsave(i, EXCEL_DATA.Row - 1) = y
+                        exceldataforsave(i, EXCEL_DATA.Col - 1) = z
+                        exceldataforsave(i, EXCEL_DATA.AlsoAssociatedWith - 1) = myDGs(x).AlsoAssociatedWith(y, z)
+                        exceldataforsave(i, EXCEL_DATA.DisplayFormat - 1) = IIf(Len(myDGs(x).DisplayFormat(y, z)) > 0, myDGs(x).DisplayFormat(y, z), """0.000""")
+
+                        i += 1
+                    Next z
+                Next y
+
+            End If
+
+        Next x
+    End Sub
+
+    Private Sub AppendAddedSignalsToSaveArray()
+        'Called from WriteSignalListFile. Appends the signals added during this session (myAddedSignals) after the display signals.
+
+        Dim x As Integer
+        Dim y As Integer
+
+        If NumSignalsAdded > 0 Then
+
+            y = 0
+
+            If File.Exists(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv") Then
+
+                For x = UBound(ValidExcelData, 1) - _numInvalid To (UBound(exceldataforsave, 1) - 1)
+
+                    exceldataforsave(x, EXCEL_DATA.VariableName - 1) = MyIncaInterface.myAddedSignals(y).SignalName
+                    exceldataforsave(x, EXCEL_DATA.DeviceName - 1) = MyIncaInterface.myAddedSignals(y).DeviceName
+                    exceldataforsave(x, EXCEL_DATA.Raster - 1) = MyIncaInterface.myAddedSignals(y).RasterName
+                    y += 1
+
+                Next
+            Else
+                For x = UBound(exceldata, 1) To UBound(exceldataforsave, 1) - 1
+
+                    exceldataforsave(x, EXCEL_DATA.VariableName - 1) = MyIncaInterface.myAddedSignals(y).SignalName
+                    exceldataforsave(x, EXCEL_DATA.DeviceName - 1) = MyIncaInterface.myAddedSignals(y).DeviceName
+                    exceldataforsave(x, EXCEL_DATA.Raster - 1) = MyIncaInterface.myAddedSignals(y).RasterName
+                    y += 1
+
+                Next
+            End If
+
+        End If
+    End Sub
+
+    Private Sub WriteSignalListSaveArray(ByVal savefilename As String)
+        'Called from WriteSignalListFile. Writes exceldataforsave to savefilename as comma-separated lines.
+
+        Dim x As Integer
+        Dim y As Integer
+        Dim fnum As Integer
+        Dim inputline As String = ""
+
+        fnum = FreeFile()
+
+        FileOpen(fnum, savefilename, OpenMode.Output)
+
+        For x = 0 To UBound(exceldataforsave, 1) - 1
+            For y = 0 To UBound(exceldataforsave, 2) - 1
+                If y = 0 Then
+                    inputline = exceldataforsave(x, y)
+                Else
+                    inputline = inputline & "," & exceldataforsave(x, y)
+                End If
+            Next
+            PrintLine(fnum, inputline)
+        Next
+
+        FileClose(fnum)
+    End Sub
+
     Private Function ReadInSignalList(ByVal signalListFileName As String) As Boolean
         ' Reads and processes an INCA signal list from a .CSV file (the only supported signal list format).
         ' Depending on the SignalRegistrationMode, signals may be flagged for forced registration.
@@ -297,7 +329,6 @@ Partial Public Class GmResidentClient
         Dim fileValid As Boolean = False
         Dim cameraNumber As Integer = 0
         Dim timeCodeCounter As Integer = 0
-        Dim returnStr As String = ""
         Dim tempStr As String = ""
         Dim fnum As Integer = 0
         Dim fnumInvalid As Integer = 0
@@ -329,21 +360,7 @@ Partial Public Class GmResidentClient
             ' --------------------------------------------------------------------------
             ' Connect to INCA if necessary
             ' --------------------------------------------------------------------------
-            If Not PlaybackMode Then
-                If String.IsNullOrWhiteSpace(MyIncaInterface.GetCurrentVersion) Then
-                    returnStr = MyIncaInterface.ConnectToInca()
-                    If returnStr <> "True" Then
-                        HandleUserMessageLogging("GMRC", "ReadInSignalList: ConnecToInca returned - " & returnStr, DisplayMsgBox,)
-                        ExitApp()
-                    End If
-                    If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then
-                        HandleUserMessageLogging("GMRC", "ReadInSignalList: Getting Available Experiment Names...")
-                        AvailableExperimentNames = MyIncaInterface.GetAvailableExperimentNames
-                        HandleUserMessageLogging("GMRC", "ReadInSignalList: Available Experiment Names Retrieved...")
-                        'OnVehicleScreen.Refresh()
-                    End If
-                End If
-            End If
+            ConnectToIncaForSignalListIfNeeded()
 
             ' --------------------------------------------------------------------------
             ' Clear out old forms and grids if called again
@@ -364,14 +381,7 @@ Partial Public Class GmResidentClient
             ' --------------------------------------------------------------------------
             ' If FULL registration and InvalidSignalsLog.csv exists, prepare ValidExcelData
             ' --------------------------------------------------------------------------
-            If InStr(UCase(SignalRegistrationMode), "FULL") > 0 AndAlso File.Exists(Path.Combine(My.Application.Info.DirectoryPath, "InvalidSignalsLog.csv")) Then
-                HandleUserMessageLogging("GMRC", "ReadInSignalList: FULL Registration InvalidSignalsLog.csv exists...")
-                ReDim ValidExcelData(UBound(exceldata, 1) - 1, EXCEL_DATA.DisplayFormat - 1)
-                ' Copy headers
-                For i As Integer = 1 To EXCEL_DATA.DisplayFormat
-                    ValidExcelData(0, i - 1) = exceldata(1, i)
-                Next
-            End If
+            PrepareValidExcelDataForFullRegistration()
 
             ' Prepare to read signals
             ReDim MyIncaInterface.mySignals(0)
@@ -469,47 +479,11 @@ Partial Public Class GmResidentClient
             ' Post-processing: Cameras, GO/NOGO forms, finalize grids, cleanup
             ' --------------------------------------------------------------------------
             ' Existing less-than warning remains; add a greater-than notice
-            If timeCodeCounter < NumberOfCamerasInVehicle Then
-                HandleUserMessageLogging("GMRC",
-                                         "WARNING: Number of Cameras in the signal list (" & timeCodeCounter &
-                                         ") is less than the NumberOfCamerasInVehicle (" & NumberOfCamerasInVehicle & ")." &
-                                         " Some cameras may not record video and their VIDEO_CAMERA_TIMECODE signals will not be displayed in the INCA Video Status window.",
-                                         DisplayMsgBox
-                                         )
-            ElseIf timeCodeCounter > NumberOfCamerasInVehicle Then
-                HandleUserMessageLogging("GMRC",
-                                         "NOTICE: Signal list contains " & timeCodeCounter &
-                                         " VIDEO_CAMERA_TIMECODE rows but NumberOfCamerasInVehicle is " & NumberOfCamerasInVehicle &
-                                         ". Extra VIDEO_CAMERA_TIMECODE rows will be registered, but camera name mapping stops after " &
-                                         NumberOfCamerasInVehicle & ".",
-                                         DisplayMsgBox
-                                         )
-            End If
+            CheckCameraTimecodeCount(timeCodeCounter)
 
-            ' Use VIDEO_CAMERA_TIMECODE-derived camera count to limit ping cycle later
-            _effectiveCameraCount = If(timeCodeCounter > 0, timeCodeCounter, 0)
+            CountGoNoGoFormsAndRaiseExitButtons()
 
-            For z As Integer = 0 To MyDFs.Count - 1
-                If MyDFs(z) IsNot Nothing Then
-                    If Not String.IsNullOrEmpty(MyDFs(z).AlsoAssociatedWith) AndAlso
-                       MyDFs(z).AlsoAssociatedWith.Contains("GO/NOGO") Then
-                        _gonogocount += 1
-                    End If
-                End If
-
-                MyExitButtons(z)?.BringToFront()
-            Next
-
-            If myDGs(0) IsNot Nothing Then
-                HandleUserMessageLogging("GMRC", " ")
-                HandleUserMessageLogging("GMRC", "ReadInSignalList: Finalizing Grid Displays...")
-                GridDataClass.FinalizeGridDisplays()
-                HandleUserMessageLogging("GMRC", "ReadInSignalList: Grid Displays Finalized...")
-                HandleUserMessageLogging("GMRC", " ")
-                HandleUserMessageLogging("GMRC", "ReadInSignalList: Auto-sizing forms to content...")
-                GridDataClass.AutoSizeFormsToContent()
-                HandleUserMessageLogging("GMRC", "ReadInSignalList: Forms auto-sized.")
-            End If
+            FinalizeGridDisplaysIfPresent()
 
             HandleUserMessageLogging("GMRC", "ReadInSignalList: SignalList File Processed successfully.")
             OnVehicleScreen.Refresh()
@@ -528,6 +502,96 @@ Partial Public Class GmResidentClient
             Cursor = Cursors.Arrow
         End Try
     End Function
+
+    Private Sub ConnectToIncaForSignalListIfNeeded()
+        'Called from ReadInSignalList. Connects to INCA (and, in DEVELOPMENT, reads the experiment names) when not yet connected.
+
+        Dim returnStr As String = ""
+
+        If Not PlaybackMode Then
+            If String.IsNullOrWhiteSpace(MyIncaInterface.GetCurrentVersion) Then
+                returnStr = MyIncaInterface.ConnectToInca()
+                If returnStr <> "True" Then
+                    HandleUserMessageLogging("GMRC", "ReadInSignalList: ConnecToInca returned - " & returnStr, DisplayMsgBox,)
+                    ExitApp()
+                End If
+                If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then
+                    HandleUserMessageLogging("GMRC", "ReadInSignalList: Getting Available Experiment Names...")
+                    AvailableExperimentNames = MyIncaInterface.GetAvailableExperimentNames
+                    HandleUserMessageLogging("GMRC", "ReadInSignalList: Available Experiment Names Retrieved...")
+                    'OnVehicleScreen.Refresh()
+                End If
+            End If
+        End If
+    End Sub
+
+    Private Sub PrepareValidExcelDataForFullRegistration()
+        'Called from ReadInSignalList. FULL registration with an InvalidSignalsLog.csv: size ValidExcelData and copy the headers.
+
+        If InStr(UCase(SignalRegistrationMode), "FULL") > 0 AndAlso File.Exists(Path.Combine(My.Application.Info.DirectoryPath, "InvalidSignalsLog.csv")) Then
+            HandleUserMessageLogging("GMRC", "ReadInSignalList: FULL Registration InvalidSignalsLog.csv exists...")
+            ReDim ValidExcelData(UBound(exceldata, 1) - 1, EXCEL_DATA.DisplayFormat - 1)
+            ' Copy headers
+            For i As Integer = 1 To EXCEL_DATA.DisplayFormat
+                ValidExcelData(0, i - 1) = exceldata(1, i)
+            Next
+        End If
+    End Sub
+
+    Private Sub CheckCameraTimecodeCount(ByVal timeCodeCounter As Integer)
+        'Called from ReadInSignalList. Warns when the VIDEO_CAMERA_TIMECODE rows do not match NumberOfCamerasInVehicle
+        'and sets _effectiveCameraCount.
+
+        If timeCodeCounter < NumberOfCamerasInVehicle Then
+            HandleUserMessageLogging("GMRC",
+                                     "WARNING: Number of Cameras in the signal list (" & timeCodeCounter &
+                                     ") is less than the NumberOfCamerasInVehicle (" & NumberOfCamerasInVehicle & ")." &
+                                     " Some cameras may not record video and their VIDEO_CAMERA_TIMECODE signals will not be displayed in the INCA Video Status window.",
+                                     DisplayMsgBox
+                                     )
+        ElseIf timeCodeCounter > NumberOfCamerasInVehicle Then
+            HandleUserMessageLogging("GMRC",
+                                     "NOTICE: Signal list contains " & timeCodeCounter &
+                                     " VIDEO_CAMERA_TIMECODE rows but NumberOfCamerasInVehicle is " & NumberOfCamerasInVehicle &
+                                     ". Extra VIDEO_CAMERA_TIMECODE rows will be registered, but camera name mapping stops after " &
+                                     NumberOfCamerasInVehicle & ".",
+                                     DisplayMsgBox
+                                     )
+        End If
+
+        ' Use VIDEO_CAMERA_TIMECODE-derived camera count to limit ping cycle later
+        _effectiveCameraCount = If(timeCodeCounter > 0, timeCodeCounter, 0)
+    End Sub
+
+    Private Sub CountGoNoGoFormsAndRaiseExitButtons()
+        'Called from ReadInSignalList. Counts display forms associated with GO/NOGO and brings their exit buttons to front.
+
+        For z As Integer = 0 To MyDFs.Count - 1
+            If MyDFs(z) IsNot Nothing Then
+                If Not String.IsNullOrEmpty(MyDFs(z).AlsoAssociatedWith) AndAlso
+                   MyDFs(z).AlsoAssociatedWith.Contains("GO/NOGO") Then
+                    _gonogocount += 1
+                End If
+            End If
+
+            MyExitButtons(z)?.BringToFront()
+        Next
+    End Sub
+
+    Private Sub FinalizeGridDisplaysIfPresent()
+        'Called from ReadInSignalList. Finalizes the grid displays and auto-sizes the forms to their content.
+
+        If myDGs(0) IsNot Nothing Then
+            HandleUserMessageLogging("GMRC", " ")
+            HandleUserMessageLogging("GMRC", "ReadInSignalList: Finalizing Grid Displays...")
+            GridDataClass.FinalizeGridDisplays()
+            HandleUserMessageLogging("GMRC", "ReadInSignalList: Grid Displays Finalized...")
+            HandleUserMessageLogging("GMRC", " ")
+            HandleUserMessageLogging("GMRC", "ReadInSignalList: Auto-sizing forms to content...")
+            GridDataClass.AutoSizeFormsToContent()
+            HandleUserMessageLogging("GMRC", "ReadInSignalList: Forms auto-sized.")
+        End If
+    End Sub
 
     '========================================================================================================
     ' BELOW ARE HELPER FUNCTIONS
