@@ -728,14 +728,7 @@ Partial Public Class GmResidentClient
                                   )
 
         Dim whereAmI As String = "undefined"
-        Dim i As Integer
-        Dim x As Integer
-        Dim y As Integer
         Dim z As Integer
-        Dim gridUpdateAction As GridUpdateActions
-        Dim Mystr As String
-        Dim Mytempstr As String
-        Dim Mytempval As Double
 
         Dim lTotalnumsignalsdisplayed As Integer
 
@@ -760,430 +753,14 @@ Partial Public Class GmResidentClient
 
                         whereAmI = "Grid Visible or GO/NOGO or CS_"
 
-                        Mystr = ""
-                        Mytempstr = ""
-                        Mytempval = 0
-
-                        If lRecordingState = True Then
-
-                            If myDGs(z).CS_NAN_STATUS > 0 Then
-                                HandleNanStatus(myDGs(z))
-                            End If
-
-                            If myDGs(z).CS_WAVRECORD > 0 Then
-                                If OnVehicleScreen.PictureBox1.BackColor = Color.Red Then
-                                    Handle_CS_WAVRECORD(myDGs(z))
-                                End If
-                            End If
-
-                        End If
-
-                        'This Routine handles all things related to vehicle mileage and where the vehicle is,
-                        'on grounds or off grounds, etc. Will not be called unless CS_ODOMETER is defined in signallist...
-                        If myDGs(z).CS_ODOMETER > 0 Then
-                            HandleOdometerRelatedStatus(myDGs(z), saveOdoReading, saveWhereAmIAt, lRecordingState)
-                        End If
-
-                        'This Routine handles CLEVIR display of cluster message...
-                        'Nothing happens unless CS_LCC_CLUSTER_MSG and CS_LCC_BUTTON_PRESS are defined in signal list...
-                        If myDGs(z).CS_LCC_CLUSTER_MSG > 0 And myDGs(z).CS_LCC_BUTTON_PRESS > 0 Then
-                            HandleClevirDisplayOfClusterMsgs(myDGs(z))
-                        End If
-
-                        'this next section handles custom displays.  This is where data is put into the
-                        'labels on the custom displays.  Background colors for labels are updated here based on values
-                        'of variables associated with the various labels on the custom screens.  Whenever a custom 
-                        'screen is added, code must be added here to handle updating. Code is only executed if custom
-
-                        'ADD CUSTOM SCREEN HANDLING HERE....
-
-                        UpdateCustomDisplays(myDGs(z))
-
-                        If myDGs(z).CS_CPSTOS_X_POS > 0 And myDGs(z).CS_CPSTOS_Y_POS > 0 Then
-
-                            Dim xPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData
-                            Dim yPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData
-                            Dim distText As String = Format$(Math.Abs(Math.Sqrt((xPos * xPos) + (yPos * yPos))), "0.00")
-                            OnVehicleScreen.Label17.Text = distText
-
-                        End If
+                        UpdateGridCustomStatus(z, saveOdoReading, saveWhereAmIAt, lRecordingState)
 
                         ' ============================================================
                         ' SUSPEND LAYOUT FOR BATCHED GRID UPDATES
                         ' ============================================================
                         myDGs(z).SuspendLayout()
                         Try
-                            whereAmI = "Rows and Columns"
-                            'For each grid, we must go through all configured rows and columns to update data display,
-                            'background and foreground colors, etc.
-                            'DataArray may be smaller than NumberOfRows/NumberOfColumns when those values were grown
-                            'after FinalizeGridDisplays allocated it; capture its real bounds to guard the writes below.
-                            Dim dataArrayMaxRow As Integer = -1
-                            Dim dataArrayMaxCol As Integer = -1
-                            If myDGs(z).DataArray IsNot Nothing Then
-                                dataArrayMaxRow = myDGs(z).DataArray.GetUpperBound(0)
-                                dataArrayMaxCol = myDGs(z).DataArray.GetUpperBound(1)
-                            End If
-
-                            ' One-time-per-grid diagnostic: if NumberOfRows/NumberOfColumns grew past the
-                            ' DataArray allocated in FinalizeGridDisplays, log which grid drifted and by how much.
-                            If (myDGs(z).NumberOfRows - 2) > dataArrayMaxRow OrElse (myDGs(z).NumberOfColumns - 1) > dataArrayMaxCol Then
-                                Dim driftKey As String = myDGs(z).ParentFormName & "/" & myDGs(z).Name
-                                If _dataArraySizeWarned.Add(driftKey) Then
-                                    HandleUserMessageLogging("GMRC", "processGrids: DataArray size drift on '" & driftKey &
-                                        "' - NumberOfRows=" & myDGs(z).NumberOfRows & " NumberOfColumns=" & myDGs(z).NumberOfColumns &
-                                        " but DataArray bounds=(" & dataArrayMaxRow & "," & dataArrayMaxCol & "). Display writes past the array are skipped.")
-                                End If
-                            End If
-
-                            For x = 0 To myDGs(z).NumberOfRows - 1
-
-                                For y = 0 To myDGs(z).NumberOfColumns - 1
-
-                                    Mytempstr = ""
-                                    If myDGs(z).SignalIndex(x, y) >= 0 And
-                                Len(myDGs(z).VariableName(x, y)) > 0 And
-                                myDGs(z).Registered(x, y) = True And
-                                myDGs(z).VariableName(x, y) <> "undefined" Then
-
-                                        'This section handles putting dashes in all cells if object ID is 0...
-                                        'assumes the "blanker" is the first row that must be "blanked" and all subsequent rows in the associated grid are "blanked"
-                                        If (myDGs(z).ObjectID_Start_Pos <> 0 And
-                                     MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).ObjectID_Start_Pos, y)).SignalData = 0) _
-                                    AndAlso x > myDGs(z).ObjectID_Start_Pos Then
-
-                                            Mytempstr = "-"
-                                            If myDGs(z).CurrentBackColor(x, y) <> myDGs(z).DefaultCellBackColor(x, y) Then
-                                                UpdateGridColor(z, x, y, GridUpdateActions.FromLow)
-                                            End If
-
-                                        Else
-                                            'HealtCounter is maintained in ProcessKiller thread.  A HealthCounter value of 0 indicates
-                                            'a healthy system...
-                                            If _healthCounter = 0 Then
-
-                                                If saveHealthCounter > 1 Then
-                                                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: HealthCounter recovered from " & saveHealthCounter)
-                                                End If
-                                                saveHealthCounter = 0
-
-                                                If Debugger.IsAttached Then
-
-                                                    If OnVehicleScreen.CheckBox1.Checked = True Then
-                                                        If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 AndAlso IsConfiguredProcessorDevice(myDGs(z).DeviceName(x, y)) AndAlso String.Equals(myDGs(z).DeviceName(x, y), PrimaryProcessorDeviceName, StringComparison.OrdinalIgnoreCase) Then
-                                                            If acpDebugOneShot = False Then
-                                                                MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = GetRandom(0, 10)
-                                                                acpDebugOneShot = True
-                                                            Else
-                                                                MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = 0
-                                                                acpDebugOneShot = False
-                                                            End If
-                                                        End If
-                                                    Else
-                                                        If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 AndAlso IsConfiguredProcessorDevice(myDGs(z).DeviceName(x, y)) AndAlso String.Equals(myDGs(z).DeviceName(x, y), PrimaryProcessorDeviceName, StringComparison.OrdinalIgnoreCase) Then
-                                                            acpDebugOneShot = False
-                                                            MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = 0
-                                                        End If
-                                                    End If
-
-                                                End If
-
-                                                'The CheckForDataChange property is associated with the same column in the
-                                                'signal configuration spreadsheet.  This allows us to set up specific signals to watch
-                                                'to see if they are changing.  If they do not change over a certain period of time,
-                                                'this would indicate a communication issue....
-
-                                                If myDGs(z).CheckForDataChange(x, y) = True And MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex > -1 And
-                                                (myDGs(z).Name <> "INCA Video Status Items" Or (myDGs(z).Name = "INCA Video Status Items" And lRecordingState = True)) Then
-                                                    If myDGs(z).SaveLastValue(x, y) = MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData Then
-
-                                                        If myDGs(z).DataFrozen(x, y) = False Then 'ADDED 04/14/2020
-                                                            myDGs(z).DataFrozenCounter(x, y) = myDGs(z).DataFrozenCounter(x, y) + 1
-                                                        End If
-
-                                                        'the number DataFrozenMaxCount is somewhat arbitrary, this should be based on time because we 
-                                                        'count up faster when we are waiting less time between cycles through this code
-                                                        If myDGs(z).DataFrozenCounter(x, y) > dataFrozenMaxCount And myDGs(z).DataFrozen(x, y) = False Then
-
-                                                            myDGs(z).DataFrozenCounter(x, y) = 0
-                                                            myDGs(z).DataFrozen(x, y) = True
-
-                                                            CheckForExperiment = False
-
-                                                            If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).HighThreshBackColor(x, y)) Then
-                                                                gridUpdateAction = GridUpdateActions.ToHigh
-                                                                UpdateGridColor(z, x, y, gridUpdateAction)
-
-                                                                If lRecordingState = True Then
-                                                                    MyIncaInterface.WriteEventComment(myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - First Instance Data Frozen", True)
-                                                                End If
-
-                                                            Else
-
-                                                                If lRecordingState = True Then
-                                                                    MyIncaInterface.WriteEventComment(myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Not Updating", True)
-                                                                End If
-
-                                                            End If
-
-                                                            'Here we set the go/nogo label color to red and save the device names for those
-                                                            'devices with frozen data.  These FrozenDeviceNames are used when displaying
-                                                            'user message indicating a data or video device issue...
-
-                                                            If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-
-                                                                goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
-                                                                UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
-
-                                                                If myDGs(z).Name <> "INCA Video Status Items" Then
-
-                                                                    If Len(SaveDataFrozenDeviceName) = 0 Then
-                                                                        SaveDataFrozenDeviceName = myDGs(z).DeviceName(x, y)
-                                                                    ElseIf InStr(SaveDataFrozenDeviceName, myDGs(z).DeviceName(x, y)) = 0 Then
-                                                                        SaveDataFrozenDeviceName = SaveDataFrozenDeviceName & "," & myDGs(z).DeviceName(x, y)
-                                                                    End If
-
-                                                                Else
-
-                                                                    If Len(SaveVideoFrozenDeviceName) = 0 Then
-                                                                        SaveVideoFrozenDeviceName = myDGs(z).DeviceName(x, y)
-                                                                    ElseIf InStr(SaveVideoFrozenDeviceName, myDGs(z).DeviceName(x, y)) = 0 Then
-                                                                        SaveVideoFrozenDeviceName = SaveVideoFrozenDeviceName & "," & myDGs(z).DeviceName(x, y)
-                                                                    End If
-
-                                                                End If
-
-                                                            End If
-
-                                                        End If
-                                                    Else 'Value has changed...
-
-                                                        'If any of the frozen data starts to change, we reset the frozen data counter and frozen data state here...
-                                                        If myDGs(z).CheckForDataChange(x, y) = True And MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex > -1 Then
-                                                            myDGs(z).DataFrozenCounter(x, y) = 0
-
-                                                            If myDGs(z).DataFrozen(x, y) = True Then
-                                                                myDGs(z).DataFrozen(x, y) = False
-
-                                                                If lRecordingState = True Then
-                                                                    MyIncaInterface.WriteEventComment(myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Resumed Updating", True)
-                                                                Else
-                                                                    HandleUserMessageLogging("GMRC", myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Resumed Updating")
-                                                                End If
-
-                                                                If myDGs(z).Name <> "INCA Video Status Items" Then
-                                                                    If InStr(SaveDataFrozenDeviceName, ",") > 0 Then
-                                                                        Dim tempstr() As String
-                                                                        tempstr = Split(SaveDataFrozenDeviceName, ",")
-                                                                        SaveDataFrozenDeviceName = ""
-                                                                        For i = 0 To UBound(tempstr)
-                                                                            If tempstr(i) <> myDGs(z).DeviceName(x, y) Then
-                                                                                If Len(SaveDataFrozenDeviceName) = 0 Then
-                                                                                    SaveDataFrozenDeviceName = tempstr(i)
-                                                                                Else
-                                                                                    SaveDataFrozenDeviceName = SaveDataFrozenDeviceName & "," & tempstr(i)
-                                                                                End If
-
-                                                                            End If
-                                                                        Next i
-
-                                                                    Else
-                                                                        SaveDataFrozenDeviceName = ""
-                                                                    End If
-
-                                                                Else
-                                                                    If InStr(SaveVideoFrozenDeviceName, ",") > 0 Then
-                                                                        Dim tempstr() As String
-                                                                        tempstr = Split(SaveVideoFrozenDeviceName, ",")
-                                                                        SaveVideoFrozenDeviceName = ""
-                                                                        For i = 0 To UBound(tempstr)
-                                                                            If tempstr(i) <> myDGs(z).DeviceName(x, y) Then
-                                                                                If Len(SaveVideoFrozenDeviceName) = 0 Then
-                                                                                    SaveVideoFrozenDeviceName = tempstr(i)
-                                                                                Else
-                                                                                    SaveVideoFrozenDeviceName = SaveVideoFrozenDeviceName & "," & tempstr(i)
-                                                                                End If
-
-                                                                            End If
-                                                                        Next i
-
-                                                                    Else
-                                                                        SaveVideoFrozenDeviceName = ""
-                                                                    End If
-
-                                                                End If
-
-                                                            End If
-
-                                                        End If
-
-                                                        If PlaybackMode = False Then CheckForExperiment = True
-
-                                                        If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).HighThreshBackColor(x, y)) Then
-                                                            gridUpdateAction = GridUpdateActions.FromHigh
-                                                            UpdateGridColor(z, x, y, gridUpdateAction)
-                                                        End If
-
-                                                    End If
-                                                End If
-
-                                            Else 'HealthCounter > 0 indicates that we have most likely waiting on an INCA API Call...
-
-                                                'If we are waiting on an INCA API Call, we should reset the frozen counter...
-                                                If _healthCounter > 10 Then myDGs(z).DataFrozenCounter(x, y) = 0
-                                                If PlaybackMode = False Then CheckForExperiment = True
-
-                                                If saveHealthCounter = 0 Then
-                                                    If _healthCounter > 1 Then
-                                                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: HealthCounter = " & _healthCounter)
-                                                    End If
-                                                End If
-
-                                                saveHealthCounter = _healthCounter
-
-                                            End If
-
-                                            whereAmI = "Set Mytempval"
-
-                                            Mytempval = MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData
-
-                                            whereAmI = "Format Display String"
-
-                                            ' Cache formatted string to avoid redundant FormatDisplayString calls
-                                            ' In ProcessGrids - Handle first-time initialization
-                                            If myDGs(z).SaveFormattedString(x, y) Is Nothing OrElse String.IsNullOrEmpty(myDGs(z).SaveFormattedString(x, y)) Then
-                                                ' First time accessing this cell - format and cache
-                                                Mytempstr = FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
-                                                myDGs(z).SaveFormattedString(x, y) = Mytempstr
-                                                myDGs(z).SaveLastValue(x, y) = Mytempval
-                                            ElseIf myDGs(z).SaveLastValue(x, y) = Mytempval Then
-                                                ' Value unchanged - reuse cached formatted string
-                                                Mytempstr = myDGs(z).SaveFormattedString(x, y)
-                                            Else
-                                                ' Value changed - format and cache the new string
-                                                Mytempstr = FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
-                                                myDGs(z).SaveFormattedString(x, y) = Mytempstr
-
-                                                ' Update SaveLastValue (except for AUTOANNO)
-                                                If myDGs(z).AlsoAssociatedWith(x, y) <> "AUTOANNO" Then
-                                                    myDGs(z).SaveLastValue(x, y) = Mytempval
-                                                End If
-                                            End If
-
-                                            'This section handles updating back color, fore color etc. based on settings
-                                            'in excel configuration file
-
-                                            whereAmI = "Update Grid Colors"
-
-                                            'Here is where we handle updating grid cell colors based on data values in the variovus cells
-                                            'We also update go/nogo label colors here if necessary.  This is done here for those variables
-                                            'that are not frozen...
-
-                                            If myDGs(z).DataFrozen(x, y) = False Then
-
-                                                whereAmI = "HighThresh Check"
-                                                If Mytempval > myDGs(z).HighThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
-                                                    If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).HighThreshBackColor(x, y)) Then
-
-                                                        If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                                                            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).HighThresh(x, y),,,,, 1)
-                                                        Else
-                                                            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).HighThresh(x, y),,,,, 2)
-                                                        End If
-
-                                                        gridUpdateAction = GridUpdateActions.ToHigh
-                                                        UpdateGridColor(z, x, y, gridUpdateAction)
-
-                                                        If myDGs(z).Name = "DTCs" Then
-
-                                                            ' Log each unique DTC once per session
-                                                            Dim currentDtc As String = myDGs(z).DeviceName(x, y) & " - " & FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
-                                                            If loggedDtcStrings.Add(currentDtc) Then
-                                                                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: Active DTC = " & currentDtc)
-                                                            End If
-
-                                                            ' Set GO/NOGO status to red while DTCs are present
-                                                            If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                                                                goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
-                                                                UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
-                                                            End If
-
-                                                        End If
-                                                    End If
-                                                End If
-                                                whereAmI = "LowThresh Check"
-                                                If Mytempval < myDGs(z).LowThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
-                                                    If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).LowThreshBackColor(x, y)) Then
-                                                        If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                                                            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).LowThresh(x, y),,,,, 1)
-                                                        Else
-                                                            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).LowThresh(x, y),,,,, 2)
-                                                        End If
-                                                        gridUpdateAction = GridUpdateActions.ToLow
-                                                        UpdateGridColor(z, x, y, gridUpdateAction)
-                                                    End If
-                                                    If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                                                        goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
-                                                        UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
-                                                    End If
-
-                                                End If
-                                                whereAmI = "Reset Check HIGH"
-                                                If Mytempval <= myDGs(z).HighThresh(x, y) And Mytempval >= myDGs(z).LowThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
-                                                    If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).HighThreshBackColor(x, y)) Then
-                                                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).HighThresh(x, y),,,,, 2)
-                                                        gridUpdateAction = GridUpdateActions.FromHigh
-                                                        UpdateGridColor(z, x, y, gridUpdateAction)
-
-                                                    End If
-                                                End If
-                                                whereAmI = "Reset Check LOW"
-                                                If Mytempval >= myDGs(z).LowThresh(x, y) And Mytempval <= myDGs(z).HighThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
-                                                    If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).LowThreshBackColor(x, y)) Then
-                                                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).LowThresh(x, y),,,,, 2)
-                                                        gridUpdateAction = GridUpdateActions.FromLow
-                                                        UpdateGridColor(z, x, y, gridUpdateAction)
-                                                    End If
-                                                End If
-                                                whereAmI = "Equal To Check"
-                                                If Len(myDGs(z).EqualTo(x, y)) > 0 And myDGs(z).CheckForDataChange(x, y) = False Then
-                                                    If Mytempval = Val(myDGs(z).EqualTo(x, y)) Then
-                                                        If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).LowThreshBackColor(x, y)) Then
-                                                            If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                                                                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Equals " & Val(myDGs(z).EqualTo(x, y)),,,,, 1)
-                                                            Else
-                                                                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Equals " & Val(myDGs(z).EqualTo(x, y)),,,,, 2)
-                                                            End If
-                                                            gridUpdateAction = GridUpdateActions.ToLow
-                                                            UpdateGridColor(z, x, y, gridUpdateAction)
-                                                        End If
-                                                        If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
-                                                            goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
-                                                            UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
-                                                        End If
-                                                    Else
-                                                        If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).LowThreshBackColor(x, y)) Then
-                                                            HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Not Equal To " & Val(myDGs(z).EqualTo(x, y)),,,,, 2)
-                                                            gridUpdateAction = GridUpdateActions.FromLow
-                                                            UpdateGridColor(z, x, y, gridUpdateAction)
-                                                        End If
-                                                    End If
-                                                End If
-                                            End If
-                                        End If
-                                    Else
-                                        Mytempstr = "UnRgstrd"
-                                    End If
-                                    whereAmI = "Build Display Array for Grid"
-                                    If myDGs(z).Parent.Visible = True Then
-                                        If x > 0 And y >= 1 AndAlso (x - 1) <= dataArrayMaxRow AndAlso y <= dataArrayMaxCol Then
-                                            myDGs(z).DataArray(x - 1, y) = Mytempstr
-                                        End If
-                                        whereAmI = "Total Num Signals Displayed Calculation..."
-                                        lTotalnumsignalsdisplayed += 1
-                                    End If
-                                Next y
-                            Next x
+                            UpdateGridCells(z, goNoGoFault, dataFrozenMaxCount, lRecordingState, saveHealthCounter, acpDebugOneShot, lTotalnumsignalsdisplayed, whereAmI)
                         Finally
                             ' RESUME LAYOUT - Single redraw at end
                             myDGs(z).ResumeLayout(True)
@@ -1194,44 +771,13 @@ Partial Public Class GmResidentClient
 
                         whereAmI = "Out of X Y Loops - Ready to Refresh Grid..."
 
-                        ' Throttled refresh using the existing dictionary-based timing
-                        Dim key = myDGs(z).Name
-                        Dim nowT = DateTime.UtcNow
-                        Dim nextAt As DateTime
-                        If Not _gridRefreshAt.TryGetValue(key, nextAt) OrElse nowT >= nextAt Then
-                            myDGs(z).Refresh()
-                            _gridRefreshAt(key) = nowT + GridMinRefresh
-                        End If
+                        RefreshGridThrottled(z)
                     End If
                 Next z
 
                 whereAmI = "Out of Z Loop..."
 
-                'Because there may be multiple grid cells that can influence go/nogo label colors, we must
-                'reconcile what the actual color of the label should be here, after going through all forms
-                'grids and cells above.
-                For z = 0 To MyDFs.Count - 1
-                    If MyDFs(z).GoNoGoIndex > -1 Then
-                        Dim goNoGoIndex As Integer = MyDFs(z).GoNoGoIndex
-                        Dim reasons As List(Of String) = If(GO_NOGO_DEBUG_VERBOSE, New List(Of String)(), Nothing)
-                        Dim existingFault As Boolean = goNoGoFault(goNoGoIndex)
-                        Dim finalFault As Boolean = EvaluateGoNoGoFault(z, existingFault, reasons)
-
-                        If finalFault Then
-                            UpdateGonogoLabelColor(goNoGoIndex, Color.Red)
-                        Else
-                            UpdateGonogoLabelColor(goNoGoIndex, Color.Green)
-                        End If
-
-                        If GO_NOGO_DEBUG_VERBOSE Then
-                            Dim reasonText As String = If(reasons IsNot Nothing AndAlso reasons.Count > 0, String.Join(" | ", reasons), "none")
-                            HandleUserMessageLogging("GMRC", $"GO/NOGO TRACE: Form='{MyDFs(z).Name}' Index={goNoGoIndex} ExistingFault={existingFault} FinalFault={finalFault} Reasons={reasonText}")
-                        End If
-
-                        ' Reset transient fault bit each cycle; recomputed each pass from current state
-                        goNoGoFault(goNoGoIndex) = False
-                    End If
-                Next z
+                ReconcileGoNoGoLabels(goNoGoFault)
             End If 'Check for MyDGs(0) Is Nothing
         Catch ex As Exception
 
@@ -1241,6 +787,549 @@ Partial Public Class GmResidentClient
             End If
 
         End Try
+    End Sub
+
+    Private Sub UpdateGridCustomStatus(ByVal z As Integer, ByVal saveOdoReading As Double, ByRef saveWhereAmIAt As String, ByVal lRecordingState As Boolean)
+        If lRecordingState = True Then
+
+            If myDGs(z).CS_NAN_STATUS > 0 Then
+                HandleNanStatus(myDGs(z))
+            End If
+
+            If myDGs(z).CS_WAVRECORD > 0 Then
+                If OnVehicleScreen.PictureBox1.BackColor = Color.Red Then
+                    Handle_CS_WAVRECORD(myDGs(z))
+                End If
+            End If
+
+        End If
+
+        'This Routine handles all things related to vehicle mileage and where the vehicle is,
+        'on grounds or off grounds, etc. Will not be called unless CS_ODOMETER is defined in signallist...
+        If myDGs(z).CS_ODOMETER > 0 Then
+            HandleOdometerRelatedStatus(myDGs(z), saveOdoReading, saveWhereAmIAt, lRecordingState)
+        End If
+
+        'This Routine handles CLEVIR display of cluster message...
+        'Nothing happens unless CS_LCC_CLUSTER_MSG and CS_LCC_BUTTON_PRESS are defined in signal list...
+        If myDGs(z).CS_LCC_CLUSTER_MSG > 0 And myDGs(z).CS_LCC_BUTTON_PRESS > 0 Then
+            HandleClevirDisplayOfClusterMsgs(myDGs(z))
+        End If
+
+        'this next section handles custom displays.  This is where data is put into the
+        'labels on the custom displays.  Background colors for labels are updated here based on values
+        'of variables associated with the various labels on the custom screens.  Whenever a custom 
+        'screen is added, code must be added here to handle updating. Code is only executed if custom
+
+        'ADD CUSTOM SCREEN HANDLING HERE....
+
+        UpdateCustomDisplays(myDGs(z))
+
+        If myDGs(z).CS_CPSTOS_X_POS > 0 And myDGs(z).CS_CPSTOS_Y_POS > 0 Then
+
+            Dim xPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_X_POS, 1)).SignalData
+            Dim yPos As Double = MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).CS_CPSTOS_Y_POS, 1)).SignalData
+            Dim distText As String = Format$(Math.Abs(Math.Sqrt((xPos * xPos) + (yPos * yPos))), "0.00")
+            OnVehicleScreen.Label17.Text = distText
+
+        End If
+    End Sub
+
+    Private Sub UpdateGridCells(ByVal z As Integer, ByVal goNoGoFault() As Boolean, ByVal dataFrozenMaxCount As Integer, ByVal lRecordingState As Boolean,
+                                ByRef saveHealthCounter As Integer, ByRef acpDebugOneShot As Boolean,
+                                ByRef lTotalnumsignalsdisplayed As Integer, ByRef whereAmI As String)
+        Dim x As Integer
+        Dim y As Integer
+        Dim Mytempstr As String
+
+        whereAmI = "Rows and Columns"
+        'For each grid, we must go through all configured rows and columns to update data display,
+        'background and foreground colors, etc.
+        'DataArray may be smaller than NumberOfRows/NumberOfColumns when those values were grown
+        'after FinalizeGridDisplays allocated it; capture its real bounds to guard the writes below.
+        Dim dataArrayMaxRow As Integer = -1
+        Dim dataArrayMaxCol As Integer = -1
+        If myDGs(z).DataArray IsNot Nothing Then
+            dataArrayMaxRow = myDGs(z).DataArray.GetUpperBound(0)
+            dataArrayMaxCol = myDGs(z).DataArray.GetUpperBound(1)
+        End If
+
+        ' One-time-per-grid diagnostic: if NumberOfRows/NumberOfColumns grew past the
+        ' DataArray allocated in FinalizeGridDisplays, log which grid drifted and by how much.
+        If (myDGs(z).NumberOfRows - 2) > dataArrayMaxRow OrElse (myDGs(z).NumberOfColumns - 1) > dataArrayMaxCol Then
+            Dim driftKey As String = myDGs(z).ParentFormName & "/" & myDGs(z).Name
+            If _dataArraySizeWarned.Add(driftKey) Then
+                HandleUserMessageLogging("GMRC", "processGrids: DataArray size drift on '" & driftKey &
+                    "' - NumberOfRows=" & myDGs(z).NumberOfRows & " NumberOfColumns=" & myDGs(z).NumberOfColumns &
+                    " but DataArray bounds=(" & dataArrayMaxRow & "," & dataArrayMaxCol & "). Display writes past the array are skipped.")
+            End If
+        End If
+
+        For x = 0 To myDGs(z).NumberOfRows - 1
+
+            For y = 0 To myDGs(z).NumberOfColumns - 1
+
+                Mytempstr = ProcessGridCell(z, x, y, goNoGoFault, dataFrozenMaxCount, lRecordingState, saveHealthCounter, acpDebugOneShot, whereAmI)
+                whereAmI = "Build Display Array for Grid"
+                If myDGs(z).Parent.Visible = True Then
+                    If x > 0 And y >= 1 AndAlso (x - 1) <= dataArrayMaxRow AndAlso y <= dataArrayMaxCol Then
+                        myDGs(z).DataArray(x - 1, y) = Mytempstr
+                    End If
+                    whereAmI = "Total Num Signals Displayed Calculation..."
+                    lTotalnumsignalsdisplayed += 1
+                End If
+            Next y
+        Next x
+    End Sub
+
+    Private Function ProcessGridCell(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal goNoGoFault() As Boolean, ByVal dataFrozenMaxCount As Integer,
+                                     ByVal lRecordingState As Boolean, ByRef saveHealthCounter As Integer,
+                                     ByRef acpDebugOneShot As Boolean, ByRef whereAmI As String) As String
+        Dim Mytempstr As String
+        Dim Mytempval As Double
+
+        Mytempstr = ""
+        If myDGs(z).SignalIndex(x, y) >= 0 And
+    Len(myDGs(z).VariableName(x, y)) > 0 And
+    myDGs(z).Registered(x, y) = True And
+    myDGs(z).VariableName(x, y) <> "undefined" Then
+
+            'This section handles putting dashes in all cells if object ID is 0...
+            'assumes the "blanker" is the first row that must be "blanked" and all subsequent rows in the associated grid are "blanked"
+            If (myDGs(z).ObjectID_Start_Pos <> 0 And
+         MySignalDataWithTime(myDGs(z).SignalIndex(myDGs(z).ObjectID_Start_Pos, y)).SignalData = 0) _
+        AndAlso x > myDGs(z).ObjectID_Start_Pos Then
+
+                Mytempstr = "-"
+                If myDGs(z).CurrentBackColor(x, y) <> myDGs(z).DefaultCellBackColor(x, y) Then
+                    UpdateGridColor(z, x, y, GridUpdateActions.FromLow)
+                End If
+
+            Else
+                'HealtCounter is maintained in ProcessKiller thread.  A HealthCounter value of 0 indicates
+                'a healthy system...
+                If _healthCounter = 0 Then
+
+                    If saveHealthCounter > 1 Then
+                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: HealthCounter recovered from " & saveHealthCounter)
+                    End If
+                    saveHealthCounter = 0
+
+                    ApplyAcpDebugSignalOverride(z, x, y, acpDebugOneShot)
+
+                    TrackCellDataFrozenState(z, x, y, goNoGoFault, dataFrozenMaxCount, lRecordingState)
+
+                Else 'HealthCounter > 0 indicates that we have most likely waiting on an INCA API Call...
+
+                    HandleHealthCounterWait(z, x, y, saveHealthCounter)
+
+                End If
+
+                whereAmI = "Set Mytempval"
+
+                Mytempval = MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData
+
+                whereAmI = "Format Display String"
+
+                Mytempstr = GetCellDisplayString(z, x, y, Mytempval)
+
+                'This section handles updating back color, fore color etc. based on settings
+                'in excel configuration file
+
+                ApplyCellThresholdColors(z, x, y, Mytempval, goNoGoFault, whereAmI)
+            End If
+        Else
+            Mytempstr = "UnRgstrd"
+        End If
+
+        Return Mytempstr
+    End Function
+
+    Private Sub ApplyAcpDebugSignalOverride(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByRef acpDebugOneShot As Boolean)
+        If Debugger.IsAttached Then
+
+            If OnVehicleScreen.CheckBox1.Checked = True Then
+                If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 AndAlso IsConfiguredProcessorDevice(myDGs(z).DeviceName(x, y)) AndAlso String.Equals(myDGs(z).DeviceName(x, y), PrimaryProcessorDeviceName, StringComparison.OrdinalIgnoreCase) Then
+                    If acpDebugOneShot = False Then
+                        MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = GetRandom(0, 10)
+                        acpDebugOneShot = True
+                    Else
+                        MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = 0
+                        acpDebugOneShot = False
+                    End If
+                End If
+            Else
+                If InStr(myDGs(z).VariableName(x, y), "SsDFIC_FA") > 0 AndAlso IsConfiguredProcessorDevice(myDGs(z).DeviceName(x, y)) AndAlso String.Equals(myDGs(z).DeviceName(x, y), PrimaryProcessorDeviceName, StringComparison.OrdinalIgnoreCase) Then
+                    acpDebugOneShot = False
+                    MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData = 0
+                End If
+            End If
+
+        End If
+    End Sub
+
+    Private Sub TrackCellDataFrozenState(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal goNoGoFault() As Boolean, ByVal dataFrozenMaxCount As Integer, ByVal lRecordingState As Boolean)
+        Dim gridUpdateAction As GridUpdateActions
+
+        'The CheckForDataChange property is associated with the same column in the
+        'signal configuration spreadsheet.  This allows us to set up specific signals to watch
+        'to see if they are changing.  If they do not change over a certain period of time,
+        'this would indicate a communication issue....
+
+        If myDGs(z).CheckForDataChange(x, y) = True And MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex > -1 And
+        (myDGs(z).Name <> "INCA Video Status Items" Or (myDGs(z).Name = "INCA Video Status Items" And lRecordingState = True)) Then
+            If myDGs(z).SaveLastValue(x, y) = MySignalDataWithTime(myDGs(z).SignalIndex(x, y)).SignalData Then
+
+                If myDGs(z).DataFrozen(x, y) = False Then 'ADDED 04/14/2020
+                    myDGs(z).DataFrozenCounter(x, y) = myDGs(z).DataFrozenCounter(x, y) + 1
+                End If
+
+                'the number DataFrozenMaxCount is somewhat arbitrary, this should be based on time because we 
+                'count up faster when we are waiting less time between cycles through this code
+                If myDGs(z).DataFrozenCounter(x, y) > dataFrozenMaxCount And myDGs(z).DataFrozen(x, y) = False Then
+                    MarkCellDataFrozen(z, x, y, goNoGoFault, lRecordingState)
+                End If
+            Else 'Value has changed...
+
+                'If any of the frozen data starts to change, we reset the frozen data counter and frozen data state here...
+                If myDGs(z).CheckForDataChange(x, y) = True And MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex > -1 Then
+                    MarkCellDataResumed(z, x, y, lRecordingState)
+                End If
+
+                If PlaybackMode = False Then CheckForExperiment = True
+
+                If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).HighThreshBackColor(x, y)) Then
+                    gridUpdateAction = GridUpdateActions.FromHigh
+                    UpdateGridColor(z, x, y, gridUpdateAction)
+                End If
+
+            End If
+        End If
+    End Sub
+
+    Private Sub MarkCellDataFrozen(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal goNoGoFault() As Boolean, ByVal lRecordingState As Boolean)
+        Dim gridUpdateAction As GridUpdateActions
+
+        myDGs(z).DataFrozenCounter(x, y) = 0
+        myDGs(z).DataFrozen(x, y) = True
+
+        CheckForExperiment = False
+
+        If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).HighThreshBackColor(x, y)) Then
+            gridUpdateAction = GridUpdateActions.ToHigh
+            UpdateGridColor(z, x, y, gridUpdateAction)
+
+            If lRecordingState = True Then
+                MyIncaInterface.WriteEventComment(myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - First Instance Data Frozen", True)
+            End If
+
+        Else
+
+            If lRecordingState = True Then
+                MyIncaInterface.WriteEventComment(myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Not Updating", True)
+            End If
+
+        End If
+
+        'Here we set the go/nogo label color to red and save the device names for those
+        'devices with frozen data.  These FrozenDeviceNames are used when displaying
+        'user message indicating a data or video device issue...
+
+        If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
+
+            goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
+            UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
+
+            If myDGs(z).Name <> "INCA Video Status Items" Then
+
+                If Len(SaveDataFrozenDeviceName) = 0 Then
+                    SaveDataFrozenDeviceName = myDGs(z).DeviceName(x, y)
+                ElseIf InStr(SaveDataFrozenDeviceName, myDGs(z).DeviceName(x, y)) = 0 Then
+                    SaveDataFrozenDeviceName = SaveDataFrozenDeviceName & "," & myDGs(z).DeviceName(x, y)
+                End If
+
+            Else
+
+                If Len(SaveVideoFrozenDeviceName) = 0 Then
+                    SaveVideoFrozenDeviceName = myDGs(z).DeviceName(x, y)
+                ElseIf InStr(SaveVideoFrozenDeviceName, myDGs(z).DeviceName(x, y)) = 0 Then
+                    SaveVideoFrozenDeviceName = SaveVideoFrozenDeviceName & "," & myDGs(z).DeviceName(x, y)
+                End If
+
+            End If
+
+        End If
+    End Sub
+
+    Private Sub MarkCellDataResumed(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal lRecordingState As Boolean)
+        Dim i As Integer
+
+        myDGs(z).DataFrozenCounter(x, y) = 0
+
+        If myDGs(z).DataFrozen(x, y) = True Then
+            myDGs(z).DataFrozen(x, y) = False
+
+            If lRecordingState = True Then
+                MyIncaInterface.WriteEventComment(myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Resumed Updating", True)
+            Else
+                HandleUserMessageLogging("GMRC", myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Resumed Updating")
+            End If
+
+            If myDGs(z).Name <> "INCA Video Status Items" Then
+                If InStr(SaveDataFrozenDeviceName, ",") > 0 Then
+                    Dim tempstr() As String
+                    tempstr = Split(SaveDataFrozenDeviceName, ",")
+                    SaveDataFrozenDeviceName = ""
+                    For i = 0 To UBound(tempstr)
+                        If tempstr(i) <> myDGs(z).DeviceName(x, y) Then
+                            If Len(SaveDataFrozenDeviceName) = 0 Then
+                                SaveDataFrozenDeviceName = tempstr(i)
+                            Else
+                                SaveDataFrozenDeviceName = SaveDataFrozenDeviceName & "," & tempstr(i)
+                            End If
+
+                        End If
+                    Next i
+
+                Else
+                    SaveDataFrozenDeviceName = ""
+                End If
+
+            Else
+                If InStr(SaveVideoFrozenDeviceName, ",") > 0 Then
+                    Dim tempstr() As String
+                    tempstr = Split(SaveVideoFrozenDeviceName, ",")
+                    SaveVideoFrozenDeviceName = ""
+                    For i = 0 To UBound(tempstr)
+                        If tempstr(i) <> myDGs(z).DeviceName(x, y) Then
+                            If Len(SaveVideoFrozenDeviceName) = 0 Then
+                                SaveVideoFrozenDeviceName = tempstr(i)
+                            Else
+                                SaveVideoFrozenDeviceName = SaveVideoFrozenDeviceName & "," & tempstr(i)
+                            End If
+
+                        End If
+                    Next i
+
+                Else
+                    SaveVideoFrozenDeviceName = ""
+                End If
+
+            End If
+
+        End If
+    End Sub
+
+    Private Sub HandleHealthCounterWait(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByRef saveHealthCounter As Integer)
+        'If we are waiting on an INCA API Call, we should reset the frozen counter...
+        If _healthCounter > 10 Then myDGs(z).DataFrozenCounter(x, y) = 0
+        If PlaybackMode = False Then CheckForExperiment = True
+
+        If saveHealthCounter = 0 Then
+            If _healthCounter > 1 Then
+                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: HealthCounter = " & _healthCounter)
+            End If
+        End If
+
+        saveHealthCounter = _healthCounter
+    End Sub
+
+    Private Function GetCellDisplayString(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal Mytempval As Double) As String
+        Dim Mytempstr As String
+
+        ' Cache formatted string to avoid redundant FormatDisplayString calls
+        ' In ProcessGrids - Handle first-time initialization
+        If myDGs(z).SaveFormattedString(x, y) Is Nothing OrElse String.IsNullOrEmpty(myDGs(z).SaveFormattedString(x, y)) Then
+            ' First time accessing this cell - format and cache
+            Mytempstr = FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
+            myDGs(z).SaveFormattedString(x, y) = Mytempstr
+            myDGs(z).SaveLastValue(x, y) = Mytempval
+        ElseIf myDGs(z).SaveLastValue(x, y) = Mytempval Then
+            ' Value unchanged - reuse cached formatted string
+            Mytempstr = myDGs(z).SaveFormattedString(x, y)
+        Else
+            ' Value changed - format and cache the new string
+            Mytempstr = FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
+            myDGs(z).SaveFormattedString(x, y) = Mytempstr
+
+            ' Update SaveLastValue (except for AUTOANNO)
+            If myDGs(z).AlsoAssociatedWith(x, y) <> "AUTOANNO" Then
+                myDGs(z).SaveLastValue(x, y) = Mytempval
+            End If
+        End If
+
+        Return Mytempstr
+    End Function
+
+    Private Sub ApplyCellThresholdColors(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal Mytempval As Double, ByVal goNoGoFault() As Boolean, ByRef whereAmI As String)
+        whereAmI = "Update Grid Colors"
+
+        'Here is where we handle updating grid cell colors based on data values in the variovus cells
+        'We also update go/nogo label colors here if necessary.  This is done here for those variables
+        'that are not frozen...
+
+        If myDGs(z).DataFrozen(x, y) = False Then
+
+            whereAmI = "HighThresh Check"
+            ApplyHighThresholdColor(z, x, y, Mytempval, goNoGoFault)
+            whereAmI = "LowThresh Check"
+            ApplyLowThresholdColor(z, x, y, Mytempval, goNoGoFault)
+            whereAmI = "Reset Check HIGH"
+            ApplyHighThresholdReset(z, x, y, Mytempval)
+            whereAmI = "Reset Check LOW"
+            ApplyLowThresholdReset(z, x, y, Mytempval)
+            whereAmI = "Equal To Check"
+            ApplyEqualToColor(z, x, y, Mytempval, goNoGoFault)
+        End If
+    End Sub
+
+    Private Sub ApplyHighThresholdColor(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal Mytempval As Double, ByVal goNoGoFault() As Boolean)
+        Dim gridUpdateAction As GridUpdateActions
+
+        If Mytempval > myDGs(z).HighThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
+            If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).HighThreshBackColor(x, y)) Then
+
+                If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
+                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).HighThresh(x, y),,,,, 1)
+                Else
+                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).HighThresh(x, y),,,,, 2)
+                End If
+
+                gridUpdateAction = GridUpdateActions.ToHigh
+                UpdateGridColor(z, x, y, gridUpdateAction)
+
+                If myDGs(z).Name = "DTCs" Then
+
+                    ' Log each unique DTC once per session
+                    Dim currentDtc As String = myDGs(z).DeviceName(x, y) & " - " & FormatDisplayString(Mytempval, myDGs(z).DisplayFormat(x, y), myDGs(z).DeviceName(x, y), myDGs(z).VariableName(x, y))
+                    If loggedDtcStrings.Add(currentDtc) Then
+                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: Active DTC = " & currentDtc)
+                    End If
+
+                    ' Set GO/NOGO status to red while DTCs are present
+                    If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
+                        goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
+                        UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
+                    End If
+
+                End If
+            End If
+        End If
+    End Sub
+
+    Private Sub ApplyLowThresholdColor(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal Mytempval As Double, ByVal goNoGoFault() As Boolean)
+        Dim gridUpdateAction As GridUpdateActions
+
+        If Mytempval < myDGs(z).LowThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
+            If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).LowThreshBackColor(x, y)) Then
+                If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
+                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).LowThresh(x, y),,,,, 1)
+                Else
+                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).LowThresh(x, y),,,,, 2)
+                End If
+                gridUpdateAction = GridUpdateActions.ToLow
+                UpdateGridColor(z, x, y, gridUpdateAction)
+            End If
+            If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
+                goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
+                UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
+            End If
+
+        End If
+    End Sub
+
+    Private Sub ApplyHighThresholdReset(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal Mytempval As Double)
+        Dim gridUpdateAction As GridUpdateActions
+
+        If Mytempval <= myDGs(z).HighThresh(x, y) And Mytempval >= myDGs(z).LowThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
+            If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).HighThreshBackColor(x, y)) Then
+                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).HighThresh(x, y),,,,, 2)
+                gridUpdateAction = GridUpdateActions.FromHigh
+                UpdateGridColor(z, x, y, gridUpdateAction)
+
+            End If
+        End If
+    End Sub
+
+    Private Sub ApplyLowThresholdReset(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal Mytempval As Double)
+        Dim gridUpdateAction As GridUpdateActions
+
+        If Mytempval >= myDGs(z).LowThresh(x, y) And Mytempval <= myDGs(z).HighThresh(x, y) And Len(myDGs(z).EqualTo(x, y)) = 0 Then
+            If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).LowThreshBackColor(x, y)) Then
+                HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Threshold Value: " & myDGs(z).LowThresh(x, y),,,,, 2)
+                gridUpdateAction = GridUpdateActions.FromLow
+                UpdateGridColor(z, x, y, gridUpdateAction)
+            End If
+        End If
+    End Sub
+
+    Private Sub ApplyEqualToColor(ByVal z As Integer, ByVal x As Integer, ByVal y As Integer, ByVal Mytempval As Double, ByVal goNoGoFault() As Boolean)
+        Dim gridUpdateAction As GridUpdateActions
+
+        If Len(myDGs(z).EqualTo(x, y)) > 0 And myDGs(z).CheckForDataChange(x, y) = False Then
+            If Mytempval = Val(myDGs(z).EqualTo(x, y)) Then
+                If (myDGs(z).CurrentBackColor(x, y) <> myDGs(z).LowThreshBackColor(x, y)) Then
+                    If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
+                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Equals " & Val(myDGs(z).EqualTo(x, y)),,,,, 1)
+                    Else
+                        HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Equals " & Val(myDGs(z).EqualTo(x, y)),,,,, 2)
+                    End If
+                    gridUpdateAction = GridUpdateActions.ToLow
+                    UpdateGridColor(z, x, y, gridUpdateAction)
+                End If
+                If InStr(myDGs(z).AlsoAssociatedWith(x, y), "GO/NOGO") > 0 Then
+                    goNoGoFault(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex) = True
+                    UpdateGonogoLabelColor(MyDFs(myDGs(z).ParentFormIndex).GoNoGoIndex, Color.Red)
+                End If
+            Else
+                If (myDGs(z).CurrentBackColor(x, y) = myDGs(z).LowThreshBackColor(x, y)) Then
+                    HandleUserMessageLogging("GMRC", "MyBackgroundTasks: " & myDGs(z).DeviceName(x, y) & " - " & myDGs(z).VariableName(x, y) & " - Current Value: " & Mytempval & " Not Equal To " & Val(myDGs(z).EqualTo(x, y)),,,,, 2)
+                    gridUpdateAction = GridUpdateActions.FromLow
+                    UpdateGridColor(z, x, y, gridUpdateAction)
+                End If
+            End If
+        End If
+    End Sub
+
+    Private Sub RefreshGridThrottled(ByVal z As Integer)
+        ' Throttled refresh using the existing dictionary-based timing
+        Dim key = myDGs(z).Name
+        Dim nowT = DateTime.UtcNow
+        Dim nextAt As DateTime
+        If Not _gridRefreshAt.TryGetValue(key, nextAt) OrElse nowT >= nextAt Then
+            myDGs(z).Refresh()
+            _gridRefreshAt(key) = nowT + GridMinRefresh
+        End If
+    End Sub
+
+    Private Sub ReconcileGoNoGoLabels(ByVal goNoGoFault() As Boolean)
+        Dim z As Integer
+
+        'Because there may be multiple grid cells that can influence go/nogo label colors, we must
+        'reconcile what the actual color of the label should be here, after going through all forms
+        'grids and cells above.
+        For z = 0 To MyDFs.Count - 1
+            If MyDFs(z).GoNoGoIndex > -1 Then
+                Dim goNoGoIndex As Integer = MyDFs(z).GoNoGoIndex
+                Dim reasons As List(Of String) = If(GO_NOGO_DEBUG_VERBOSE, New List(Of String)(), Nothing)
+                Dim existingFault As Boolean = goNoGoFault(goNoGoIndex)
+                Dim finalFault As Boolean = EvaluateGoNoGoFault(z, existingFault, reasons)
+
+                If finalFault Then
+                    UpdateGonogoLabelColor(goNoGoIndex, Color.Red)
+                Else
+                    UpdateGonogoLabelColor(goNoGoIndex, Color.Green)
+                End If
+
+                If GO_NOGO_DEBUG_VERBOSE Then
+                    Dim reasonText As String = If(reasons IsNot Nothing AndAlso reasons.Count > 0, String.Join(" | ", reasons), "none")
+                    HandleUserMessageLogging("GMRC", $"GO/NOGO TRACE: Form='{MyDFs(z).Name}' Index={goNoGoIndex} ExistingFault={existingFault} FinalFault={finalFault} Reasons={reasonText}")
+                End If
+
+                ' Reset transient fault bit each cycle; recomputed each pass from current state
+                goNoGoFault(goNoGoIndex) = False
+            End If
+        Next z
     End Sub
 
     Private Function EvaluateGoNoGoFault(ByVal formIndex As Integer, ByVal existingFault As Boolean, ByRef reasons As List(Of String)) As Boolean
