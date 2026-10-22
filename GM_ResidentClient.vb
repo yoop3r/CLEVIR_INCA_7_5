@@ -296,7 +296,6 @@ Public Class GmResidentClient
     Private _lastMeasurementCheckTime As DateTime = DateTime.MinValue
     Private Const MeasurementCheckIntervalSeconds As Integer = 2
 
-    Private saveDtcStrings As ArrayList = Nothing
     Private loggedDtcStrings As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)  ' Track what we've logged
     Private exitInProgress As Boolean = False
 
