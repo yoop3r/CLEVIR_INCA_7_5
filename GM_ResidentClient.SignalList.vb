@@ -294,9 +294,9 @@ Partial Public Class GmResidentClient
         For x = 0 To UBound(exceldataforsave, 1) - 1
             For y = 0 To UBound(exceldataforsave, 2) - 1
                 If y = 0 Then
-                    inputline = exceldataforsave(x, y)
+                    inputline = SignalListCsvWriter.FormatField(exceldataforsave(x, y))
                 Else
-                    inputline = inputline & "," & exceldataforsave(x, y)
+                    inputline = inputline & "," & SignalListCsvWriter.FormatField(exceldataforsave(x, y))
                 End If
             Next
             PrintLine(fnum, inputline)
