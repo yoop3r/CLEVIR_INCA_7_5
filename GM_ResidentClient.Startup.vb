@@ -133,45 +133,8 @@ Partial Public Class GmResidentClient
         ' ════════════════════════════════════════════════════════════════════════
         ' 🔥 OPTIMIZATION: Quick pre-check - are cameras already responsive?
         ' ════════════════════════════════════════════════════════════════════════
-        Dim needsBootDelay As Boolean = False
         Dim sw As Stopwatch = Stopwatch.StartNew()
-
-        If initialWaitTime > 0 Then
-            HandleUserMessageLogging("GMRC", "CheckForCameras: Quick pre-check for already-booted cameras (2s timeout)...")
-
-            'If showToasts Then
-            '    StatusNotifier.Toast($"Checking {count} camera(s)...", "CAMERA", durationMs:=1500, ensureMainOnTop:=False)
-            'End If
-
-            Try
-                Using quickCts As New CancellationTokenSource(TimeSpan.FromSeconds(2))
-                    Dim quickPingTasks = ActiveCameras _
-                        .Select(Function(camera, index) PingCameraWithRetryAsync(index, camera.IpAddress, quickCts.Token)) _
-                        .ToArray()
-
-                    Dim quickResults = Await Task.WhenAll(quickPingTasks)
-                    Dim foundCount As Integer = quickResults.Count(Function(r) r)
-
-                    If foundCount = count Then
-                        ' ✅ All cameras already responsive - skip boot delay!
-                        HandleUserMessageLogging("GMRC", $"✅ All {count} camera(s) already responsive (checked in {sw.Elapsed.TotalSeconds:F1}s) - skipping {initialWaitTime}s boot delay")
-                        needsBootDelay = False
-                    Else
-                        ' ❌ Some cameras not responsive - need boot delay
-                        HandleUserMessageLogging("GMRC", $"⏳ {count - foundCount}/{count} camera(s) not responsive - will wait {initialWaitTime}s for boot")
-                        needsBootDelay = True
-                    End If
-                End Using
-            Catch ex As Exception
-                ' Pre-check failed - assume boot delay needed
-                HandleUserMessageLogging("GMRC", $"Pre-check error: {ex.Message} - assuming boot delay needed")
-                needsBootDelay = True
-            End Try
-        Else
-            ' initialWaitTime <= 0 means no boot delay configured
-            HandleUserMessageLogging("GMRC", "CheckForCameras: No boot delay configured (initialWaitTime <= 0)")
-            needsBootDelay = False
-        End If
+        Dim needsBootDelay As Boolean = Await CamerasNeedBootDelayAsync(initialWaitTime, count, sw)
 
         ' ════════════════════════════════════════════════════════════════════════
         ' BOOT DELAY (only if cameras weren't already found)
@@ -222,20 +185,7 @@ Partial Public Class GmResidentClient
             Dim allFound As Boolean = foundCount = count
 
             ' Log individual camera status with position names
-            For i As Integer = 0 To count - 1
-                Dim camera = ActiveCameras(i)
-                If results(i) Then
-                    HandleUserMessageLogging("GMRC", $"✅ Camera {camera.Position} found at {camera.IpAddress}")
-                    If showToasts Then
-                        StatusNotifier.Toast($"Camera {camera.Position} found", "CAMERA", durationMs:=2000, ensureMainOnTop:=False)
-                    End If
-                Else
-                    HandleUserMessageLogging("GMRC", $"❌ Camera {camera.Position} UNREACHABLE at {camera.IpAddress}")
-                    If showToasts Then
-                        StatusNotifier.ToastError($"❌ Camera {camera.Position} UNREACHABLE", "CAMERA", ToastKind.Error)
-                    End If
-                End If
-            Next
+            LogCameraScanResults(results, count, showToasts)
 
             ' Update _effectiveCameraCount for this session
             _effectiveCameraCount = foundCount
@@ -249,6 +199,71 @@ Partial Public Class GmResidentClient
             ' No longer writing to CameraIPAddresses.txt - that file is deprecated
         End Using
     End Function
+
+    Private Async Function CamerasNeedBootDelayAsync(ByVal initialWaitTime As Integer, ByVal count As Integer, ByVal sw As Stopwatch) As Task(Of Boolean)
+        'Called from CheckForCameras. Quick 2 s pre-check: the boot delay is only needed when some configured camera
+        'does not respond yet (or when the pre-check fails).
+
+        Dim needsBootDelay As Boolean = False
+
+        If initialWaitTime > 0 Then
+            HandleUserMessageLogging("GMRC", "CheckForCameras: Quick pre-check for already-booted cameras (2s timeout)...")
+
+            'If showToasts Then
+            '    StatusNotifier.Toast($"Checking {count} camera(s)...", "CAMERA", durationMs:=1500, ensureMainOnTop:=False)
+            'End If
+
+            Try
+                Using quickCts As New CancellationTokenSource(TimeSpan.FromSeconds(2))
+                    Dim quickPingTasks = ActiveCameras _
+                        .Select(Function(camera, index) PingCameraWithRetryAsync(index, camera.IpAddress, quickCts.Token)) _
+                        .ToArray()
+
+                    Dim quickResults = Await Task.WhenAll(quickPingTasks)
+                    Dim foundCount As Integer = quickResults.Count(Function(r) r)
+
+                    If foundCount = count Then
+                        ' ✅ All cameras already responsive - skip boot delay!
+                        HandleUserMessageLogging("GMRC", $"✅ All {count} camera(s) already responsive (checked in {sw.Elapsed.TotalSeconds:F1}s) - skipping {initialWaitTime}s boot delay")
+                        needsBootDelay = False
+                    Else
+                        ' ❌ Some cameras not responsive - need boot delay
+                        HandleUserMessageLogging("GMRC", $"⏳ {count - foundCount}/{count} camera(s) not responsive - will wait {initialWaitTime}s for boot")
+                        needsBootDelay = True
+                    End If
+                End Using
+            Catch ex As Exception
+                ' Pre-check failed - assume boot delay needed
+                HandleUserMessageLogging("GMRC", $"Pre-check error: {ex.Message} - assuming boot delay needed")
+                needsBootDelay = True
+            End Try
+        Else
+            ' initialWaitTime <= 0 means no boot delay configured
+            HandleUserMessageLogging("GMRC", "CheckForCameras: No boot delay configured (initialWaitTime <= 0)")
+            needsBootDelay = False
+        End If
+
+        Return needsBootDelay
+    End Function
+
+    Private Sub LogCameraScanResults(ByVal results As Boolean(), ByVal count As Integer, ByVal showToasts As Boolean)
+        'Called from CheckForCameras. Logs (and optionally toasts) the found/unreachable status of each active camera.
+
+        For i As Integer = 0 To count - 1
+            Dim camera = ActiveCameras(i)
+            If results(i) Then
+                HandleUserMessageLogging("GMRC", $"✅ Camera {camera.Position} found at {camera.IpAddress}")
+                If showToasts Then
+                    StatusNotifier.Toast($"Camera {camera.Position} found", "CAMERA", durationMs:=2000, ensureMainOnTop:=False)
+                End If
+            Else
+                HandleUserMessageLogging("GMRC", $"❌ Camera {camera.Position} UNREACHABLE at {camera.IpAddress}")
+                If showToasts Then
+                    StatusNotifier.ToastError($"❌ Camera {camera.Position} UNREACHABLE", "CAMERA", ToastKind.Error)
+                End If
+            End If
+        Next
+    End Sub
 
     ' ════════════════════════════════════════════════════════════════════════════
     ' ✅ HELPER: Ping with automatic retry + TCP fallback
@@ -409,146 +424,12 @@ Partial Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════
             ' ✅ FIX: LIDAR INITIALIZATION - Respect configuration setting
             ' ════════════════════════════════════════════════════════════
-            Try
-                Dim testDevices = SharpPcap.CaptureDeviceList.Instance
-
-                If testDevices IsNot Nothing AndAlso testDevices.Count > 0 Then
-                    ' LiDAR hardware is available
-
-                    ' Only initialize if user enabled LIDAR in config
-                    If userWantsLidar Then
-                        ' Initialize LiDAR devices from config or create default
-                        If LidarDevices.Count = 0 Then
-                            ' No devices configured - create default single device
-                            Dim defaultLidar As New LidarDevice()
-                            LidarDevices.Add(defaultLidar)
-                            HandleUserMessageLogging("GMRC",
-                "Initialize: Created default LiDAR device (no config found)")
-                        End If
-
-                        ' Validate each configured device has a valid adapter
-                        For i As Integer = LidarDevices.Count - 1 To 0 Step -1
-                            Dim lidar = LidarDevices(i)
-                            Dim adapterFound As Boolean = False
-
-                            For Each device In testDevices
-                                If device.Name.Contains(lidar.LidarAdapterGuid) Then
-                                    adapterFound = True
-                                    Exit For
-                                End If
-                            Next
-
-                            If Not adapterFound AndAlso Not String.IsNullOrEmpty(lidar.LidarAdapterGuid) Then
-                                HandleUserMessageLogging("GMRC",
-                    $"Initialize: LiDAR adapter {lidar.LidarAdapterGuid} not found - removing from list")
-                                LidarDevices.RemoveAt(i)
-                            End If
-                        Next
-
-                        ' ✅ FIX: Only enable if user wants it AND devices are available
-                        If LidarDevices.Count > 0 Then
-                            LidarCaptureEnabled = True
-                            HandleUserMessageLogging("GMRC",
-                $"Initialize: LiDAR capture ENABLED ({LidarDevices.Count} device(s) configured, {testDevices.Count} adapter(s) detected)")
-                            StatusNotifier.Toast($"Initialize: LiDAR capture ENABLED ({LidarDevices.Count} device(s) configured, {testDevices.Count} adapter(s) detected)", durationMs:=2000, ensureMainOnTop:=False)
-                        Else
-                            LidarCaptureEnabled = False
-                            HandleUserMessageLogging("GMRC",
-                "Initialize: LiDAR capture requested but no valid devices found - DISABLED")
-                            StatusNotifier.Toast($"Initialize: LiDAR capture requested but no valid devices found - DISABLED", durationMs:=2000, ensureMainOnTop:=False)
-                        End If
-                    Else
-                        ' User disabled LIDAR in config - respect that choice
-                        LidarCaptureEnabled = False
-                        ' ✅ REMOVED: LidarDevices.Clear()  
-                        ' Keep devices in config even when capture is disabled
-                        HandleUserMessageLogging("GMRC", "Initialize: LiDAR capture DISABLED by configuration")
-                        StatusNotifier.Toast($"Initialize: LiDAR capture DISABLED by configuration", durationMs:=2000, ensureMainOnTop:=False)
-
-                    End If
-                Else
-                    ' No network adapters available
-                    LidarCaptureEnabled = False
-
-                    If userWantsLidar Then
-                        HandleUserMessageLogging("GMRC", "Initialize: LiDAR requested in config but no network adapters found - DISABLED")
-                        StatusNotifier.Toast($"Initialize: LiDAR requested in config but no network adapters found - DISABLED", durationMs:=2000, ensureMainOnTop:=False)
-                    Else
-                        HandleUserMessageLogging("GMRC", "Initialize: No network adapters found for LiDAR capture")
-                        StatusNotifier.Toast($"Initialize: No network adapters found for LiDAR capture", durationMs:=2000, ensureMainOnTop:=False)
-
-                    End If
-                End If
-
-            Catch ex As Exception
-                LidarCaptureEnabled = False
-                LidarDevices.Clear()
-                HandleUserMessageLogging("GMRC", $"Initialize: LiDAR initialization failed - {ex.Message}")
-                StatusNotifier.Toast($"Initialize: LiDAR initialization failed - {ex.Message}", durationMs:=2000, ensureMainOnTop:=False)
-            End Try
+            InitializeLidarDevices(userWantsLidar)
 
             ' ════════════════════════════════════════════════════════════
             ' Time Sync Provider Initialization (OXTS / TimeMachine)
             ' ════════════════════════════════════════════════════════════
-            HandleUserMessageLogging("GMRC", $"Initialize: Time Sync check - TimeSyncEnabled={TimeSyncEnabled}, TimeSyncProviderType={TimeSyncProviderType}, OxtsEnabled={OxtsEnabled}, TimeMachineEnabled={TimeMachineEnabled}")
-            If TimeSyncEnabled Then
-                Try
-                    MyTimeSyncProvider = Nothing
-                    MyOxtsInterface = Nothing
-
-                    Select Case TimeSyncProviderType.Trim().ToUpperInvariant()
-                        Case "TIMEMACHINE"
-                            Dim tmProvider As New TimeMachineTimeSyncProvider With {
-                                .DeviceIpAddress = TimeMachineIpAddress,
-                                .Port = TimeMachinePort,
-                                .PollIntervalMs = TimeMachinePollMs,
-                                .PtpAssumeLocked = TimeMachinePtpAssumeLocked
-                            }
-                            tmProvider.Start()
-                            MyTimeSyncProvider = tmProvider
-                            OxtsEnabled = False
-                            HandleUserMessageLogging("GMRC", "Time sync provider started: TimeMachine")
-
-                        Case Else
-                            MyOxtsInterface = New OxtsNcomInterface With {
-                                .NcomIpAddress = OxtsNcomIpAddress,
-                                .NcomPort = OxtsNcomPort,
-                                .AllowNoGpsLock = Not OxtsWaitForLockOnStart
-                            }
-
-                            MyOxtsInterface.OxtsStartListening()
-                            MyTimeSyncProvider = MyOxtsInterface
-                            OxtsEnabled = True
-                            HandleUserMessageLogging("GMRC", "Time sync provider started: OXTS")
-
-                            ' ✅ OPTIONAL: Wait for GPS lock before proceeding
-                            If OxtsWaitForLockOnStart Then
-                                HandleUserMessageLogging("GMRC", "Waiting for GPS lock (max 30 sec)...")
-                                If Not MyOxtsInterface.WaitForGpsLock(OxtsGpsLockTimeout) Then
-                                    If MsgBox("GPS lock failed. Continue without OXTS?", vbYesNo) = vbNo Then
-                                        ExitApp("Complete")
-                                        Return
-                                    End If
-                                    OxtsEnabled = False
-                                End If
-                            End If
-                    End Select
-                    ' ✅ Connect OXTS to all LiDAR devices
-                    If LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 AndAlso MyTimeSyncProvider IsNot Nothing Then
-                        For Each lidar In LidarDevices
-                            lidar.SetTimeSyncProvider(MyTimeSyncProvider)
-                            HandleUserMessageLogging("GMRC", $"{MyTimeSyncProvider.ProviderName} linked to {lidar.DeviceId}")
-                        Next
-                    End If
-
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"Failed to initialize time sync provider: {ex.Message}")
-                    StatusNotifier.Toast($"Failed to initialize time sync provider: {ex.Message}", durationMs:=2000, ensureMainOnTop:=False)
-                    MyTimeSyncProvider = Nothing
-                    MyOxtsInterface = Nothing
-                    OxtsEnabled = False
-                End Try
-            End If
+            If Not InitializeTimeSyncProvider() Then Return
 
             ' 3) If Development mode, connect to INCA now before login
             If Not PlaybackMode Then
@@ -658,6 +539,156 @@ Partial Public Class GmResidentClient
             _initCts = Nothing
         End Try
 
+    End Function
+
+    Private Sub InitializeLidarDevices(ByVal userWantsLidar As Boolean)
+        'Called from Initialize. Validates configured LiDAR devices against the detected capture adapters and
+        'sets LidarCaptureEnabled (respecting the user's configuration choice).
+
+        Try
+            Dim testDevices = SharpPcap.CaptureDeviceList.Instance
+
+            If testDevices IsNot Nothing AndAlso testDevices.Count > 0 Then
+                ' LiDAR hardware is available
+
+                ' Only initialize if user enabled LIDAR in config
+                If userWantsLidar Then
+                    ' Initialize LiDAR devices from config or create default
+                    If LidarDevices.Count = 0 Then
+                        ' No devices configured - create default single device
+                        Dim defaultLidar As New LidarDevice()
+                        LidarDevices.Add(defaultLidar)
+                        HandleUserMessageLogging("GMRC",
+            "Initialize: Created default LiDAR device (no config found)")
+                    End If
+
+                    ' Validate each configured device has a valid adapter
+                    For i As Integer = LidarDevices.Count - 1 To 0 Step -1
+                        Dim lidar = LidarDevices(i)
+                        Dim adapterFound As Boolean = False
+
+                        For Each device In testDevices
+                            If device.Name.Contains(lidar.LidarAdapterGuid) Then
+                                adapterFound = True
+                                Exit For
+                            End If
+                        Next
+
+                        If Not adapterFound AndAlso Not String.IsNullOrEmpty(lidar.LidarAdapterGuid) Then
+                            HandleUserMessageLogging("GMRC",
+                $"Initialize: LiDAR adapter {lidar.LidarAdapterGuid} not found - removing from list")
+                            LidarDevices.RemoveAt(i)
+                        End If
+                    Next
+
+                    ' ✅ FIX: Only enable if user wants it AND devices are available
+                    If LidarDevices.Count > 0 Then
+                        LidarCaptureEnabled = True
+                        HandleUserMessageLogging("GMRC",
+            $"Initialize: LiDAR capture ENABLED ({LidarDevices.Count} device(s) configured, {testDevices.Count} adapter(s) detected)")
+                        StatusNotifier.Toast($"Initialize: LiDAR capture ENABLED ({LidarDevices.Count} device(s) configured, {testDevices.Count} adapter(s) detected)", durationMs:=2000, ensureMainOnTop:=False)
+                    Else
+                        LidarCaptureEnabled = False
+                        HandleUserMessageLogging("GMRC",
+            "Initialize: LiDAR capture requested but no valid devices found - DISABLED")
+                        StatusNotifier.Toast($"Initialize: LiDAR capture requested but no valid devices found - DISABLED", durationMs:=2000, ensureMainOnTop:=False)
+                    End If
+                Else
+                    ' User disabled LIDAR in config - respect that choice
+                    LidarCaptureEnabled = False
+                    ' ✅ REMOVED: LidarDevices.Clear()  
+                    ' Keep devices in config even when capture is disabled
+                    HandleUserMessageLogging("GMRC", "Initialize: LiDAR capture DISABLED by configuration")
+                    StatusNotifier.Toast($"Initialize: LiDAR capture DISABLED by configuration", durationMs:=2000, ensureMainOnTop:=False)
+
+                End If
+            Else
+                ' No network adapters available
+                LidarCaptureEnabled = False
+
+                If userWantsLidar Then
+                    HandleUserMessageLogging("GMRC", "Initialize: LiDAR requested in config but no network adapters found - DISABLED")
+                    StatusNotifier.Toast($"Initialize: LiDAR requested in config but no network adapters found - DISABLED", durationMs:=2000, ensureMainOnTop:=False)
+                Else
+                    HandleUserMessageLogging("GMRC", "Initialize: No network adapters found for LiDAR capture")
+                    StatusNotifier.Toast($"Initialize: No network adapters found for LiDAR capture", durationMs:=2000, ensureMainOnTop:=False)
+
+                End If
+            End If
+
+        Catch ex As Exception
+            LidarCaptureEnabled = False
+            LidarDevices.Clear()
+            HandleUserMessageLogging("GMRC", $"Initialize: LiDAR initialization failed - {ex.Message}")
+            StatusNotifier.Toast($"Initialize: LiDAR initialization failed - {ex.Message}", durationMs:=2000, ensureMainOnTop:=False)
+        End Try
+    End Sub
+
+    Private Function InitializeTimeSyncProvider() As Boolean
+        'Called from Initialize. Starts the OXTS / TimeMachine time sync provider and links it to the LiDAR devices.
+        'Returns False when Initialize must stop (GPS lock failed and the user chose to exit).
+
+        HandleUserMessageLogging("GMRC", $"Initialize: Time Sync check - TimeSyncEnabled={TimeSyncEnabled}, TimeSyncProviderType={TimeSyncProviderType}, OxtsEnabled={OxtsEnabled}, TimeMachineEnabled={TimeMachineEnabled}")
+        If TimeSyncEnabled Then
+            Try
+                MyTimeSyncProvider = Nothing
+                MyOxtsInterface = Nothing
+
+                Select Case TimeSyncProviderType.Trim().ToUpperInvariant()
+                    Case "TIMEMACHINE"
+                        Dim tmProvider As New TimeMachineTimeSyncProvider With {
+                            .DeviceIpAddress = TimeMachineIpAddress,
+                            .Port = TimeMachinePort,
+                            .PollIntervalMs = TimeMachinePollMs,
+                            .PtpAssumeLocked = TimeMachinePtpAssumeLocked
+                        }
+                        tmProvider.Start()
+                        MyTimeSyncProvider = tmProvider
+                        OxtsEnabled = False
+                        HandleUserMessageLogging("GMRC", "Time sync provider started: TimeMachine")
+
+                    Case Else
+                        MyOxtsInterface = New OxtsNcomInterface With {
+                            .NcomIpAddress = OxtsNcomIpAddress,
+                            .NcomPort = OxtsNcomPort,
+                            .AllowNoGpsLock = Not OxtsWaitForLockOnStart
+                        }
+
+                        MyOxtsInterface.OxtsStartListening()
+                        MyTimeSyncProvider = MyOxtsInterface
+                        OxtsEnabled = True
+                        HandleUserMessageLogging("GMRC", "Time sync provider started: OXTS")
+
+                        ' ✅ OPTIONAL: Wait for GPS lock before proceeding
+                        If OxtsWaitForLockOnStart Then
+                            HandleUserMessageLogging("GMRC", "Waiting for GPS lock (max 30 sec)...")
+                            If Not MyOxtsInterface.WaitForGpsLock(OxtsGpsLockTimeout) Then
+                                If MsgBox("GPS lock failed. Continue without OXTS?", vbYesNo) = vbNo Then
+                                    ExitApp("Complete")
+                                    Return False
+                                End If
+                                OxtsEnabled = False
+                            End If
+                        End If
+                End Select
+                ' ✅ Connect OXTS to all LiDAR devices
+                If LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 AndAlso MyTimeSyncProvider IsNot Nothing Then
+                    For Each lidar In LidarDevices
+                        lidar.SetTimeSyncProvider(MyTimeSyncProvider)
+                        HandleUserMessageLogging("GMRC", $"{MyTimeSyncProvider.ProviderName} linked to {lidar.DeviceId}")
+                    Next
+                End If
+
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", $"Failed to initialize time sync provider: {ex.Message}")
+                StatusNotifier.Toast($"Failed to initialize time sync provider: {ex.Message}", durationMs:=2000, ensureMainOnTop:=False)
+                MyTimeSyncProvider = Nothing
+                MyOxtsInterface = Nothing
+                OxtsEnabled = False
+            End Try
+        End If
+
+        Return True
     End Function
 
     '------------------------------------------------------------------
