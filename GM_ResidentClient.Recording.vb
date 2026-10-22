@@ -42,7 +42,8 @@ Partial Public Class GmResidentClient
                     Return
                 End If
 
-                Dim cols As Integer = UBound(MyIncaInterface.myDisplaySignals) + 2
+                ' Time + TimeStamp + one column per display signal (indices 0..UBound+2), matching INCA_InterfaceClass.
+                Dim cols As Integer = UBound(MyIncaInterface.myDisplaySignals) + 3
 
                 If VariableNameDataArray Is Nothing Then
                     ' Initial allocation
