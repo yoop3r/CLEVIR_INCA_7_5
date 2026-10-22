@@ -41,18 +41,7 @@ Partial Public Class GmResidentClient
     End Function
 
     Private Sub UpdateTextLines(ByRef textline() As String, ByVal snapshotTime As Date)
-        For ctr As Integer = 0 To UBound(textline)
-            Select Case ctr
-                Case 9
-                    textline(ctr) = "1,7,End Date," & Format(snapshotTime, "MM/dd/yyyy")
-                Case 10
-                    textline(ctr) = "1,8,End Time," & Format(snapshotTime, "HH:mm:ss")
-                Case 15
-                    textline(ctr) = "1,15,RecordedMileage," & Format(recordedMileage, "0.0")
-                Case 16
-                    textline(ctr) = "1,20,LCCActiveMileage," & Format(_lccActiveMileage, "0.0")
-            End Select
-        Next
+        AnnoHeaderUpdater.UpdateSessionEndFields(textline, snapshotTime, recordedMileage, _lccActiveMileage)
     End Sub
 
     Private Shared Sub WriteAnnoFile(ByVal textline() As String)
