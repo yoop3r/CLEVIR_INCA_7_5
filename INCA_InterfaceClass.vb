@@ -580,6 +580,9 @@ Public Class INCA_InterfaceClass
     ''' Handles final logging and file processing at the end of a session.
     ''' </summary>
     Private Sub FinalizeSessionFiles()
+        ' Measurement stops with the recording, so the background loop never sees the stop
+        ' before the ANNO write - close the mileage session here.
+        GmResidentClient.EndSessionMileage("Stop Record")
         GmResidentClient.WriteMileageToAnnoFile("Stop Record")
         GmResidentClient.StartingMileage = 0
 
@@ -1232,6 +1235,8 @@ Public Class INCA_InterfaceClass
         _Recording = MyGmIncaComm.StartRecording()
 
         If _Recording Then
+            GmResidentClient.BeginSessionMileage("StartRecording")
+
             ' ================================================================
             ' ✅ STAGE 1: Display "Recording Starting..." with yellow background
             ' ================================================================

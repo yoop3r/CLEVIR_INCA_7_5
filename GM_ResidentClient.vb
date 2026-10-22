@@ -200,6 +200,9 @@ Public Class GmResidentClient
     Private _lccActiveStartingMileage As Double
     Private _lccActiveMileageTotal As Double  ' Total LCC Active
     Private _lccActiveMileage As Double        ' Per-session LCC Acitve (current)
+    Private _lastOdoReadingMiles As Double     ' Last valid odometer reading (persists across loop iterations)
+    Private _sessionPreviousOdo As Double      ' Odometer at last session-mileage accumulation (0 = not yet seeded)
+    Private _mileageSessionActive As Boolean   ' True between BeginSessionMileage and EndSessionMileage
 
     ' GO/NOGO debug tracing (temporary)
     Private Const GO_NOGO_DEBUG_VERBOSE As Boolean = False
