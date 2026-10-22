@@ -655,6 +655,33 @@ Partial Public Class GmResidentClient
         invalidSignal = False
 
         ' If user wants to remove invalid signals from log
+        invalidSignal = IsListedInInvalidSignalsLog(deviceName, variableName, invalidSignalsArray)
+
+        ' Check for duplicates in existing signals
+        ' For CAN signals, compare rasterName as well
+        If Not invalidSignal AndAlso MyIncaInterface.mySignals IsNot Nothing Then
+            duplicate = IsDuplicateSignal(deviceName, rasterName, variableName)
+        End If
+
+        ' If not duplicate or invalid, expand the arrays
+        If Not duplicate AndAlso Not invalidSignal Then
+            AddInvisibleSignal(deviceName, rasterName, variableName)
+
+        Else
+            ' If it's a duplicate or invalid, log it if we are not removing them from invalid signals
+            LogRejectedSignalRow(duplicate, invalidSignal, deviceName, rasterName, variableName, fnum2)
+        End If
+
+        ' Return True to indicate we handled it successfully
+        Return True
+    End Function
+
+    Private Function IsListedInInvalidSignalsLog(ByVal deviceName As String, ByVal variableName As String, ByVal invalidSignalsArray() As String) As Boolean
+        'Called from HandleInvisibleSignalRow. When processing InvalidSignalsLog.csv, returns True (and counts it in _numInvalid)
+        'if the signal is listed; listed DUPLICATE entries are marked REMOVED in invalidSignalsArray.
+
+        Dim invalidSignal As Boolean
+
         If ProcessingInvalidSignalsLog AndAlso invalidSignalsArray IsNot Nothing Then
             For i As Integer = 0 To UBound(invalidSignalsArray)
                 Dim lineSplit = invalidSignalsArray(i).Split(","c)
@@ -675,72 +702,80 @@ Partial Public Class GmResidentClient
             Next
         End If
 
-        ' Check for duplicates in existing signals
-        ' For CAN signals, compare rasterName as well
-        If Not invalidSignal AndAlso MyIncaInterface.mySignals IsNot Nothing Then
-            For x As Integer = 0 To UBound(MyIncaInterface.mySignals)
-                If MyIncaInterface.mySignals(x).SignalName = variableName AndAlso
-                   MyIncaInterface.mySignals(x).DeviceName = deviceName Then
+        Return invalidSignal
+    End Function
 
-                    If deviceName.Contains("CAN-Monitoring") Then
-                        If MyIncaInterface.mySignals(x).RasterName = rasterName Then
-                            duplicate = True
-                        End If
-                    Else
+    Private Function IsDuplicateSignal(ByVal deviceName As String, ByVal rasterName As String, ByVal variableName As String) As Boolean
+        'Called from HandleInvisibleSignalRow. True when mySignals already holds the signal/device (and raster, for CAN-Monitoring).
+
+        Dim duplicate As Boolean
+
+        For x As Integer = 0 To UBound(MyIncaInterface.mySignals)
+            If MyIncaInterface.mySignals(x).SignalName = variableName AndAlso
+               MyIncaInterface.mySignals(x).DeviceName = deviceName Then
+
+                If deviceName.Contains("CAN-Monitoring") Then
+                    If MyIncaInterface.mySignals(x).RasterName = rasterName Then
                         duplicate = True
                     End If
-                    If duplicate Then Exit For
+                Else
+                    duplicate = True
                 End If
-            Next
-        End If
-
-        ' If not duplicate or invalid, expand the arrays
-        If Not duplicate AndAlso Not invalidSignal Then
-            ' Resize MySignals
-            ReDim Preserve MyIncaInterface.mySignals(UBound(MyIncaInterface.mySignals) + 1)
-
-            ' Resize MyInvisibleSignals
-            If MyInvisibleSignals Is Nothing Then
-                ReDim MyInvisibleSignals(0)
-            Else
-                ReDim Preserve MyInvisibleSignals(UBound(MyInvisibleSignals) + 1)
+                If duplicate Then Exit For
             End If
+        Next
 
-            ' Populate the new invisible signal (in both arrays)
-            Dim newSigIdx As Integer = UBound(MyIncaInterface.mySignals)
-            MyInvisibleSignals(UBound(MyInvisibleSignals)).DeviceName = deviceName
-            MyInvisibleSignals(UBound(MyInvisibleSignals)).RasterName = rasterName
-            MyInvisibleSignals(UBound(MyInvisibleSignals)).SignalName = variableName
-
-            MyIncaInterface.mySignals(newSigIdx).DeviceName = deviceName
-            MyIncaInterface.mySignals(newSigIdx).RasterName = rasterName
-            MyIncaInterface.mySignals(newSigIdx).SignalName = variableName
-            MyIncaInterface.mySignals(newSigIdx).Status = "Invalid"
-            MyIncaInterface.mySignals(newSigIdx).ForceRegister = False  ' not displayed, but may still be recorded
-
-        Else
-            ' If it's a duplicate or invalid, log it if we are not removing them from invalid signals
-            If duplicate OrElse invalidSignal Then
-                Dim reason As String = If(duplicate, "DUPLICATE SIGNAL NAME AND DEVICE", "INVALID SIGNAL")
-                HandleUserMessageLogging("GMRC",
-                    $"ReadInSignalList: {reason} in Signal List File: {variableName}/{deviceName} - {rasterName}")
-
-                If Not ProcessingInvalidSignalsLog Then
-                    If fnum2 = 0 Then
-                        fnum2 = FreeFile()
-                        FileOpen(fnum2, Path.Combine(My.Application.Info.DirectoryPath, "InvalidSignalsLog.csv"), OpenMode.Output)
-                    Else
-                        FileOpen(fnum2, Path.Combine(My.Application.Info.DirectoryPath, "InvalidSignalsLog.csv"), OpenMode.Append)
-                    End If
-                    PrintLine(fnum2, $"{variableName},{deviceName},{rasterName},{reason}")
-                    FileClose(fnum2)
-                End If
-            End If
-        End If
-
-        ' Return True to indicate we handled it successfully
-        Return True
+        Return duplicate
     End Function
+
+    Private Sub AddInvisibleSignal(ByVal deviceName As String, ByVal rasterName As String, ByVal variableName As String)
+        'Called from HandleInvisibleSignalRow. Appends the signal to mySignals (Status Invalid, not force-registered) and MyInvisibleSignals.
+
+        ' Resize MySignals
+        ReDim Preserve MyIncaInterface.mySignals(UBound(MyIncaInterface.mySignals) + 1)
+
+        ' Resize MyInvisibleSignals
+        If MyInvisibleSignals Is Nothing Then
+            ReDim MyInvisibleSignals(0)
+        Else
+            ReDim Preserve MyInvisibleSignals(UBound(MyInvisibleSignals) + 1)
+        End If
+
+        ' Populate the new invisible signal (in both arrays)
+        Dim newSigIdx As Integer = UBound(MyIncaInterface.mySignals)
+        MyInvisibleSignals(UBound(MyInvisibleSignals)).DeviceName = deviceName
+        MyInvisibleSignals(UBound(MyInvisibleSignals)).RasterName = rasterName
+        MyInvisibleSignals(UBound(MyInvisibleSignals)).SignalName = variableName
+
+        MyIncaInterface.mySignals(newSigIdx).DeviceName = deviceName
+        MyIncaInterface.mySignals(newSigIdx).RasterName = rasterName
+        MyIncaInterface.mySignals(newSigIdx).SignalName = variableName
+        MyIncaInterface.mySignals(newSigIdx).Status = "Invalid"
+        MyIncaInterface.mySignals(newSigIdx).ForceRegister = False  ' not displayed, but may still be recorded
+
+    End Sub
+
+    Private Sub LogRejectedSignalRow(ByVal duplicate As Boolean, ByVal invalidSignal As Boolean, ByVal deviceName As String, ByVal rasterName As String, ByVal variableName As String, ByRef fnum2 As Integer)
+        'Called from HandleInvisibleSignalRow. Logs a duplicate/invalid row and, unless processing InvalidSignalsLog.csv, appends it there.
+
+        If duplicate OrElse invalidSignal Then
+            Dim reason As String = If(duplicate, "DUPLICATE SIGNAL NAME AND DEVICE", "INVALID SIGNAL")
+            HandleUserMessageLogging("GMRC",
+                $"ReadInSignalList: {reason} in Signal List File: {variableName}/{deviceName} - {rasterName}")
+
+            If Not ProcessingInvalidSignalsLog Then
+                If fnum2 = 0 Then
+                    fnum2 = FreeFile()
+                    FileOpen(fnum2, Path.Combine(My.Application.Info.DirectoryPath, "InvalidSignalsLog.csv"), OpenMode.Output)
+                Else
+                    FileOpen(fnum2, Path.Combine(My.Application.Info.DirectoryPath, "InvalidSignalsLog.csv"), OpenMode.Append)
+                End If
+                PrintLine(fnum2, $"{variableName},{deviceName},{rasterName},{reason}")
+                FileClose(fnum2)
+            End If
+        End If
+
+    End Sub
 
     '========================================================================================================
     ' OTHER HELPER FUNCTIONS
@@ -778,83 +813,112 @@ Partial Public Class GmResidentClient
 
             Case 2
                 ' Use Latest
-                Dim saveDate As Date
-                Dim saveFileName As String = ""
-                Dim dir As New DirectoryInfo(Path.Combine(My.Application.Info.DirectoryPath, "SignalLists"))
-                Dim files As FileInfo() = dir.GetFiles()
-
-                For Each f As FileInfo In files
-                    If SignalListFile.IsSignalListCandidate(f.Name) Then
-
-                        If File.GetLastWriteTime(f.FullName) > saveDate Then
-                            saveDate = File.GetLastWriteTime(f.FullName)
-                            saveFileName = f.FullName
-                        End If
-                    End If
-                Next
-
-                If Not String.IsNullOrEmpty(saveFileName) Then
-                    signalListFileName = saveFileName
-                    INCAVariableFile = signalListFileName
-                    OnVehicleScreen.Label5.Text = INCAVariableFile
-
-                    INCAExperiment = Path.GetFileNameWithoutExtension(INCAVariableFile)
-                    InitialINCAExperiment = INCAExperiment
-
-                    HandleUserMessageLogging("GMRC",
-                        $"Using Signal List {INCAExperiment}{fileExtension} and Experiment {INCAExperiment}")
-                    StatusNotifier.Toast($"Using Signal List {INCAExperiment}{fileExtension} and Experiment {INCAExperiment}", "INCA", 2000)
-                Else
+                If Not UseLatestSignalList(signalListFileName, fileExtension) Then
                     Return False
                 End If
 
             Case 3
                 ' Select Specific
-                Do While fileValid = False
-                    OpenFileDialog1.InitialDirectory = Path.Combine(My.Application.Info.DirectoryPath, "SignalLists")
-                    OpenFileDialog1.DefaultExt = fileExtension
-                    OpenFileDialog1.Filter = Mid(fileExtension, 2, Len(fileExtension)) & " |*" & fileExtension
-                    OpenFileDialog1.Title = "Please Select a Signal Configuration File"
-                    OpenFileDialog1.ShowDialog()
-
-                    If Not String.IsNullOrEmpty(OpenFileDialog1.FileName) AndAlso
-                       OpenFileDialog1.FileName.EndsWith(fileExtension, StringComparison.OrdinalIgnoreCase) Then
-
-                        fileValid = True
-                        signalListFileName = OpenFileDialog1.FileName
-                        INCAVariableFile = signalListFileName
-                        OnVehicleScreen.Label5.Text = INCAVariableFile
-
-                        SelectExperiment.ListBox1.Items.Clear()
-                        For i As Integer = 0 To UBound(AvailableExperimentNames)
-                            Dim nameU As String = AvailableExperimentNames(i).ToUpper()
-                            If Not nameU.Contains("BLANK EXPERIMENT") AndAlso Not nameU.Contains("EMPTY EXPERIMENT") Then
-                                SelectExperiment.ListBox1.Items.Add(AvailableExperimentNames(i))
-                            End If
-                        Next
-                        SelectExperiment.ShowDialog()
-
-                        If SelectExperiment.ListBox1.SelectedIndex > -1 Then
-                            INCAExperiment = SelectExperiment.ListBox1.SelectedItem.ToString()
-                            InitialINCAExperiment = INCAExperiment
-                        Else
-                            MsgBox($"No Experiment selected, Using {INCAExperiment}")
-                        End If
-
-                        HandleUserMessageLogging("GMRC", $"Using Signal List {signalListFileName} And Experiment {INCAExperiment}")
-                        StatusNotifier.Toast($"Using Signal List {signalListFileName} and Experiment {INCAExperiment}", "INCA", 2000)
-
-                    Else
-                        Dim res = MsgBox("Invalid signal configuration filename. Please select a .csv file. Try Again?", vbYesNo)
-                        If res = vbNo Then
-                            Return False
-                        End If
-                    End If
-                Loop
+                If Not SelectSignalListFile(signalListFileName, fileValid, fileExtension) Then
+                    Return False
+                End If
         End Select
 
         Return True
     End Function
+
+    Private Function UseLatestSignalList(ByRef signalListFileName As String, ByVal fileExtension As String) As Boolean
+        'Called from HandleMissingSignalListFile ("Use Latest"). Picks the newest signal list in SignalLists and uses it as the
+        'signal list and experiment. Returns False when none is found.
+
+        Dim saveDate As Date
+        Dim saveFileName As String = ""
+        Dim dir As New DirectoryInfo(Path.Combine(My.Application.Info.DirectoryPath, "SignalLists"))
+        Dim files As FileInfo() = dir.GetFiles()
+
+        For Each f As FileInfo In files
+            If SignalListFile.IsSignalListCandidate(f.Name) Then
+
+                If File.GetLastWriteTime(f.FullName) > saveDate Then
+                    saveDate = File.GetLastWriteTime(f.FullName)
+                    saveFileName = f.FullName
+                End If
+            End If
+        Next
+
+        If Not String.IsNullOrEmpty(saveFileName) Then
+            signalListFileName = saveFileName
+            INCAVariableFile = signalListFileName
+            OnVehicleScreen.Label5.Text = INCAVariableFile
+
+            INCAExperiment = Path.GetFileNameWithoutExtension(INCAVariableFile)
+            InitialINCAExperiment = INCAExperiment
+
+            HandleUserMessageLogging("GMRC",
+                $"Using Signal List {INCAExperiment}{fileExtension} and Experiment {INCAExperiment}")
+            StatusNotifier.Toast($"Using Signal List {INCAExperiment}{fileExtension} and Experiment {INCAExperiment}", "INCA", 2000)
+        Else
+            Return False
+        End If
+
+        Return True
+    End Function
+
+    Private Function SelectSignalListFile(ByRef signalListFileName As String, ByRef fileValid As Boolean, ByVal fileExtension As String) As Boolean
+        'Called from HandleMissingSignalListFile ("Select"). Prompts for a signal list file until a valid one is chosen.
+        'Returns False when the user declines to try again.
+
+        Do While fileValid = False
+            OpenFileDialog1.InitialDirectory = Path.Combine(My.Application.Info.DirectoryPath, "SignalLists")
+            OpenFileDialog1.DefaultExt = fileExtension
+            OpenFileDialog1.Filter = Mid(fileExtension, 2, Len(fileExtension)) & " |*" & fileExtension
+            OpenFileDialog1.Title = "Please Select a Signal Configuration File"
+            OpenFileDialog1.ShowDialog()
+
+            If Not String.IsNullOrEmpty(OpenFileDialog1.FileName) AndAlso
+               OpenFileDialog1.FileName.EndsWith(fileExtension, StringComparison.OrdinalIgnoreCase) Then
+
+                fileValid = True
+                signalListFileName = OpenFileDialog1.FileName
+                INCAVariableFile = signalListFileName
+                OnVehicleScreen.Label5.Text = INCAVariableFile
+
+                SelectExperimentForSignalList()
+
+                HandleUserMessageLogging("GMRC", $"Using Signal List {signalListFileName} And Experiment {INCAExperiment}")
+                StatusNotifier.Toast($"Using Signal List {signalListFileName} and Experiment {INCAExperiment}", "INCA", 2000)
+
+            Else
+                Dim res = MsgBox("Invalid signal configuration filename. Please select a .csv file. Try Again?", vbYesNo)
+                If res = vbNo Then
+                    Return False
+                End If
+            End If
+        Loop
+
+        Return True
+    End Function
+
+    Private Sub SelectExperimentForSignalList()
+        'Called from SelectSignalListFile. Lets the user pick the INCA experiment (blank/empty experiments excluded).
+
+        SelectExperiment.ListBox1.Items.Clear()
+        For i As Integer = 0 To UBound(AvailableExperimentNames)
+            Dim nameU As String = AvailableExperimentNames(i).ToUpper()
+            If Not nameU.Contains("BLANK EXPERIMENT") AndAlso Not nameU.Contains("EMPTY EXPERIMENT") Then
+                SelectExperiment.ListBox1.Items.Add(AvailableExperimentNames(i))
+            End If
+        Next
+        SelectExperiment.ShowDialog()
+
+        If SelectExperiment.ListBox1.SelectedIndex > -1 Then
+            INCAExperiment = SelectExperiment.ListBox1.SelectedItem.ToString()
+            InitialINCAExperiment = INCAExperiment
+        Else
+            MsgBox($"No Experiment selected, Using {INCAExperiment}")
+        End If
+
+    End Sub
 
     ''' <summary>
     ''' Resets or clears out the data forms and data grids if function is called again.
@@ -1035,12 +1099,7 @@ Partial Public Class GmResidentClient
     ''' </summary>
     Public Sub RegisterDisplaySignals(ByVal j As Integer)
 
-        Dim found As Boolean
         Dim e As EventArgs
-        Dim z As Integer
-        Dim x As Integer
-        Dim row As Integer
-        Dim col As Integer
         Dim reply As MsgBoxResult
         Dim saveBackColor As Color
 
@@ -1063,75 +1122,19 @@ Partial Public Class GmResidentClient
 
         If signalsRegistered = False And UCase(SignalRegistrationMode) = "GO/NOGO" Then
 
-            If MyIncaInterface.GetRecordingState = True Then
-                reply = MsgBox("Signals are not yet registered for " & formName & " To view this display, signals must be registered, which will require recording to be STOPPED. Stop Recording and Continue?", vbYesNo)
-            ElseIf MyIncaInterface.GetMeasurementStatus = "True" Then
-                reply = MsgBox("Signals are not yet registered for " & formName & " To view this display, signals must be registered, which will require Measurement to be STOPPED. Stop Measurement and Continue?", vbYesNo)
-            Else
-                MsgBox("Signals are not yet registered for " & formName & " Please Wait while signals are registered...")
-
-            End If
+            reply = PromptToRegisterDisplaySignals(formName)
 
             If reply = MsgBoxResult.No Then
                 Exit Sub
             End If
 
-            If OnVehicleScreen IsNot Nothing AndAlso Not OnVehicleScreen.IsDisposed Then
-                OnVehicleScreen.Label5.Visible = True
-                saveBackColor = OnVehicleScreen.Label5.BackColor
-                OnVehicleScreen.Label5.BackColor = Color.Yellow
-                OnVehicleScreen.Label5.Text = "Operation In Progress, Please Wait..."
-                OnVehicleScreen.Refresh()
-            End If
+            saveBackColor = ShowOperationInProgressOnVehicleScreen()
 
             If reply = MsgBoxResult.Yes Then
-
-                If OnVehicleScreen IsNot Nothing AndAlso Not OnVehicleScreen.IsDisposed Then
-                    OnVehicleScreen.Cursor = Cursors.WaitCursor
-                    OnVehicleScreen.Button6.Text = "STOP MEASUREMENT"
-                    MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
-                    .GetAwaiter().GetResult()
-
-                Else
-                    Cursor = Cursors.WaitCursor
-                End If
-
-                Do While MyIncaInterface.GetMeasurementStatus() = "True"
-                    Thread.Sleep(100)
-                Loop
-
+                StopMeasurementForSignalRegistration()
             End If
 
-            For z = 0 To myDGs.Count - 1
-                If (myDGs(z).Parent.Name = formName) Or formName = "Top Down View" Then
-                    found = True
-                End If
-
-                If found = True Then
-                    found = False
-                    For row = 1 To myDGs(z).RowCount - 1
-                        For col = 1 To myDGs(z).ColumnCount - 1
-
-                            For x = 0 To UBound(MyIncaInterface.myDisplaySignals)
-                                If ((myDGs(z).AlsoAssociatedWith(row, col) <> "GO/NOGO" And
-                                    myDGs(z).AlsoAssociatedWith(row, col) <> "AUTOANNO" And
-                                   InStr(myDGs(z).AlsoAssociatedWith(row, col), "CS_") = 0 And
-                                   formName <> "Top Down View") Or
-                                   (formName = "Top Down View" And InStr(myDGs(z).AlsoAssociatedWith(row, col), "TD") > 0)) And
-                                    (MyIncaInterface.myDisplaySignals(x).DeviceName = myDGs(z).DeviceName(row, col) And
-                                    MyIncaInterface.myDisplaySignals(x).SignalName = myDGs(z).VariableName(row, col) And
-                                    MyIncaInterface.myDisplaySignals(x).RasterName = myDGs(z).Raster(row, col)) Then
-                                    MyIncaInterface.myDisplaySignals(x).ForceRegister = True
-                                    myDGs(z).Registered(row, col) = True
-                                    Exit For
-                                End If
-                            Next x
-
-                        Next col
-                    Next row
-                End If
-
-            Next z
+            FlagDisplaySignalsForRegistration(formName)
 
             MyIncaInterface.myPreliminaryDisplaySignals = MyIncaInterface.myDisplaySignals
 
@@ -1139,25 +1142,7 @@ Partial Public Class GmResidentClient
 
             signalsRegistered = True
 
-            If OnVehicleScreen IsNot Nothing AndAlso Not OnVehicleScreen.IsDisposed Then
-                MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
-                .GetAwaiter().GetResult()
-            End If
-
-            Cursor = Cursors.Arrow
-
-            OnVehicleScreen.Label5.BackColor = saveBackColor
-
-            ' Update the UI and save the filename.
-            ' Use the new predicted filename helper to keep UI and MDA shortcuts consistent.
-            Dim predictedFilenameForUi As String = GetPredictedRecordingFilename()
-            If Not String.IsNullOrEmpty(predictedFilenameForUi) Then
-                OnVehicleScreen.Label5.Text = $"Recording Filename: {predictedFilenameForUi}"
-                SaveRecordingFileName = predictedFilenameForUi
-                ' Keep MDA/shortcuts in sync before we start recording (idempotent if recording already started)
-                'EnsureSetLastRecordingFileName(predictedFilenameForUi)
-            End If
-            OnVehicleScreen.Refresh()
+            RestartMeasurementAndRestoreOnVehicleScreen(saveBackColor)
 
             If j <= MyDFs.Count - 1 Then
                 MyDFs(j).SignalsRegistered = signalsRegistered
@@ -1166,6 +1151,130 @@ Partial Public Class GmResidentClient
             End If
 
         End If
+
+    End Sub
+
+    Private Function PromptToRegisterDisplaySignals(ByVal formName As String) As MsgBoxResult
+        'Called from RegisterDisplaySignals. Asks to stop recording/measurement (Yes/No), or just announces the wait
+        '(returns Nothing) when neither is running.
+
+        Dim reply As MsgBoxResult
+
+        reply = Nothing
+
+        If MyIncaInterface.GetRecordingState = True Then
+            reply = MsgBox("Signals are not yet registered for " & formName & " To view this display, signals must be registered, which will require recording to be STOPPED. Stop Recording and Continue?", vbYesNo)
+        ElseIf MyIncaInterface.GetMeasurementStatus = "True" Then
+            reply = MsgBox("Signals are not yet registered for " & formName & " To view this display, signals must be registered, which will require Measurement to be STOPPED. Stop Measurement and Continue?", vbYesNo)
+        Else
+            MsgBox("Signals are not yet registered for " & formName & " Please Wait while signals are registered...")
+
+        End If
+
+        Return reply
+    End Function
+
+    Private Function ShowOperationInProgressOnVehicleScreen() As Color
+        'Called from RegisterDisplaySignals. Shows the yellow 'Operation In Progress' banner; returns the original back color.
+
+        Dim saveBackColor As Color
+
+        If OnVehicleScreen IsNot Nothing AndAlso Not OnVehicleScreen.IsDisposed Then
+            OnVehicleScreen.Label5.Visible = True
+            saveBackColor = OnVehicleScreen.Label5.BackColor
+            OnVehicleScreen.Label5.BackColor = Color.Yellow
+            OnVehicleScreen.Label5.Text = "Operation In Progress, Please Wait..."
+            OnVehicleScreen.Refresh()
+        End If
+
+        Return saveBackColor
+    End Function
+
+    Private Sub StopMeasurementForSignalRegistration()
+        'Called from RegisterDisplaySignals. Stops measurement (via OnVehicleScreen when present) and waits until it has stopped.
+
+        If OnVehicleScreen IsNot Nothing AndAlso Not OnVehicleScreen.IsDisposed Then
+            OnVehicleScreen.Cursor = Cursors.WaitCursor
+            OnVehicleScreen.Button6.Text = "STOP MEASUREMENT"
+            MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
+            .GetAwaiter().GetResult()
+
+        Else
+            Cursor = Cursors.WaitCursor
+        End If
+
+        Do While MyIncaInterface.GetMeasurementStatus() = "True"
+            Thread.Sleep(100)
+        Loop
+
+    End Sub
+
+    Private Sub FlagDisplaySignalsForRegistration(ByVal formName As String)
+        'Called from RegisterDisplaySignals. Sets ForceRegister on every myDisplaySignals entry shown by formName's grids
+        '(or the TD signals for Top Down View) and marks the grid cells Registered.
+
+        Dim found As Boolean
+        Dim z As Integer
+        Dim x As Integer
+        Dim row As Integer
+        Dim col As Integer
+
+        For z = 0 To myDGs.Count - 1
+            If (myDGs(z).Parent.Name = formName) Or formName = "Top Down View" Then
+                found = True
+            End If
+
+            If found = True Then
+                found = False
+                For row = 1 To myDGs(z).RowCount - 1
+                    For col = 1 To myDGs(z).ColumnCount - 1
+
+                        For x = 0 To UBound(MyIncaInterface.myDisplaySignals)
+                            If ((myDGs(z).AlsoAssociatedWith(row, col) <> "GO/NOGO" And
+                                myDGs(z).AlsoAssociatedWith(row, col) <> "AUTOANNO" And
+                               InStr(myDGs(z).AlsoAssociatedWith(row, col), "CS_") = 0 And
+                               formName <> "Top Down View") Or
+                               (formName = "Top Down View" And InStr(myDGs(z).AlsoAssociatedWith(row, col), "TD") > 0)) And
+                                (MyIncaInterface.myDisplaySignals(x).DeviceName = myDGs(z).DeviceName(row, col) And
+                                MyIncaInterface.myDisplaySignals(x).SignalName = myDGs(z).VariableName(row, col) And
+                                MyIncaInterface.myDisplaySignals(x).RasterName = myDGs(z).Raster(row, col)) Then
+                                MyIncaInterface.myDisplaySignals(x).ForceRegister = True
+                                myDGs(z).Registered(row, col) = True
+                                Exit For
+                            End If
+                        Next x
+
+                    Next col
+                Next row
+            End If
+
+        Next z
+
+    End Sub
+
+    Private Sub RestartMeasurementAndRestoreOnVehicleScreen(ByVal saveBackColor As Color)
+        'Called from RegisterDisplaySignals after registration. Restarts measurement, restores the banner and shows the
+        'predicted recording filename.
+
+        If OnVehicleScreen IsNot Nothing AndAlso Not OnVehicleScreen.IsDisposed Then
+            MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
+            .GetAwaiter().GetResult()
+        End If
+
+        Cursor = Cursors.Arrow
+
+        OnVehicleScreen.Label5.BackColor = saveBackColor
+
+        ' Update the UI and save the filename.
+        ' Use the new predicted filename helper to keep UI and MDA shortcuts consistent.
+        Dim predictedFilenameForUi As String = GetPredictedRecordingFilename()
+        If Not String.IsNullOrEmpty(predictedFilenameForUi) Then
+            OnVehicleScreen.Label5.Text = $"Recording Filename: {predictedFilenameForUi}"
+            SaveRecordingFileName = predictedFilenameForUi
+            ' Keep MDA/shortcuts in sync before we start recording (idempotent if recording already started)
+            'EnsureSetLastRecordingFileName(predictedFilenameForUi)
+        End If
+        OnVehicleScreen.Refresh()
 
     End Sub
 
