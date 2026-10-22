@@ -3064,6 +3064,11 @@ Public Module Module1
         End If
     End Sub
 
+    ' Serializes appends: with FileShare.ReadWrite, two handles opened in Append mode at the same
+    ' moment share the same end-of-file offset, so concurrent writers overwrite each other's line
+    ' starts (seen as truncated lines from LiDAR/marker-pump threads).
+    Private ReadOnly _logWriteLock As New Object()
+
     Public Sub CopyToLog(ByVal inputstr As String, Optional ByVal MessageLogNumber As Integer = 0)
         ' Copies CLEVIR status messages to the GM_ResidentClient.log file with full concurrency protection.
 
@@ -3078,16 +3083,19 @@ Public Module Module1
 
         While currentRetry < maxRetries
             Try
-                ' ✅ CRITICAL FIX: Use FileShare.ReadWrite to allow concurrent writes
-                Using fs As New FileStream(logFilePath,
-                                      FileMode.Append,
-                                      FileAccess.Write,
-                                      FileShare.ReadWrite)  ' ← KEY CHANGE
-                    Using writer As New StreamWriter(fs)
-                        writer.WriteLine(inputstr)
-                        writer.Flush()  ' Force write to disk immediately
+                ' FileShare.ReadWrite lets the log be read/tailed while CLEVIR runs; the lock
+                ' keeps in-process writers from appending at the same offset.
+                SyncLock _logWriteLock
+                    Using fs As New FileStream(logFilePath,
+                                          FileMode.Append,
+                                          FileAccess.Write,
+                                          FileShare.ReadWrite)
+                        Using writer As New StreamWriter(fs)
+                            writer.WriteLine(inputstr)
+                            writer.Flush()  ' Force write to disk immediately
+                        End Using
                     End Using
-                End Using
+                End SyncLock
 
                 ' ✅ Success - exit retry loop
                 Exit Sub
