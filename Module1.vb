@@ -818,20 +818,47 @@ Public Module Module1
     End Sub
 
     ''' <summary>
-    ''' Builds dynamic LiDAR header columns for CSV files
-    ''' Returns empty string if LiDAR is not enabled
+    ''' Number of LiDAR[n]Frame columns in annotation CSV headers (0 when no LiDAR devices are configured)
     ''' </summary>
-    Private Function BuildLidarHeaders() As String
+    Private Function AnnotationLidarColumnCount() As Integer
         'If LidarCaptureEnabled AndAlso LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 Then
         If LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 Then
-            Dim headers As New List(Of String)
-            For i As Integer = 1 To LidarDevices.Count
-                headers.Add($"LiDAR[{i}]Frame")
-            Next
-            Return "," & String.Join(",", headers)
+            Return LidarDevices.Count
         End If
-        Return String.Empty
+        Return 0
     End Function
+
+    Private ReadOnly _aggregateHeaderLock As New Object()
+
+    ''' <summary>
+    ''' The aggregate annotations file accumulates across sessions and its header is written only when the
+    ''' file is created, so it can predate the current LiDAR configuration. Widen it in place if needed.
+    ''' </summary>
+    Private Sub EnsureAggregateAnnoHeader(ByVal aggregateFileName As String)
+        SyncLock _aggregateHeaderLock
+            Try
+                If Not File.Exists(aggregateFileName) Then Return
+
+                Dim firstLine As String
+                Using fs As New FileStream(aggregateFileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
+                    Using reader As New StreamReader(fs)
+                        firstLine = reader.ReadLine()
+                    End Using
+                End Using
+
+                Dim upgraded As String = AnnotationCsvHeader.GetUpgradedHeader(firstLine, AnnotationLidarColumnCount())
+                If upgraded Is Nothing Then Return
+
+                Dim lines() As String = File.ReadAllLines(aggregateFileName)
+                lines(0) = upgraded
+                File.WriteAllLines(aggregateFileName, lines)
+                HandleUserMessageLogging("GMRC", $"EnsureAggregateAnnoHeader: Header updated for {AnnotationLidarColumnCount()} LiDAR device(s)")
+            Catch ex As Exception
+                ' Non-fatal: the annotation row is still appended
+                HandleUserMessageLogging("GMRC", $"EnsureAggregateAnnoHeader: Could not update header ({ex.GetType().Name}): {ex.Message}")
+            End Try
+        End SyncLock
+    End Sub
 
     ' =====================================================================
     ' Legacy Single-Device Proxy Properties (Backward Compatibility)
@@ -3825,9 +3852,6 @@ Public Module Module1
 
         Try
             Using writer As New StreamWriter(ANNOFileName, False)
-                ' Build dynamic LiDAR header columns
-                Dim lidarHeaders As String = BuildLidarHeaders()
-
                 Dim lines As New List(Of String) From {
                 "0, Field ID,Field Name,Value",
                 "1,98,CSV Version,0",                      ' ✅ Kept for backward compatibility
@@ -3848,7 +3872,7 @@ Public Module Module1
                 "1,13,Thumbnail,-1",
                 "1,14,RecordedMileage,0",
                 "1,15,LCCActiveMileage,0",
-                $"0,Anno Type ID,Anno Type,Anno Value ID,Anno Value,Anno Enum Type,Anno Enum,Start Seq#,Start (ms),End Seq#,End (ms),Point Seq#,MDA Point (sec),Thumbnail,WAV,MF4 Filename,Mileage,LAT POS,LON POS,LaneClass_Crnt{lidarHeaders}"
+                AnnotationCsvHeader.Build(AnnotationLidarColumnCount())
             }
 
                 For Each line As String In lines
@@ -4431,6 +4455,8 @@ Public Module Module1
         Const maxRetries As Integer = 3
         Dim currentRetry As Integer = 0
 
+        EnsureAggregateAnnoHeader(aggregateFileName)
+
         While currentRetry <= maxRetries
             Try
                 Dim fileExists As Boolean = File.Exists(aggregateFileName)
@@ -4440,8 +4466,7 @@ Public Module Module1
                     Using writer As New StreamWriter(fs)
                         ' Write header if file doesn't exist (first time creating the file)
                         If Not fileExists Then
-                            Dim lidarHeaders As String = BuildLidarHeaders()  ' ✅ Generate headers dynamically
-                            Await writer.WriteLineAsync($"0,Anno Type ID,Anno Type,Anno Value ID,Anno Value,Anno Enum Type,Anno Enum,Start Seq#,Start (ms),End Seq#,End (ms),Point Seq#,MDA Point (sec),Thumbnail,WAV,MF4 Filename,Mileage,LAT POS,LON POS,LaneClass_Crnt{lidarHeaders}")
+                            Await writer.WriteLineAsync(AnnotationCsvHeader.Build(AnnotationLidarColumnCount()))
                         End If
 
                         Await writer.WriteLineAsync($"{eventComment},{timeCriticalInfo}")
@@ -4786,6 +4811,7 @@ Public Module Module1
 
                     ' Also write to aggregate file
                     Dim aggregateFileName As String = Path.Combine(My.Application.Info.DirectoryPath, $"{VehicleNumber}_AggregateAnnotations.csv")
+                    EnsureAggregateAnnoHeader(aggregateFileName)
                     Dim fileExists As Boolean = File.Exists(aggregateFileName)
 
                     ' Inject marker into PCAP for all active devices
@@ -4794,8 +4820,7 @@ Public Module Module1
                     Using fs As New FileStream(aggregateFileName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
                         Using writer As New StreamWriter(fs)
                             If Not fileExists Then
-                                Dim lidarHeaders As String = BuildLidarHeaders()  ' ✅ Generate headers dynamically
-                                writer.WriteLine($"0,Anno Type ID,Anno Type,Anno Value ID,Anno Value,Anno Enum Type,Anno Enum,Start Seq#,Start (ms),End Seq#,End (ms),Point Seq#,MDA Point (sec),Thumbnail,WAV,MF4 Filename,Mileage,LAT POS,LON POS,LaneClass_Crnt{lidarHeaders}")
+                                writer.WriteLine(AnnotationCsvHeader.Build(AnnotationLidarColumnCount()))
                             End If
                             writer.WriteLine($"{eventComment},{timeCriticalInfo}")
                             writer.Flush()
@@ -5609,6 +5634,7 @@ Public Module Module1
 
                 ' Also try aggregate file
                 Dim aggregateFileName As String = Path.Combine(My.Application.Info.DirectoryPath, $"{VehicleNumber}_AggregateAnnotations.csv")
+                EnsureAggregateAnnoHeader(aggregateFileName)
                 Using fs As New FileStream(aggregateFileName, FileMode.Append, FileAccess.Write, FileShare.Read)
                     Using writer As New StreamWriter(fs)
                         writer.WriteLine($"{pendingEvent.eventComment},{pendingEvent.TimeCriticalInfo}")
