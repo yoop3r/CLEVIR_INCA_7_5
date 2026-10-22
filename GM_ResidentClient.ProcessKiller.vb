@@ -38,35 +38,7 @@ Partial Public Class GmResidentClient
                     ' ════════════════════════════════════════════════════════════════
                     ' INITIALIZATION MONITORING (before background tasks start)
                     ' ════════════════════════════════════════════════════════════════
-                    Dim initElapsed = DateTime.Now.Subtract(saveIncaInitElapseTime)
-
-                    ' Warn at 2.75 minutes (yellow threshold)
-                    If initElapsed.TotalMinutes >= 2.75 AndAlso initElapsed.TotalMinutes < 3.5 Then
-                        If (DateTime.Now - lastInitAlertTime).TotalSeconds > AlertCooldownSeconds Then
-                            StatusNotifier.Toast(
-                                $"INCA initialization taking longer than expected: {initElapsed.Minutes}:{initElapsed.Seconds:D2}",
-                                ToastKind.Warning,
-                                "Initialization",
-                                durationMs:=8000,
-                                ensureMainOnTop:=False
-                            )
-                            lastInitAlertTime = DateTime.Now
-                        End If
-                    End If
-
-                    ' Critical alert at 3.5 minutes (red threshold)
-                    If initElapsed.TotalMinutes >= 3.5 Then
-                        If (DateTime.Now - lastInitAlertTime).TotalSeconds > AlertCooldownSeconds Then
-                            StatusNotifier.ToastError(
-                                $"INCA initialization timeout: {initElapsed.Minutes}:{initElapsed.Seconds:D2} - possible hang",
-                                "Critical: Initialization",
-                                durationMs:=12000,
-                                ensureMainOnTop:=False
-                            )
-                            _healthCounter = 10  ' Trigger critical state
-                            lastInitAlertTime = DateTime.Now
-                        End If
-                    End If
+                    MonitorIncaInitialization(saveIncaInitElapseTime, lastInitAlertTime, AlertCooldownSeconds)
 
                 Else
                     ' ════════════════════════════════════════════════════════════════
@@ -80,54 +52,10 @@ Partial Public Class GmResidentClient
                         ' ──────────────────────────────────────────────────────────────
                         ' Monitor API Health (background loop communication)
                         ' ──────────────────────────────────────────────────────────────
-                        If _healthMonitor = saveHealthMonitor Then
-                            _healthCounter += 1
-
-                            ' Warning at 10 iterations (API sluggish)
-                            If _healthCounter = 10 Then
-                                If (DateTime.Now - lastHealthAlertTime).TotalSeconds > AlertCooldownSeconds Then
-                                    StatusNotifier.Toast(
-                                        "INCA API responding slowly",
-                                        ToastKind.Warning,
-                                        "API Health",
-                                        durationMs:=6000,
-                                        ensureMainOnTop:=False
-                                    )
-                                    lastHealthAlertTime = DateTime.Now
-                                End If
-                            End If
-
-                            ' Critical at 1000+ iterations (API likely hung)
-                            If _healthCounter >= 1000 Then
-                                If (DateTime.Now - lastHealthAlertTime).TotalSeconds > AlertCooldownSeconds Then
-                                    StatusNotifier.ToastError(
-                                        "INCA API communication failure - no response from background loop",
-                                        "Critical: API Failure",
-                                        durationMs:=12000,
-                                        ensureMainOnTop:=False
-                                    )
-                                    lastHealthAlertTime = DateTime.Now
-                                    CheckForApiCommError()
-                                End If
-                            End If
-                        Else
-                            ' Health monitor updated - API is responding
-                            If INCACommCheckStopWatch IsNot Nothing Then INCACommCheckStopWatch = Nothing
-                            saveHealthMonitor = _healthMonitor
-                            _healthCounter = 0
-
-                            ' Check device and data status now that API is healthy
-                            UpdateDeviceAndDataStatusToastBased(lastDeviceAlertTime, lastDataAlertTime, AlertCooldownSeconds)
-                        End If
+                        MonitorApiHealth(saveHealthMonitor, lastHealthAlertTime, lastDeviceAlertTime, lastDataAlertTime, AlertCooldownSeconds)
 
                         ' Adjust monitoring frequency based on state
-                        If _healthCounter >= 10 OrElse _lostDevice OrElse _MyCpuStaleData Then
-                            updateInterval = 500  ' Monitor more frequently when errors present
-                        ElseIf MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.Recording Then
-                            updateInterval = 1000 ' Normal frequency during recording
-                        Else
-                            updateInterval = 2000 ' Slower when idle
-                        End If
+                        updateInterval = GetKillerUpdateInterval()
 
                     Else
                         ' Background tasks not enabled yet - just monitor health counter
@@ -153,6 +81,101 @@ Partial Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", "ProcessKiller: " & ex.Message, DisplayMsgBox)
         End Try
     End Sub
+
+    Private Sub MonitorIncaInitialization(ByVal saveIncaInitElapseTime As DateTime, ByRef lastInitAlertTime As DateTime, ByVal AlertCooldownSeconds As Integer)
+        'Called from ProcessKiller (killer thread) while INCA initialization is in progress. Toasts a warning at 2.75 minutes
+        'and a critical alert (forcing _healthCounter = 10) at 3.5 minutes, at most once per cooldown.
+
+        Dim initElapsed = DateTime.Now.Subtract(saveIncaInitElapseTime)
+
+        ' Warn at 2.75 minutes (yellow threshold)
+        If initElapsed.TotalMinutes >= 2.75 AndAlso initElapsed.TotalMinutes < 3.5 Then
+            If (DateTime.Now - lastInitAlertTime).TotalSeconds > AlertCooldownSeconds Then
+                StatusNotifier.Toast(
+                    $"INCA initialization taking longer than expected: {initElapsed.Minutes}:{initElapsed.Seconds:D2}",
+                    ToastKind.Warning,
+                    "Initialization",
+                    durationMs:=8000,
+                    ensureMainOnTop:=False
+                )
+                lastInitAlertTime = DateTime.Now
+            End If
+        End If
+
+        ' Critical alert at 3.5 minutes (red threshold)
+        If initElapsed.TotalMinutes >= 3.5 Then
+            If (DateTime.Now - lastInitAlertTime).TotalSeconds > AlertCooldownSeconds Then
+                StatusNotifier.ToastError(
+                    $"INCA initialization timeout: {initElapsed.Minutes}:{initElapsed.Seconds:D2} - possible hang",
+                    "Critical: Initialization",
+                    durationMs:=12000,
+                    ensureMainOnTop:=False
+                )
+                _healthCounter = 10  ' Trigger critical state
+                lastInitAlertTime = DateTime.Now
+            End If
+        End If
+
+    End Sub
+
+    Private Sub MonitorApiHealth(ByRef saveHealthMonitor As Integer, ByRef lastHealthAlertTime As DateTime, ByRef lastDeviceAlertTime As DateTime, ByRef lastDataAlertTime As DateTime, ByVal AlertCooldownSeconds As Integer)
+        'Called from ProcessKiller (killer thread) at runtime. Counts loops without a background-loop heartbeat (_healthMonitor)
+        'and toasts slow/failed API; when the heartbeat moved, resets the counter and checks device/data status.
+
+        If _healthMonitor = saveHealthMonitor Then
+            _healthCounter += 1
+
+            ' Warning at 10 iterations (API sluggish)
+            If _healthCounter = 10 Then
+                If (DateTime.Now - lastHealthAlertTime).TotalSeconds > AlertCooldownSeconds Then
+                    StatusNotifier.Toast(
+                        "INCA API responding slowly",
+                        ToastKind.Warning,
+                        "API Health",
+                        durationMs:=6000,
+                        ensureMainOnTop:=False
+                    )
+                    lastHealthAlertTime = DateTime.Now
+                End If
+            End If
+
+            ' Critical at 1000+ iterations (API likely hung)
+            If _healthCounter >= 1000 Then
+                If (DateTime.Now - lastHealthAlertTime).TotalSeconds > AlertCooldownSeconds Then
+                    StatusNotifier.ToastError(
+                        "INCA API communication failure - no response from background loop",
+                        "Critical: API Failure",
+                        durationMs:=12000,
+                        ensureMainOnTop:=False
+                    )
+                    lastHealthAlertTime = DateTime.Now
+                    CheckForApiCommError()
+                End If
+            End If
+        Else
+            ' Health monitor updated - API is responding
+            If INCACommCheckStopWatch IsNot Nothing Then INCACommCheckStopWatch = Nothing
+            saveHealthMonitor = _healthMonitor
+            _healthCounter = 0
+
+            ' Check device and data status now that API is healthy
+            UpdateDeviceAndDataStatusToastBased(lastDeviceAlertTime, lastDataAlertTime, AlertCooldownSeconds)
+        End If
+
+    End Sub
+
+    Private Function GetKillerUpdateInterval() As Integer
+        'Called from ProcessKiller (killer thread). Polling interval in ms: faster when errors are present, slower when idle.
+
+        If _healthCounter >= 10 OrElse _lostDevice OrElse _MyCpuStaleData Then
+            Return 500  ' Monitor more frequently when errors present
+        ElseIf MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.Recording Then
+            Return 1000 ' Normal frequency during recording
+        Else
+            Return 2000 ' Slower when idle
+        End If
+
+    End Function
 
     ''' <summary>
     ''' ✅ NEW: Toast-based device and data status monitoring (replaces UpdateDeviceAndDataStatus)
