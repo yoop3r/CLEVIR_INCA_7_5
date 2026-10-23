@@ -29,6 +29,9 @@ Public NotInheritable Class OxtsNcomCaptureDevice
     ' ====================================================================
     Private _captureDevice As ICaptureDevice = Nothing
     Private _dumpFile As CaptureFileWriterDevice = Nothing
+    ' Serializes dump-file writes: packets arrive on the capture thread while markers are
+    ' written by the marker pump, and CaptureFileWriterDevice is not thread-safe.
+    Private ReadOnly _dumpWriteLock As New Object()
     Private _captureThread As Thread = Nothing
     Private _isCapturing As Boolean = False
     Private _packetCount As Long = 0
@@ -309,11 +312,8 @@ Public NotInheritable Class OxtsNcomCaptureDevice
             Dim rawPacket As RawCapture = e.Packet
 
             ' Write to PCAP dump file
-            If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
-                _dumpFile.Write(rawPacket)
-
+            If TryWriteToDump(rawPacket) > 0 Then
                 ' Update counters (thread-safe)
-                Interlocked.Increment(_frameCounter)
                 Interlocked.Increment(_packetCount)
                 Interlocked.Add(_totalBytes, rawPacket.Data.Length)
             End If
@@ -428,10 +428,7 @@ Public NotInheritable Class OxtsNcomCaptureDevice
             Dim posixTime As New PosixTimeval(marker.Timestamp)
             Dim rawPacket As New RawCapture(LinkLayers.Ethernet, posixTime, ethPacket.Bytes)
 
-            _dumpFile.Write(rawPacket)
-
-            ' Update counters
-            Interlocked.Increment(_frameCounter)
+            If TryWriteToDump(rawPacket) = 0 Then Return
 
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Marker #{_eventMarkerCounter}: {marker.EventType} - {marker.Message}")
 
@@ -439,6 +436,18 @@ Public NotInheritable Class OxtsNcomCaptureDevice
             HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectMarkerPacket error: {ex.Message}")
         End Try
     End Sub
+
+    ''' <summary>
+    ''' Writes one record to the dump file and returns its 1-based frame number,
+    ''' or 0 when the write gate is closed.
+    ''' </summary>
+    Private Function TryWriteToDump(rawPacket As RawCapture) As Long
+        SyncLock _dumpWriteLock
+            If _dumpFile Is Nothing OrElse Not Volatile.Read(_isCapturing) Then Return 0
+            _dumpFile.Write(rawPacket)
+            Return Interlocked.Increment(_frameCounter)
+        End SyncLock
+    End Function
 
     ''' <summary>
     ''' ✅ NEW: Find network adapter using SharpPcap API
@@ -483,15 +492,17 @@ Public NotInheritable Class OxtsNcomCaptureDevice
     Private Sub CleanupResources()
         Try
             ' Close PCAP dump file
-            If _dumpFile IsNot Nothing Then
-                Try
-                    _dumpFile.Close()
-                    _dumpFile.Dispose()
-                Catch
-                    ' Ignore disposal errors
-                End Try
-                _dumpFile = Nothing
-            End If
+            SyncLock _dumpWriteLock
+                If _dumpFile IsNot Nothing Then
+                    Try
+                        _dumpFile.Close()
+                        _dumpFile.Dispose()
+                    Catch
+                        ' Ignore disposal errors
+                    End Try
+                    _dumpFile = Nothing
+                End If
+            End SyncLock
 
             ' Close capture device
             If _captureDevice IsNot Nothing Then

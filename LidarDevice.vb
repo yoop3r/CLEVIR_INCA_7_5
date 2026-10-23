@@ -119,6 +119,9 @@ Public NotInheritable Class LidarDevice
     ' Instance-level capture state
     Private _captureDevice As ICaptureDevice = Nothing
     Private _dumpFile As CaptureFileWriterDevice = Nothing
+    ' Serializes dump-file writes: packets arrive on the capture thread while markers are
+    ' written by the marker pump, and CaptureFileWriterDevice is not thread-safe.
+    Private ReadOnly _dumpWriteLock As New Object()
     Private _captureThread As Threading.Thread = Nothing
     Private _eventBridge As PcapEventBridge.PcapEventBridge = Nothing
 
@@ -718,12 +721,9 @@ Public NotInheritable Class LidarDevice
             Interlocked.Exchange(_lastPacketTimestamp, DateTime.UtcNow.Ticks)
 
             ' Write to PCAP dump file
-            If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
-                _dumpFile.Write(rawPacket)
-
+            If TryWriteToDump(rawPacket) > 0 Then
                 ' Update counters (thread-safe) — capture the increment result so the
                 ' sampling check below doesn't re-read the shared field
-                Interlocked.Increment(_frameCounter)
                 Dim count As Long = Interlocked.Increment(_packetCount)
                 Interlocked.Add(_totalBytes, rawPacket.Data.Length)
 
@@ -939,10 +939,7 @@ Public NotInheritable Class LidarDevice
             End If
 
             ' Close dump file
-            If _dumpFile IsNot Nothing Then
-                _dumpFile.Close()
-                _dumpFile = Nothing
-            End If
+            CloseDumpFile()
 
             ' Close capture device
             If _captureDevice IsNot Nothing Then
@@ -1069,10 +1066,7 @@ Public NotInheritable Class LidarDevice
             ' UtcNow avoids the per-packet timezone conversion cost of DateTime.Now.
             Interlocked.Exchange(_lastPacketTimestamp, DateTime.UtcNow.Ticks)
 
-            If _dumpFile IsNot Nothing AndAlso Volatile.Read(_isCapturing) Then
-                _dumpFile.Write(rawPacket)
-
-                Interlocked.Increment(_frameCounter)
+            If TryWriteToDump(rawPacket) > 0 Then
                 Dim count As Long = Interlocked.Increment(_packetCount)
                 Interlocked.Add(_totalBytes, rawPacket.Data.Length)
 
@@ -1139,10 +1133,7 @@ Public NotInheritable Class LidarDevice
             End If
 
             ' Close dump file
-            If _dumpFile IsNot Nothing Then
-                _dumpFile.Close()
-                _dumpFile = Nothing
-            End If
+            CloseDumpFile()
 
             ' ✅ NEW: Write sidecar capture manifest (JSON) next to the PCAP
             WriteCaptureManifest(logPrefix)
@@ -1666,6 +1657,31 @@ Public NotInheritable Class LidarDevice
     End Function
 
     ''' <summary>
+    ''' Writes one record to the dump file and returns its 1-based frame number,
+    ''' or 0 when the write gate is closed. Write and numbering happen under one lock
+    ''' so the returned number is the record's actual position in the pcap.
+    ''' </summary>
+    Private Function TryWriteToDump(rawPacket As RawCapture) As Long
+        SyncLock _dumpWriteLock
+            If _dumpFile Is Nothing OrElse Not Volatile.Read(_isCapturing) Then Return 0
+            _dumpFile.Write(rawPacket)
+            Return Interlocked.Increment(_frameCounter)
+        End SyncLock
+    End Function
+
+    Private Sub CloseDumpFile()
+        SyncLock _dumpWriteLock
+            If _dumpFile IsNot Nothing Then
+                Try
+                    _dumpFile.Close()
+                Finally
+                    _dumpFile = Nothing
+                End Try
+            End If
+        End SyncLock
+    End Sub
+
+    ''' <summary>
     ''' ✅ NEW: Inject marker packet using PacketDotNet
     ''' </summary>
     Private Sub InjectMarkerPacket(marker As EventMarker)
@@ -1722,24 +1738,24 @@ Public NotInheritable Class LidarDevice
             Dim posixTime As New PosixTimeval(timestamp)
             Dim rawPacket As New RawCapture(LinkLayers.Ethernet, posixTime, ethPacket.Bytes)
 
-            _dumpFile.Write(rawPacket)
+            Dim markerFrame As Long = TryWriteToDump(rawPacket)
+            If markerFrame = 0 Then Return
 
             ' ═══════════════════════════════════════════════════════════════════
-            ' Update Counters & Log to Sidecar File
+            ' Log to Sidecar File
             ' ═══════════════════════════════════════════════════════════════════
-            Interlocked.Increment(_frameCounter)
-            _eventLogger?.LogEvent(_frameCounter, timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
+            _eventLogger?.LogEvent(markerFrame, timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
 
             ' ✅ NEW: Also record for the sidecar manifest written at StopCapture
             _manifestMarkers.Enqueue(New PcapEventBridge.EventMarkerRecord With {
-                .FrameNumber = _frameCounter,
+                .FrameNumber = markerFrame,
                 .Timestamp = timestamp,
                 .EventType = marker.EventType,
                 .Message = marker.Message,
                 .SequenceNumber = marker.SequenceNumber
             })
 
-            HandleUserMessageLogging("GMRC", $"[{DisplayName}] ✅ Marker injected: Frame {_frameCounter} - {marker.EventType}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] ✅ Marker injected: Frame {markerFrame} - {marker.EventType}")
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"[{DisplayName}] InjectMarkerPacket error: {ex.Message}")
@@ -1844,14 +1860,11 @@ Public NotInheritable Class LidarDevice
     Private Sub CleanupResources()
         Try
             ' Close dump file
-            If _dumpFile IsNot Nothing Then
-                Try
-                    _dumpFile.Close()
-                Catch exClose As Exception
-                    HandleUserMessageLogging("GMRC", $"[{DisplayName}] CleanupResources: dump file close failed - {exClose.Message}")
-                End Try
-                _dumpFile = Nothing
-            End If
+            Try
+                CloseDumpFile()
+            Catch exClose As Exception
+                HandleUserMessageLogging("GMRC", $"[{DisplayName}] CleanupResources: dump file close failed - {exClose.Message}")
+            End Try
 
             ' Close capture device
             If _captureDevice IsNot Nothing Then
