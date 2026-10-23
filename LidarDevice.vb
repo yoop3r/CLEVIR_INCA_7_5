@@ -30,17 +30,21 @@ Public NotInheritable Class LidarEventLogger
         _eventLogWriter.WriteLine($"# PCAP File: {Path.GetFileName(pcapFilePath)}")
         _eventLogWriter.WriteLine($"# Created: {DateTime.Now:yyyy-MM-dd HH:mm:ss}")
         _eventLogWriter.WriteLine("#")
-        _eventLogWriter.WriteLine("# Format: FrameNumber | Timestamp | EventType | Message | SequenceNumber")
+        _eventLogWriter.WriteLine("# Format: FrameNumber | Timestamp | EventType | Message | SequenceNumber | MarkerFrame")
+        _eventLogWriter.WriteLine("#   FrameNumber = pcap record at the moment of the event (matches the ANNO LiDAR frame column)")
+        _eventLogWriter.WriteLine("#   Timestamp   = UTC time of the event")
+        _eventLogWriter.WriteLine("#   MarkerFrame = pcap record holding the marker packet itself")
         _eventLogWriter.WriteLine("# -------------------------------------------------------------------------")
         _eventLogWriter.Flush()
     End Sub
 
     ' ✅ REMOVED: UpdateFromSdk() doesn't belong here!
 
-    Public Sub LogEvent(frameNumber As Long, timestamp As DateTime, eventType As String, message As String, sequenceNumber As Integer)
+    Public Sub LogEvent(frameNumber As Long, timestamp As DateTime, eventType As String, message As String, sequenceNumber As Integer,
+                        Optional markerFrame As Long = 0)
         SyncLock _syncLockObj
             Try
-                Dim line As String = $"{frameNumber}|{timestamp:yyyy-MM-dd HH:mm:ss.fff}|{eventType}|{message}|{sequenceNumber}"
+                Dim line As String = $"{frameNumber}|{timestamp:yyyy-MM-dd HH:mm:ss.fff}|{eventType}|{message}|{sequenceNumber}|{If(markerFrame > 0, markerFrame, frameNumber)}"
                 HandleUserMessageLogging("GMRC", $"LidarEventLogger: Writing line = '{line}'")
                 _eventLogWriter.WriteLine(line)
                 _eventLogWriter.Flush()
@@ -309,7 +313,8 @@ Public NotInheritable Class LidarDevice
     Private Structure EventMarker
         Public EventType As String
         Public EventId As Long
-        Public Timestamp As DateTime
+        Public Timestamp As DateTime      ' UTC time of the event
+        Public EventFrame As Long         ' pcap record at the event; 0 = use the marker's own record
         Public Message As String
         Public SequenceNumber As Integer
     End Structure
@@ -1454,9 +1459,14 @@ Public NotInheritable Class LidarDevice
     End Sub
 
     ''' <summary>
-    ''' Injects an event marker into the capture stream
+    ''' Injects an event marker into the capture stream.
+    ''' <paramref name="eventFrame"/> and <paramref name="eventTime"/> let the caller pass the
+    ''' frame/time it captured when the event happened (e.g. at button press), so the marker
+    ''' reports the same frame as the annotation even though it is written later.
     ''' </summary>
-    Public Function InjectEventMarker(eventType As String, message As String, sequenceNumber As Integer) As Long
+    Public Function InjectEventMarker(eventType As String, message As String, sequenceNumber As Integer,
+                                      Optional eventFrame As Long = 0,
+                                      Optional eventTime As DateTime? = Nothing) As Long
         Try
             If Not Volatile.Read(_isCapturing) Then
                 Return -1
@@ -1467,7 +1477,8 @@ Public NotInheritable Class LidarDevice
             Dim marker As New EventMarker With {
                     .EventType = eventType,
                     .EventId = Interlocked.Increment(_markerCounter),
-                    .Timestamp = DateTime.Now,
+                    .Timestamp = If(eventTime, DateTime.Now).ToUniversalTime(),
+                    .EventFrame = Math.Max(eventFrame, 0),
                     .Message = message,
                     .SequenceNumber = sequenceNumber
                     }
@@ -1689,17 +1700,23 @@ Public NotInheritable Class LidarDevice
             If _dumpFile Is Nothing OrElse Not Volatile.Read(_isCapturing) Then Return
 
             ' ═══════════════════════════════════════════════════════════════════
-            ' Use GPS-synchronized timestamp if available
+            ' Timestamps (always UTC). The sync provider's offset is applied to both
+            ' the event time and the record time; the pcap record keeps the write
+            ' time so record timestamps stay in order with the surrounding packets.
             ' ═══════════════════════════════════════════════════════════════════
-            Dim timestamp As DateTime = marker.Timestamp
+            Dim nowUtc As DateTime = DateTime.UtcNow
+            Dim syncOffset As TimeSpan = TimeSpan.Zero
             If _timeSyncProvider IsNot Nothing AndAlso _timeSyncProvider.IsSynchronized() Then
-                timestamp = _timeSyncProvider.GetSynchronizedTimestamp()
+                syncOffset = _timeSyncProvider.GetSynchronizedTimestamp().ToUniversalTime() - nowUtc
             End If
+            Dim recordTime As DateTime = nowUtc + syncOffset
+            Dim timestamp As DateTime = marker.Timestamp + syncOffset
 
             ' ═══════════════════════════════════════════════════════════════════
             ' Build Marker Payload (pipe-delimited format)
             ' ═══════════════════════════════════════════════════════════════════
             Dim payload As String = $"{marker.EventType}|{marker.Message}|{marker.SequenceNumber:D2}|GPS:{timestamp:yyyy-MM-dd HH:mm:ss.fff}"
+            If marker.EventFrame > 0 Then payload &= $"|AT:{marker.EventFrame}"
             Dim payloadBytes = System.Text.Encoding.UTF8.GetBytes(payload)
 
             ' ═══════════════════════════════════════════════════════════════════
@@ -1735,27 +1752,31 @@ Public NotInheritable Class LidarDevice
             ' ═══════════════════════════════════════════════════════════════════
             ' Write to PCAP Dump File
             ' ═══════════════════════════════════════════════════════════════════
-            Dim posixTime As New PosixTimeval(timestamp)
+            Dim posixTime As New PosixTimeval(recordTime)
             Dim rawPacket As New RawCapture(LinkLayers.Ethernet, posixTime, ethPacket.Bytes)
 
             Dim markerFrame As Long = TryWriteToDump(rawPacket)
             If markerFrame = 0 Then Return
 
+            ' A cached event frame past the marker means the pcap rotated in between; fall back.
+            Dim eventFrame As Long = If(marker.EventFrame > 0 AndAlso marker.EventFrame <= markerFrame, marker.EventFrame, markerFrame)
+
             ' ═══════════════════════════════════════════════════════════════════
             ' Log to Sidecar File
             ' ═══════════════════════════════════════════════════════════════════
-            _eventLogger?.LogEvent(markerFrame, timestamp, marker.EventType, marker.Message, marker.SequenceNumber)
+            _eventLogger?.LogEvent(eventFrame, timestamp, marker.EventType, marker.Message, marker.SequenceNumber, markerFrame)
 
             ' ✅ NEW: Also record for the sidecar manifest written at StopCapture
             _manifestMarkers.Enqueue(New PcapEventBridge.EventMarkerRecord With {
-                .FrameNumber = markerFrame,
+                .FrameNumber = eventFrame,
+                .MarkerFrameNumber = markerFrame,
                 .Timestamp = timestamp,
                 .EventType = marker.EventType,
                 .Message = marker.Message,
                 .SequenceNumber = marker.SequenceNumber
             })
 
-            HandleUserMessageLogging("GMRC", $"[{DisplayName}] ✅ Marker injected: Frame {markerFrame} - {marker.EventType}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] ✅ Marker injected: Frame {markerFrame} (event frame {eventFrame}) - {marker.EventType}")
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"[{DisplayName}] InjectMarkerPacket error: {ex.Message}")

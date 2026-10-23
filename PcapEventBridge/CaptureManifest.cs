@@ -357,7 +357,11 @@ namespace PcapEventBridge
 
     public sealed class EventMarkerRecord
     {
+        /// <summary>pcap record at the moment of the event (matches the annotation's LiDAR frame).</summary>
         public long FrameNumber { get; set; }
+        /// <summary>pcap record that holds the marker packet itself.</summary>
+        public long MarkerFrameNumber { get; set; }
+        /// <summary>UTC time of the event.</summary>
         public DateTime Timestamp { get; set; }
         public string? EventType { get; set; }
         public string? Message { get; set; }

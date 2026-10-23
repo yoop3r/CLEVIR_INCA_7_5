@@ -145,6 +145,30 @@ Module LidarPcapCapture
     End Sub
 
     ''' <summary>
+    ''' Injects an event marker that reports the frames/time cached when the event happened.
+    ''' <paramref name="lidarFrameSnapshot"/> is the comma-separated, device-ordered value from
+    ''' GetLidarFrameSnapshot (the same value written to the ANNO LiDAR columns).
+    ''' </summary>
+    Public Sub InjectEventMarker(eventType As String, message As String, currentSeq As Integer,
+                                 lidarFrameSnapshot As String, eventTime As DateTime)
+        Dim frames As String() = If(lidarFrameSnapshot, String.Empty).Split(","c)
+        For i As Integer = 0 To LidarDevices.Count - 1
+            Dim device = LidarDevices(i)
+            If device.IsCapturing Then
+                device.InjectEventMarker(eventType, message, currentSeq, SnapshotFrameAt(frames, i), eventTime)
+            End If
+        Next
+    End Sub
+
+    ''' <summary>Frame for device <paramref name="index"/> from a split snapshot; 0 when absent or not capturing (-1).</summary>
+    Friend Function SnapshotFrameAt(frames As String(), index As Integer) As Long
+        Dim frame As Long
+        If frames Is Nothing OrElse index < 0 OrElse index >= frames.Length Then Return 0
+        If Not Long.TryParse(frames(index).Trim(), frame) Then Return 0
+        Return Math.Max(frame, 0)
+    End Function
+
+    ''' <summary>
     ''' Stops LiDAR capture for all devices
     ''' </summary>
     Public Sub StopLidarCapture()
@@ -421,8 +445,14 @@ Module LidarPcapCapture
                                     Dim markerData As String = System.Text.Encoding.UTF8.GetString(udpPacket.PayloadData)
                                     Dim parts = markerData.Split("|"c)
                                     If parts.Length >= 3 Then
-                                        postProcessLogger?.LogEvent(frameNumber, rawPacket.Timeval.Date,
-                                                                parts(0), parts(1), Integer.Parse(parts(2)))
+                                        Dim eventFrame As Long = frameNumber
+                                        Dim atField = parts.FirstOrDefault(Function(p) p.StartsWith("AT:", StringComparison.Ordinal))
+                                        If atField IsNot Nothing Then
+                                            Dim parsed As Long
+                                            If Long.TryParse(atField.Substring(3), parsed) AndAlso parsed > 0 AndAlso parsed <= frameNumber Then eventFrame = parsed
+                                        End If
+                                        postProcessLogger?.LogEvent(eventFrame, rawPacket.Timeval.Date,
+                                                                parts(0), parts(1), Integer.Parse(parts(2)), frameNumber)
                                         HandleUserMessageLogging("GMRC", $"  Frame {frameNumber}: {parts(0)} - {parts(1)}")
                                     Else
                                         HandleUserMessageLogging("GMRC", $"  Frame {frameNumber}: {markerData}")
