@@ -799,7 +799,7 @@ Public Module Module1
                 Try
                     device.ShutdownDevice()  ' ✅ This handles StopCapture + UnregisterDevice
                 Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"ShutdownAllLidarDevices: Error shutting down {device.DeviceId}: {ex.Message}")
+                    HandleUserMessageLogging("GMRC", $"ShutdownAllLidarDevices: Error shutting down {device.DisplayName}: {ex.Message}")
                 End Try
             Next
 
@@ -818,14 +818,12 @@ Public Module Module1
     End Sub
 
     ''' <summary>
-    ''' Number of LiDAR[n]Frame columns in annotation CSV headers (0 when no LiDAR devices are configured)
+    ''' LiDAR[...]Frame column labels for annotation CSV headers, in LidarDevices order (FRONT, REAR, ... from
+    ''' each device's configured orientation). Empty when no LiDAR devices are configured.
     ''' </summary>
-    Private Function AnnotationLidarColumnCount() As Integer
-        'If LidarCaptureEnabled AndAlso LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 Then
-        If LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 Then
-            Return LidarDevices.Count
-        End If
-        Return 0
+    Private Function AnnotationLidarColumnLabels() As String()
+        If LidarDevices Is Nothing OrElse LidarDevices.Count = 0 Then Return Array.Empty(Of String)()
+        Return AnnotationCsvHeader.LidarColumnLabels(LidarDevices.Select(Function(d) d.Orientation).ToList())
     End Function
 
     Private ReadOnly _aggregateHeaderLock As New Object()
@@ -846,13 +844,14 @@ Public Module Module1
                     End Using
                 End Using
 
-                Dim upgraded As String = AnnotationCsvHeader.GetUpgradedHeader(firstLine, AnnotationLidarColumnCount())
+                Dim lidarLabels As String() = AnnotationLidarColumnLabels()
+                Dim upgraded As String = AnnotationCsvHeader.GetUpgradedHeader(firstLine, lidarLabels)
                 If upgraded Is Nothing Then Return
 
                 Dim lines() As String = File.ReadAllLines(aggregateFileName)
                 lines(0) = upgraded
                 File.WriteAllLines(aggregateFileName, lines)
-                HandleUserMessageLogging("GMRC", $"EnsureAggregateAnnoHeader: Header updated for {AnnotationLidarColumnCount()} LiDAR device(s)")
+                HandleUserMessageLogging("GMRC", $"EnsureAggregateAnnoHeader: Header updated for {lidarLabels.Length} LiDAR device(s) [{String.Join(",", lidarLabels)}]")
             Catch ex As Exception
                 ' Non-fatal: the annotation row is still appended
                 HandleUserMessageLogging("GMRC", $"EnsureAggregateAnnoHeader: Could not update header ({ex.GetType().Name}): {ex.Message}")
@@ -3872,7 +3871,7 @@ Public Module Module1
                 "1,13,Thumbnail,-1",
                 "1,14,RecordedMileage,0",
                 "1,15,LCCActiveMileage,0",
-                AnnotationCsvHeader.Build(AnnotationLidarColumnCount())
+                AnnotationCsvHeader.Build(AnnotationLidarColumnLabels())
             }
 
                 For Each line As String In lines
@@ -4466,7 +4465,7 @@ Public Module Module1
                     Using writer As New StreamWriter(fs)
                         ' Write header if file doesn't exist (first time creating the file)
                         If Not fileExists Then
-                            Await writer.WriteLineAsync(AnnotationCsvHeader.Build(AnnotationLidarColumnCount()))
+                            Await writer.WriteLineAsync(AnnotationCsvHeader.Build(AnnotationLidarColumnLabels()))
                         End If
 
                         Await writer.WriteLineAsync($"{eventComment},{timeCriticalInfo}")
@@ -4820,7 +4819,7 @@ Public Module Module1
                     Using fs As New FileStream(aggregateFileName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
                         Using writer As New StreamWriter(fs)
                             If Not fileExists Then
-                                writer.WriteLine(AnnotationCsvHeader.Build(AnnotationLidarColumnCount()))
+                                writer.WriteLine(AnnotationCsvHeader.Build(AnnotationLidarColumnLabels()))
                             End If
                             writer.WriteLine($"{eventComment},{timeCriticalInfo}")
                             writer.Flush()

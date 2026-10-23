@@ -91,7 +91,7 @@ Public NotInheritable Class SharedNicCapture
                     End If
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC",
-                        $"[SharedNIC:{_adapterGuid}] Invalid device IP '{ipStr}' for [{d.DeviceId}]: {ex.Message}")
+                        $"[SharedNIC:{_adapterGuid}] Invalid device IP '{ipStr}' for [{d.DisplayName}]: {ex.Message}")
                 End Try
             End If
         Next
@@ -233,7 +233,7 @@ Public NotInheritable Class SharedNicCapture
                     d.StopCaptureShared()
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC",
-                        $"[SharedNIC:{_adapterGuid}] StopCaptureShared({d.DeviceId}) error: {ex.Message}")
+                        $"[SharedNIC:{_adapterGuid}] StopCaptureShared({d.DisplayName}) error: {ex.Message}")
                 End Try
             Next
 
@@ -292,10 +292,10 @@ Public NotInheritable Class SharedNicCapture
                 Try
                     d.StopCaptureShared()
                     HandleUserMessageLogging("GMRC",
-                        $"[SharedNIC:{_adapterGuid}] Stopped {d.DeviceId} for rotation")
+                        $"[SharedNIC:{_adapterGuid}] Stopped {d.DisplayName} for rotation")
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC",
-                        $"[SharedNIC:{_adapterGuid}] Rotate stop({d.DeviceId}) error: {ex.Message}")
+                        $"[SharedNIC:{_adapterGuid}] Rotate stop({d.DisplayName}) error: {ex.Message}")
                 End Try
             Next
 
@@ -328,10 +328,10 @@ Public NotInheritable Class SharedNicCapture
                 Try
                     d.StartCaptureShared(filename, sequence)
                     HandleUserMessageLogging("GMRC",
-                        $"[SharedNIC:{_adapterGuid}] Started {d.DeviceId} on new sequence {sequence:D2}")
+                        $"[SharedNIC:{_adapterGuid}] Started {d.DisplayName} on new sequence {sequence:D2}")
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC",
-                        $"[SharedNIC:{_adapterGuid}] Rotate start({d.DeviceId}) error: {ex.Message}")
+                        $"[SharedNIC:{_adapterGuid}] Rotate start({d.DisplayName}) error: {ex.Message}")
                 End Try
             Next
 
@@ -440,7 +440,7 @@ Public NotInheritable Class SharedNicCapture
         HandleUserMessageLogging("GMRC",
             $"[SharedNIC:{_adapterGuid}] DIAG: ⚠️ SharpPcap OnCaptureStopped — " &
             $"status={e}, isCapturing={Volatile.Read(_isCapturing)}, " &
-            $"devices={String.Join(",", _devices.Select(Function(d) $"{d.DeviceId}:{d.PacketCount:N0}pkts"))}, " &
+            $"devices={String.Join(",", _devices.Select(Function(d) $"{d.DisplayName}={d.PacketCount:N0}pkts"))}, " &
             $"ts={DateTime.Now:HH:mm:ss.fff}")
     End Sub
 

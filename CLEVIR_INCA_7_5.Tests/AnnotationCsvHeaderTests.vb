@@ -40,4 +40,37 @@ Public Class AnnotationCsvHeaderTests
         Assert.IsNull(AnnotationCsvHeader.GetUpgradedHeader("3,1000,BUTTON FEEDBACK,3060,ACC Event", 2))
     End Sub
 
+    <TestMethod>
+    Public Sub LidarColumnLabels_UseOrientationAndFallBackToPosition()
+        CollectionAssert.AreEqual({"FRONT", "REAR"}, AnnotationCsvHeader.LidarColumnLabels({"FRONT", "REAR"}))
+        CollectionAssert.AreEqual({"FRONT", "2"}, AnnotationCsvHeader.LidarColumnLabels({" front ", ""}))
+        CollectionAssert.AreEqual({"1", "2"}, AnnotationCsvHeader.LidarColumnLabels({Nothing, "  "}))
+    End Sub
+
+    <TestMethod>
+    Public Sub LidarColumnLabels_DisambiguatesDuplicatesAndSanitizes()
+        CollectionAssert.AreEqual({"FRONT_1", "FRONT_2", "REAR"}, AnnotationCsvHeader.LidarColumnLabels({"FRONT", "Front", "REAR"}))
+        CollectionAssert.AreEqual({"LEFT_REAR"}, AnnotationCsvHeader.LidarColumnLabels({"Left,Rear"}))
+    End Sub
+
+    <TestMethod>
+    Public Sub Build_WithOrientationLabels()
+        Assert.AreEqual(AnnotationCsvHeader.BaseColumns & ",LiDAR[FRONT]Frame,LiDAR[REAR]Frame",
+                        AnnotationCsvHeader.Build({"FRONT", "REAR"}))
+    End Sub
+
+    <TestMethod>
+    Public Sub NumberedHeader_IsRelabeledToOrientations()
+        Dim expected = AnnotationCsvHeader.Build({"FRONT", "REAR"})
+        Assert.AreEqual(expected, AnnotationCsvHeader.GetUpgradedHeader(AnnotationCsvHeader.Build(2), {"FRONT", "REAR"}))
+        Assert.AreEqual(expected, AnnotationCsvHeader.GetUpgradedHeader(AnnotationCsvHeader.Build(1) & ",", {"FRONT", "REAR"}))
+        Assert.IsNull(AnnotationCsvHeader.GetUpgradedHeader(expected, {"FRONT", "REAR"}))
+    End Sub
+
+    <TestMethod>
+    Public Sub MoreExistingColumnsThanDevices_KeepsExistingLabels()
+        Dim existing = AnnotationCsvHeader.Build({"FRONT", "REAR"})
+        Assert.IsNull(AnnotationCsvHeader.GetUpgradedHeader(existing, {"FRONT"}))
+    End Sub
+
 End Class

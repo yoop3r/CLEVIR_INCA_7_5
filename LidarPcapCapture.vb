@@ -71,14 +71,14 @@ Module LidarPcapCapture
                         If device.IsCapturing Then
                             successCount += 1
                             HandleUserMessageLogging("GMRC",
-                                $"StartLidarCaptureMulti: Started {device.DeviceId} (solo NIC)")
+                                $"StartLidarCaptureMulti: Started {device.DisplayName} (solo NIC)")
                         Else
                             HandleUserMessageLogging("GMRC",
-                                $"StartLidarCaptureMulti: {device.DeviceId} IsCapturing=False after start")
+                                $"StartLidarCaptureMulti: {device.DisplayName} IsCapturing=False after start")
                         End If
                     Catch ex As Exception
                         HandleUserMessageLogging("GMRC",
-                            $"StartLidarCaptureMulti: Failed {device.DeviceId} — {ex.Message}")
+                            $"StartLidarCaptureMulti: Failed {device.DisplayName} — {ex.Message}")
                     End Try
 
                 Else
@@ -183,11 +183,11 @@ Module LidarPcapCapture
                     If device.IsCapturing Then
                         device.StopCapture()
                         HandleUserMessageLogging("GMRC",
-                            $"StopLidarCaptureMulti: Stopped {device.DeviceId}")
+                            $"StopLidarCaptureMulti: Stopped {device.DisplayName}")
                     End If
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC",
-                        $"StopLidarCaptureMulti: Error stopping {device.DeviceId} — {ex.Message}")
+                        $"StopLidarCaptureMulti: Error stopping {device.DisplayName} — {ex.Message}")
                 End Try
             Next
 
@@ -260,10 +260,10 @@ Module LidarPcapCapture
                     Threading.Thread.Sleep(200)
                     device.StartCapture(pcapFilename, currentSeq)
                     HandleUserMessageLogging("GMRC",
-                        $"RestartLidarCaptureForNewSequence: Restarted {device.DeviceId} (solo NIC)")
+                        $"RestartLidarCaptureForNewSequence: Restarted {device.DisplayName} (solo NIC)")
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC",
-                        $"RestartLidarCaptureForNewSequence: Error restarting {device.DeviceId} — {ex.Message}")
+                        $"RestartLidarCaptureForNewSequence: Error restarting {device.DisplayName} — {ex.Message}")
                 End Try
             Next
 

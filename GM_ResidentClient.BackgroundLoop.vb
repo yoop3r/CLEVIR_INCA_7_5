@@ -1450,13 +1450,8 @@ Partial Public Class GmResidentClient
         Return DisplayValueFormatter.FormatDisplayString(displayValue, displayFormat, deviceName, variableName, GlobalSignalEnums)
     End Function
 
-    ' Last color applied per GO/NOGO label by UpdateGonogoLabelColor (skips redundant UI updates).
+    ' Last color requested per GO/NOGO label by UpdateGonogoLabelColor (skips redundant UI updates).
     Private _goNoGoLabelColorCache(0 To 15) As Color
-
-    Private Sub InvalidateGoNoGoLabelColorCache()
-        ' Forces the next UpdateGonogoLabelColor call per label to repaint, e.g. after labels were grayed directly.
-        If _goNoGoLabelColorCache IsNot Nothing Then Array.Clear(_goNoGoLabelColorCache, 0, _goNoGoLabelColorCache.Length)
-    End Sub
 
     Private Sub UpdateGonogoLabelColor(ByVal MyGridIndex As Integer, ByVal MyColor As Color)
         ' Called from MyBackgroundTasks routine - updates GO/NOGO label colors on the main screen.
@@ -1473,10 +1468,20 @@ Partial Public Class GmResidentClient
                 Return
             End If
 
+            If MyGridIndex > UBound(_goNoGoLabelColorCache) Then
+                ReDim Preserve _goNoGoLabelColorCache(UBound(MyLabel))
+            End If
+
+            ' The video status label is shown gray whenever INCA is not recording (see HandleIncaVideoStatusLabel).
+            Dim isVideoStatusLabel As Boolean = MyLabel(MyGridIndex).Text = "INCA Video Status"
+            Dim displayColor As Color = If(isVideoStatusLabel AndAlso Not MyIncaInterface.Recording, Color.Gray, MyColor)
+
             ' ====================================================================================
             ' OPTIMIZATION: Skip UI update if color hasn't changed (reduces UI overhead)
+            ' Also compare the label itself, so a label painted elsewhere (e.g. video label grayed while not
+            ' recording, or GO/NOGO grayed during a loop fault) is repainted instead of left stale.
             ' ====================================================================================
-            If _goNoGoLabelColorCache(MyGridIndex) = MyColor Then
+            If _goNoGoLabelColorCache(MyGridIndex) = MyColor AndAlso MyLabel(MyGridIndex).BackColor = displayColor Then
                 Return ' Color unchanged - no UI update needed
             End If
 
@@ -1502,8 +1507,8 @@ Partial Public Class GmResidentClient
             ' ====================================================================================
             ' Logging: Log color change (we already know it changed - passed early return check)
             ' ====================================================================================
-            If MyColor <> Color.Gray AndAlso MyLabel(MyGridIndex).Text <> "EOCM DTCs" Then
-                Dim colorName As String = GetColorName(MyColor)
+            If displayColor <> Color.Gray AndAlso MyLabel(MyGridIndex).Text <> "EOCM DTCs" Then
+                Dim colorName As String = GetColorName(displayColor)
                 HandleUserMessageLogging("GMRC",
                     $"UpdateGONOGOLabelColor: {MyLabel(MyGridIndex).Text} GO/NOGO is ----------------- {colorName}")
             End If

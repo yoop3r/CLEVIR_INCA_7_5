@@ -675,7 +675,7 @@ Partial Public Class GmResidentClient
                 If LidarDevices IsNot Nothing AndAlso LidarDevices.Count > 0 AndAlso MyTimeSyncProvider IsNot Nothing Then
                     For Each lidar In LidarDevices
                         lidar.SetTimeSyncProvider(MyTimeSyncProvider)
-                        HandleUserMessageLogging("GMRC", $"{MyTimeSyncProvider.ProviderName} linked to {lidar.DeviceId}")
+                        HandleUserMessageLogging("GMRC", $"{MyTimeSyncProvider.ProviderName} linked to {lidar.DisplayName}")
                     Next
                 End If
 
