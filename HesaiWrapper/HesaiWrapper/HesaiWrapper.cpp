@@ -15,35 +15,26 @@
 #include "../../HesaiLidar_SDK_2.0-master/driver/hesai_lidar_sdk.hpp"
 #include "../../HesaiLidar_SDK_2.0-master/libhesai/PtcClient/include/ptc_client.h"
 
-// ✅ For debug output - use multiple methods
+// ✅ For debug output
 #include <Windows.h>
 #include <sstream>
-#include <fstream>
+#include <atomic>
 
-// ✅ Log to file for reliable debugging
-static std::ofstream g_logFile;
-static bool g_logFileOpened = false;
+// Host-supplied log sink (CLEVIR routes it into GM_ResidentClient.log). Null = debugger output only.
+static std::atomic<HesaiLogCallback> g_logCallback{ nullptr };
 
-static void OpenLogFile() {
-    if (!g_logFileOpened) {
-        g_logFile.open("C:\\CLEVIR_INCA_7_5\\HesaiWrapper_Debug.log", std::ios::out | std::ios::app);
-        g_logFileOpened = true;
-    }
+HESAI_API void hesai_set_log_callback(HesaiLogCallback callback) {
+    g_logCallback.store(callback);
 }
 
-// Helper macro for debug logging - writes to file AND debug output
+// Helper macro for debug logging - writes to the debugger and the host log callback
 #define HESAI_LOG(msg) { \
     std::ostringstream oss; \
     oss << "[HesaiWrapper] " << msg; \
     std::string logStr = oss.str(); \
     OutputDebugStringA((logStr + "\n").c_str()); \
-    printf("%s\n", logStr.c_str()); \
-    fflush(stdout); \
-    OpenLogFile(); \
-    if (g_logFile.is_open()) { \
-        g_logFile << logStr << std::endl; \
-        g_logFile.flush(); \
-    } \
+    HesaiLogCallback cb = g_logCallback.load(); \
+    if (cb) cb(logStr.c_str()); \
 }
 
 // ====================================================================
@@ -184,13 +175,7 @@ extern "C" {
 
         g_devices.clear();
         g_initialized = false;
-        
-        // Close log file
-        if (g_logFile.is_open()) {
-            g_logFile.close();
-            g_logFileOpened = false;
-        }
-        
+
         HESAI_LOG("hesai_shutdown: Complete");
     }
 

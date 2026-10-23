@@ -158,6 +158,48 @@ Public Class HesaiInterop
     Private Const LibHesaiDll As String = "HesaiWrapper.dll"
 
     ' ====================================================================
+    ' Native log sink: HesaiWrapper diagnostics go to GM_ResidentClient.log
+    ' (replaces the wrapper's former hardcoded HesaiWrapper_Debug.log).
+    ' ====================================================================
+
+    <UnmanagedFunctionPointer(CallingConvention.StdCall)>
+    Private Delegate Sub HesaiLogCallback(message As IntPtr)
+
+    ' Kept in a static field so the GC never collects the delegate native code is holding.
+    Private Shared ReadOnly _logCallback As HesaiLogCallback = AddressOf OnNativeLog
+    Private Shared _logCallbackState As Integer   ' 0 = not attempted, 1 = registered, 2 = unsupported/failed
+
+    Private Shared Sub OnNativeLog(message As IntPtr)
+        ' Runs on native threads; must never let an exception escape into native code.
+        Try
+            Dim text As String = Marshal.PtrToStringUTF8(message)
+            If Not String.IsNullOrEmpty(text) Then HandleUserMessageLogging("GMRC", text)
+        Catch
+        End Try
+    End Sub
+
+    Private Shared Sub EnsureLogCallback()
+        If Threading.Interlocked.CompareExchange(_logCallbackState, 1, 0) <> 0 Then Return
+        Try
+            NativeMethods.hesai_set_log_callback(_logCallback)
+        Catch ex As EntryPointNotFoundException
+            Threading.Volatile.Write(_logCallbackState, 2)
+            HandleUserMessageLogging("GMRC", "⚠️ HesaiWrapper.dll has no hesai_set_log_callback (older build) - wrapper diagnostics not logged")
+        Catch ex As Exception
+            ' DLL missing/unloadable: IsAvailable reports that itself.
+            Threading.Volatile.Write(_logCallbackState, 2)
+        End Try
+    End Sub
+
+    Private Shared Sub ClearLogCallback()
+        If Threading.Interlocked.CompareExchange(_logCallbackState, 0, 1) <> 1 Then Return
+        Try
+            NativeMethods.hesai_set_log_callback(Nothing)
+        Catch
+        End Try
+    End Sub
+
+    ' ====================================================================
     ' P/Invoke Declarations
     ' Isolated in a NativeMethods-suffixed nested class per CA1060.
     ' ====================================================================
@@ -224,6 +266,10 @@ Public Class HesaiInterop
 
         <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
         Public Shared Sub hesai_shutdown()
+        End Sub
+
+        <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl)>
+        Public Shared Sub hesai_set_log_callback(callback As HesaiLogCallback)
         End Sub
 
         <DllImport(LibHesaiDll, CallingConvention:=CallingConvention.Cdecl, CharSet:=CharSet.Ansi, BestFitMapping:=False, ThrowOnUnmappableChar:=True)>
@@ -687,6 +733,7 @@ Public Class HesaiInterop
     ''' </summary>
     Public Shared Function Initialize() As Boolean
         Try
+            EnsureLogCallback()
             Dim result As Integer = NativeMethods.hesai_initialize()
             If result = 0 Then
                 HandleUserMessageLogging("GMRC", "✅ Hesai SDK: Initialized")
@@ -710,6 +757,7 @@ Public Class HesaiInterop
     Public Shared Sub Shutdown()
         Try
             NativeMethods.hesai_shutdown()
+            ClearLogCallback()
             HandleUserMessageLogging("GMRC", "✅ Hesai SDK: Shutdown complete")
         Catch ex As DllNotFoundException
             ' DLL not loaded - nothing to shutdown
@@ -732,6 +780,7 @@ Public Class HesaiInterop
             End If
 
             ' Try to call a function to verify DLL loads
+            EnsureLogCallback()
             Dim testStats As New HesaiSdkStats()
             NativeMethods.hesai_get_device_stats("", testStats)
             Return True

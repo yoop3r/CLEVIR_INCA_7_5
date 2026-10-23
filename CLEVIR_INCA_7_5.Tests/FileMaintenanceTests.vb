@@ -166,6 +166,36 @@ Public Class FileMaintenanceTests
     End Sub
 
     <TestMethod>
+    Public Sub TryRotateLog_MovesLogAndReplacesOlderBackup()
+        Dim log = Path.Combine(_root, FileMaintenance.ResidentLogFileName)
+        Dim backup = Path.Combine(_root, FileMaintenance.ResidentLogBackupFileName)
+        File.WriteAllText(log, "current")
+        File.WriteAllText(backup, "older")
+
+        Assert.IsTrue(FileMaintenance.TryRotateLog(log, backup))
+        Assert.IsFalse(File.Exists(log))
+        Assert.AreEqual("current", File.ReadAllText(backup))
+    End Sub
+
+    <TestMethod>
+    Public Sub TryRotateLog_HeldOpenWithoutDeleteSharing_ReturnsFalseAndKeepsLog()
+        Dim log = Path.Combine(_root, FileMaintenance.ResidentLogFileName)
+        Dim backup = Path.Combine(_root, FileMaintenance.ResidentLogBackupFileName)
+        File.WriteAllText(log, "current")
+
+        Using reader As New FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
+            Assert.IsFalse(FileMaintenance.TryRotateLog(log, backup))
+        End Using
+        Assert.AreEqual("current", File.ReadAllText(log))
+        Assert.IsFalse(File.Exists(backup))
+    End Sub
+
+    <TestMethod>
+    Public Sub TryRotateLog_MissingLog_ReturnsFalse()
+        Assert.IsFalse(FileMaintenance.TryRotateLog(Path.Combine(_root, "none.log"), Path.Combine(_root, "none.1.log")))
+    End Sub
+
+    <TestMethod>
     Public Sub WaitUntilFileReady_UnlockedFile_ReturnsTrueWithoutLogging()
         Dim f = Touch("ready.xlsx")
         Dim log As New List(Of String)

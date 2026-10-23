@@ -8,6 +8,17 @@
 
 extern "C" {
     /// <summary>
+    /// Log sink for wrapper diagnostics. Called on the thread that logs; message is UTF-8,
+    /// valid only for the duration of the call.
+    /// </summary>
+    typedef void (__stdcall *HesaiLogCallback)(const char* message);
+
+    /// <summary>
+    /// Sets (or clears, with NULL) the log sink. Without one, messages go to the debugger only.
+    /// </summary>
+    HESAI_API void hesai_set_log_callback(HesaiLogCallback callback);
+
+    /// <summary>
     /// Statistics structure matching VB.NET HesaiSdkStats
     /// </summary>
     struct HesaiSdkStats {
