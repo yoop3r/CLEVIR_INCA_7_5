@@ -61,8 +61,7 @@ Partial Public Class GmResidentClient
         End If
 
         If recovery.WasEscalated Then
-            ' The grayed labels bypassed the color cache; clear it so the next pass repaints the real state.
-            InvalidateGoNoGoLabelColorCache()
+            ' The grayed GO/NOGO labels no longer match their requested color, so the next pass repaints them.
             SpeakLoopFaultMessage(LoopFaultVoiceRestored)
             StatusNotifier.Toast("Background monitoring has recovered.", StatusNotifier.ToastKind.Success,
                                  "Monitoring Restored", durationMs:=6000, ensureMainOnTop:=False)
