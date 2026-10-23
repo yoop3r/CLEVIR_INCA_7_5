@@ -130,7 +130,6 @@ Public Class GmResidentClient
 
     Private Const ConvertToLatLon As Double = 3600000
 
-    Private Const KilometersToMiles As Double = 0.62137119
     ' Property geofence corner constants live in PropertyGeofence.vb.
 
     Private Const DefaultDataCollectionRateMsec As Integer = 50
@@ -200,6 +199,9 @@ Public Class GmResidentClient
     Private _lccActiveStartingMileage As Double
     Private _lccActiveMileageTotal As Double  ' Total LCC Active
     Private _lccActiveMileage As Double        ' Per-session LCC Acitve (current)
+    Private _lastOdoReadingKm As Double        ' Last valid odometer reading in km (persists across loop iterations)
+    Private _sessionPreviousOdo As Double      ' Odometer at last session-mileage accumulation (0 = not yet seeded)
+    Private _mileageSessionActive As Boolean   ' True between BeginSessionMileage and EndSessionMileage
 
     ' GO/NOGO debug tracing (temporary)
     Private Const GO_NOGO_DEBUG_VERBOSE As Boolean = False
