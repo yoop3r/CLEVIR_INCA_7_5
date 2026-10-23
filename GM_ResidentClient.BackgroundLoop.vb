@@ -359,161 +359,188 @@ Partial Public Class GmResidentClient
 
             While _enableMyBackgroundTasks AndAlso Not exitInProgress
 
-                whereAmI = "Start of Loop"
+                ' One failed pass must not end the loop (plan #22): log, back off, and keep going.
+                Dim passFault As Exception = Nothing
 
-                ' ════════════════════════════════════════════════════════════
-                ' ✅ NEW: DISK SPACE CHECK (Every 5 minutes)
-                ' ════════════════════════════════════════════════════════════
-                CheckDiskSpaceIfDue(MyDiskSpaceCheckTime)
+                Try
+                    whereAmI = "Start of Loop"
 
-                RestartIncaCommCheckStopWatch()
+                    ' ════════════════════════════════════════════════════════════
+                    ' ✅ NEW: DISK SPACE CHECK (Every 5 minutes)
+                    ' ════════════════════════════════════════════════════════════
+                    CheckDiskSpaceIfDue(MyDiskSpaceCheckTime)
 
-                'SwitchToMain flag is used in conjunction with INCA Status window (see ProcessKiller)
-                ' ✅ FIX: Don't switch forms when LoginForm is active
-                HandleSwitchToMainRequest()
+                    RestartIncaCommCheckStopWatch()
 
-                'This redimensioning would only be required if a new go/nogo label was to be created at runtime, very unlikely
-                'based on current use cases...
-                If UBound(MyLabel) > UBound(goNoGoFault) Then
-                    ReDim Preserve goNoGoFault(UBound(MyLabel))
-                End If
+                    'SwitchToMain flag is used in conjunction with INCA Status window (see ProcessKiller)
+                    ' ✅ FIX: Don't switch forms when LoginForm is active
+                    HandleSwitchToMainRequest()
 
-                ' Application.DoEvents() removed - Async/Await already yields UI thread
+                    'This redimensioning would only be required if a new go/nogo label was to be created at runtime, very unlikely
+                    'based on current use cases...
+                    If UBound(MyLabel) > UBound(goNoGoFault) Then
+                        ReDim Preserve goNoGoFault(UBound(MyLabel))
+                    End If
 
-                If PlaybackMode = False Then
+                    ' Application.DoEvents() removed - Async/Await already yields UI thread
 
-                    whereAmI = "PlaybackMode = False"
+                    If PlaybackMode = False Then
 
-                    'Here we are updating the HealthMonitor counter which is monitored by ProcessKiller running in a separate thread.
-                    'If HealthMonitor is no longer counting up, it indicates that a periodic call made  to INCA in MyBackgoundtasks
-                    'has hung - This circumstance would be handled in ProcessKiller in separate thread...
-                    BumpHealthMonitor()
+                        whereAmI = "PlaybackMode = False"
 
-                    'Every second (currently) we check INCA Measurement status and INCA Record Status
-                    'we use this info to direct logic throughout this background task...
-                    MyElapseTime2 = DateTime.Now.Subtract(MySaveTime2)
-                    ' Check if enough time has elapsed since last measurement/recording state check
-                    If (DateTime.Now - _lastMeasurementCheckTime).TotalSeconds >= MeasurementCheckIntervalSeconds Then
-                        _lastMeasurementCheckTime = DateTime.Now
+                        'Here we are updating the HealthMonitor counter which is monitored by ProcessKiller running in a separate thread.
+                        'If HealthMonitor is no longer counting up, it indicates that a periodic call made  to INCA in MyBackgoundtasks
+                        'has hung - This circumstance would be handled in ProcessKiller in separate thread...
+                        BumpHealthMonitor()
 
-                        UpdateMeasurementStatus(whereAmI, lMeasurementStatus, oneShot, dataFrozenMaxCount, MySaveMeasureTime, MySaveTime, MySaveTime3)
+                        'Every second (currently) we check INCA Measurement status and INCA Record Status
+                        'we use this info to direct logic throughout this background task...
+                        MyElapseTime2 = DateTime.Now.Subtract(MySaveTime2)
+                        ' Check if enough time has elapsed since last measurement/recording state check
+                        If (DateTime.Now - _lastMeasurementCheckTime).TotalSeconds >= MeasurementCheckIntervalSeconds Then
+                            _lastMeasurementCheckTime = DateTime.Now
 
-                        UpdateRecordingState(whereAmI, lRecordingState, lSaveRecordingState, dataFrozenMaxCount, MySaveTime3)
+                            UpdateMeasurementStatus(whereAmI, lMeasurementStatus, oneShot, dataFrozenMaxCount, MySaveMeasureTime, MySaveTime, MySaveTime3)
 
-                        'This routine handles the case where measurement or record button has been pressed on INCA display
-                        'rather than on CLEVIR display...
-                        CheckForIncaButtonPresses(lMeasurementStatus, lRecordingState)
+                            UpdateRecordingState(whereAmI, lRecordingState, lSaveRecordingState, dataFrozenMaxCount, MySaveTime3)
+
+                            'This routine handles the case where measurement or record button has been pressed on INCA display
+                            'rather than on CLEVIR display...
+                            CheckForIncaButtonPresses(lMeasurementStatus, lRecordingState)
+
+                        End If
+
+                        If _inMeasureMode = True And lRecordingState = False Then
+
+                            MyMeasureTime = DateTime.Now.Subtract(MySaveMeasureTime)
+
+                            'Handle case where user has been in meaure mode for 5 minutes without pressing record.  HandleAutomaticStartRecord will
+                            'automatically start recording unless user responds to prompt...
+                            HandleAutomaticStartRecord(MyMeasureTime, MySaveMeasureTime, oneShot)
+
+                        Else
+                            MySaveMeasureTime = DateTime.Now
+                        End If
+
+                        'This section below will make periodic calls (every 5 seconds right now) to the Handle_5_SecondChecks routine.  This routine
+                        'checks to see if there is an active INCA experiment, if not CLEVIR will terminate, also checks various other statuses and
+                        'reacts accordingly...
+                        MyElapseTime = DateTime.Now.Subtract(MySaveTime)
+                        If MyElapseTime.Seconds >= 5 Then
+                            MySaveTime = DateTime.Now
+
+                            Await Handle_5_SecondChecks(lMeasurementStatus, lRecordingState)
+
+                        End If 'If MyElapseTime.Seconds >= 5
 
                     End If
 
-                    If _inMeasureMode = True And lRecordingState = False Then
-
-                        MyMeasureTime = DateTime.Now.Subtract(MySaveMeasureTime)
-
-                        'Handle case where user has been in meaure mode for 5 minutes without pressing record.  HandleAutomaticStartRecord will
-                        'automatically start recording unless user responds to prompt...
-                        HandleAutomaticStartRecord(MyMeasureTime, MySaveMeasureTime, oneShot)
-
-                    Else
-                        MySaveMeasureTime = DateTime.Now
+                    ' Communication/data alerts only apply once measurement or recording is active.
+                    If Not (_inMeasureMode OrElse lRecordingState) Then
+                        MySaveTime3 = DateTime.Now
                     End If
 
-                    'This section below will make periodic calls (every 5 seconds right now) to the Handle_5_SecondChecks routine.  This routine
-                    'checks to see if there is an active INCA experiment, if not CLEVIR will terminate, also checks various other statuses and
-                    'reacts accordingly...
-                    MyElapseTime = DateTime.Now.Subtract(MySaveTime)
-                    If MyElapseTime.Seconds >= 5 Then
-                        MySaveTime = DateTime.Now
-
-                        Await Handle_5_SecondChecks(lMeasurementStatus, lRecordingState)
-
-                    End If 'If MyElapseTime.Seconds >= 5
-
-                End If
-
-                ' Communication/data alerts only apply once measurement or recording is active.
-                If Not (_inMeasureMode OrElse lRecordingState) Then
-                    MySaveTime3 = DateTime.Now
-                End If
-
-                MyElapseTime3 = DateTime.Now.Subtract(MySaveTime3)
-                If MyElapseTime3.Seconds >= lostDeviceDelayTime Then 'was 10 changed to 15 08/30/2020, now 20 sec...
-                    'This routine handles the case where communication to processors has been lost or invalid data or invalid video.  Allows user to
-                    'reinitialilze CLEVIR and INCA...
-                    Await CheckForLostDevice()
-                    MySaveTime3 = DateTime.Now
-                End If
-
-                'If measurement started = true (or we are playing back CLEVIR recorded data), we make calls to get data, either live or recorded.
-                'We also update the display grids by updating the data values for all signals and also go through the logic associated with high threshold and
-                'low threshold, etc. to determine background color of each grid cell.
-
-                whereAmI = "Before If MyIncaInterface.MeasurementStarted = True"
-
-                If MyIncaInterface.MeasurementStarted = True Or
-                   RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackRun Or
-                   RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepBack Or
-                   RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackScrolling Or
-                   RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepFwd Then
-
-                    RefreshRecordingProgressAndTopDownView(whereAmI)
-
-                    HandleWavAndRecordingUpdates(whereAmI, lRecordingState)
-
-                    'Here we are initializing the data array that will be used to save CLEVIR recorded data if the
-                    'CLEVIR data recorder is set to RecordMode.  Not to be confused with recording INCA mf4 data.
-                    'This recording creates a spreadsheet that CLEVIR can read back in so that it can play back
-                    'data.  This would be used primarily to test CLEVIR or be used for DEMOs.
-
-                    InitRecordBufferLine(whereAmI, k, lineNum)
-
-                    'This section executes if we are processing live data....
-                    If RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStop Then
-                        CaptureLiveSignalData(whereAmI, saveLiveDataTime, k, lineNum)
-                    Else 'This else case executes if we are playing back CLEVIR recorded data....
-                        LoadPlaybackSignalData(whereAmI)
+                    MyElapseTime3 = DateTime.Now.Subtract(MySaveTime3)
+                    If MyElapseTime3.Seconds >= lostDeviceDelayTime Then 'was 10 changed to 15 08/30/2020, now 20 sec...
+                        'This routine handles the case where communication to processors has been lost or invalid data or invalid video.  Allows user to
+                        'reinitialilze CLEVIR and INCA...
+                        Await CheckForLostDevice()
+                        MySaveTime3 = DateTime.Now
                     End If
 
-                    'If we have valid data (live or recorded) this section executes...
-                    If MySignalDataWithTime IsNot Nothing Then
+                    'If measurement started = true (or we are playing back CLEVIR recorded data), we make calls to get data, either live or recorded.
+                    'We also update the display grids by updating the data values for all signals and also go through the logic associated with high threshold and
+                    'low threshold, etc. to determine background color of each grid cell.
 
-                        lTotalnumsignalsdisplayed = 0
-                        ProcessGrids(saveOdoReading, saveWhereAmIAt, goNoGoFault, dataFrozenMaxCount, EventArgs.Empty, lRecordingState)
+                    whereAmI = "Before If MyIncaInterface.MeasurementStarted = True"
+#If DEBUG Then
+                    ThrowIfLoopFaultInjected()
+#End If
 
-                    End If 'Check for MySignalDataWithTime Is Nothing
+                    If MyIncaInterface.MeasurementStarted = True Or
+                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackRun Or
+                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepBack Or
+                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackScrolling Or
+                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepFwd Then
 
-                    ' Delay with cancellation token for immediate exit response
-                    Dim delayMs As Integer = If(lRecordingState, Math.Max(100, Val(_displayRefreshRate)), Val(_displayRefreshRate))
+                        RefreshRecordingProgressAndTopDownView(whereAmI)
+
+                        HandleWavAndRecordingUpdates(whereAmI, lRecordingState)
+
+                        'Here we are initializing the data array that will be used to save CLEVIR recorded data if the
+                        'CLEVIR data recorder is set to RecordMode.  Not to be confused with recording INCA mf4 data.
+                        'This recording creates a spreadsheet that CLEVIR can read back in so that it can play back
+                        'data.  This would be used primarily to test CLEVIR or be used for DEMOs.
+
+                        InitRecordBufferLine(whereAmI, k, lineNum)
+
+                        'This section executes if we are processing live data....
+                        If RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStop Then
+                            CaptureLiveSignalData(whereAmI, saveLiveDataTime, k, lineNum)
+                        Else 'This else case executes if we are playing back CLEVIR recorded data....
+                            LoadPlaybackSignalData(whereAmI)
+                        End If
+
+                        'If we have valid data (live or recorded) this section executes...
+                        If MySignalDataWithTime IsNot Nothing Then
+
+                            lTotalnumsignalsdisplayed = 0
+                            ProcessGrids(saveOdoReading, saveWhereAmIAt, goNoGoFault, dataFrozenMaxCount, EventArgs.Empty, lRecordingState)
+
+                        End If 'Check for MySignalDataWithTime Is Nothing
+
+                        ' Delay with cancellation token for immediate exit response
+                        Dim delayMs As Integer = If(lRecordingState, Math.Max(100, Val(_displayRefreshRate)), Val(_displayRefreshRate))
+                        Try
+                            Await Task.Delay(delayMs, If(_backgroundTasksCts?.Token, CancellationToken.None))
+                        Catch ex As TaskCanceledException
+                            ' Exit requested - break out of the main loop
+                            Exit While
+                        End Try
+
+                        'Here is where we save the CLEVIR record file if we transitioned out of RecordPlayBack.RecordMode = True
+                        SaveEndedRecordingAndUpdatePlaybackLabel(lineNum)
+
+                        TotalNumSignalsDisplayed = lTotalnumsignalsdisplayed
+
+                        whereAmI = "Finished in MeasurementStatus = True"
+
+                    Else 'Measurement not started and not playing back CLEVIR Recording....
+
+                        HandleNonMeasureModeUpdates(saveOdoReading, saveWhereAmIAt, goNoGoFault)
+
+                        'Save CLEVIR Recording when transitioning out of measure mode if we were recording...
+                        SaveRecordFileOnMeasureStop(lineNum)
+                        Try
+                            Await Task.Delay(100, If(_backgroundTasksCts?.Token, CancellationToken.None))
+                        Catch ex As TaskCanceledException
+                            Exit While
+                        End Try
+                        ' Application.DoEvents() removed - Task.Delay already yields UI thread
+
+                    End If
+
+                    retries = 0
+                Catch ex As Exception
+                    passFault = ex
+                End Try
+
+                If passFault Is Nothing Then
+                    HandleBackgroundPassSucceeded()
+                Else
+                    If exitInProgress OrElse Not _enableMyBackgroundTasks OrElse
+                       (_backgroundTasksCts IsNot Nothing AndAlso _backgroundTasksCts.IsCancellationRequested) Then
+                        Exit While
+                    End If
+
+                    ' Await is not allowed inside Catch in VB, so the back-off happens here.
+                    Dim backoffMs As Integer = HandleBackgroundPassFault(passFault, whereAmI)
                     Try
-                        Await Task.Delay(delayMs, If(_backgroundTasksCts?.Token, CancellationToken.None))
+                        Await Task.Delay(backoffMs, If(_backgroundTasksCts?.Token, CancellationToken.None))
                     Catch ex As TaskCanceledException
-                        ' Exit requested - break out of the main loop
                         Exit While
                     End Try
-
-                    'Here is where we save the CLEVIR record file if we transitioned out of RecordPlayBack.RecordMode = True
-                    SaveEndedRecordingAndUpdatePlaybackLabel(lineNum)
-
-                    TotalNumSignalsDisplayed = lTotalnumsignalsdisplayed
-
-                    whereAmI = "Finished in MeasurementStatus = True"
-
-                Else 'Measurement not started and not playing back CLEVIR Recording....
-
-                    HandleNonMeasureModeUpdates(saveOdoReading, saveWhereAmIAt, goNoGoFault)
-
-                    'Save CLEVIR Recording when transitioning out of measure mode if we were recording...
-                    SaveRecordFileOnMeasureStop(lineNum)
-                    Try
-                        Await Task.Delay(100, If(_backgroundTasksCts?.Token, CancellationToken.None))
-                    Catch ex As TaskCanceledException
-                        Exit While
-                    End Try
-                    ' Application.DoEvents() removed - Task.Delay already yields UI thread
-
                 End If
-
-                retries = 0
 
             End While
 
@@ -1423,16 +1450,22 @@ Partial Public Class GmResidentClient
         Return DisplayValueFormatter.FormatDisplayString(displayValue, displayFormat, deviceName, variableName, GlobalSignalEnums)
     End Function
 
+    ' Last color applied per GO/NOGO label by UpdateGonogoLabelColor (skips redundant UI updates).
+    Private _goNoGoLabelColorCache(0 To 15) As Color
+
+    Private Sub InvalidateGoNoGoLabelColorCache()
+        ' Forces the next UpdateGonogoLabelColor call per label to repaint, e.g. after labels were grayed directly.
+        If _goNoGoLabelColorCache IsNot Nothing Then Array.Clear(_goNoGoLabelColorCache, 0, _goNoGoLabelColorCache.Length)
+    End Sub
+
     Private Sub UpdateGonogoLabelColor(ByVal MyGridIndex As Integer, ByVal MyColor As Color)
         ' Called from MyBackgroundTasks routine - updates GO/NOGO label colors on the main screen.
         ' This method respects user suppression flags to prevent flashing after "Ignore All" is pressed.
 
-        Static saveBackColor(0 To 15) As Color
-
         Try
             ' Initialize array if needed
-            If saveBackColor Is Nothing Then
-                ReDim saveBackColor(0 To 15)
+            If _goNoGoLabelColorCache Is Nothing Then
+                ReDim _goNoGoLabelColorCache(0 To 15)
             End If
 
             ' Validate index
@@ -1443,7 +1476,7 @@ Partial Public Class GmResidentClient
             ' ====================================================================================
             ' OPTIMIZATION: Skip UI update if color hasn't changed (reduces UI overhead)
             ' ====================================================================================
-            If saveBackColor(MyGridIndex) = MyColor Then
+            If _goNoGoLabelColorCache(MyGridIndex) = MyColor Then
                 Return ' Color unchanged - no UI update needed
             End If
 
@@ -1476,7 +1509,7 @@ Partial Public Class GmResidentClient
             End If
 
             ' Save current color for next comparison
-            saveBackColor(MyGridIndex) = MyColor
+            _goNoGoLabelColorCache(MyGridIndex) = MyColor
 
         Catch ex As Exception
             HandleUpdateGonogoException(ex)
