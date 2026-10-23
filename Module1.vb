@@ -4097,13 +4097,8 @@ Public Module Module1
             End If
             ' Otherwise: LiDAR disabled → append nothing (columns remain empty)
 
-            ' Write to INCA immediately with precise timing
-            WriteToIncaWithRetry(eventComment, lidarFrameSnapshot, preciseElapsedMs, buttonPressTime)
-
-            ' Buffer the CSV write for near-immediate processing
-            BufferCsvWrite(eventComment, timeCriticalInfo, buttonPressTime)
-
-            ' ✅ OPTIMIZED: Inject event marker into all active LiDAR captures
+            ' Inject the LiDAR marker before the (slow, synchronous) INCA write so it lands close
+            ' to the press; it reports the press-time frames/time cached above, same as the ANNO row.
             If LidarCaptureStarted Then
                 Try
                     ' Parse eventComment to extract structured metadata
@@ -4126,14 +4121,20 @@ Public Module Module1
                     End If
 
                     ' Inject marker into PCAP for all active devices
-                    InjectEventMarker(eventType, eventMessage, currentSeq)
+                    InjectEventMarker(eventType, eventMessage, currentSeq, lidarFrameSnapshot, buttonPressTime)
 
-                    HandleUserMessageLogging("GMRC", $"Injected '{eventType}' marker into {LidarDevices.Count} LiDAR capture(s)")
+                    HandleUserMessageLogging("GMRC", $"Injected '{eventType}' marker into {LidarDevices.Count} LiDAR capture(s) at frames [{lidarFrameSnapshot}]")
 
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC", $"Failed to inject LiDAR event marker: {ex.Message}")
                 End Try
             End If
+
+            ' Write to INCA immediately with precise timing
+            WriteToIncaWithRetry(eventComment, lidarFrameSnapshot, preciseElapsedMs, buttonPressTime)
+
+            ' Buffer the CSV write for near-immediate processing
+            BufferCsvWrite(eventComment, timeCriticalInfo, buttonPressTime)
 
             HandleUserMessageLogging("GMRC", $"Standard annotation buffered for writing: {eventComment}")
 
@@ -4814,7 +4815,7 @@ Public Module Module1
                     Dim fileExists As Boolean = File.Exists(aggregateFileName)
 
                     ' Inject marker into PCAP for all active devices
-                    InjectEventMarker("ANNOTATION FEEDBACK", descriptionText, currentSequenceNumber)
+                    InjectEventMarker("ANNOTATION FEEDBACK", descriptionText, currentSequenceNumber, lidarFrameSnapshot, buttonPressTime)
 
                     Using fs As New FileStream(aggregateFileName, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
                         Using writer As New StreamWriter(fs)
