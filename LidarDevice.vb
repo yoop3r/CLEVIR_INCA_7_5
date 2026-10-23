@@ -97,8 +97,22 @@ Public NotInheritable Class LidarDevice
     Public Property LidarIpAddress As String = "10.5.55.14"
     Public Property LidarDataPort As UShort = 2311
     Public Property LidarImuPort As UShort = 8308
-    Public Property DeviceId As String = "LiDAR1" ' Friendly name for logging
+    Public Property DeviceId As String = "LiDAR1" ' Device key (Hesai SDK registration, manifests, file names)
     Public Property Orientation As String = ""     ' Physical mounting position e.g. FRONT, REAR
+
+    ''' <summary>Label for logs, toasts and markers: "1:FRONT", or just the id when no orientation is configured.</summary>
+    Public ReadOnly Property DisplayName As String
+        Get
+            Return If(String.IsNullOrWhiteSpace(Orientation), DeviceId, $"{DeviceId}:{Orientation.Trim()}")
+        End Get
+    End Property
+
+    ''' <summary>Name used in spoken alerts: "FRONT LiDAR", or "LiDAR 1" when no orientation is configured.</summary>
+    Public ReadOnly Property SpokenName As String
+        Get
+            Return If(String.IsNullOrWhiteSpace(Orientation), $"LiDAR {DeviceId}", $"{Orientation.Trim()} LiDAR")
+        End Get
+    End Property
     Public Property Enabled As Boolean = True  ' Default to True for backward compatibility
 
     ' ✅ CHANGED: SharpPcap capture device types
@@ -345,7 +359,7 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Public Sub TestLidarOxtsIntegration()
         HandleUserMessageLogging("GMRC", "=== LiDAR + OXTS Integration Test ===")
-        HandleUserMessageLogging("GMRC", $"Device: {DeviceId}")
+        HandleUserMessageLogging("GMRC", $"Device: {DisplayName}")
         HandleUserMessageLogging("GMRC", $"LiDAR IP: {LidarIpAddress}")
         HandleUserMessageLogging("GMRC", $"Capturing: {Volatile.Read(_isCapturing)}")
         HandleUserMessageLogging("GMRC", $"Packets: {_packetCount:N0}")
@@ -411,7 +425,7 @@ Public NotInheritable Class LidarDevice
 
         If timeSinceLastPacket > 15 Then ' Device stopped
             HandleUserMessageLogging("GMRC",
-                $"[{DeviceId}] DIAG: 🔴 ALERT TRIGGER — stopped responding, " &
+                $"[{DisplayName}] DIAG: 🔴 ALERT TRIGGER — stopped responding, " &
                 $"last_pkt={timeSinceLastPacket:F1}s ago, " &
                 $"pkts={PacketCount:N0}, dropped={DroppedPackets:N0}, " &
                 $"isCapturing={Volatile.Read(_isCapturing)}, " &
@@ -466,18 +480,18 @@ Public NotInheritable Class LidarDevice
                                       -1.0)
 
         If timeSinceLastPacket > 15 Then
-            Return $"LiDAR {DeviceId} has stopped responding"
+            Return $"{SpokenName} has stopped responding"
         End If
 
         Dim totalPackets As Long = PacketCount + DroppedPackets
         If totalPackets > 100 Then
             Dim lossPercent As Double = (CDbl(DroppedPackets) / CDbl(totalPackets)) * 100.0
             If lossPercent >= 20.0 Then
-                Return $"LiDAR {DeviceId} critical packet loss detected"
+                Return $"{SpokenName} critical packet loss detected"
             End If
         End If
 
-        Return $"LiDAR {DeviceId} performance degraded"
+        Return $"{SpokenName} performance degraded"
     End Function
 
     ''' <summary>
@@ -487,7 +501,7 @@ Public NotInheritable Class LidarDevice
     ''' ✅ NEW VERSION: StartCapture using SharpPcap
     ''' </summary>
     Public Sub StartCapture(pcapFilename As String, sequence As Integer)
-        Dim logPrefix As String = $"[{DeviceId}] StartCapture"
+        Dim logPrefix As String = $"[{DisplayName}] StartCapture"
 
         Try
             If Volatile.Read(_isCapturing) Then
@@ -501,7 +515,7 @@ Public NotInheritable Class LidarDevice
             ' STEP 1: Find Network Adapter (SharpPcap API)
             ' ═══════════════════════════════════════════════════════════════════
             If Not FindNetworkAdapter() Then
-                Throw New InvalidOperationException($"Network adapter not found for {DeviceId} (IP {LidarIpAddress})")
+                Throw New InvalidOperationException($"Network adapter not found for {DisplayName} (IP {LidarIpAddress})")
             End If
 
             ' Ensure output directory exists
@@ -649,10 +663,10 @@ Public NotInheritable Class LidarDevice
             ' STEP 11: Success Logging & Marker Injection
             ' ═══════════════════════════════════════════════════════════════════
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Capture started (native Npcap NDIS 6, seq {sequence:D2})")
-            InjectEventMarker("START", $"Recording started - {DeviceId}", sequence)
+            InjectEventMarker("START", $"Recording started - {DisplayName}", sequence)
 
-            StatusNotifier.Toast($"LiDAR {DeviceId} capture started (NDIS 6 LWF)", ToastKind.Info, "LiDAR", 3000, True)
-            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} started (NDIS 6)", True)
+            StatusNotifier.Toast($"LiDAR {DisplayName} capture started (NDIS 6 LWF)", ToastKind.Info, "LiDAR", 3000, True)
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DisplayName} started (NDIS 6)", True)
 
             ' ═══════════════════════════════════════════════════════════════════
             ' STEP 12: Optional Hesai SDK Registration (Validation-Only)
@@ -725,7 +739,7 @@ Public NotInheritable Class LidarDevice
                         UpdateStatisticsFromRawPacket(rawPacket.Data)
                     Catch parseEx As Exception
                         If count Mod 10000 = 0 Then
-                            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Parse error: {parseEx.Message}")
+                            HandleUserMessageLogging("GMRC", $"[{DisplayName}] Parse error: {parseEx.Message}")
                         End If
                     End Try
                 End If
@@ -738,7 +752,7 @@ Public NotInheritable Class LidarDevice
             Dim handlerErrors = Interlocked.Increment(_handlerErrorCount)
             If handlerErrors = 1 OrElse handlerErrors Mod 100 = 0 Then
                 HandleUserMessageLogging("GMRC",
-                    $"[{DeviceId}] DIAG: Packet handler error #{handlerErrors}: {ex.GetType().Name}: {ex.Message} " &
+                    $"[{DisplayName}] DIAG: Packet handler error #{handlerErrors}: {ex.GetType().Name}: {ex.Message} " &
                     $"(pkts={_packetCount:N0}, ts={DateTime.Now:HH:mm:ss.fff})")
             End If
         End Try
@@ -750,7 +764,7 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Private Sub OnCaptureStopped(sender As Object, e As CaptureStoppedEventStatus)
         HandleUserMessageLogging("GMRC",
-            $"[{DeviceId}] DIAG: ⚠️ SharpPcap OnCaptureStopped fired — " &
+            $"[{DisplayName}] DIAG: ⚠️ SharpPcap OnCaptureStopped fired — " &
             $"status={e}, isCapturing={Volatile.Read(_isCapturing)}, " &
             $"pkts={_packetCount:N0}, gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
             $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
@@ -847,7 +861,7 @@ Public NotInheritable Class LidarDevice
 
         Catch ex As Exception
             ' Don't crash capture thread if stats update fails
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] UpdateStatistics error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] UpdateStatistics error: {ex.Message}")
         End Try
     End Sub
 
@@ -855,7 +869,7 @@ Public NotInheritable Class LidarDevice
     ''' ✅ NEW: Stop capture using SharpPcap API
     ''' </summary>
     Public Sub StopCapture()
-        Dim logPrefix As String = $"[{DeviceId}] StopCapture"
+        Dim logPrefix As String = $"[{DisplayName}] StopCapture"
 
         Try
             If Not Volatile.Read(_isCapturing) Then
@@ -946,8 +960,8 @@ Public NotInheritable Class LidarDevice
             ' ═══════════════════════════════════════════════════════════════════
             HandleUserMessageLogging("GMRC", $"{logPrefix}: ✅ Stopped - {_packetCount:N0} pkts, {_droppedPackets:N0} drops, {_markerCounter} markers")
 
-            StatusNotifier.Toast($"LiDAR {DeviceId} capture stopped", ToastKind.Info, "LiDAR", 3000, True)
-            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped - {_packetCount:N0} pkts", True)
+            StatusNotifier.Toast($"LiDAR {DisplayName} capture stopped", ToastKind.Info, "LiDAR", 3000, True)
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DisplayName} stopped - {_packetCount:N0} pkts", True)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Error: {ex.Message}")
@@ -966,7 +980,7 @@ Public NotInheritable Class LidarDevice
     ''' The NIC handle is NOT opened here — SharedNicCapture owns it.
     ''' </summary>
     Public Sub StartCaptureShared(pcapFilename As String, sequence As Integer)
-        Dim logPrefix As String = $"[{DeviceId}] StartCaptureShared"
+        Dim logPrefix As String = $"[{DisplayName}] StartCaptureShared"
 
         Try
             If Volatile.Read(_isCapturing) Then
@@ -1033,10 +1047,10 @@ Public NotInheritable Class LidarDevice
             _captureThread.Start()
 
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Dump file open, marker pump started (shared NIC, seq {sequence:D2})")
-            InjectEventMarker("START", $"Recording started - {DeviceId}", sequence)
+            InjectEventMarker("START", $"Recording started - {DisplayName}", sequence)
 
-            StatusNotifier.Toast($"LiDAR {DeviceId} capture started (shared NIC)", ToastKind.Info, "LiDAR", 3000, True)
-            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} started (shared NIC)", True)
+            StatusNotifier.Toast($"LiDAR {DisplayName} capture started (shared NIC)", ToastKind.Info, "LiDAR", 3000, True)
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DisplayName} started (shared NIC)", True)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: {ex.Message}", DisplayMsgBox)
@@ -1068,7 +1082,7 @@ Public NotInheritable Class LidarDevice
                         UpdateStatisticsFromRawPacket(rawPacket.Data)
                     Catch exStats As Exception
                         ' Timestamp already updated above; log for diagnostics only
-                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] UpdateStatisticsFromRawPacket failed: {exStats.Message}")
+                        HandleUserMessageLogging("GMRC", $"[{DisplayName}] UpdateStatisticsFromRawPacket failed: {exStats.Message}")
                     End Try
                 End If
             Else
@@ -1079,7 +1093,7 @@ Public NotInheritable Class LidarDevice
             Dim handlerErrors = Interlocked.Increment(_handlerErrorCount)
             If handlerErrors = 1 OrElse handlerErrors Mod 100 = 0 Then
                 HandleUserMessageLogging("GMRC",
-                    $"[{DeviceId}] DIAG: DispatchPacket error #{handlerErrors}: {ex.GetType().Name}: {ex.Message}")
+                    $"[{DisplayName}] DIAG: DispatchPacket error #{handlerErrors}: {ex.GetType().Name}: {ex.Message}")
             End If
         End Try
     End Sub
@@ -1090,7 +1104,7 @@ Public NotInheritable Class LidarDevice
     ''' The NIC handle is NOT closed here — SharedNicCapture owns it.
     ''' </summary>
     Public Sub StopCaptureShared()
-        Dim logPrefix As String = $"[{DeviceId}] StopCaptureShared"
+        Dim logPrefix As String = $"[{DisplayName}] StopCaptureShared"
 
         Try
             If Not Volatile.Read(_isCapturing) Then
@@ -1136,8 +1150,8 @@ Public NotInheritable Class LidarDevice
             HandleUserMessageLogging("GMRC",
                 $"{logPrefix}: ✅ Stopped — {_packetCount:N0} pkts, {_droppedPackets:N0} drops, {_markerCounter} markers")
 
-            StatusNotifier.Toast($"LiDAR {DeviceId} capture stopped", ToastKind.Info, "LiDAR", 3000, True)
-            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DeviceId} stopped — {_packetCount:N0} pkts", True)
+            StatusNotifier.Toast($"LiDAR {DisplayName} capture stopped", ToastKind.Info, "LiDAR", 3000, True)
+            MyIncaInterface?.WriteEventComment($"{DateTime.Now:HH:mm:ss} {DisplayName} stopped — {_packetCount:N0} pkts", True)
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"{logPrefix}: Error: {ex.Message}")
@@ -1366,7 +1380,7 @@ Public NotInheritable Class LidarDevice
     ''' <param name="outputDirectory">Folder to write the manifest JSON into</param>
     ''' <returns>Full path of the written manifest, or Nothing if generation failed</returns>
     Public Function GenerateManifestNow(outputDirectory As String) As String
-        Dim logPrefix As String = $"LiDAR {DeviceId}"
+        Dim logPrefix As String = $"LiDAR {DisplayName}"
         Try
             If String.IsNullOrWhiteSpace(outputDirectory) Then
                 HandleUserMessageLogging("GMRC", $"{logPrefix}: Manifest generation skipped - no output directory")
@@ -1420,7 +1434,7 @@ Public NotInheritable Class LidarDevice
     '''   - Device configuration changes require SDK restart
     ''' </summary>
     Public Sub ShutdownDevice()
-        Dim logPrefix As String = $"DeviceID: [{DeviceId}] LiDARShutdownDevice"
+        Dim logPrefix As String = $"DeviceID: [{DisplayName}] LiDARShutdownDevice"
 
         Try
             ' First, stop any active capture
@@ -1468,11 +1482,11 @@ Public NotInheritable Class LidarDevice
                     }
 
             _markerQueue.Enqueue(marker)
-            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR Queued marker #{marker.EventId} - {eventType}: {message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DisplayName}] LiDAR Queued marker #{marker.EventId} - {eventType}: {message}")
             Return markerFrame
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"DeviceID: [{DeviceId}] LiDAR InjectEventMarker: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"DeviceID: [{DisplayName}] LiDAR InjectEventMarker: {ex.Message}")
             Return -1
         End Try
     End Function
@@ -1487,7 +1501,7 @@ Public NotInheritable Class LidarDevice
     ''' </summary>
     Private Sub CaptureLoop()
         Try
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread started")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] Marker pump thread started")
 
             ' Environment.TickCount64 is monotonic — cheaper than DateTime.Now and
             ' immune to wall-clock jumps (e.g., GPS time sync adjusting the system clock)
@@ -1528,7 +1542,7 @@ Public NotInheritable Class LidarDevice
                             Double.MaxValue)
 
                         HandleUserMessageLogging("GMRC",
-                            $"[{DeviceId}] DIAG: ⚠️ STARVATION — 0 packets in last 10s " &
+                            $"[{DisplayName}] DIAG: ⚠️ STARVATION — 0 packets in last 10s " &
                             $"(total={currentPktCount:N0}, last_pkt={timeSinceLast:F1}s ago, " &
                             $"isCapturing={Volatile.Read(_isCapturing)}, " &
                             $"dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
@@ -1538,7 +1552,7 @@ Public NotInheritable Class LidarDevice
                         starvationWarned = True
                     ElseIf starvationWarned AndAlso pktsDelta > 0 Then
                         HandleUserMessageLogging("GMRC",
-                            $"[{DeviceId}] DIAG: ✅ RECOVERED — {pktsDelta:N0} pkts in last 10s " &
+                            $"[{DisplayName}] DIAG: ✅ RECOVERED — {pktsDelta:N0} pkts in last 10s " &
                             $"(total={currentPktCount:N0}, ts={DateTime.Now:HH:mm:ss.fff})")
                         starvationWarned = False
                     End If
@@ -1551,13 +1565,13 @@ Public NotInheritable Class LidarDevice
                 Thread.Sleep(100)  ' Check every 100ms
             End While
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Marker pump thread exiting normally (pkts={_packetCount:N0})")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] Marker pump thread exiting normally (pkts={_packetCount:N0})")
 
         Catch ex As ThreadAbortException
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] DIAG: Marker pump thread ABORTED (pkts={_packetCount:N0})")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] DIAG: Marker pump thread ABORTED (pkts={_packetCount:N0})")
         Catch ex As Exception
             HandleUserMessageLogging("GMRC",
-                $"[{DeviceId}] DIAG: ⚠️ Capture loop CRASHED: {ex.GetType().Name}: {ex.Message} " &
+                $"[{DisplayName}] DIAG: ⚠️ Capture loop CRASHED: {ex.GetType().Name}: {ex.Message} " &
                 $"(pkts={_packetCount:N0}, isCapturing={Volatile.Read(_isCapturing)}, ts={DateTime.Now:HH:mm:ss.fff})")
         End Try
     End Sub
@@ -1597,7 +1611,7 @@ Public NotInheritable Class LidarDevice
         Catch ex As Exception
             ' Don't crash capture on stats update failures
             If _packetCount Mod 10000 = 0 Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Stats update error: {ex.Message}")
+                HandleUserMessageLogging("GMRC", $"[{DisplayName}] Stats update error: {ex.Message}")
             End If
         End Try
     End Sub
@@ -1624,7 +1638,7 @@ Public NotInheritable Class LidarDevice
                 End If
             End If
         Catch exParse As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] IsMarkerPacket parse error: {exParse.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] IsMarkerPacket parse error: {exParse.Message}")
         End Try
         Return False
     End Function
@@ -1646,7 +1660,7 @@ Public NotInheritable Class LidarDevice
                 End If
             End If
         Catch exParse As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ExtractMarkerData parse error: {exParse.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] ExtractMarkerData parse error: {exParse.Message}")
         End Try
         Return "(unable to parse)"
     End Function
@@ -1725,10 +1739,10 @@ Public NotInheritable Class LidarDevice
                 .SequenceNumber = marker.SequenceNumber
             })
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Marker injected: Frame {_frameCounter} - {marker.EventType}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] ✅ Marker injected: Frame {_frameCounter} - {marker.EventType}")
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] InjectMarkerPacket error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] InjectMarkerPacket error: {ex.Message}")
         End Try
     End Sub
 
@@ -1744,35 +1758,35 @@ Public NotInheritable Class LidarDevice
             Dim devices = CaptureDeviceList.Instance
 
             If devices.Count = 0 Then
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] No devices found. Install Npcap.")
+                HandleUserMessageLogging("GMRC", $"[{DisplayName}] No devices found. Install Npcap.")
                 Return False
             End If
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Found {devices.Count} network device(s)")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] Found {devices.Count} network device(s)")
 
             ' ═══════════════════════════════════════════════════════════════════
             ' PRIORITY 1: Match by Network Adapter GUID
             ' ═══════════════════════════════════════════════════════════════════
             If Not String.IsNullOrWhiteSpace(LidarAdapterGuid) Then
                 Dim guidToMatch = LidarAdapterGuid.Replace("{", "").Replace("}", "").ToUpper()
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] Searching for GUID: {guidToMatch}")
+                HandleUserMessageLogging("GMRC", $"[{DisplayName}] Searching for GUID: {guidToMatch}")
 
                 For Each device As ICaptureDevice In devices
                     If device.Name.ToUpper().Contains(guidToMatch) Then
                         _captureDevice = device
-                        HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Selected by GUID: {device.Description}")
+                        HandleUserMessageLogging("GMRC", $"[{DisplayName}] ✅ Selected by GUID: {device.Description}")
                         Return True
                     End If
                 Next
 
-                HandleUserMessageLogging("GMRC", $"[{DeviceId}] GUID not found, trying subnet match...")
+                HandleUserMessageLogging("GMRC", $"[{DisplayName}] GUID not found, trying subnet match...")
             End If
 
             ' ═══════════════════════════════════════════════════════════════════
             ' PRIORITY 2: Match by IP Subnet (e.g., "10.5.55.x")
             ' ═══════════════════════════════════════════════════════════════════
             Dim subnet = LidarIpAddress.Substring(0, LidarIpAddress.LastIndexOf("."c))
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Searching for subnet: {subnet}.x")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] Searching for subnet: {subnet}.x")
 
             For Each device As ICaptureDevice In devices
                 If TypeOf device Is LibPcapLiveDevice Then
@@ -1786,7 +1800,7 @@ Public NotInheritable Class LidarDevice
                             If addrStr.StartsWith(subnet & ".") AndAlso
                            Not addrStr.Contains(":") Then  ' Exclude IPv6
                                 _captureDevice = device
-                                HandleUserMessageLogging("GMRC", $"[{DeviceId}] ✅ Selected by subnet: {device.Description} ({addrStr})")
+                                HandleUserMessageLogging("GMRC", $"[{DisplayName}] ✅ Selected by subnet: {device.Description} ({addrStr})")
                                 Return True
                             End If
                         End If
@@ -1807,7 +1821,7 @@ Public NotInheritable Class LidarDevice
 
                             If Not addrStr.Contains(":") Then  ' IPv4 only
                                 _captureDevice = device
-                                HandleUserMessageLogging("GMRC", $"[{DeviceId}] ⚠️ Using fallback adapter: {device.Description} ({addrStr})")
+                                HandleUserMessageLogging("GMRC", $"[{DisplayName}] ⚠️ Using fallback adapter: {device.Description} ({addrStr})")
                                 Return True
                             End If
                         End If
@@ -1815,11 +1829,11 @@ Public NotInheritable Class LidarDevice
                 End If
             Next
 
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] ❌ No suitable adapter found")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] ❌ No suitable adapter found")
             Return False
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] FindNetworkAdapter error: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] FindNetworkAdapter error: {ex.Message}")
             Return False
         End Try
     End Function
@@ -1834,7 +1848,7 @@ Public NotInheritable Class LidarDevice
                 Try
                     _dumpFile.Close()
                 Catch exClose As Exception
-                    HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: dump file close failed - {exClose.Message}")
+                    HandleUserMessageLogging("GMRC", $"[{DisplayName}] CleanupResources: dump file close failed - {exClose.Message}")
                 End Try
                 _dumpFile = Nothing
             End If
@@ -1844,13 +1858,13 @@ Public NotInheritable Class LidarDevice
                 Try
                     _captureDevice.Close()
                 Catch exClose As Exception
-                    HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: capture device close failed - {exClose.Message}")
+                    HandleUserMessageLogging("GMRC", $"[{DisplayName}] CleanupResources: capture device close failed - {exClose.Message}")
                 End Try
                 ' Don't set to Nothing - may reuse for next capture
             End If
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] CleanupResources: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] CleanupResources: {ex.Message}")
         End Try
     End Sub
 
@@ -1865,11 +1879,11 @@ Public NotInheritable Class LidarDevice
             End If
         Catch exDispose As Exception
             ' Log errors from an already-degraded capture session during disposal
-            HandleUserMessageLogging("GMRC", $"[{DeviceId}] Dispose: StopCapture failed - {exDispose.Message}")
+            HandleUserMessageLogging("GMRC", $"[{DisplayName}] Dispose: StopCapture failed - {exDispose.Message}")
         End Try
 
         ' Don't discard a manifest that is still being written in the background.
-        WaitForPendingManifest($"[{DeviceId}] Dispose")
+        WaitForPendingManifest($"[{DisplayName}] Dispose")
 
         CleanupResources()
 
