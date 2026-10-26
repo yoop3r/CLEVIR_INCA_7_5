@@ -230,6 +230,10 @@
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="GM_ResidentClient.LoopFaults.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="GridCellPropConfig.designer.vb">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
     </Compile>
@@ -737,6 +741,9 @@
     <None Remove="CHANGE_LOG.md" />
     <None Remove="claudeprompt.md" />
     <None Remove="CLEVIR_INCA_7_5.vbproj.NEW" />
+    <None Remove="GM_INCA_Comm.log" />
+    <None Remove="GM_ResidentClient %281%29.log" />
+    <None Remove="GM_ResidentClient .log" />
     <None Remove="GM_ResidentClient.log" />
     <None Remove="Migration_CaptureLoop_New.vb.exclude" />
     <None Remove="Migration_CaptureLoop_New.vb.txt" />
