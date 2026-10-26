@@ -40,6 +40,9 @@ Public Class HesaiHttpApi
     ''' <summary>Default HTTP port for the pandar.cgi API.</summary>
     Public Const DefaultHttpPort As Integer = 80
 
+    ''' <summary>Successful responses slower than this are logged (diagnoses sluggish device web servers).</summary>
+    Private Const SlowResponseLogMs As Long = 1500
+
     ' ====================================================================
     ' Result Types
     ' ====================================================================
@@ -97,6 +100,7 @@ Public Class HesaiHttpApi
             ' exception surfaces instead of an AggregateException wrapper. The
             ' manifest path runs on a background/shutdown thread, not the UI
             ' thread, so blocking here is acceptable and keeps callers simple.
+            Dim elapsed As Diagnostics.Stopwatch = Diagnostics.Stopwatch.StartNew()
             Dim response As HttpResponseMessage = _client.GetAsync(url).GetAwaiter().GetResult()
             If Not response.IsSuccessStatusCode Then
                 HandleUserMessageLogging("GMRC", $"⚠️ Hesai HTTP: {objectName} returned HTTP {CInt(response.StatusCode)} from {ipAddress}")
@@ -131,6 +135,9 @@ Public Class HesaiHttpApi
 
                 ' Clone: the JsonDocument is disposed when this Using block exits.
                 body = bodyElement.Clone()
+                If elapsed.ElapsedMilliseconds >= SlowResponseLogMs Then
+                    HandleUserMessageLogging("GMRC", $"Hesai HTTP: {objectName} slow response ({elapsed.ElapsedMilliseconds} ms) from {ipAddress}")
+                End If
                 Return True
             End Using
 
@@ -316,95 +323,99 @@ Public Class HesaiHttpApi
 
         Dim result As New HesaiHttpMetadata()
 
-        ' ── Device identity: device_info ──────────────────────────────────
-        Dim deviceBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "device_info", Nothing, deviceBody) Then
-            result.Device = MapDeviceIdentity(deviceBody)
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("device_info")
+        ' ── Query phase ───────────────────────────────────────────────────
+        Dim bodies As New Dictionary(Of String, JsonElement)
+        Dim failed As New List(Of MetadataQuery)
+        For Each query In MetadataQueries
+            Dim body As JsonElement = Nothing
+            If TryQueryObject(ipAddress, httpPort, query.ObjectName, query.Key, body) Then
+                bodies(query.ObjectName) = body
+            Else
+                failed.Add(query)
+            End If
+        Next
+
+        ' A device that answered some queries is up, but its web server can stall
+        ' for several seconds (seen on the REAR unit: 1-3 consecutive timeouts, then
+        ' the remaining objects answer within a second). Give the failed objects one
+        ' more try; stop at the first retry failure so a still-stalled device costs
+        ' at most one extra timeout.
+        If failed.Count > 0 AndAlso bodies.Count > 0 Then
+            Thread.Sleep(MetadataRetryDelayMs)
+            Dim recovered As New List(Of String)
+            For Each query In failed.ToArray()
+                Dim body As JsonElement = Nothing
+                If Not TryQueryObject(ipAddress, httpPort, query.ObjectName, query.Key, body) Then Exit For
+                bodies(query.ObjectName) = body
+                failed.Remove(query)
+                recovered.Add(query.Label)
+            Next
+            If recovered.Count > 0 Then
+                HandleUserMessageLogging("GMRC", $"✅ Hesai HTTP {ipAddress}: recovered on retry ({String.Join(", ", recovered)})")
+            End If
         End If
 
-        ' ── Configuration: lidar_config (+ lidar_mode for return mode) ────
-        ' lidar_config also carries GPS lock and PTP status on this firmware, so
-        ' it feeds the status snapshot as well as the configuration record.
-        Dim configBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "lidar_config", Nothing, configBody) Then
-            result.Configuration = MapConfiguration(configBody)
+        result.AnySucceeded = bodies.Count > 0
+        result.FailedObjects.AddRange(failed.Select(Function(q) q.Label))
+
+        ' ── Apply phase (fixed order: lidar_config creates Configuration, later objects add to it) ──
+        Dim b As JsonElement
+
+        ' Device identity: device_info
+        If bodies.TryGetValue("device_info", b) Then
+            result.Device = MapDeviceIdentity(b)
+        End If
+
+        ' Configuration: lidar_config also carries GPS lock and PTP status on this
+        ' firmware, so it feeds the status snapshot as well as the configuration record.
+        If bodies.TryGetValue("lidar_config", b) Then
+            result.Configuration = MapConfiguration(b)
             result.Status = EnsureStatus(result)
-            ApplyConfigStatus(configBody, result.Status)
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("lidar_config")
+            ApplyConfigStatus(b, result.Status)
         End If
 
         ' Return mode lives on its own endpoint; fold it into Configuration.
-        Dim modeBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "lidar_data", "lidar_mode", modeBody) Then
+        If bodies.TryGetValue("lidar_data", b) Then
             If result.Configuration Is Nothing Then
                 result.Configuration = New PcapEventBridge.HesaiDeviceConfiguration With {.Source = "Http"}
             End If
-            Dim returnMode As Integer? = ReadIntOrNull(modeBody, "lidar_mode")
-            If Not returnMode.HasValue Then returnMode = ReadIntOrNull(modeBody, "return_mode")
+            Dim returnMode As Integer? = ReadIntOrNull(b, "lidar_mode")
+            If Not returnMode.HasValue Then returnMode = ReadIntOrNull(b, "return_mode")
             If returnMode.HasValue Then
                 result.Configuration.ReturnMode = returnMode
                 result.Configuration.ReturnModeName = DecodeReturnMode(returnMode)
             End If
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("lidar_data&key=lidar_mode")
         End If
 
-        ' ── Sync state: lidar_sync ────────────────────────────────────
-        ' Confirmed live shape: {"sync":"0","syncAngle":"0"}
-        Dim syncBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "lidar_sync", Nothing, syncBody) Then
+        ' Sync state: lidar_sync. Confirmed live shape: {"sync":"0","syncAngle":"0"}
+        If bodies.TryGetValue("lidar_sync", b) Then
             If result.Configuration Is Nothing Then
                 result.Configuration = New PcapEventBridge.HesaiDeviceConfiguration With {.Source = "Http"}
             End If
-            result.Configuration.SyncEnabled = ReadBoolOrNull(syncBody, "sync")
-            result.Configuration.SyncAngleHundredthsOfDegree = ReadIntOrNull(syncBody, "syncAngle")
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("lidar_sync")
+            result.Configuration.SyncEnabled = ReadBoolOrNull(b, "sync")
+            result.Configuration.SyncAngleHundredthsOfDegree = ReadIntOrNull(b, "syncAngle")
         End If
 
-        ' ── Live status: lidar_monitor (+ TimeStatistic for uptime) ───────
-        Dim monitorBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "lidar_monitor", Nothing, monitorBody) Then
+        ' Live status: lidar_monitor (+ TimeStatistic for uptime)
+        If bodies.TryGetValue("lidar_monitor", b) Then
             result.Status = EnsureStatus(result)
-            MapStatus(monitorBody, result.Status)
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("lidar_monitor")
+            MapStatus(b, result.Status)
         End If
 
-        Dim timeStatBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "TimeStatistic", Nothing, timeStatBody) Then
+        If bodies.TryGetValue("TimeStatistic", b) Then
             result.Status = EnsureStatus(result)
-            MapTimeStatistics(timeStatBody, result.Status)
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("TimeStatistic")
+            MapTimeStatistics(b, result.Status)
         End If
 
-        ' ── PTP lock offset: PTP_lock_offset ──────────────────────────────
-        Dim ptpBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "PTP_lock_offset", Nothing, ptpBody) Then
+        ' PTP lock offset: PTP_lock_offset
+        If bodies.TryGetValue("PTP_lock_offset", b) Then
             result.Status = EnsureStatus(result)
-            result.Status.PtpLockOffsetLimit = ReadString(ptpBody, "PTP_lock_offset")
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("PTP_lock_offset")
+            result.Status.PtpLockOffsetLimit = ReadString(b, "PTP_lock_offset")
         End If
 
-        ' ── Angle correction: lidar_calibration ───────────────────────────
-        Dim calibBody As JsonElement = Nothing
-        If TryQueryObject(ipAddress, httpPort, "lidar_calibration", Nothing, calibBody) Then
-            result.AngleCorrectionCsv = ReadFirstString(calibBody, "lidar_calibration", "calibration", "LidarCalibration")
-            result.AnySucceeded = True
-        Else
-            result.FailedObjects.Add("lidar_calibration")
+        ' Angle correction: lidar_calibration
+        If bodies.TryGetValue("lidar_calibration", b) Then
+            result.AngleCorrectionCsv = ReadFirstString(b, "lidar_calibration", "calibration", "LidarCalibration")
         End If
 
         If Not result.AnySucceeded Then
@@ -419,6 +430,39 @@ Public Class HesaiHttpApi
 
         Return result
     End Function
+
+    ''' <summary>One pandar.cgi object read by GetMetadata.</summary>
+    Private NotInheritable Class MetadataQuery
+        Public ReadOnly ObjectName As String
+        Public ReadOnly Key As String
+
+        Public Sub New(objectName As String, Optional key As String = Nothing)
+            Me.ObjectName = objectName
+            Me.Key = key
+        End Sub
+
+        ''' <summary>Name used in the "endpoint(s) unavailable" log line.</summary>
+        Public ReadOnly Property Label As String
+            Get
+                Return If(Key Is Nothing, ObjectName, $"{ObjectName}&key={Key}")
+            End Get
+        End Property
+    End Class
+
+    ''' <summary>Objects GetMetadata reads, in query order.</summary>
+    Private Shared ReadOnly MetadataQueries As MetadataQuery() = {
+        New MetadataQuery("device_info"),
+        New MetadataQuery("lidar_config"),
+        New MetadataQuery("lidar_data", "lidar_mode"),
+        New MetadataQuery("lidar_sync"),
+        New MetadataQuery("lidar_monitor"),
+        New MetadataQuery("TimeStatistic"),
+        New MetadataQuery("PTP_lock_offset"),
+        New MetadataQuery("lidar_calibration")
+    }
+
+    ''' <summary>Pause before GetMetadata retries objects that failed on a device that otherwise answered.</summary>
+    Private Const MetadataRetryDelayMs As Integer = 1000
 
     ''' <summary>
     ''' ✅ Lightweight reachability probe. Queries device_info only, so it is
