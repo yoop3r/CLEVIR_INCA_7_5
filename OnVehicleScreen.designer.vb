@@ -544,7 +544,6 @@ Partial Class OnVehicleScreen
         ' 
         AllowDrop = True
         AutoScaleMode = AutoScaleMode.None
-        AutoSizeMode = AutoSizeMode.GrowAndShrink
         AutoValidate = AutoValidate.EnableAllowFocusChange
         BackColor = SystemColors.Control
         ClientSize = New Size(804, 581)
