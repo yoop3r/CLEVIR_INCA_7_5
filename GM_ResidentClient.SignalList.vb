@@ -326,7 +326,6 @@ Partial Public Class GmResidentClient
         Dim invalidSignalsArray() As String = Nothing
         Dim duplicate As Boolean = False
         Dim invalidSignal As Boolean = False
-        Dim fileValid As Boolean = False
         Dim cameraNumber As Integer = 0
         Dim timeCodeCounter As Integer = 0
         Dim tempStr As String = ""
@@ -342,20 +341,7 @@ Partial Public Class GmResidentClient
             ' --------------------------------------------------------------------------
             ' Basic File Checks & Handling
             ' --------------------------------------------------------------------------
-            HandleUserMessageLogging("GMRC", "In ReadInSignalList SignalListFileName = " & signalListFileName)
-            If Not File.Exists(signalListFileName) OrElse Not SignalListFile.IsCsv(signalListFileName) Then
-                If Not HandleMissingSignalListFile(signalListFileName, fileValid) Then
-                    ' If user decides to abort or exit, then return immediately
-                    Return False
-                End If
-                ' If the user selects or chooses a different file, the returned name is in INCAVariableFile
-                ' or we re-assign signalListFileName. 
-                signalListFileName = INCAVariableFile
-            End If
-
-            ' Make a backup copy of the signal list file
-            HandleUserMessageLogging("GMRC", $"ReadInSignalList: Creating Signal List backup file: {signalListFileName}.SAVE")
-            FileCopy(signalListFileName, signalListFileName & ".SAVE")
+            If Not PrepareSignalListFile(signalListFileName) Then Return False
 
             ' --------------------------------------------------------------------------
             ' Connect to INCA if necessary
@@ -384,11 +370,7 @@ Partial Public Class GmResidentClient
             PrepareValidExcelDataForFullRegistration()
 
             ' Prepare to read signals
-            ReDim MyIncaInterface.mySignals(0)
-            MyIncaInterface.mySignals(0).DeviceName = ""
-            MyIncaInterface.mySignals(0).RasterName = ""
-            MyIncaInterface.mySignals(0).SignalName = ""
-            MyIncaInterface.mySignals(0).Status = "Invalid"
+            ResetSignalArray()
 
             ' --------------------------------------------------------------------------
             ' Main loop: Process rows in excelData
@@ -409,26 +391,8 @@ Partial Public Class GmResidentClient
                     ' ------------------------------------------------------------------
                     ' Visible (display) signals
                     ' ------------------------------------------------------------------
-                    If y = 2 Then
-                        ' First row with a DisplayWindowName -> Create the first form
-                        HandleFirstDisplaySignalRow(deviceName, rasterName, variableName)
-                    Else
-                        ' Subsequent displayed signals
-                        If MyInvisibleSignals IsNot Nothing Then
-                            ' If we've already seen invisible signals but now see a visible one -> invalid file format
-                            HandleUserMessageLogging("GMRC",
-                                "ReadInSignalList: Invalid file format, signals with no DisplayWindowName " &
-                                "must occur in the spreadsheet after all displayed signals",
-                                DisplayMsgBox)
-                            Return False
-                        End If
-                        HandleSubsequentDisplaySignalRow(
-                            deviceName,
-                            rasterName,
-                            variableName,
-                            cameraNumber,
-                            y
-                        )
+                    If Not ProcessDisplaySignalRow(deviceName, rasterName, variableName, cameraNumber, y) Then
+                        Return False
                     End If
 
                 Else
@@ -501,6 +465,68 @@ Partial Public Class GmResidentClient
         Finally
             Cursor = Cursors.Arrow
         End Try
+    End Function
+
+    ''' <summary>
+    ''' Validates the signal list file (prompting for a replacement if missing or not CSV) and backs it up.
+    ''' Returns False if the user aborted. signalListFileName is updated if a different file was chosen.
+    ''' </summary>
+    Private Function PrepareSignalListFile(ByRef signalListFileName As String) As Boolean
+        Dim fileValid As Boolean = False
+
+        HandleUserMessageLogging("GMRC", "In ReadInSignalList SignalListFileName = " & signalListFileName)
+        If Not File.Exists(signalListFileName) OrElse Not SignalListFile.IsCsv(signalListFileName) Then
+            If Not HandleMissingSignalListFile(signalListFileName, fileValid) Then
+                ' If user decides to abort or exit, then return immediately
+                Return False
+            End If
+            ' If the user selects or chooses a different file, the returned name is in INCAVariableFile
+            ' or we re-assign signalListFileName. 
+            signalListFileName = INCAVariableFile
+        End If
+
+        ' Make a backup copy of the signal list file
+        HandleUserMessageLogging("GMRC", $"ReadInSignalList: Creating Signal List backup file: {signalListFileName}.SAVE")
+        FileCopy(signalListFileName, signalListFileName & ".SAVE")
+        Return True
+    End Function
+
+    Private Sub ResetSignalArray()
+        ReDim MyIncaInterface.mySignals(0)
+        MyIncaInterface.mySignals(0).DeviceName = ""
+        MyIncaInterface.mySignals(0).RasterName = ""
+        MyIncaInterface.mySignals(0).SignalName = ""
+        MyIncaInterface.mySignals(0).Status = "Invalid"
+    End Sub
+
+    ''' <summary>
+    ''' Handles a signal-list row that has a DisplayWindowName. Returns False if the file is invalid
+    ''' (a displayed signal appears after record-only signals).
+    ''' </summary>
+    Private Function ProcessDisplaySignalRow(ByVal deviceName As String, ByVal rasterName As String, ByVal variableName As String,
+                                             ByRef cameraNumber As Integer, ByVal y As Integer) As Boolean
+        If y = 2 Then
+            ' First row with a DisplayWindowName -> Create the first form
+            HandleFirstDisplaySignalRow(deviceName, rasterName, variableName)
+        Else
+            ' Subsequent displayed signals
+            If MyInvisibleSignals IsNot Nothing Then
+                ' If we've already seen invisible signals but now see a visible one -> invalid file format
+                HandleUserMessageLogging("GMRC",
+                    "ReadInSignalList: Invalid file format, signals with no DisplayWindowName " &
+                    "must occur in the spreadsheet after all displayed signals",
+                    DisplayMsgBox)
+                Return False
+            End If
+            HandleSubsequentDisplaySignalRow(
+                deviceName,
+                rasterName,
+                variableName,
+                cameraNumber,
+                y
+            )
+        End If
+        Return True
     End Function
 
     Private Sub ConnectToIncaForSignalListIfNeeded()
