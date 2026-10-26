@@ -365,37 +365,7 @@ Partial Public Class GmResidentClient
     ' Main initialization routine called from Form_Load.
     Private Async Function Initialize() As Task
 
-        ' ══════════════════════════════════════════════════════════════
-        ' ✅ FIX 1: Reset stale initialization flag
-        ' ══════════════════════════════════════════════════════════════
-        If _initializing Then
-            HandleUserMessageLogging("GMRC", "Initialize: WARNING - _initializing flag was already true, resetting...")
-            _initializing = False
-        End If
-
-        If _fullyInitialized Then
-            HandleUserMessageLogging("GMRC", "Initialize: Already fully initialized, ignoring call")
-            Return
-        End If
-
-        If exitInProgress Then
-            HandleUserMessageLogging("GMRC", "Initialize: Exit in progress, aborting")
-            Return
-        End If
-
-        ' Create cancellation token
-        If _initCts Is Nothing OrElse _initCts.IsCancellationRequested Then
-            _initCts?.Dispose()
-            _initCts = New CancellationTokenSource()
-        End If
-
-        ' ══════════════════════════════════════════════════════════════
-        ' ✅ FIX 2: Prevent concurrent initialization
-        ' ══════════════════════════════════════════════════════════════
-        If initializationInProgress Then
-            HandleUserMessageLogging("GMRC", "Initialize: Already running, ignoring call")
-            Return
-        End If
+        If Not TryBeginInitialize() Then Return
 
         Try
             initializationInProgress = True
@@ -461,14 +431,7 @@ Partial Public Class GmResidentClient
 
             ' 8) Read the main signal list (Excel/csv). Cannot proceed if false.
             If Not ReadInSignalList(INCAVariableFile) Then
-                ' Only log/exit if NOT exiting already
-                If Not exitInProgress Then
-                    HandleUserMessageLogging("GMRC", "ReadInSignalList returned False. Terminating...", DisplayMsgBox,)
-                    StatusNotifier.Toast("Initialize: Failed to read signal list - terminating", durationMs:=2000, ensureMainOnTop:=False)
-                    InitForm.Close()
-                    Close()
-                    End
-                End If
+                TerminateOnSignalListFailure()
             End If
 
             _incaInitStarted = True
@@ -514,9 +477,7 @@ Partial Public Class GmResidentClient
             FinalizeUI()
 
             ' 20) Start background worker for main loop
-            _backgroundTasksCts = New CancellationTokenSource()  ' Create CTS for background task cancellation
-            _enableMyBackgroundTasks = True
-            BackgroundWorker1.RunWorkerAsync(2000)
+            StartBackgroundLoop()
 
             ' 21) Additional UI configuration: calibrate button, escalation processing, etc.
             ConfigureAdvancedUI()
@@ -540,6 +501,63 @@ Partial Public Class GmResidentClient
         End Try
 
     End Function
+
+    ''' <summary>
+    ''' Initialize entry checks. Returns False if initialization must not run
+    ''' (already initialized, exiting, or already in progress).
+    ''' </summary>
+    Private Function TryBeginInitialize() As Boolean
+        ' ══════════════════════════════════════════════════════════════
+        ' ✅ FIX 1: Reset stale initialization flag
+        ' ══════════════════════════════════════════════════════════════
+        If _initializing Then
+            HandleUserMessageLogging("GMRC", "Initialize: WARNING - _initializing flag was already true, resetting...")
+            _initializing = False
+        End If
+
+        If _fullyInitialized Then
+            HandleUserMessageLogging("GMRC", "Initialize: Already fully initialized, ignoring call")
+            Return False
+        End If
+
+        If exitInProgress Then
+            HandleUserMessageLogging("GMRC", "Initialize: Exit in progress, aborting")
+            Return False
+        End If
+
+        ' Create cancellation token
+        If _initCts Is Nothing OrElse _initCts.IsCancellationRequested Then
+            _initCts?.Dispose()
+            _initCts = New CancellationTokenSource()
+        End If
+
+        ' ══════════════════════════════════════════════════════════════
+        ' ✅ FIX 2: Prevent concurrent initialization
+        ' ══════════════════════════════════════════════════════════════
+        If initializationInProgress Then
+            HandleUserMessageLogging("GMRC", "Initialize: Already running, ignoring call")
+            Return False
+        End If
+
+        Return True
+    End Function
+
+    Private Sub TerminateOnSignalListFailure()
+        ' Only log/exit if NOT exiting already
+        If Not exitInProgress Then
+            HandleUserMessageLogging("GMRC", "ReadInSignalList returned False. Terminating...", DisplayMsgBox,)
+            StatusNotifier.Toast("Initialize: Failed to read signal list - terminating", durationMs:=2000, ensureMainOnTop:=False)
+            InitForm.Close()
+            Close()
+            End
+        End If
+    End Sub
+
+    Private Sub StartBackgroundLoop()
+        _backgroundTasksCts = New CancellationTokenSource()  ' Create CTS for background task cancellation
+        _enableMyBackgroundTasks = True
+        BackgroundWorker1.RunWorkerAsync(2000)
+    End Sub
 
     Private Sub InitializeLidarDevices(ByVal userWantsLidar As Boolean)
         'Called from Initialize. Validates configured LiDAR devices against the detected capture adapters and
