@@ -3095,13 +3095,16 @@ Public Module Module1
     ' starts (seen as truncated lines from LiDAR/marker-pump threads).
     Private ReadOnly _logWriteLock As New Object()
 
+    ' Guarded by _logWriteLock. Throttles rotation retries while something holds the log open.
+    Private _nextLogRotationAttemptUtc As DateTime = DateTime.MinValue
+
     Public Sub CopyToLog(ByVal inputstr As String, Optional ByVal MessageLogNumber As Integer = 0)
         ' Copies CLEVIR status messages to the GM_ResidentClient.log file with full concurrency protection.
 
         If MessageLogNumber > MessageLogLevel Then Exit Sub
 
         inputstr = $"{DateTime.Now:MM/dd/yyyy HH:mm:ss} - {inputstr}"
-        Dim logFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, "GM_ResidentClient.log")
+        Dim logFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, FileMaintenance.ResidentLogFileName)
 
         Const maxRetries As Integer = 5
         Const initialDelayMs As Integer = 50
@@ -3112,6 +3115,7 @@ Public Module Module1
                 ' FileShare.ReadWrite lets the log be read/tailed while CLEVIR runs; the lock
                 ' keeps in-process writers from appending at the same offset.
                 SyncLock _logWriteLock
+                    Dim logLength As Long
                     Using fs As New FileStream(logFilePath,
                                           FileMode.Append,
                                           FileAccess.Write,
@@ -3119,8 +3123,11 @@ Public Module Module1
                         Using writer As New StreamWriter(fs)
                             writer.WriteLine(inputstr)
                             writer.Flush()  ' Force write to disk immediately
+                            logLength = fs.Length
                         End Using
                     End Using
+
+                    If logLength > FileMaintenance.MaxResidentLogBytes Then RotateResidentLog(logFilePath)
                 End SyncLock
 
                 ' ✅ Success - exit retry loop
@@ -3142,13 +3149,27 @@ Public Module Module1
 
         ' ✅ All retries exhausted - log to Debug output only
         Debug.WriteLine($"CopyToLog: Failed to write after {maxRetries} attempts: {inputstr}")
+    End Sub
 
-        ' ✅ Manage file size (moved outside retry loop for efficiency)
-        Try
-            ManageLogFileSize(logFilePath)
-        Catch ex As Exception
-            Debug.WriteLine($"ManageLogFileSize failed: {ex.Message}")
-        End Try
+    ''' <summary>
+    ''' Caller holds _logWriteLock. Moves the full log to GM_ResidentClient.1.log (replacing the previous
+    ''' backup) so the active log restarts empty; nothing is deleted beyond the older backup.
+    ''' </summary>
+    Private Sub RotateResidentLog(logFilePath As String)
+        If DateTime.UtcNow < _nextLogRotationAttemptUtc Then Return
+
+        Dim backupPath As String = Path.Combine(Path.GetDirectoryName(logFilePath), FileMaintenance.ResidentLogBackupFileName)
+        If FileMaintenance.TryRotateLog(logFilePath, backupPath) Then
+            _nextLogRotationAttemptUtc = DateTime.MinValue
+            Try
+                File.AppendAllText(logFilePath, $"{DateTime.Now:MM/dd/yyyy HH:mm:ss} - Log rotated at {FileMaintenance.MaxResidentLogBytes:N0} bytes; previous entries are in {FileMaintenance.ResidentLogBackupFileName}{Environment.NewLine}")
+            Catch ex As Exception
+                Debug.WriteLine($"RotateResidentLog: {ex.Message}")
+            End Try
+        Else
+            ' Held open without delete sharing (e.g. an editor) - keep appending, retry later.
+            _nextLogRotationAttemptUtc = DateTime.UtcNow.AddMinutes(1)
+        End If
     End Sub
 
     Private Function WaitForFileAccess(ByVal logFilePath As String) As Boolean
@@ -3165,16 +3186,6 @@ Public Module Module1
         Using writer As New StreamWriter(logFilePath, True) ' True enables appending
             writer.WriteLine(inputStr)
         End Using
-    End Sub
-
-    Private Sub ManageLogFileSize(ByVal logFilePath As String)
-        ' Manages log file size and copies to network drive if necessary
-        Dim logFileInfo As New FileInfo(logFilePath)
-
-        If logFileInfo.Length > 5000000 AndAlso Len(VehicleNumber) > 0 Then
-            File.Delete(logFilePath)
-        End If
-
     End Sub
 
     ' This is called from the ENABLE / DISABLE VOICE CMDS button on the OnVehicleScreen

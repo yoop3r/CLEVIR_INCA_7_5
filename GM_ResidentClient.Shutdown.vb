@@ -405,13 +405,13 @@ Partial Public Class GmResidentClient
     Private Sub HandleFileManipulationsForUpload()
         If Not HaveRecorded Then Return
 
-        Dim sourceLogPath As String = Path.Combine(My.Application.Info.DirectoryPath, "GM_ResidentClient.log")
+        Dim sourceLogPath As String = Path.Combine(My.Application.Info.DirectoryPath, FileMaintenance.ResidentLogFileName)
         Dim aggregateAnnoFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, $"{VehicleNumber}_AggregateAnnotations.csv")
         Dim driverAnnoFilePath As String = Path.Combine(My.Application.Info.DirectoryPath, $"{VehicleNumber}_Driver_Anno_Cons.xlsx")
         Dim vehicleDataRoot As String = FileMaintenance.VehicleDataRoot(BaseDataCollectionPath, VehicleNumber)
 
         ' Log destination
-        Dim destinationLogPath As String = Path.Combine(vehicleDataRoot, "GM_ResidentClient.log")
+        Dim destinationLogPath As String = Path.Combine(vehicleDataRoot, FileMaintenance.ResidentLogFileName)
 
         Try
             Directory.CreateDirectory(Path.GetDirectoryName(destinationLogPath))
@@ -419,6 +419,16 @@ Partial Public Class GmResidentClient
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"Copy log failed: {ex.Message}")
         End Try
+
+        ' Rotated log (earlier entries once the active log passed the size cap)
+        Dim sourceBackupLogPath As String = Path.Combine(My.Application.Info.DirectoryPath, FileMaintenance.ResidentLogBackupFileName)
+        If File.Exists(sourceBackupLogPath) Then
+            Try
+                File.Copy(sourceBackupLogPath, Path.Combine(vehicleDataRoot, FileMaintenance.ResidentLogBackupFileName), overwrite:=True)
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", $"Copy rotated log failed: {ex.Message}")
+            End Try
+        End If
 
         ' Aggregate anno
         If File.Exists(aggregateAnnoFilePath) Then

@@ -11,6 +11,9 @@ Imports System.Threading
 Friend NotInheritable Class FileMaintenance
 
     Friend Const CommLogFileName As String = "GM_INCA_Comm.log"
+    Friend Const ResidentLogFileName As String = "GM_ResidentClient.log"
+    Friend Const ResidentLogBackupFileName As String = "GM_ResidentClient.1.log"
+    Friend Const MaxResidentLogBytes As Long = 5_000_000
 
     Private Sub New()
     End Sub
@@ -68,7 +71,22 @@ Friend NotInheritable Class FileMaintenance
     End Function
 
     ''' <summary>
-    ''' Tries up to <paramref name="tries"/> times to open <paramref name="filePath"/> exclusively, sleeping
+    ''' Renames <paramref name="logPath"/> to <paramref name="backupPath"/>, replacing any older backup.
+    ''' Returns False (log untouched) when the file is missing or held open without delete sharing.
+    ''' </summary>
+    Friend Shared Function TryRotateLog(logPath As String, backupPath As String) As Boolean
+        Try
+            File.Move(logPath, backupPath, overwrite:=True)
+            Return True
+        Catch ex As IOException
+            Return False
+        Catch ex As UnauthorizedAccessException
+            Return False
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' Tries up to <paramref name="tries"/> times to open
     ''' <paramref name="delayMs"/> after each failure. Returns True as soon as an exclusive open succeeds.
     ''' </summary>
     Friend Shared Function WaitUntilFileReady(filePath As String, tries As Integer, delayMs As Integer, log As Action(Of String)) As Boolean
