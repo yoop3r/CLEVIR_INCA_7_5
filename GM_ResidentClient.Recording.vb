@@ -243,176 +243,202 @@ Partial Public Class GmResidentClient
     Private Sub CheckForIncaButtonPresses(ByVal lMeasurementStatus As String, ByVal lRecordingState As String)
         Try
             If lMeasurementStatus = "True" And MyIncaInterface.MeasurementStarted = False Then
-                ' ✅ FIX: Don't redisplay when LoginForm is active
-                If Not OnLoginScreen Then
-                    RedisplayOnVehicleForm("Main")
-                End If
-                HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Measurement/Recording Started in INCA - CLEVIR Will now Stop Measurement and/or Recording.", DisplayMsgBox)
-                OnVehicleScreen.TopMost = False
-
-                ' ✅ NEW: Log before blocking call
-                HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Calling StartStopMeasurement (blocking)...")
-
-                ' ✅ KEEP THIS (For now)
-                MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
-                .GetAwaiter().GetResult()
-
-                ' ✅ NEW: Log after completion
-                HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: StartStopMeasurement completed.")
-
-                InSession = False
-
+                HandleMeasurementStartedInInca()
             ElseIf lMeasurementStatus = "False" And MyIncaInterface.MeasurementStarted = True Then
-                ' Handle measurement stopped in INCA
-                ' ✅ FIX: Don't redisplay when LoginForm is active
-                If Not OnLoginScreen Then
-                    RedisplayOnVehicleForm("Main")
-                End If
-                HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Measurement Stopped in INCA - Please DO NOT USE INCA to Stop Measurement to avoid unpredictable behavior.", DisplayMsgBox)
-                OnVehicleScreen.TopMost = False
-
-                OnVehicleScreen.Button1.Enabled = True
-                If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then
-                    OnVehicleScreen.Button4.Enabled = True
-                    MyLogin.Enabled = True
-                End If
-
-                MyIncaInterface.Recording = False
-                MyIncaInterface.MeasurementStarted = False
-                MeasurementStarted = False
-                MyIncaInterface.StopDataCollection()
-                OnVehicleScreen.Button6.Text = "START MEASUREMENT"
-                OnVehicleScreen.Button14.Text = "START RECORD"
-
-                OnVehicleScreen.Button14.BackColor = Color.WhiteSmoke
-                OnVehicleScreen.Button14.ForeColor = Color.Black
-                OnVehicleScreen.Button6.BackColor = Color.WhiteSmoke
-                OnVehicleScreen.Button6.ForeColor = Color.Black
-
-                InSession = False
-
+                HandleMeasurementStoppedInInca()
             ElseIf lRecordingState = True And MyIncaInterface.Recording = False Then
-
-                RedisplayOnVehicleForm("Main")
-                HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Recording Started in INCA - USE INCA NOW to STOP Recording.", DisplayMsgBox, )
-                OnVehicleScreen.TopMost = False
-
-                Do While MyIncaInterface.GetRecordingState = True
-                    ActiveIncaApiCall = "Waiting For INCA to Report RecordingState False"
-                    Thread.Sleep(100)
-                Loop
-
-                ActiveIncaApiCall = String.Empty
-
-                MyIncaInterface.Recording = False
-                MyIncaInterface.MeasurementStarted = False
-                MeasurementStarted = False
-                InSession = False
-
-                OnVehicleScreen.Button1.Enabled = True
-                If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then
-                    OnVehicleScreen.Button4.Enabled = True
-                    MyLogin.Enabled = True
-                End If
-
-                OnVehicleScreen.Button6.Text = "START MEASUREMENT"
-                OnVehicleScreen.Button14.Text = "START RECORD"
-
-                OnVehicleScreen.Button14.BackColor = Color.WhiteSmoke
-                OnVehicleScreen.Button14.ForeColor = Color.Black
-                OnVehicleScreen.Button6.BackColor = Color.WhiteSmoke
-                OnVehicleScreen.Button6.ForeColor = Color.Black
-
-                'MyIncaInterface.MeasurementStarted = True
-                'MyIncaInterface.Recording = True
-                'MyIncaInterface.StartDataCollection(DataCollectionRate)
-                'OnVehicleScreen.Button6.Text = "STOP MEASUREMENT"
-                'OnVehicleScreen.Button6.BackColor = Color.Blue
-                'OnVehicleScreen.Button6.ForeColor = Color.White
-                'OnVehicleScreen.Button14.Text = "STOP RECORD"
-                'OnVehicleScreen.Button14.BackColor = Color.Red
-                'OnVehicleScreen.Button14.ForeColor = Color.White
-
-                If RecorderStopWatch Is Nothing Then
-                    RecorderStopWatch = New Stopwatch()
-                End If
-
-                RecorderStopWatch.Reset()
-                RecorderStopWatch.Start()
-
-                'Fusion Status Display, and LMFR Status Display(s) have custom annotation buttons, these
-                'must be enabled if we see that we are in record mode...
-
-                If FusionStatusDisplay.Visible = True Then
-                    FusionStatusDisplay.Button1.Enabled = True
-                    FusionStatusDisplay.Button2.Enabled = True
-                    FusionStatusDisplay.Button3.Enabled = True
-                    FusionStatusDisplay.Button4.Enabled = True
-                    FusionStatusDisplay.Button5.Enabled = True
-                    FusionStatusDisplay.Button6.Enabled = True
-                    FusionStatusDisplay.Button8.Enabled = True
-                    FusionStatusDisplay.Refresh()
-                End If
-
+                HandleRecordingStartedInInca()
             ElseIf lRecordingState = False And MyIncaInterface.Recording = True Then
-
-                'HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Recording Stopped in INCA")
-                RedisplayOnVehicleForm("Main")
-                HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Recording Stopped in INCA - Please Use CLEVIR to Start and Stop Recording to avoid unpredictable behavior.", DisplayMsgBox, )
-                OnVehicleScreen.TopMost = False
-
-                MyIncaInterface.Recording = False
-                MyIncaInterface.MeasurementStarted = False
-                MeasurementStarted = False
-                InSession = False
-                OnVehicleScreen.Button14.Text = "START RECORD"
-                OnVehicleScreen.Button6.Text = "START MEASUREMENT"
-                OnVehicleScreen.Button14.BackColor = Color.WhiteSmoke
-                OnVehicleScreen.Button14.ForeColor = Color.Black
-                OnVehicleScreen.Button6.BackColor = Color.WhiteSmoke
-                OnVehicleScreen.Button6.ForeColor = Color.Black
-
-                ' ✅ Start background OXTS monitor (non-blocking)
-                If OxtsEnabled AndAlso MyOxtsInterface IsNot Nothing Then
-                    MonitorOxtsRtkStatus()
-                End If
-
-                If RecorderStopWatch Is Nothing Then
-                    RecorderStopWatch = New Stopwatch()
-                End If
-                RecorderStopWatch?.Stop()   ' ← Preserve final duration for logging
-                RecorderStopWatch.Reset()
-
-                If MyIncaInterface IsNot Nothing Then
-                    Try
-                        Dim lastClosed As String = MyIncaInterface.GetLastRecordingFileName()
-                        If Not String.IsNullOrEmpty(lastClosed) Then
-                            'EnsureSetLastRecordingFileName(lastClosed)
-                            HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Finalized last recording filename to " & lastClosed)
-                        End If
-                    Catch ex As Exception
-                        HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Couldn't finalize last recording filename: " & ex.Message)
-                    End Try
-                End If
-
-                'Fusion Status Display has custom annotation buttons, these
-                'must be disabled if we see that we are in record mode...
-
-                If FusionStatusDisplay.Visible = True Then
-                    FusionStatusDisplay.Button1.Enabled = False
-                    FusionStatusDisplay.Button2.Enabled = False
-                    FusionStatusDisplay.Button3.Enabled = False
-                    FusionStatusDisplay.Button4.Enabled = False
-                    FusionStatusDisplay.Button5.Enabled = False
-                    FusionStatusDisplay.Button6.Enabled = False
-                    FusionStatusDisplay.Button8.Enabled = False
-                End If
-
+                HandleRecordingStoppedInInca()
             End If
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: " & ex.Message)
         End Try
+    End Sub
+
+    ''' <summary>
+    ''' Measurement (or recording) was started from INCA instead of CLEVIR: stop it.
+    ''' Exceptions propagate to the CheckForIncaButtonPresses handler.
+    ''' </summary>
+    Private Sub HandleMeasurementStartedInInca()
+        ' ✅ FIX: Don't redisplay when LoginForm is active
+        If Not OnLoginScreen Then
+            RedisplayOnVehicleForm("Main")
+        End If
+        HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Measurement/Recording Started in INCA - CLEVIR Will now Stop Measurement and/or Recording.", DisplayMsgBox)
+        OnVehicleScreen.TopMost = False
+
+        ' ✅ NEW: Log before blocking call
+        HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Calling StartStopMeasurement (blocking)...")
+
+        ' ✅ KEEP THIS (For now)
+        MyIncaInterface.StartStopMeasurement(OnVehicleScreen.Button6) _
+        .GetAwaiter().GetResult()
+
+        ' ✅ NEW: Log after completion
+        HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: StartStopMeasurement completed.")
+
+        InSession = False
+    End Sub
+
+    ''' <summary>
+    ''' Measurement was stopped from INCA instead of CLEVIR: reset CLEVIR to idle.
+    ''' Exceptions propagate to the CheckForIncaButtonPresses handler.
+    ''' </summary>
+    Private Sub HandleMeasurementStoppedInInca()
+        ' Handle measurement stopped in INCA
+        ' ✅ FIX: Don't redisplay when LoginForm is active
+        If Not OnLoginScreen Then
+            RedisplayOnVehicleForm("Main")
+        End If
+        HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Measurement Stopped in INCA - Please DO NOT USE INCA to Stop Measurement to avoid unpredictable behavior.", DisplayMsgBox)
+        OnVehicleScreen.TopMost = False
+
+        OnVehicleScreen.Button1.Enabled = True
+        If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then
+            OnVehicleScreen.Button4.Enabled = True
+            MyLogin.Enabled = True
+        End If
+
+        MyIncaInterface.Recording = False
+        MyIncaInterface.MeasurementStarted = False
+        MeasurementStarted = False
+        MyIncaInterface.StopDataCollection()
+        OnVehicleScreen.Button6.Text = "START MEASUREMENT"
+        OnVehicleScreen.Button14.Text = "START RECORD"
+
+        OnVehicleScreen.Button14.BackColor = Color.WhiteSmoke
+        OnVehicleScreen.Button14.ForeColor = Color.Black
+        OnVehicleScreen.Button6.BackColor = Color.WhiteSmoke
+        OnVehicleScreen.Button6.ForeColor = Color.Black
+
+        InSession = False
+    End Sub
+
+    ''' <summary>
+    ''' Recording was started from INCA: wait for INCA to stop it, then reset CLEVIR to idle.
+    ''' Exceptions propagate to the CheckForIncaButtonPresses handler.
+    ''' </summary>
+    Private Sub HandleRecordingStartedInInca()
+        RedisplayOnVehicleForm("Main")
+        HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Recording Started in INCA - USE INCA NOW to STOP Recording.", DisplayMsgBox, )
+        OnVehicleScreen.TopMost = False
+
+        Do While MyIncaInterface.GetRecordingState = True
+            ActiveIncaApiCall = "Waiting For INCA to Report RecordingState False"
+            Thread.Sleep(100)
+        Loop
+
+        ActiveIncaApiCall = String.Empty
+
+        MyIncaInterface.Recording = False
+        MyIncaInterface.MeasurementStarted = False
+        MeasurementStarted = False
+        InSession = False
+
+        OnVehicleScreen.Button1.Enabled = True
+        If UCase(CLEVIRFlavor) = "DEVELOPMENT" Then
+            OnVehicleScreen.Button4.Enabled = True
+            MyLogin.Enabled = True
+        End If
+
+        OnVehicleScreen.Button6.Text = "START MEASUREMENT"
+        OnVehicleScreen.Button14.Text = "START RECORD"
+
+        OnVehicleScreen.Button14.BackColor = Color.WhiteSmoke
+        OnVehicleScreen.Button14.ForeColor = Color.Black
+        OnVehicleScreen.Button6.BackColor = Color.WhiteSmoke
+        OnVehicleScreen.Button6.ForeColor = Color.Black
+
+        'MyIncaInterface.MeasurementStarted = True
+        'MyIncaInterface.Recording = True
+        'MyIncaInterface.StartDataCollection(DataCollectionRate)
+        'OnVehicleScreen.Button6.Text = "STOP MEASUREMENT"
+        'OnVehicleScreen.Button6.BackColor = Color.Blue
+        'OnVehicleScreen.Button6.ForeColor = Color.White
+        'OnVehicleScreen.Button14.Text = "STOP RECORD"
+        'OnVehicleScreen.Button14.BackColor = Color.Red
+        'OnVehicleScreen.Button14.ForeColor = Color.White
+
+        If RecorderStopWatch Is Nothing Then
+            RecorderStopWatch = New Stopwatch()
+        End If
+
+        RecorderStopWatch.Reset()
+        RecorderStopWatch.Start()
+
+        'Fusion Status Display, and LMFR Status Display(s) have custom annotation buttons, these
+        'must be enabled if we see that we are in record mode...
+
+        If FusionStatusDisplay.Visible = True Then
+            FusionStatusDisplay.Button1.Enabled = True
+            FusionStatusDisplay.Button2.Enabled = True
+            FusionStatusDisplay.Button3.Enabled = True
+            FusionStatusDisplay.Button4.Enabled = True
+            FusionStatusDisplay.Button5.Enabled = True
+            FusionStatusDisplay.Button6.Enabled = True
+            FusionStatusDisplay.Button8.Enabled = True
+            FusionStatusDisplay.Refresh()
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Recording was stopped from INCA instead of CLEVIR: reset CLEVIR to idle.
+    ''' Exceptions propagate to the CheckForIncaButtonPresses handler.
+    ''' </summary>
+    Private Sub HandleRecordingStoppedInInca()
+        'HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Recording Stopped in INCA")
+        RedisplayOnVehicleForm("Main")
+        HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Recording Stopped in INCA - Please Use CLEVIR to Start and Stop Recording to avoid unpredictable behavior.", DisplayMsgBox, )
+        OnVehicleScreen.TopMost = False
+
+        MyIncaInterface.Recording = False
+        MyIncaInterface.MeasurementStarted = False
+        MeasurementStarted = False
+        InSession = False
+        OnVehicleScreen.Button14.Text = "START RECORD"
+        OnVehicleScreen.Button6.Text = "START MEASUREMENT"
+        OnVehicleScreen.Button14.BackColor = Color.WhiteSmoke
+        OnVehicleScreen.Button14.ForeColor = Color.Black
+        OnVehicleScreen.Button6.BackColor = Color.WhiteSmoke
+        OnVehicleScreen.Button6.ForeColor = Color.Black
+
+        ' ✅ Start background OXTS monitor (non-blocking)
+        If OxtsEnabled AndAlso MyOxtsInterface IsNot Nothing Then
+            MonitorOxtsRtkStatus()
+        End If
+
+        If RecorderStopWatch Is Nothing Then
+            RecorderStopWatch = New Stopwatch()
+        End If
+        RecorderStopWatch?.Stop()   ' ← Preserve final duration for logging
+        RecorderStopWatch.Reset()
+
+        If MyIncaInterface IsNot Nothing Then
+            Try
+                Dim lastClosed As String = MyIncaInterface.GetLastRecordingFileName()
+                If Not String.IsNullOrEmpty(lastClosed) Then
+                    'EnsureSetLastRecordingFileName(lastClosed)
+                    HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Finalized last recording filename to " & lastClosed)
+                End If
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", "CheckForINCAButtonPresses: Couldn't finalize last recording filename: " & ex.Message)
+            End Try
+        End If
+
+        'Fusion Status Display has custom annotation buttons, these
+        'must be disabled if we see that we are in record mode...
+
+        If FusionStatusDisplay.Visible = True Then
+            FusionStatusDisplay.Button1.Enabled = False
+            FusionStatusDisplay.Button2.Enabled = False
+            FusionStatusDisplay.Button3.Enabled = False
+            FusionStatusDisplay.Button4.Enabled = False
+            FusionStatusDisplay.Button5.Enabled = False
+            FusionStatusDisplay.Button6.Enabled = False
+            FusionStatusDisplay.Button8.Enabled = False
+        End If
     End Sub
 
     Public Sub HandleWavRecording(Optional ByVal buttonPressed As Boolean = False)
@@ -483,12 +509,6 @@ Partial Public Class GmResidentClient
     ''' Delegates UI updates to async StartRecordingMonitorTask.
     ''' </remarks>
     Private Sub HandleUpdatesWhenRecording()
-        ' Static variables for alternate recorder monitoring
-        Static MyAltRcrdElapseTime As TimeSpan
-        Static MyAltRcrdSaveTime As DateTime
-        Static MyCanAlyzerRcrdElapseTime As TimeSpan
-        Static MyCanAlyzerRcrdSaveTime As DateTime
-
         ' Local working variables
         Dim durationMinutes As Integer
 
@@ -501,16 +521,7 @@ Partial Public Class GmResidentClient
             ' ==================================================================
             ' SECTION 1: Inform INCA Comm about duration (only if changed)
             ' ==================================================================
-            If RecordFileDurationMinutes <> _lastSetRecordFileDurationMinutes Then
-                Try
-                    If MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.MyGmIncaComm IsNot Nothing Then
-                        MyIncaInterface.MyGmIncaComm.SetRecordingFileDurationMinutes(RecordFileDurationMinutes)
-                        _lastSetRecordFileDurationMinutes = RecordFileDurationMinutes
-                    End If
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", "HandleUpdatesWhenRecording: SetRecordingFileDurationMinutes failed: " & ex.Message)
-                End Try
-            End If
+            SyncIncaRecordFileDuration()
 
             ' ==================================================================
             ' SECTION 2: **OPTIMIZED FILENAME CACHING WITH SEQUENCE NUMBER**
@@ -525,156 +536,197 @@ Partial Public Class GmResidentClient
             ' the rotation completes.
             If OnVehicleScreen.Label5.Visible = True AndAlso
                Not (MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.SequenceRotationInProgress) Then
-                Dim shouldUpdateFilename As Boolean = False
-
-                ' ──────────────────────────────────────────────────────────────
-                ' CHECK 1: Is cached filename empty/invalid?
-                ' ──────────────────────────────────────────────────────────────
-                If String.IsNullOrEmpty(CachedRecordingFilename) OrElse
-       CachedRecordingFilename = "[Pending...]" Then
-                    shouldUpdateFilename = True
-                End If
-
-                ' ──────────────────────────────────────────────────────────────
-                ' CHECK 2: Has file rotated? (recording time decreased = new file)
-                ' ──────────────────────────────────────────────────────────────
-                If Not shouldUpdateFilename Then
-                    Try
-                        Dim currentTimeMs As Integer = MyIncaInterface.GetActualRecordingTimeMs()
-
-                        ' Rotation detected if current time < last known time
-                        If currentTimeMs < LastKnownRecordingTimeMs Then
-                            shouldUpdateFilename = True
-                            HandleUserMessageLogging("GMRC",
-                    $"HandleUpdatesWhenRecording: File rotation detected (time: {currentTimeMs}ms < {LastKnownRecordingTimeMs}ms)")
-                        End If
-
-                        LastKnownRecordingTimeMs = currentTimeMs
-
-                    Catch ex As Exception
-                        ' If time query fails, use periodic refresh as fallback
-                        If DateTime.Now.Subtract(LastFilenameUpdateTime).TotalSeconds > 5 Then
-                            shouldUpdateFilename = True
-                        End If
-                    End Try
-                End If
-
-                ' ──────────────────────────────────────────────────────────────
-                ' CHECK 3: Periodic safety refresh (every 10 seconds)
-                ' ──────────────────────────────────────────────────────────────
-                If Not shouldUpdateFilename Then
-                    If DateTime.Now.Subtract(LastFilenameUpdateTime).TotalSeconds > 10 Then
-                        shouldUpdateFilename = True
-                    End If
-                End If
-
-                ' ══════════════════════════════════════════════════════════════
-                ' PERFORM UPDATE ONLY WHEN NECESSARY
-                ' ══════════════════════════════════════════════════════════════
-                If shouldUpdateFilename Then
-                    Try
-                        Dim recordingInfo = GetCurrentRecordingInfo()
-
-                        If Not String.IsNullOrEmpty(recordingInfo.BaseName) Then
-                            Dim fullFilename As String = String.Format("{0}_{1:D2}.mf4",
-                                                                       recordingInfo.BaseName,
-                                                                       recordingInfo.Sequence)
-
-                            ' ✅ CRITICAL: Normalize both strings before comparison
-                            Dim normalizedFull As String = NormalizeFilename(fullFilename)
-                            Dim normalizedCached As String = NormalizeFilename(CachedRecordingFilename)
-
-                            ' Now compare the NORMALIZED strings
-                            'If normalizedFull <> normalizedCached Then
-                            If Not String.Equals(normalizedFull, normalizedCached, StringComparison.Ordinal) Then
-                                CachedRecordingFilename = normalizedFull
-                                OnVehicleScreen.Label5.Text = $"Recording Filename: {CachedRecordingFilename}"
-                                SaveRecordingFileName = CachedRecordingFilename
-                                LastFilenameUpdateTime = DateTime.Now
-                                HandleUserMessageLogging("GMRC", $"Updated to sequence {recordingInfo.Sequence:D2}: {CachedRecordingFilename}")
-                            End If
-                        Else
-                            ' Fallback to prediction...
-                            Dim predicted As String = GetPredictedRecordingFilename()
-                            If Not String.IsNullOrEmpty(predicted) AndAlso NormalizeFilename(predicted) <> NormalizeFilename(CachedRecordingFilename) Then
-                                CachedRecordingFilename = NormalizeFilename(predicted)
-                                OnVehicleScreen.Label5.Text = $"Recording Filename: {CachedRecordingFilename}"
-                                SaveRecordingFileName = CachedRecordingFilename
-                                LastFilenameUpdateTime = DateTime.Now
-                            End If
-                        End If
-
-                    Catch ex As Exception
-                        HandleUserMessageLogging("GMRC",
-                                                 $"HandleUpdatesWhenRecording: Filename update error - {ex.Message}")
-                    End Try
+                If IsRecordingFilenameRefreshDue() Then
+                    RefreshCachedRecordingFilename()
                 End If
             End If
 
             ' ==================================================================
             ' SECTION 3: Handle duration-based rotation
             ' ==================================================================
-            durationMinutes = RecordFileDurationMinutes
-            Try
-                If MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.MyGmIncaComm IsNot Nothing Then
-                    durationMinutes = MyIncaInterface.MyGmIncaComm.GetRecordingFileDurationMinutes()
-                End If
-            Catch ex As Exception
-                HandleUserMessageLogging("GMRC",
-                "HandleUpdatesWhenRecording: GetRecordingFileDurationMinutes failed: " & ex.Message)
-            End Try
+            durationMinutes = GetRecordFileDurationMinutesFromInca()
 
             HandleRecordingDurationRotation(durationMinutes)
 
             ' ==================================================================
             ' SECTION 4: Monitor VehicleSpy health
             ' ==================================================================
-            If VehicleSpyCaptureStarted = True And CheckVSpyMessageDisplayed = False Then
-                MyAltRcrdElapseTime = DateTime.Now.Subtract(MyAltRcrdSaveTime)
-                If MyAltRcrdElapseTime.Seconds >= 5 Then
-                    MyAltRcrdSaveTime = DateTime.Now
-                    If IsProcessRunning("VSPY3") = False Then
-                        VehicleSpyCaptureStarted = False
-                        Dim currentActiveSequence As String = GetCurrentActiveSequence()
-                        Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
-
-                        HandleUserMessageLogging("GMRC",
-                        $"Vehicle Spy is no longer running for sequence {currentSeq:D2}. " &
-                        "It is possible that it was manually exited. To re-enable Vehicle Spy, " &
-                        "you must exit and re-launch CLEVIR...",,, FlashMsg4Sec)
-                        OnVehicleScreen.Label3.BackColor = Color.Red
-                        AlternateRecordEnabled = False
-                        CheckVSpyMessageDisplayed = True
-                    End If
-                End If
-            End If
+            MonitorVehicleSpyHealth()
 
             ' ==================================================================
             ' SECTION 5: Monitor CANalyzer health
             ' ==================================================================
-            If CanalyzerCaptureStarted = True And CheckCanAlyzerMessageDisplayed = False Then
-                MyCanAlyzerRcrdElapseTime = DateTime.Now.Subtract(MyCanAlyzerRcrdSaveTime)
-                If MyCanAlyzerRcrdElapseTime.Seconds >= 5 Then
-                    MyCanAlyzerRcrdSaveTime = DateTime.Now
-                    If IsProcessRunning("CANW64") = False Then
-                        CanalyzerCaptureStarted = False
-                        Dim currentActiveSequence As String = GetCurrentActiveSequence()
-                        Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
-
-                        HandleUserMessageLogging("GMRC",
-                        $"CANalyzer is no longer running for sequence {currentSeq:D2}. " &
-                        "It is possible that it was manually exited. To re-enable CANalyzer, " &
-                        "you must exit and re-launch CLEVIR...",,, FlashMsg4Sec)
-                        OnVehicleScreen.Label3.BackColor = Color.Red
-                        AlternateRecordEnabled = False
-                        CheckCanAlyzerMessageDisplayed = True
-                    End If
-                End If
-            End If
+            MonitorCanalyzerHealth()
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "HandleUpdatesWhenRecording: " & ex.Message)
         End Try
+    End Sub
+
+    Private Sub SyncIncaRecordFileDuration()
+        If RecordFileDurationMinutes <> _lastSetRecordFileDurationMinutes Then
+            Try
+                If MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.MyGmIncaComm IsNot Nothing Then
+                    MyIncaInterface.MyGmIncaComm.SetRecordingFileDurationMinutes(RecordFileDurationMinutes)
+                    _lastSetRecordFileDurationMinutes = RecordFileDurationMinutes
+                End If
+            Catch ex As Exception
+                HandleUserMessageLogging("GMRC", "HandleUpdatesWhenRecording: SetRecordingFileDurationMinutes failed: " & ex.Message)
+            End Try
+        End If
+    End Sub
+
+    ''' <summary>
+    ''' Filename-cache refresh checks: empty cache, detected file rotation, or periodic refresh.
+    ''' </summary>
+    Private Function IsRecordingFilenameRefreshDue() As Boolean
+        Dim shouldUpdateFilename As Boolean = False
+
+        ' ──────────────────────────────────────────────────────────────
+        ' CHECK 1: Is cached filename empty/invalid?
+        ' ──────────────────────────────────────────────────────────────
+        If String.IsNullOrEmpty(CachedRecordingFilename) OrElse
+           CachedRecordingFilename = "[Pending...]" Then
+            shouldUpdateFilename = True
+        End If
+
+        ' ──────────────────────────────────────────────────────────────
+        ' CHECK 2: Has file rotated? (recording time decreased = new file)
+        ' ──────────────────────────────────────────────────────────────
+        If Not shouldUpdateFilename Then
+            Try
+                Dim currentTimeMs As Integer = MyIncaInterface.GetActualRecordingTimeMs()
+
+                ' Rotation detected if current time < last known time
+                If currentTimeMs < LastKnownRecordingTimeMs Then
+                    shouldUpdateFilename = True
+                    HandleUserMessageLogging("GMRC",
+            $"HandleUpdatesWhenRecording: File rotation detected (time: {currentTimeMs}ms < {LastKnownRecordingTimeMs}ms)")
+                End If
+
+                LastKnownRecordingTimeMs = currentTimeMs
+
+            Catch ex As Exception
+                ' If time query fails, use periodic refresh as fallback
+                If DateTime.Now.Subtract(LastFilenameUpdateTime).TotalSeconds > 5 Then
+                    shouldUpdateFilename = True
+                End If
+            End Try
+        End If
+
+        ' ──────────────────────────────────────────────────────────────
+        ' CHECK 3: Periodic safety refresh (every 10 seconds)
+        ' ──────────────────────────────────────────────────────────────
+        If Not shouldUpdateFilename Then
+            If DateTime.Now.Subtract(LastFilenameUpdateTime).TotalSeconds > 10 Then
+                shouldUpdateFilename = True
+            End If
+        End If
+
+        Return shouldUpdateFilename
+    End Function
+
+    Private Sub RefreshCachedRecordingFilename()
+        Try
+            Dim recordingInfo = GetCurrentRecordingInfo()
+
+            If Not String.IsNullOrEmpty(recordingInfo.BaseName) Then
+                Dim fullFilename As String = String.Format("{0}_{1:D2}.mf4",
+                                                           recordingInfo.BaseName,
+                                                           recordingInfo.Sequence)
+
+                ' ✅ CRITICAL: Normalize both strings before comparison
+                Dim normalizedFull As String = NormalizeFilename(fullFilename)
+                Dim normalizedCached As String = NormalizeFilename(CachedRecordingFilename)
+
+                ' Now compare the NORMALIZED strings
+                'If normalizedFull <> normalizedCached Then
+                If Not String.Equals(normalizedFull, normalizedCached, StringComparison.Ordinal) Then
+                    CachedRecordingFilename = normalizedFull
+                    OnVehicleScreen.Label5.Text = $"Recording Filename: {CachedRecordingFilename}"
+                    SaveRecordingFileName = CachedRecordingFilename
+                    LastFilenameUpdateTime = DateTime.Now
+                    HandleUserMessageLogging("GMRC", $"Updated to sequence {recordingInfo.Sequence:D2}: {CachedRecordingFilename}")
+                End If
+            Else
+                ' Fallback to prediction...
+                Dim predicted As String = GetPredictedRecordingFilename()
+                If Not String.IsNullOrEmpty(predicted) AndAlso NormalizeFilename(predicted) <> NormalizeFilename(CachedRecordingFilename) Then
+                    CachedRecordingFilename = NormalizeFilename(predicted)
+                    OnVehicleScreen.Label5.Text = $"Recording Filename: {CachedRecordingFilename}"
+                    SaveRecordingFileName = CachedRecordingFilename
+                    LastFilenameUpdateTime = DateTime.Now
+                End If
+            End If
+
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC",
+                                     $"HandleUpdatesWhenRecording: Filename update error - {ex.Message}")
+        End Try
+    End Sub
+
+    Private Function GetRecordFileDurationMinutesFromInca() As Integer
+        Dim durationMinutes As Integer = RecordFileDurationMinutes
+        Try
+            If MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.MyGmIncaComm IsNot Nothing Then
+                durationMinutes = MyIncaInterface.MyGmIncaComm.GetRecordingFileDurationMinutes()
+            End If
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC",
+            "HandleUpdatesWhenRecording: GetRecordingFileDurationMinutes failed: " & ex.Message)
+        End Try
+
+        Return durationMinutes
+    End Function
+
+    Private Sub MonitorVehicleSpyHealth()
+        Static MyAltRcrdElapseTime As TimeSpan
+        Static MyAltRcrdSaveTime As DateTime
+
+        If VehicleSpyCaptureStarted = True And CheckVSpyMessageDisplayed = False Then
+            MyAltRcrdElapseTime = DateTime.Now.Subtract(MyAltRcrdSaveTime)
+            If MyAltRcrdElapseTime.Seconds >= 5 Then
+                MyAltRcrdSaveTime = DateTime.Now
+                If IsProcessRunning("VSPY3") = False Then
+                    VehicleSpyCaptureStarted = False
+                    Dim currentActiveSequence As String = GetCurrentActiveSequence()
+                    Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
+
+                    HandleUserMessageLogging("GMRC",
+                    $"Vehicle Spy is no longer running for sequence {currentSeq:D2}. " &
+                    "It is possible that it was manually exited. To re-enable Vehicle Spy, " &
+                    "you must exit and re-launch CLEVIR...",,, FlashMsg4Sec)
+                    OnVehicleScreen.Label3.BackColor = Color.Red
+                    AlternateRecordEnabled = False
+                    CheckVSpyMessageDisplayed = True
+                End If
+            End If
+        End If
+    End Sub
+
+    Private Sub MonitorCanalyzerHealth()
+        Static MyCanAlyzerRcrdElapseTime As TimeSpan
+        Static MyCanAlyzerRcrdSaveTime As DateTime
+
+        If CanalyzerCaptureStarted = True And CheckCanAlyzerMessageDisplayed = False Then
+            MyCanAlyzerRcrdElapseTime = DateTime.Now.Subtract(MyCanAlyzerRcrdSaveTime)
+            If MyCanAlyzerRcrdElapseTime.Seconds >= 5 Then
+                MyCanAlyzerRcrdSaveTime = DateTime.Now
+                If IsProcessRunning("CANW64") = False Then
+                    CanalyzerCaptureStarted = False
+                    Dim currentActiveSequence As String = GetCurrentActiveSequence()
+                    Dim currentSeq As Integer = GetSequenceNumberFromFileName(currentActiveSequence)
+
+                    HandleUserMessageLogging("GMRC",
+                    $"CANalyzer is no longer running for sequence {currentSeq:D2}. " &
+                    "It is possible that it was manually exited. To re-enable CANalyzer, " &
+                    "you must exit and re-launch CLEVIR...",,, FlashMsg4Sec)
+                    OnVehicleScreen.Label3.BackColor = Color.Red
+                    AlternateRecordEnabled = False
+                    CheckCanAlyzerMessageDisplayed = True
+                End If
+            End If
+        End If
     End Sub
 
 
@@ -931,119 +983,7 @@ Partial Public Class GmResidentClient
         Try
             If ReadNewDataFile Then
                 SyncLock _playbackLock ' Ensure thread-safe access
-                    ReadNewDataFile = False
-
-                    ' Get filename and update UI through proper marshaling
-                    Dim fileName As String = Nothing
-                    Dim needCursorChange As Boolean = False
-
-                    If RecordPlayback.InvokeRequired Then
-                        RecordPlayback.Invoke(New Action(Sub()
-                                                             fileName = RecordPlayback.PlayBackFileName
-                                                             Cursor = Cursors.WaitCursor
-                                                             RecordPlayback.Label2.Visible = True
-                                                             RecordPlayback.Refresh()
-                                                         End Sub))
-                        needCursorChange = True
-                    Else
-                        fileName = RecordPlayback.PlayBackFileName
-                        Cursor = Cursors.WaitCursor
-                        RecordPlayback.Label2.Visible = True
-                        RecordPlayback.Refresh()
-                    End If
-
-                    ' Read all lines from the file at once.
-                    Dim lines As New List(Of String)
-                    Using sr As New StreamReader(fileName)
-                        While Not sr.EndOfStream
-                            lines.Add(sr.ReadLine())
-                        End While
-                    End Using
-
-                    ' Figure out how many rows total in the file
-                    Dim totalLines As Integer = lines.Count
-                    ' We need at least one line for headers
-                    If totalLines = 0 Then
-                        Throw New Exception("Playback file is empty.")
-                    End If
-
-                    ' Create a 2D array sized to (NumSignals+2) columns and totalLines rows
-                    ReDim _playbackDataArray(UBound(MyIncaInterface.MyDisplaySignals) + 2, totalLines - 1)
-                    _playbackColumnIndexMap = New Dictionary(Of String, Integer)(StringComparer.OrdinalIgnoreCase)
-                    ' Parse the header line to build a column index map for signals
-                    Dim header As String() = lines(0).Split(","c)
-                    _playbackColumnIndexMap = New Dictionary(Of String, Integer)(StringComparer.OrdinalIgnoreCase)
-
-                    ' First 2 columns in the CSV are presumably date/time or similar:
-                    '   column 0 -> MyDataArray(0, x)
-                    '   column 1 -> MyDataArray(1, x)
-                    ' So we only map signal columns (which start at index 2 in the CSV if present)
-                    For col As Integer = 2 To header.Length - 1
-                        Dim colName As String = header(col).Trim
-                        If Not _playbackColumnIndexMap.ContainsKey(colName) Then
-                            _playbackColumnIndexMap.Add(colName, col)
-                        End If
-                    Next
-
-                    ' Fill MyDataArray with the lines (after the header)
-                    ' Note: line 0 is the header, so start at line index=1
-                    For row As Integer = 1 To totalLines - 1
-                        Dim parts As String() = lines(row).Split(","c)
-
-                        ' Defensive check: skip empty/short lines
-                        If parts.Length < 2 Then Continue For
-
-                        ' Store first two columns directly
-                        _playbackDataArray(0, row) = parts(0)
-                        _playbackDataArray(1, row) = parts(1)
-
-                        ' Map each signal in MyIncaInterface.MyDisplaySignals
-                        For sigIndex As Integer = 0 To UBound(MyIncaInterface.MyDisplaySignals)
-                            Dim signalName As String = MyIncaInterface.MyDisplaySignals(sigIndex).SignalName
-                            ' If our header dictionary knows this signal name, assign directly
-                            If _playbackColumnIndexMap.ContainsKey(signalName) Then
-                                Dim colIdx = _playbackColumnIndexMap(signalName)
-                                If colIdx < parts.Length Then
-                                    ' Validate and sanitize the data
-                                    Dim value As String = parts(colIdx).Trim()
-                                    If Double.TryParse(value, Nothing) Then
-                                        _playbackDataArray(sigIndex + 2, row) = value
-                                    Else
-                                        ' If invalid, set to "0.0"
-                                        _playbackDataArray(sigIndex + 2, row) = "0.0"
-                                    End If
-                                Else
-                                    ' If column index is out of range, set 0.0
-                                    _playbackDataArray(sigIndex + 2, row) = "0.0"
-                                End If
-                            Else
-                                ' If not found, set 0.0
-                                _playbackDataArray(sigIndex + 2, row) = "0.0"
-                            End If
-                        Next
-                    Next
-
-                    ' Number of rows we've read in
-                    _playbackRowCounter = totalLines
-
-                    ' Update UI elements through proper marshaling
-                    If RecordPlayback.InvokeRequired Then
-                        RecordPlayback.Invoke(New Action(Sub()
-                                                             RecordPlayback.HScrollBar1.Maximum = _playbackRowCounter - 1
-                                                             RecordPlayback.HScrollBar1.Minimum = 1
-                                                             If needCursorChange Then
-                                                                 Cursor = Cursors.Arrow
-                                                             End If
-                                                             RecordPlayback.Label2.Visible = False
-                                                             RecordPlayback.Refresh()
-                                                         End Sub))
-                    Else
-                        RecordPlayback.HScrollBar1.Maximum = _playbackRowCounter - 1
-                        RecordPlayback.HScrollBar1.Minimum = 1
-                        Cursor = Cursors.Arrow
-                        RecordPlayback.Label2.Visible = False
-                        RecordPlayback.Refresh()
-                    End If
+                    LoadPlaybackDataFile()
                 End SyncLock
             End If
 
@@ -1067,14 +1007,7 @@ Partial Public Class GmResidentClient
                 SaveLineNumber = 2
             End If
 
-            Dim maxValue As Integer = 0
-            If RecordPlayback.InvokeRequired Then
-                RecordPlayback.Invoke(New Action(Sub()
-                                                     maxValue = RecordPlayback.HScrollBar1.Maximum
-                                                 End Sub))
-            Else
-                maxValue = RecordPlayback.HScrollBar1.Maximum
-            End If
+            Dim maxValue As Integer = GetPlaybackScrollMaximum()
 
             If SaveLineNumber + direction > maxValue Then
                 SaveLineNumber = maxValue - direction
@@ -1093,45 +1026,7 @@ Partial Public Class GmResidentClient
             If y = UBound(MyIncaInterface.MyDisplaySignals) + 3 Then
                 Dim newLineNumber As Integer = SaveLineNumber + direction
 
-                If RecordPlayback.InvokeRequired Then
-                    RecordPlayback.Invoke(New Action(Sub()
-                                                         RecordPlayback.HScrollBar1.Value = newLineNumber
-
-                                                         ' Enable/disable buttons based on boundaries
-                                                         If newLineNumber = RecordPlayback.HScrollBar1.Maximum Then
-                                                             RecordPlayback.StepForward.Enabled = False
-                                                             RecordPlayback.StepBack.Enabled = True
-                                                             RecordPlayback.Reset.Enabled = True
-                                                         End If
-
-                                                         If newLineNumber = RecordPlayback.HScrollBar1.Minimum Then
-                                                             RecordPlayback.PlayPauseButton.Enabled = True
-                                                             RecordPlayback.StepForward.Enabled = True
-                                                             RecordPlayback.StepBack.Enabled = False
-                                                             RecordPlayback.Reset.Enabled = True
-                                                         End If
-
-                                                         RecordPlayback.Label1.Text = $"{newLineNumber} of {RecordPlayback.HScrollBar1.Maximum}"
-                                                     End Sub))
-                Else
-                    RecordPlayback.HScrollBar1.Value = newLineNumber
-
-                    ' Enable/disable buttons based on boundaries
-                    If newLineNumber = RecordPlayback.HScrollBar1.Maximum Then
-                        RecordPlayback.StepForward.Enabled = False
-                        RecordPlayback.StepBack.Enabled = True
-                        RecordPlayback.Reset.Enabled = True
-                    End If
-
-                    If newLineNumber = RecordPlayback.HScrollBar1.Minimum Then
-                        RecordPlayback.PlayPauseButton.Enabled = True
-                        RecordPlayback.StepForward.Enabled = True
-                        RecordPlayback.StepBack.Enabled = False
-                        RecordPlayback.Reset.Enabled = True
-                    End If
-
-                    RecordPlayback.Label1.Text = $"{newLineNumber} of {RecordPlayback.HScrollBar1.Maximum}"
-                End If
+                UpdatePlaybackScrollPosition(newLineNumber)
 
                 SaveLineNumber = newLineNumber
             End If
@@ -1145,5 +1040,179 @@ Partial Public Class GmResidentClient
         End Try
 
     End Function
+
+    Private Sub LoadPlaybackDataFile()
+        ReadNewDataFile = False
+
+        ' Get filename and update UI through proper marshaling
+        Dim fileName As String = Nothing
+        Dim needCursorChange As Boolean = False
+
+        If RecordPlayback.InvokeRequired Then
+            RecordPlayback.Invoke(New Action(Sub()
+                                                 fileName = RecordPlayback.PlayBackFileName
+                                                 Cursor = Cursors.WaitCursor
+                                                 RecordPlayback.Label2.Visible = True
+                                                 RecordPlayback.Refresh()
+                                             End Sub))
+            needCursorChange = True
+        Else
+            fileName = RecordPlayback.PlayBackFileName
+            Cursor = Cursors.WaitCursor
+            RecordPlayback.Label2.Visible = True
+            RecordPlayback.Refresh()
+        End If
+
+        ' Read all lines from the file at once.
+        Dim lines As New List(Of String)
+        Using sr As New StreamReader(fileName)
+            While Not sr.EndOfStream
+                lines.Add(sr.ReadLine())
+            End While
+        End Using
+
+        PopulatePlaybackDataArray(lines)
+
+        ' Update UI elements through proper marshaling
+        If RecordPlayback.InvokeRequired Then
+            RecordPlayback.Invoke(New Action(Sub()
+                                                 RecordPlayback.HScrollBar1.Maximum = _playbackRowCounter - 1
+                                                 RecordPlayback.HScrollBar1.Minimum = 1
+                                                 If needCursorChange Then
+                                                     Cursor = Cursors.Arrow
+                                                 End If
+                                                 RecordPlayback.Label2.Visible = False
+                                                 RecordPlayback.Refresh()
+                                             End Sub))
+        Else
+            RecordPlayback.HScrollBar1.Maximum = _playbackRowCounter - 1
+            RecordPlayback.HScrollBar1.Minimum = 1
+            Cursor = Cursors.Arrow
+            RecordPlayback.Label2.Visible = False
+            RecordPlayback.Refresh()
+        End If
+    End Sub
+
+    Private Sub PopulatePlaybackDataArray(lines As List(Of String))
+        ' Figure out how many rows total in the file
+        Dim totalLines As Integer = lines.Count
+        ' We need at least one line for headers
+        If totalLines = 0 Then
+            Throw New Exception("Playback file is empty.")
+        End If
+
+        ' Create a 2D array sized to (NumSignals+2) columns and totalLines rows
+        ReDim _playbackDataArray(UBound(MyIncaInterface.MyDisplaySignals) + 2, totalLines - 1)
+        _playbackColumnIndexMap = New Dictionary(Of String, Integer)(StringComparer.OrdinalIgnoreCase)
+        ' Parse the header line to build a column index map for signals
+        Dim header As String() = lines(0).Split(","c)
+        _playbackColumnIndexMap = New Dictionary(Of String, Integer)(StringComparer.OrdinalIgnoreCase)
+
+        ' First 2 columns in the CSV are presumably date/time or similar:
+        '   column 0 -> MyDataArray(0, x)
+        '   column 1 -> MyDataArray(1, x)
+        ' So we only map signal columns (which start at index 2 in the CSV if present)
+        For col As Integer = 2 To header.Length - 1
+            Dim colName As String = header(col).Trim
+            If Not _playbackColumnIndexMap.ContainsKey(colName) Then
+                _playbackColumnIndexMap.Add(colName, col)
+            End If
+        Next
+
+        ' Fill MyDataArray with the lines (after the header)
+        ' Note: line 0 is the header, so start at line index=1
+        For row As Integer = 1 To totalLines - 1
+            Dim parts As String() = lines(row).Split(","c)
+
+            ' Defensive check: skip empty/short lines
+            If parts.Length < 2 Then Continue For
+
+            ' Store first two columns directly
+            _playbackDataArray(0, row) = parts(0)
+            _playbackDataArray(1, row) = parts(1)
+
+            ' Map each signal in MyIncaInterface.MyDisplaySignals
+            For sigIndex As Integer = 0 To UBound(MyIncaInterface.MyDisplaySignals)
+                Dim signalName As String = MyIncaInterface.MyDisplaySignals(sigIndex).SignalName
+                ' If our header dictionary knows this signal name, assign directly
+                If _playbackColumnIndexMap.ContainsKey(signalName) Then
+                    Dim colIdx = _playbackColumnIndexMap(signalName)
+                    If colIdx < parts.Length Then
+                        ' Validate and sanitize the data
+                        Dim value As String = parts(colIdx).Trim()
+                        If Double.TryParse(value, Nothing) Then
+                            _playbackDataArray(sigIndex + 2, row) = value
+                        Else
+                            ' If invalid, set to "0.0"
+                            _playbackDataArray(sigIndex + 2, row) = "0.0"
+                        End If
+                    Else
+                        ' If column index is out of range, set 0.0
+                        _playbackDataArray(sigIndex + 2, row) = "0.0"
+                    End If
+                Else
+                    ' If not found, set 0.0
+                    _playbackDataArray(sigIndex + 2, row) = "0.0"
+                End If
+            Next
+        Next
+
+        ' Number of rows we've read in
+        _playbackRowCounter = totalLines
+    End Sub
+
+    Private Function GetPlaybackScrollMaximum() As Integer
+        Dim maxValue As Integer = 0
+        If RecordPlayback.InvokeRequired Then
+            RecordPlayback.Invoke(New Action(Sub()
+                                                 maxValue = RecordPlayback.HScrollBar1.Maximum
+                                             End Sub))
+        Else
+            maxValue = RecordPlayback.HScrollBar1.Maximum
+        End If
+        Return maxValue
+    End Function
+
+    Private Sub UpdatePlaybackScrollPosition(newLineNumber As Integer)
+        If RecordPlayback.InvokeRequired Then
+            RecordPlayback.Invoke(New Action(Sub()
+                                                 RecordPlayback.HScrollBar1.Value = newLineNumber
+
+                                                 ' Enable/disable buttons based on boundaries
+                                                 If newLineNumber = RecordPlayback.HScrollBar1.Maximum Then
+                                                     RecordPlayback.StepForward.Enabled = False
+                                                     RecordPlayback.StepBack.Enabled = True
+                                                     RecordPlayback.Reset.Enabled = True
+                                                 End If
+
+                                                 If newLineNumber = RecordPlayback.HScrollBar1.Minimum Then
+                                                     RecordPlayback.PlayPauseButton.Enabled = True
+                                                     RecordPlayback.StepForward.Enabled = True
+                                                     RecordPlayback.StepBack.Enabled = False
+                                                     RecordPlayback.Reset.Enabled = True
+                                                 End If
+
+                                                 RecordPlayback.Label1.Text = $"{newLineNumber} of {RecordPlayback.HScrollBar1.Maximum}"
+                                             End Sub))
+        Else
+            RecordPlayback.HScrollBar1.Value = newLineNumber
+
+            ' Enable/disable buttons based on boundaries
+            If newLineNumber = RecordPlayback.HScrollBar1.Maximum Then
+                RecordPlayback.StepForward.Enabled = False
+                RecordPlayback.StepBack.Enabled = True
+                RecordPlayback.Reset.Enabled = True
+            End If
+
+            If newLineNumber = RecordPlayback.HScrollBar1.Minimum Then
+                RecordPlayback.PlayPauseButton.Enabled = True
+                RecordPlayback.StepForward.Enabled = True
+                RecordPlayback.StepBack.Enabled = False
+                RecordPlayback.Reset.Enabled = True
+            End If
+
+            RecordPlayback.Label1.Text = $"{newLineNumber} of {RecordPlayback.HScrollBar1.Maximum}"
+        End If
+    End Sub
 
 End Class
