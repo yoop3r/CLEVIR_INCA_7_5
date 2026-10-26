@@ -280,21 +280,23 @@ Partial Public Class GmResidentClient
         VideoCameraNotUpdating = False
         BackgroundLoopCounterNotUpdating = False
 
+        ' Swap Label17 (distance to object) back to Button1 (EXIT). Not tied to this form's WindowState: in
+        ' ResOnVpc mode GmResidentClient stays minimized/hidden, and measure mode hides EXIT on that basis.
+        If OnVehicleScreen.Button1.Visible = False Then
+            OnVehicleScreen.Button1.Visible = True
+        End If
+
+        ' Clear Distance to Target label
+        If Len(OnVehicleScreen.Label17.Text) > 0 Then
+            OnVehicleScreen.Label17.Text = ""
+        End If
+
         ' Ensure UI is visible and handle MainTabControl visibility
         If WindowState <> FormWindowState.Minimized Then
-            If OnVehicleScreen.Button1.Visible = False Then
-                OnVehicleScreen.Button1.Visible = True
-            End If
-
             ' Ensure MainTabControl is visible
             If MyMainTabControl IsNot Nothing AndAlso Not MyMainTabControl.Visible Then
                 MyMainTabControl.Visible = True
                 HandleUserMessageLogging("GMRC", "HandleNonMeasureModeUpdates: Set MyMainTabControl to visible.")
-            End If
-
-            ' Clear Distance to Target label
-            If Len(OnVehicleScreen.Label17.Text) > 0 Then
-                OnVehicleScreen.Label17.Text = ""
             End If
         End If
     End Sub
