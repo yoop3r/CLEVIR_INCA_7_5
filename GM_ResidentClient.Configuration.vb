@@ -123,204 +123,25 @@ Partial Public Class GmResidentClient
             End If
             ClearProcessorConfiguration()
 
-            BaseDataCollectionPath = ReadStringConfig(root, "BaseDataCollectionPath", "C:\HB")
-
-            ' Local tool & script paths
-            CSVScriptsPath = ReadStringConfig(root, "CSVScriptsPath", CSVScriptsPath)
-            SevenZipPath = ReadStringConfig(root, "SevenZipPath", SevenZipPath)
-
-            ' Integer configs
-            RecordWAVTime = ReadIntegerConfig(root, "RecordWAVTime", 30)
-            RecordFileDurationMinutes = ReadIntegerConfig(root, "RecordFileDurationMinutes", 5)
-            APICommErrorMsgDelayTime = ReadIntegerConfig(root, "APICommErrorMsgDelayTime", 90)
-
-            ' Boolean configs
-            MuteVoiceRecordingMessages = ReadBooleanConfig(root, "MuteVoiceRecordingMessages", False)
-            AudioToTextConversion = ReadBooleanConfig(root, "AudioToTextConversion", False)
-            SkipSubscriptionOnCacheHit = ReadBooleanConfig(root, "SkipSubscriptionOnCacheHit", False)
-
-            ' ════════════════════════════════════════════════════════════
-            ' ALTERNATE RECORDING CONFIGURATION SECTION
-            ' ════════════════════════════════════════════════════════════
-            AlternateRecordEnabled = ReadBooleanConfig(root, "AlternateRecordEnabled", False)
-            AlternateRecordConfig = ReadStringConfig(root, "AlternateRecordConfig", "CANalyzer")
-            EnableAltRecReStartAfterRecordStop = ReadBooleanConfig(root, "EnableAltRecReStartAfterRecordStop", False)
-
-
-            ' ================================================================
-            ' ✅ NEW: Compression configuration (nested structure)
-            ' ================================================================
-            Dim compressionNode As XmlNode = root.SelectSingleNode("Compression")
-            If compressionNode IsNot Nothing Then
-                CompressMF4 = ReadBooleanConfig(compressionNode, "CompressMF4", True)
-                CompressPCAP = ReadBooleanConfig(compressionNode, "CompressPCAP", True)
-                CompressASC = ReadBooleanConfig(compressionNode, "CompressASC", False)
-                CompressVSB = ReadBooleanConfig(compressionNode, "CompressVSB", False)
-                DeleteAfterCompression = ReadBooleanConfig(compressionNode, "DeleteAfterCompression", False)
-                CompressionLevel = ReadIntegerConfig(compressionNode, "CompressionLevel", 1)
-                ZipCompressionMaxRetries = ReadIntegerConfig(compressionNode, "MaxRetries", 5)
-                ZipCompressionRetryDelay = ReadIntegerConfig(compressionNode, "RetryDelaySeconds", 10)
-                ZipFileLockTimeout = ReadIntegerConfig(compressionNode, "FileLockTimeoutSeconds", 30)
-            Else
-                ' ✅ BACKWARD COMPATIBILITY: Read flat structure (old config files)
-                CompressMF4 = ReadBooleanConfig(root, "CompressMF4", True)
-                CompressPCAP = ReadBooleanConfig(root, "CompressPCAP", True)
-                CompressASC = False
-                CompressVSB = False
-                DeleteAfterCompression = False
-                CompressionLevel = 1
-                CompressionMaxRetries = 5
-                CompressionRetryDelay = 10
-                ZipCompressionRetryDelay = 10
-                ZipFileLockTimeout = 30
-
-                HandleUserMessageLogging("GMRC", "ReadConfiguration: Using legacy flat compression config")
-            End If
+            ReadGeneralSettings(root)
+            ReadCompressionSettings(root)
 
             LidarCaptureEnabled = ReadBooleanConfig(root, "LidarCaptureEnabled", False)
 
-            ' Signal registration mode (radio buttons will be set later in LoginForm_Load)
-            ' Unrecognized modes are normalized to DISPLAYS
-            Dim signalRegMode = ReadStringConfig(root, "SignalRegistrationMode", "DISPLAYS").ToUpper()
-            SignalRegistrationMode = ResidentConfigRules.NormalizeSignalRegistrationMode(signalRegMode)
-            SaveSignalRegistrationMode = SignalRegistrationMode
-
-            HandleUserMessageLogging("GMRC", $"ReadConfiguration: SignalRegistrationMode set to '{SignalRegistrationMode}' (UI update deferred)")
+            ReadSignalRegistrationMode(root)
 
             ' Base data collection path validation
             BaseDataCollectionPath = ReadStringConfig(root, "BaseDataCollectionPath", My.Application.Info.DirectoryPath)
-
-            ' Fail fast: verify the drive is present, the folder exists (create it if the
-            ' drive is ready) and that we can actually write there. Catching this now avoids
-            ' the user discovering a dead drive only after INCA/cameras/LiDAR are fully loaded.
-            '
-            ' A transient failure (drive unplugged) is NOT a malformed-config problem, so it
-            ' loops here with Retry/Cancel rather than returning False - returning False makes
-            ' the caller offer the Configuration Editor, which is both misleading and unable
-            ' to fix a disconnected drive.
-            Dim dataPathStatus As DataPathStatus
-
-            Do
-                dataPathStatus = ValidateDataCollectionPath(BaseDataCollectionPath,
-                                                            createIfMissing:=True,
-                                                            testWritable:=True)
-
-                If dataPathStatus.IsValid Then Exit Do
-
-                HandleUserMessageLogging("GMRC", dataPathStatus.Message)
-
-                If Not dataPathStatus.IsRecoverable Then
-                    ' Genuine configuration error (empty, spaces, not rooted, not writable).
-                    Return ReportInitializationFailure(dataPathStatus.Message, failureReporter)
-                End If
-
-                ' MsgBoxSetForeground: this runs on the background thread started by
-                ' InitForm's Task.Run(ReadConfigFile) while the topmost splash screen is
-                ' still up - without it the prompt can appear behind the splash and look
-                ' like a hang.
-                Dim retryChoice = MsgBox(
-                    dataPathStatus.Message & vbCrLf & vbCrLf &
-                    "Click Retry once the drive is connected." & vbCrLf & vbCrLf &
-                    "Note: if you edit config.xml instead, CLEVIR must be restarted for the change to take effect.",
-                    MsgBoxStyle.RetryCancel Or MsgBoxStyle.Exclamation Or MsgBoxStyle.MsgBoxSetForeground,
-                    "CLEVIR - Data Collection Drive Unavailable")
-
-                If retryChoice = MsgBoxResult.Cancel Then
-                    HandleUserMessageLogging("GMRC", "User cancelled at unavailable data collection drive. Exiting...")
-                    StartupAbortRequested = True
-                    Return False
-                End If
-
-                HandleUserMessageLogging("GMRC", "Retrying data collection path validation...")
-            Loop
-
-            HandleUserMessageLogging("GMRC",
-                $"BaseDataCollectionPath validated: {BaseDataCollectionPath} - {dataPathStatus.SpaceSummary}")
-
-            If dataPathStatus.Severity <> DataPathSeverity.Ok Then
-                HandleUserMessageLogging("GMRC", dataPathStatus.Message)
-            End If
+            If Not ValidateBaseDataCollectionPath(failureReporter) Then Return False
 
             ' Network drive configuration
             NetworkDriveLetter = ReadStringConfig(root, "NetworkDriveLetter", "Q:")
             NetworkDriveMapping = ReadStringConfig(root, "NetworkDriveMapping", "")
 
-            ' ════════════════════════════════════════════════════════════
-            ' OXTS CONFIGURATION SECTION (New GPS/INS Integration)
-            ' ════════════════════════════════════════════════════════════
-            Dim oxtsNode As XmlNode = root.SelectSingleNode("OxtsConfiguration")
-            If oxtsNode IsNot Nothing Then
-                OxtsEnabled = ReadBooleanConfig(oxtsNode, "OxtsEnabled", False)
-                OxtsNcomIpAddress = ReadStringConfig(oxtsNode, "NcomIpAddress", "10.5.55.200")
-                OxtsNcomPort = ReadIntegerConfig(oxtsNode, "NcomPort", 3000)
-                OxtsGpsLockTimeout = ReadIntegerConfig(oxtsNode, "GpsLockTimeout", 30000)
-                OxtsWaitForLockOnStart = ReadBooleanConfig(oxtsNode, "WaitForLockOnStart", True)
-
-                HandleUserMessageLogging("GMRC", $"OXTS Configuration: Enabled={OxtsEnabled}, IP={OxtsNcomIpAddress}:{OxtsNcomPort}")
-            Else
-                ' Defaults when node is missing
-                OxtsEnabled = False
-                OxtsNcomIpAddress = "10.5.55.200"
-                OxtsNcomPort = 3000
-                OxtsGpsLockTimeout = 30000
-                OxtsWaitForLockOnStart = True
-                HandleUserMessageLogging("GMRC", "No OxtsConfiguration found - using defaults (disabled)")
-            End If
-
-            ' ════════════════════════════════════════════════════════════
-            ' Time Sync Provider Selection
-            ' ════════════════════════════════════════════════════════════
-            Dim timeSyncNode As XmlNode = root.SelectSingleNode("TimeSyncConfiguration")
-            If timeSyncNode IsNot Nothing Then
-                TimeSyncEnabled = ReadBooleanConfig(timeSyncNode, "EnableTimeSync", False)
-                TimeSyncProviderType = ReadStringConfig(timeSyncNode, "Provider", "OXTS").Trim().ToUpperInvariant()
-            Else
-                TimeSyncEnabled = OxtsEnabled
-                TimeSyncProviderType = "OXTS"
-            End If
-
-            Dim tmNode As XmlNode = root.SelectSingleNode("TimeMachineConfiguration")
-            If tmNode IsNot Nothing Then
-                TimeMachineEnabled = ReadBooleanConfig(tmNode, "Enabled", False)
-                TimeMachineIpAddress = ReadStringConfig(tmNode, "DeviceIp", "255.255.255.255")
-                TimeMachinePort = ReadIntegerConfig(tmNode, "Port", 7372)
-                TimeMachinePollMs = ReadIntegerConfig(tmNode, "PollMs", 1000)
-                TimeMachinePtpAssumeLocked = ReadBooleanConfig(tmNode, "PtpAssumeLocked", True)
-            Else
-                TimeMachineEnabled = False
-                TimeMachineIpAddress = "255.255.255.255"
-                TimeMachinePort = 7372
-                TimeMachinePollMs = 1000
-                TimeMachinePtpAssumeLocked = True
-            End If
-
-            If ResidentConfigRules.ShouldFallBackToOxts(TimeSyncProviderType, TimeMachineEnabled) Then
-                HandleUserMessageLogging("GMRC", "TimeSync provider set to TimeMachine but TimeMachineConfiguration.Enabled is False - falling back to OXTS")
-                TimeSyncProviderType = "OXTS"
-            End If
-
-            HandleUserMessageLogging("GMRC", $"TimeSync Configuration: Enabled={TimeSyncEnabled}, Provider={TimeSyncProviderType}")
-
-            ' ════════════════════════════════════════════════════════════
-            ' LIDAR CONFIGURATION SECTION (Legacy + Multi-Device)
-            ' ════════════════════════════════════════════════════════════
+            ReadOxtsSettings(root)
+            ReadTimeSyncSettings(root)
             ReadLidarConfiguration(root)
-
-            ' ════════════════════════════════════════════════════════════
-            ' ✅ NEW: CAMERA CONFIGURATION SECTION
-            ' ════════════════════════════════════════════════════════════
-            Dim cameraConfigNode As XmlNode = root.SelectSingleNode("CameraConfiguration")
-            If cameraConfigNode IsNot Nothing Then
-                ReadCameraConfiguration(cameraConfigNode)
-            Else
-                ' Load defaults if section missing
-                LoadDefaultCameraConfig()
-                HandleUserMessageLogging("GMRC", "No CameraConfiguration found - using default IP mappings")
-            End If
-
-            ' ════════════════════════════════════════════════════════════
-            ' Load OXTS NCOM PCAP capture configuration
-            ' ════════════════════════════════════════════════════════════
+            ReadCameraSettings(root)
             LoadOxtsCaptureConfig(root)
 
             ' <CurrentVehicleUsage> is obsolete: compression is controlled by <Compression>.
@@ -344,6 +165,209 @@ Partial Public Class GmResidentClient
             Return ReportInitializationFailure($"ReadConfiguration: Error reading '{configFilePath}' - {ex.Message}", failureReporter)
         End Try
     End Function
+
+    ''' <summary>Paths, timing values, voice/audio flags and alternate recording settings.</summary>
+    Private Sub ReadGeneralSettings(root As XmlNode)
+        BaseDataCollectionPath = ReadStringConfig(root, "BaseDataCollectionPath", "C:\HB")
+
+        ' Local tool & script paths
+        CSVScriptsPath = ReadStringConfig(root, "CSVScriptsPath", CSVScriptsPath)
+        SevenZipPath = ReadStringConfig(root, "SevenZipPath", SevenZipPath)
+
+        ' Integer configs
+        RecordWAVTime = ReadIntegerConfig(root, "RecordWAVTime", 30)
+        RecordFileDurationMinutes = ReadIntegerConfig(root, "RecordFileDurationMinutes", 5)
+        APICommErrorMsgDelayTime = ReadIntegerConfig(root, "APICommErrorMsgDelayTime", 90)
+
+        ' Boolean configs
+        MuteVoiceRecordingMessages = ReadBooleanConfig(root, "MuteVoiceRecordingMessages", False)
+        AudioToTextConversion = ReadBooleanConfig(root, "AudioToTextConversion", False)
+        SkipSubscriptionOnCacheHit = ReadBooleanConfig(root, "SkipSubscriptionOnCacheHit", False)
+
+        ' ════════════════════════════════════════════════════════════
+        ' ALTERNATE RECORDING CONFIGURATION SECTION
+        ' ════════════════════════════════════════════════════════════
+        AlternateRecordEnabled = ReadBooleanConfig(root, "AlternateRecordEnabled", False)
+        AlternateRecordConfig = ReadStringConfig(root, "AlternateRecordConfig", "CANalyzer")
+        EnableAltRecReStartAfterRecordStop = ReadBooleanConfig(root, "EnableAltRecReStartAfterRecordStop", False)
+    End Sub
+
+    ''' <summary>Nested &lt;Compression&gt; settings, or the legacy flat values.</summary>
+    Private Sub ReadCompressionSettings(root As XmlNode)
+        ' ================================================================
+        ' ✅ NEW: Compression configuration (nested structure)
+        ' ================================================================
+        Dim compressionNode As XmlNode = root.SelectSingleNode("Compression")
+        If compressionNode IsNot Nothing Then
+            CompressMF4 = ReadBooleanConfig(compressionNode, "CompressMF4", True)
+            CompressPCAP = ReadBooleanConfig(compressionNode, "CompressPCAP", True)
+            CompressASC = ReadBooleanConfig(compressionNode, "CompressASC", False)
+            CompressVSB = ReadBooleanConfig(compressionNode, "CompressVSB", False)
+            DeleteAfterCompression = ReadBooleanConfig(compressionNode, "DeleteAfterCompression", False)
+            CompressionLevel = ReadIntegerConfig(compressionNode, "CompressionLevel", 1)
+            ZipCompressionMaxRetries = ReadIntegerConfig(compressionNode, "MaxRetries", 5)
+            ZipCompressionRetryDelay = ReadIntegerConfig(compressionNode, "RetryDelaySeconds", 10)
+            ZipFileLockTimeout = ReadIntegerConfig(compressionNode, "FileLockTimeoutSeconds", 30)
+        Else
+            ' ✅ BACKWARD COMPATIBILITY: Read flat structure (old config files)
+            CompressMF4 = ReadBooleanConfig(root, "CompressMF4", True)
+            CompressPCAP = ReadBooleanConfig(root, "CompressPCAP", True)
+            CompressASC = False
+            CompressVSB = False
+            DeleteAfterCompression = False
+            CompressionLevel = 1
+            CompressionMaxRetries = 5
+            CompressionRetryDelay = 10
+            ZipCompressionRetryDelay = 10
+            ZipFileLockTimeout = 30
+
+            HandleUserMessageLogging("GMRC", "ReadConfiguration: Using legacy flat compression config")
+        End If
+    End Sub
+
+    Private Sub ReadSignalRegistrationMode(root As XmlNode)
+        ' Signal registration mode (radio buttons will be set later in LoginForm_Load)
+        ' Unrecognized modes are normalized to DISPLAYS
+        Dim signalRegMode = ReadStringConfig(root, "SignalRegistrationMode", "DISPLAYS").ToUpper()
+        SignalRegistrationMode = ResidentConfigRules.NormalizeSignalRegistrationMode(signalRegMode)
+        SaveSignalRegistrationMode = SignalRegistrationMode
+
+        HandleUserMessageLogging("GMRC", $"ReadConfiguration: SignalRegistrationMode set to '{SignalRegistrationMode}' (UI update deferred)")
+    End Sub
+
+    ''' <summary>
+    ''' Validates BaseDataCollectionPath, prompting Retry/Cancel while the drive is unavailable.
+    ''' Returns False when ReadConfiguration must fail (bad path or user cancelled).
+    ''' </summary>
+    Private Function ValidateBaseDataCollectionPath(failureReporter As Action(Of String)) As Boolean
+        ' Fail fast: verify the drive is present, the folder exists (create it if the
+        ' drive is ready) and that we can actually write there. Catching this now avoids
+        ' the user discovering a dead drive only after INCA/cameras/LiDAR are fully loaded.
+        '
+        ' A transient failure (drive unplugged) is NOT a malformed-config problem, so it
+        ' loops here with Retry/Cancel rather than returning False - returning False makes
+        ' the caller offer the Configuration Editor, which is both misleading and unable
+        ' to fix a disconnected drive.
+        Dim dataPathStatus As DataPathStatus
+
+        Do
+            dataPathStatus = ValidateDataCollectionPath(BaseDataCollectionPath,
+                                                        createIfMissing:=True,
+                                                        testWritable:=True)
+
+            If dataPathStatus.IsValid Then Exit Do
+
+            HandleUserMessageLogging("GMRC", dataPathStatus.Message)
+
+            If Not dataPathStatus.IsRecoverable Then
+                ' Genuine configuration error (empty, spaces, not rooted, not writable).
+                Return ReportInitializationFailure(dataPathStatus.Message, failureReporter)
+            End If
+
+            ' MsgBoxSetForeground: this runs on the background thread started by
+            ' InitForm's Task.Run(ReadConfigFile) while the topmost splash screen is
+            ' still up - without it the prompt can appear behind the splash and look
+            ' like a hang.
+            Dim retryChoice = MsgBox(
+                dataPathStatus.Message & vbCrLf & vbCrLf &
+                "Click Retry once the drive is connected." & vbCrLf & vbCrLf &
+                "Note: if you edit config.xml instead, CLEVIR must be restarted for the change to take effect.",
+                MsgBoxStyle.RetryCancel Or MsgBoxStyle.Exclamation Or MsgBoxStyle.MsgBoxSetForeground,
+                "CLEVIR - Data Collection Drive Unavailable")
+
+            If retryChoice = MsgBoxResult.Cancel Then
+                HandleUserMessageLogging("GMRC", "User cancelled at unavailable data collection drive. Exiting...")
+                StartupAbortRequested = True
+                Return False
+            End If
+
+            HandleUserMessageLogging("GMRC", "Retrying data collection path validation...")
+        Loop
+
+        HandleUserMessageLogging("GMRC",
+            $"BaseDataCollectionPath validated: {BaseDataCollectionPath} - {dataPathStatus.SpaceSummary}")
+
+        If dataPathStatus.Severity <> DataPathSeverity.Ok Then
+            HandleUserMessageLogging("GMRC", dataPathStatus.Message)
+        End If
+
+        Return True
+    End Function
+
+    Private Sub ReadOxtsSettings(root As XmlNode)
+        ' ════════════════════════════════════════════════════════════
+        ' OXTS CONFIGURATION SECTION (New GPS/INS Integration)
+        ' ════════════════════════════════════════════════════════════
+        Dim oxtsNode As XmlNode = root.SelectSingleNode("OxtsConfiguration")
+        If oxtsNode IsNot Nothing Then
+            OxtsEnabled = ReadBooleanConfig(oxtsNode, "OxtsEnabled", False)
+            OxtsNcomIpAddress = ReadStringConfig(oxtsNode, "NcomIpAddress", "10.5.55.200")
+            OxtsNcomPort = ReadIntegerConfig(oxtsNode, "NcomPort", 3000)
+            OxtsGpsLockTimeout = ReadIntegerConfig(oxtsNode, "GpsLockTimeout", 30000)
+            OxtsWaitForLockOnStart = ReadBooleanConfig(oxtsNode, "WaitForLockOnStart", True)
+
+            HandleUserMessageLogging("GMRC", $"OXTS Configuration: Enabled={OxtsEnabled}, IP={OxtsNcomIpAddress}:{OxtsNcomPort}")
+        Else
+            ' Defaults when node is missing
+            OxtsEnabled = False
+            OxtsNcomIpAddress = "10.5.55.200"
+            OxtsNcomPort = 3000
+            OxtsGpsLockTimeout = 30000
+            OxtsWaitForLockOnStart = True
+            HandleUserMessageLogging("GMRC", "No OxtsConfiguration found - using defaults (disabled)")
+        End If
+    End Sub
+
+    ''' <summary>TimeSyncConfiguration + TimeMachineConfiguration, with the TimeMachine-disabled fallback to OXTS.</summary>
+    Private Sub ReadTimeSyncSettings(root As XmlNode)
+        ' ════════════════════════════════════════════════════════════
+        ' Time Sync Provider Selection
+        ' ════════════════════════════════════════════════════════════
+        Dim timeSyncNode As XmlNode = root.SelectSingleNode("TimeSyncConfiguration")
+        If timeSyncNode IsNot Nothing Then
+            TimeSyncEnabled = ReadBooleanConfig(timeSyncNode, "EnableTimeSync", False)
+            TimeSyncProviderType = ReadStringConfig(timeSyncNode, "Provider", "OXTS").Trim().ToUpperInvariant()
+        Else
+            TimeSyncEnabled = OxtsEnabled
+            TimeSyncProviderType = "OXTS"
+        End If
+
+        Dim tmNode As XmlNode = root.SelectSingleNode("TimeMachineConfiguration")
+        If tmNode IsNot Nothing Then
+            TimeMachineEnabled = ReadBooleanConfig(tmNode, "Enabled", False)
+            TimeMachineIpAddress = ReadStringConfig(tmNode, "DeviceIp", "255.255.255.255")
+            TimeMachinePort = ReadIntegerConfig(tmNode, "Port", 7372)
+            TimeMachinePollMs = ReadIntegerConfig(tmNode, "PollMs", 1000)
+            TimeMachinePtpAssumeLocked = ReadBooleanConfig(tmNode, "PtpAssumeLocked", True)
+        Else
+            TimeMachineEnabled = False
+            TimeMachineIpAddress = "255.255.255.255"
+            TimeMachinePort = 7372
+            TimeMachinePollMs = 1000
+            TimeMachinePtpAssumeLocked = True
+        End If
+
+        If ResidentConfigRules.ShouldFallBackToOxts(TimeSyncProviderType, TimeMachineEnabled) Then
+            HandleUserMessageLogging("GMRC", "TimeSync provider set to TimeMachine but TimeMachineConfiguration.Enabled is False - falling back to OXTS")
+            TimeSyncProviderType = "OXTS"
+        End If
+
+        HandleUserMessageLogging("GMRC", $"TimeSync Configuration: Enabled={TimeSyncEnabled}, Provider={TimeSyncProviderType}")
+    End Sub
+
+    Private Sub ReadCameraSettings(root As XmlNode)
+        ' ════════════════════════════════════════════════════════════
+        ' ✅ NEW: CAMERA CONFIGURATION SECTION
+        ' ════════════════════════════════════════════════════════════
+        Dim cameraConfigNode As XmlNode = root.SelectSingleNode("CameraConfiguration")
+        If cameraConfigNode IsNot Nothing Then
+            ReadCameraConfiguration(cameraConfigNode)
+        Else
+            ' Load defaults if section missing
+            LoadDefaultCameraConfig()
+            HandleUserMessageLogging("GMRC", "No CameraConfiguration found - using default IP mappings")
+        End If
+    End Sub
 
     ''' <summary>
     ''' Synchronizes OnVehicleScreen UI controls with configuration values.
@@ -437,114 +461,7 @@ Partial Public Class GmResidentClient
 
             For Each lidarNode As XmlNode In lidarNodes
                 Try
-                    Dim deviceId As String = lidarNode.Attributes("id")?.Value
-                    Dim enabledAttr As String = lidarNode.Attributes("enabled")?.Value
-                    Dim enabled As Boolean = If(String.IsNullOrEmpty(enabledAttr), True, Boolean.Parse(enabledAttr))
-
-                    If Not enabled Then
-                        HandleUserMessageLogging("GMRC", $"LiDAR '{deviceId}' disabled in config")
-                        Continue For
-                    End If
-
-                    ' ✅ Parse device configuration
-                    Dim adapterGuid As String = lidarNode.SelectSingleNode("AdapterGuid")?.InnerText
-                    Dim ipAddress As String = lidarNode.SelectSingleNode("IpAddress")?.InnerText
-                    Dim dataPortStr As String = lidarNode.SelectSingleNode("DataPort")?.InnerText
-                    Dim imuPortStr As String = lidarNode.SelectSingleNode("ImuPort")?.InnerText
-                    Dim orientation As String = lidarNode.SelectSingleNode("Orientation")?.InnerText?.Trim()
-
-                    Dim dataPort As UShort = If(UShort.TryParse(dataPortStr, dataPort), dataPort, 2368US)
-                    Dim imuPort As UShort = If(UShort.TryParse(imuPortStr, imuPort), imuPort, 8308US)
-
-                    ' ✅ Create device object
-                    Dim device As New LidarDevice(adapterGuid, ipAddress, dataPort, imuPort, deviceId, orientation) With {
-                    .Enabled = enabled
-                }
-
-                    LidarDevices.Add(device)
-                    Dim orientLabel As String = If(String.IsNullOrWhiteSpace(orientation), "(no orientation)", orientation)
-                    HandleUserMessageLogging("GMRC", $"✅ Loaded LiDAR: {deviceId} [{orientLabel}] at {ipAddress}:{dataPort}")
-
-                    ' ================================================================
-                    ' ✅ NEW: Parse optional <Extrinsic> mount-transform config
-                    ' Absence or IsCalibrated="False" means alignment hasn't been
-                    ' performed yet; downstream manifest consumers must be able to
-                    ' distinguish that from a genuine identity-transform result.
-                    ' ================================================================
-                    Try
-                        Dim extrinsicNode As XmlNode = lidarNode.SelectSingleNode("Extrinsic")
-                        If extrinsicNode IsNot Nothing Then
-                            Dim extrinsic As PcapEventBridge.ExtrinsicRecord = LidarExtrinsicParser.Parse(extrinsicNode)
-                            device.ExtrinsicConfig = extrinsic
-                            device.HasExtrinsicConfig = True
-
-                            If extrinsic.IsCalibrated Then
-                                HandleUserMessageLogging("GMRC", $"✅ Extrinsic loaded for {deviceId} (calibration ID: {device.ExtrinsicConfig.CalibrationId})")
-                            Else
-                                HandleUserMessageLogging("GMRC", $"⚠️ Extrinsic for {deviceId} is uncalibrated (identity placeholder)")
-                            End If
-                        Else
-                            HandleUserMessageLogging("GMRC", $"⚠️ No <Extrinsic> node for {deviceId} - manifest will flag as uncalibrated")
-                        End If
-                    Catch ex As Exception
-                        HandleUserMessageLogging("GMRC", $"Failed to parse Extrinsic for {deviceId}: {ex.Message}")
-                    End Try
-
-                    ' ================================================================
-                    ' ✅ NEW: Hesai HTTP JSON API port (pandar.cgi), used to source
-                    ' capture-manifest metadata. Parsed outside the SDK-availability
-                    ' gate below because the HTTP path is pure managed code and does
-                    ' not require HesaiWrapper.dll to be present.
-                    ' ================================================================
-                    Dim httpPortNode As XmlNode = lidarNode.SelectSingleNode("HesaiConfig")
-                    If httpPortNode Is Nothing Then
-                        httpPortNode = lidarDevicesNode.SelectSingleNode("HesaiConfig")
-                    End If
-                    If httpPortNode IsNot Nothing Then
-                        Dim parsedHttpPort As Integer
-                        If Integer.TryParse(httpPortNode.SelectSingleNode("HttpPort")?.InnerText, parsedHttpPort) AndAlso parsedHttpPort > 0 Then
-                            device.HesaiHttpPort = parsedHttpPort
-                        End If
-                    End If
-
-                    ' ================================================================
-                    ' ✅ NEW: Register with Hesai SDK (simple or extended config)
-                    ' ================================================================
-                    If HesaiInterop.IsAvailable() Then
-                        ' ✅ FIX: <HesaiConfig> may be nested per-<Lidar> (device-specific
-                        ' override) or a single sibling node shared by all devices under
-                        ' <LidarDevices> (the common case in config.xml today). Prefer the
-                        ' per-device node when present, otherwise fall back to the shared one.
-                        Dim hesaiConfigNode As XmlNode = lidarNode.SelectSingleNode("HesaiConfig")
-                        If hesaiConfigNode Is Nothing Then
-                            hesaiConfigNode = lidarDevicesNode.SelectSingleNode("HesaiConfig")
-                        End If
-
-                        If hesaiConfigNode IsNot Nothing Then
-                            device.HesaiConfig = New HesaiInterop.HesaiDeviceConfig With {
-                                .device_id = deviceId,
-                                .ip_address = ipAddress,
-                                .data_port = dataPort,
-                                .correction_file_path = hesaiConfigNode.SelectSingleNode("CorrectionFilePath")?.InnerText,
-                                .firetimes_path = hesaiConfigNode.SelectSingleNode("FiretimesPath")?.InnerText,
-                                .host_ip_address = hesaiConfigNode.SelectSingleNode("HostIpAddress")?.InnerText,
-                                .multicast_ip_address = hesaiConfigNode.SelectSingleNode("MulticastIpAddress")?.InnerText,
-                                .ptc_port = Integer.Parse(If(hesaiConfigNode.SelectSingleNode("PtcPort")?.InnerText, "9347")),
-                                .use_ptc_connected = Boolean.Parse(If(hesaiConfigNode.SelectSingleNode("UsePtcConnected")?.InnerText, "False")),
-                                .enable_parser_thread = Boolean.Parse(If(hesaiConfigNode.SelectSingleNode("EnableParserThread")?.InnerText, "True")),
-                                .enable_udp_thread = Boolean.Parse(If(hesaiConfigNode.SelectSingleNode("EnableUdpThread")?.InnerText, "True"))
-                            }
-                            device.HasHesaiConfig = True
-                        Else
-                            device.HesaiConfig = HesaiInterop.CreateDefaultConfig(deviceId, ipAddress, dataPort)
-                            device.HasHesaiConfig = True
-                        End If
-                        HandleUserMessageLogging("GMRC", $"✅ Hesai config stored for {deviceId} (lazy registration)")
-                        ' ❌ DON'T register here - happens in LidarDevice.StartCapture()
-                    End If
-
-                    deviceIndex += 1
-
+                    If LoadLidarDevice(lidarNode, lidarDevicesNode) Then deviceIndex += 1
                 Catch ex As Exception
                     HandleUserMessageLogging("GMRC", $"Failed to parse LiDAR node at index {deviceIndex}: {ex.Message}")
                 End Try
@@ -564,6 +481,133 @@ Partial Public Class GmResidentClient
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", $"ReadLidarConfiguration failed: {ex.Message}")
         End Try
+    End Sub
+
+    ''' <summary>
+    ''' Parses one enabled &lt;Lidar&gt; node into LidarDevices. Returns False if the node is disabled;
+    ''' parse errors propagate to ReadLidarConfiguration's per-node handler.
+    ''' </summary>
+    Private Function LoadLidarDevice(lidarNode As XmlNode, lidarDevicesNode As XmlNode) As Boolean
+        Dim deviceId As String = lidarNode.Attributes("id")?.Value
+        Dim enabledAttr As String = lidarNode.Attributes("enabled")?.Value
+        Dim enabled As Boolean = If(String.IsNullOrEmpty(enabledAttr), True, Boolean.Parse(enabledAttr))
+
+        If Not enabled Then
+            HandleUserMessageLogging("GMRC", $"LiDAR '{deviceId}' disabled in config")
+            Return False
+        End If
+
+        ' ✅ Parse device configuration
+        Dim adapterGuid As String = lidarNode.SelectSingleNode("AdapterGuid")?.InnerText
+        Dim ipAddress As String = lidarNode.SelectSingleNode("IpAddress")?.InnerText
+        Dim dataPortStr As String = lidarNode.SelectSingleNode("DataPort")?.InnerText
+        Dim imuPortStr As String = lidarNode.SelectSingleNode("ImuPort")?.InnerText
+        Dim orientation As String = lidarNode.SelectSingleNode("Orientation")?.InnerText?.Trim()
+
+        Dim dataPort As UShort = If(UShort.TryParse(dataPortStr, dataPort), dataPort, 2368US)
+        Dim imuPort As UShort = If(UShort.TryParse(imuPortStr, imuPort), imuPort, 8308US)
+
+        ' ✅ Create device object
+        Dim device As New LidarDevice(adapterGuid, ipAddress, dataPort, imuPort, deviceId, orientation) With {
+            .Enabled = enabled
+        }
+
+        LidarDevices.Add(device)
+        Dim orientLabel As String = If(String.IsNullOrWhiteSpace(orientation), "(no orientation)", orientation)
+        HandleUserMessageLogging("GMRC", $"✅ Loaded LiDAR: {deviceId} [{orientLabel}] at {ipAddress}:{dataPort}")
+
+        ApplyLidarExtrinsic(device, lidarNode, deviceId)
+
+        ApplyHesaiHttpPort(device, lidarNode, lidarDevicesNode)
+
+        StoreHesaiSdkConfig(device, lidarNode, lidarDevicesNode, deviceId, ipAddress, dataPort)
+
+        Return True
+    End Function
+
+    Private Sub ApplyLidarExtrinsic(device As LidarDevice, lidarNode As XmlNode, deviceId As String)
+        ' ================================================================
+        ' ✅ NEW: Parse optional <Extrinsic> mount-transform config
+        ' Absence or IsCalibrated="False" means alignment hasn't been
+        ' performed yet; downstream manifest consumers must be able to
+        ' distinguish that from a genuine identity-transform result.
+        ' ================================================================
+        Try
+            Dim extrinsicNode As XmlNode = lidarNode.SelectSingleNode("Extrinsic")
+            If extrinsicNode IsNot Nothing Then
+                Dim extrinsic As PcapEventBridge.ExtrinsicRecord = LidarExtrinsicParser.Parse(extrinsicNode)
+                device.ExtrinsicConfig = extrinsic
+                device.HasExtrinsicConfig = True
+
+                If extrinsic.IsCalibrated Then
+                    HandleUserMessageLogging("GMRC", $"✅ Extrinsic loaded for {deviceId} (calibration ID: {device.ExtrinsicConfig.CalibrationId})")
+                Else
+                    HandleUserMessageLogging("GMRC", $"⚠️ Extrinsic for {deviceId} is uncalibrated (identity placeholder)")
+                End If
+            Else
+                HandleUserMessageLogging("GMRC", $"⚠️ No <Extrinsic> node for {deviceId} - manifest will flag as uncalibrated")
+            End If
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"Failed to parse Extrinsic for {deviceId}: {ex.Message}")
+        End Try
+    End Sub
+
+    Private Sub ApplyHesaiHttpPort(device As LidarDevice, lidarNode As XmlNode, lidarDevicesNode As XmlNode)
+        ' ================================================================
+        ' ✅ NEW: Hesai HTTP JSON API port (pandar.cgi), used to source
+        ' capture-manifest metadata. Parsed outside the SDK-availability
+        ' gate below because the HTTP path is pure managed code and does
+        ' not require HesaiWrapper.dll to be present.
+        ' ================================================================
+        Dim httpPortNode As XmlNode = lidarNode.SelectSingleNode("HesaiConfig")
+        If httpPortNode Is Nothing Then
+            httpPortNode = lidarDevicesNode.SelectSingleNode("HesaiConfig")
+        End If
+        If httpPortNode IsNot Nothing Then
+            Dim parsedHttpPort As Integer
+            If Integer.TryParse(httpPortNode.SelectSingleNode("HttpPort")?.InnerText, parsedHttpPort) AndAlso parsedHttpPort > 0 Then
+                device.HesaiHttpPort = parsedHttpPort
+            End If
+        End If
+    End Sub
+
+    Private Sub StoreHesaiSdkConfig(device As LidarDevice, lidarNode As XmlNode, lidarDevicesNode As XmlNode,
+                                    deviceId As String, ipAddress As String, dataPort As UShort)
+        ' ================================================================
+        ' ✅ NEW: Register with Hesai SDK (simple or extended config)
+        ' ================================================================
+        If HesaiInterop.IsAvailable() Then
+            ' ✅ FIX: <HesaiConfig> may be nested per-<Lidar> (device-specific
+            ' override) or a single sibling node shared by all devices under
+            ' <LidarDevices> (the common case in config.xml today). Prefer the
+            ' per-device node when present, otherwise fall back to the shared one.
+            Dim hesaiConfigNode As XmlNode = lidarNode.SelectSingleNode("HesaiConfig")
+            If hesaiConfigNode Is Nothing Then
+                hesaiConfigNode = lidarDevicesNode.SelectSingleNode("HesaiConfig")
+            End If
+
+            If hesaiConfigNode IsNot Nothing Then
+                device.HesaiConfig = New HesaiInterop.HesaiDeviceConfig With {
+                    .device_id = deviceId,
+                    .ip_address = ipAddress,
+                    .data_port = dataPort,
+                    .correction_file_path = hesaiConfigNode.SelectSingleNode("CorrectionFilePath")?.InnerText,
+                    .firetimes_path = hesaiConfigNode.SelectSingleNode("FiretimesPath")?.InnerText,
+                    .host_ip_address = hesaiConfigNode.SelectSingleNode("HostIpAddress")?.InnerText,
+                    .multicast_ip_address = hesaiConfigNode.SelectSingleNode("MulticastIpAddress")?.InnerText,
+                    .ptc_port = Integer.Parse(If(hesaiConfigNode.SelectSingleNode("PtcPort")?.InnerText, "9347")),
+                    .use_ptc_connected = Boolean.Parse(If(hesaiConfigNode.SelectSingleNode("UsePtcConnected")?.InnerText, "False")),
+                    .enable_parser_thread = Boolean.Parse(If(hesaiConfigNode.SelectSingleNode("EnableParserThread")?.InnerText, "True")),
+                    .enable_udp_thread = Boolean.Parse(If(hesaiConfigNode.SelectSingleNode("EnableUdpThread")?.InnerText, "True"))
+                }
+                device.HasHesaiConfig = True
+            Else
+                device.HesaiConfig = HesaiInterop.CreateDefaultConfig(deviceId, ipAddress, dataPort)
+                device.HasHesaiConfig = True
+            End If
+            HandleUserMessageLogging("GMRC", $"✅ Hesai config stored for {deviceId} (lazy registration)")
+            ' ❌ DON'T register here - happens in LidarDevice.StartCapture()
+        End If
     End Sub
 
 
