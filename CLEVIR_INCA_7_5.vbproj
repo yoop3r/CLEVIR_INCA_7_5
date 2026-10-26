@@ -56,14 +56,17 @@
   </PropertyGroup>
   <ItemGroup Label="Exclude foreign/vendor directories swept in by implicit SDK-style globbing (not part of this project's original item list)">
     <!-- Separate solution projects with their own project files - not part of this VB project -->
+    <None Remove="Debug.old\**" />
     <None Remove="NAVsdk\**" />
     <None Remove="HesaiWrapper\**" />
     <None Remove="PcapEventBridge\**" />
     <!-- Unit test project lives under this project's directory; keep its sources and obj\ output
          (generated AssemblyAttributes.vb etc.) out of this project's implicit Compile glob. -->
     <Compile Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <Compile Remove="Debug.old\**" />
     <None Remove="CLEVIR_INCA_7_5.Tests\**" />
     <EmbeddedResource Remove="CLEVIR_INCA_7_5.Tests\**" />
+    <EmbeddedResource Remove="Debug.old\**" />
     <Page Remove="CLEVIR_INCA_7_5.Tests\**" />
     <!-- Legacy NuGet packages.config cache folder - superseded by PackageReference, not project content -->
     <None Remove="packages\**" />
@@ -71,6 +74,7 @@
     <None Remove="MigrationBackup\**" />
     <!-- Native build output directory at repo root (distinct from this project's own bin\x64 output) -->
     <None Remove="x64\**" />
+    <Page Remove="Debug.old\**" />
     <!-- NAVsdk\Examples\...\NavLibWPFExample ships its own vendor App.xaml/MainWindow.xaml sample.
          Now that UseWPF is enabled (WinForms -> WPF migration), SDK-style default globbing would
          also pull these in as Page/ApplicationDefinition/Compile items belonging to *this* project,

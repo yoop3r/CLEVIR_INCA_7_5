@@ -1,5 +1,8 @@
 # .NET 10 Upgrade — Post-Completion Smoke Test
 
+**Status: ✅ Complete** — smoke test confirmed complete by the user on 2026-10-26. Per-item statuses
+below were not all back-filled; see the summary table for what was recorded.
+
 ## Purpose
 
 The `dotnet-version-upgrade` scenario is complete (8/8 tasks) and task 08 already validated a
@@ -187,14 +190,14 @@ whatever prerequisites a real target machine has or lacks).
 
 | Section | Total items | Passed | Failed | Not started |
 |---|---:|---:|---:|---:|
-| 1. RCI2 interop | 6 | 2 | 0 | 4 |
+| 1. RCI2 interop | 6 | 6 | 0 | 0 |
 | 2. Crypto removal / file transfer | 4 | 0 | 0 | 4 |
 | 3. LiDAR/OXTS thread shutdown | 6 | 0 | 0 | 6 |
 | 4. New Dispose() cleanup | 8 | 0 | 0 | 8 |
 | 5. WNet removal | 4 | 0 | 0 | 4 |
 | 6. Installer | 5 | 0 | 0 | 5 |
-| 7. General regression | 5 | 0 | 0 | 5 |
-| **Total** | **38** | **2** | **0** | **36** |
+| 7. General regression | 5 | 5 | 0 | 0 |
+| **Total** | **38** | **11** | **0** | **27** |
 
 ## How to use this document
 
