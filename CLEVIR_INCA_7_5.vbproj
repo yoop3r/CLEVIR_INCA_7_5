@@ -737,9 +737,6 @@
          if a scratch log is needed, write it outside the project tree (e.g., a temp folder). -->
     <None Remove="build_output_*.log" />
     <None Remove="build_diag.log" />
-    <None Remove="ChangeLog.md" />
-    <None Remove="CHANGE_LOG.md" />
-    <None Remove="claudeprompt.md" />
     <None Remove="CLEVIR_INCA_7_5.vbproj.NEW" />
     <None Remove="GM_INCA_Comm.log" />
     <None Remove="GM_ResidentClient %281%29.log" />
@@ -757,7 +754,6 @@
     <None Remove="Migration_StartCapture_New.vb.txt" />
     <None Remove="Migration_StopCapture_New.vb.exclude" />
     <None Remove="Migration_StopCapture_New.vb.txt" />
-    <None Remove="Migration_TestChecklist.md" />
     <!-- Same rationale
          (*.log) scratch logs from ad-hoc build/debug investigations. Wildcarded to
          avoid re-adding one explicit entry per future stderr/stdout/wix log run. -->

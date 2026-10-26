@@ -5,7 +5,7 @@
 # NOTE: 802.1AS requires every hop in the path (TM2000B -> Cisco C9300L -> LiDAR)
 # to be running the SAME profile. If the LiDAR shows "Frozen" instead of "Locked",
 # the most common cause is the switch (or TM2000B) still running the Default
-# IEEE 1588-2008 profile instead of gPTP. See CISCO_PTP.md for the switch-side
+# IEEE 1588-2008 profile instead of gPTP. See docs\CISCO_PTP.md for the switch-side
 # configuration required before running this script.
 
 param(
@@ -43,7 +43,7 @@ Write-Host "  Network Transport: L2 (Ethernet, required by 802.1AS)"
 Write-Host ""
 Write-Host "??  Prerequisite: Cisco C9300L must be configured for the gPTP profile" -ForegroundColor Yellow
 Write-Host "   on the VLAN20 LiDAR-facing ports, and the TM2000B must be set to" -ForegroundColor Yellow
-Write-Host "   802.1AS mode. See CISCO_PTP.md before running this script." -ForegroundColor Yellow
+802.1AS mode. See docs\CISCO_PTP.md before running this script.
 Write-Host ""
 
 # Function to execute ptc_tool command
@@ -191,7 +191,7 @@ for ($i = 1; $i -le 15; $i++) {
 		Write-Host "         longer receiving valid 802.1AS Sync/Announce traffic." -ForegroundColor Yellow
 		Write-Host "         This almost always means an upstream hop (Cisco C9300L" -ForegroundColor Yellow
 		Write-Host "         or TM2000B) is not actually running the gPTP profile." -ForegroundColor Yellow
-		Write-Host "         See CISCO_PTP.md for switch-side verification commands" -ForegroundColor Yellow
+		"         See docs\CISCO_PTP.md for switch-side verification commands"
 		Write-Host "         ('show ptp clock', 'show ptp port')." -ForegroundColor Yellow
 	}
 
