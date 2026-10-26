@@ -169,20 +169,24 @@ Partial Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 17: RESET FLAG IN FINALLY BLOCK (ALWAYS RUNS)
             ' ════════════════════════════════════════════════════════════════
-            If selectedOption = ExitOption.CancelExit Then
+            ' Once teardown has started the exit is committed for every caller (dialog option, "Complete",
+            ' "User Initiated"): forced exits leave selectedOption at CancelExit, so it cannot decide this.
+            If Not teardownStarted Then
                 ' Only reset flag if user cancelled - allow exit to complete otherwise
                 exitInProgress = False
                 Cursor = Cursors.Arrow
                 HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress reset (user cancelled)")
-                If Not teardownStarted Then
-                    ' OnVehicleScreen's EXIT button sets ExitPressed; left True, its window X would close the form without ExitApp.
-                    Volatile.Write(ExitPressed, False)
-                    ResumeBackgroundTasksAfterCancelledExit()
-                End If
+                ' OnVehicleScreen's EXIT button sets ExitPressed; left True, its window X would close the form without ExitApp.
+                Volatile.Write(ExitPressed, False)
+                ResumeBackgroundTasksAfterCancelledExit()
             Else
                 HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress remains True (exit committed)")
                 ' Force termination (point of no return)
-                Application.Exit()
+                Try
+                    Application.Exit()
+                Catch ex As Exception
+                    HandleUserMessageLogging("GMRC", $"ExitApp: Application.Exit failed ({ex.GetType().Name}): {ex.Message}")
+                End Try
                 Environment.Exit(0)
             End If
         End Try
