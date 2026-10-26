@@ -339,9 +339,9 @@ Partial Class OnVehicleScreen
         ' Label17
         ' 
         Label17.Font = New Font("Microsoft Sans Serif", 15.75F, FontStyle.Bold, GraphicsUnit.Point, CByte(0))
-        Label17.Location = New Point(776, 40)
+        Label17.Location = New Point(705, 35)
         Label17.Name = "Label17"
-        Label17.Size = New Size(85, 61)
+        Label17.Size = New Size(85, 67)
         Label17.TabIndex = 77
         Label17.TextAlign = ContentAlignment.MiddleCenter
         ' 

@@ -658,6 +658,7 @@ Public Class OnVehicleScreen
         ' Right-side buttons - anchor to top-right
         Button23.Anchor = AnchorStyles.Top Or AnchorStyles.Right
         Button1.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' EXIT button
+        Label17.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' Distance-to-object; replaces EXIT while measuring
         Button2.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' CONFIG button
         Button4.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' LOGIN button
 
