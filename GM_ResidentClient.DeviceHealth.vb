@@ -240,10 +240,9 @@ Partial Public Class GmResidentClient
                 Case 2 ' Re-Initialize NOW
                     HandleUserMessageLogging("GMRC", "CheckForLostDevice: User Answered " & button2Text)
 
-                    ' Offload re-initialization to background to avoid blocking UI
-                    Await Task.Run(Async Function()
-                                       Await PerformReinitialization()
-                                   End Function)
+                    ' Must run on the UI thread: it drives OnVehicleScreen/UserStatusInfo default instances
+                    ' (per-thread in VB) and INCA COM objects. Long steps inside are already awaited off-thread.
+                    Await PerformReinitialization()
 
                 Case 3 ' Ignore All Alerts for This Drive
                     HandleUserMessageLogging("GMRC", "CheckForLostDevice: User Answered " & button3Text)
@@ -306,19 +305,15 @@ Partial Public Class GmResidentClient
             ' ✅ FIXED: Direct call (COM requires STA thread)
             MyIncaInterface.RCI2_Cleanup()
 
-            ' ✅ FIXED: Async workspace handling
-            Dim returnStr As String = Await Task.Run(Function() As String
-                                                         MyIncaInterface.HandleWorkspace("", False)
-                                                         ' Assume success if no exception thrown
-                                                         Return "True"
-                                                     End Function)
+            ' UI thread, like Startup and ShutdownAndRestartInca: INCA COM objects live on this STA thread.
+            Dim returnStr As String = MyIncaInterface.HandleWorkspace("", False)
 
             ' ══════════════════════════════════════════════════════════
             ' STEP 5: Signal registration
             ' ══════════════════════════════════════════════════════════
             ' ✅ VALIDATION: Check workspace handling result before proceeding
             If String.IsNullOrEmpty(returnStr) OrElse returnStr.Contains("ERROR:") Then
-                HandleUserMessageLogging("GMRC", $"Workspace handling failed: {returnStr}", DisplayMsgBox)
+                HandleUserMessageLogging("GMRC", $"Re-initialization failed - workspace handling returned: {returnStr}. CLEVIR will exit; please restart CLEVIR and INCA.", DisplayMsgBox)
                 ExitApp("Complete")
                 Return
             End If
@@ -326,10 +321,8 @@ Partial Public Class GmResidentClient
             ' ✅ SUCCESS PATH: Workspace handled successfully, proceed with signal registration
             HandleUserMessageLogging("GMRC", "Registering Signals, please wait...",,, FlashMsgOn)
 
-            ' ✅ FIXED: Offload CPU-bound work
-            Await Task.Run(Sub()
-                               MyIncaInterface.RegisterSignals()
-                           End Sub)
+            ' UI thread: RegisterSignals drives OnVehicleScreen (a per-thread default instance) and INCA COM.
+            MyIncaInterface.RegisterSignals()
 
             HandleUserMessageLogging("GMRC", "Registering Signals complete.",,, FlashMsgOn)
 
