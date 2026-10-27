@@ -203,6 +203,16 @@ Partial Public Class GmResidentClient
 
         i = 1
 
+        ' Grid cells are written positionally from row 1, so skipping any grid would shift every later grid onto the
+        ' wrong rows. If any grid has lost its display form, keep the loaded display rows unchanged instead.
+        For x = 0 To myDGs.Count - 1
+            Dim gridForm As FormDataClass = TryCast(myDGs(x).Parent, FormDataClass)
+            If myDGs(x).IsDisposed OrElse gridForm Is Nothing OrElse gridForm.IsDisposed Then
+                HandleUserMessageLogging("GMRC", $"WriteSignalListFile: WARNING - grid '{myDGs(x).Name}' ({myDGs(x).ParentFormName}) has no display form; grid layout/cell changes were NOT saved.")
+                Return
+            End If
+        Next x
+
         For x = 0 To myDGs.Count - 1
 
             ' Use the grid's own (hidden, not disposed) display form: on EXIT, CloseDisplayForms has already

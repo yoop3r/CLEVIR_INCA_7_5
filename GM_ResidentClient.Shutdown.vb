@@ -526,8 +526,10 @@ Partial Public Class GmResidentClient
         'Application.RemoveMessageFilter(Me)  ' Prevents stray events
 
         If MyDFs IsNot Nothing AndAlso MyDFs.Count > 0 Then
+            ' Hide rather than Close: Close() on a form that was never shown disposes it (and its grids) without
+            ' raising FormClosing, which breaks the signal list save that runs later in the exit sequence.
             For Each form As FormDataClass In MyDFs
-                form?.Close()
+                form?.Hide()
             Next
             MyDFs.Clear()
         End If
