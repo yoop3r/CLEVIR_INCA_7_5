@@ -63,72 +63,95 @@ Partial Public Class GmResidentClient
 
             AppendAddedSignalsToSaveArray()
 
-            Dim savefilename As String = ""
-
-            If ConfigureForNewSoftwareVersion = False Then
-
-                SaveFileDialog1.DefaultExt = fileExtension
-                SaveFileDialog1.FileName = INCAVariableFile
-                SaveFileDialog1.InitialDirectory = My.Application.Info.DirectoryPath
-                SaveFileDialog1.Filter = Mid(fileExtension, 2, Len(fileExtension)) & " |*" & fileExtension
-                SaveFileDialog1.ShowDialog()
-
-                savefilename = SaveFileDialog1.FileName
-
-            Else
-                savefilename = Mid(INCAVariableFile, 1, InStr(INCAVariableFile, fileExtension) - 1) & "_NEW" & fileExtension
-            End If
+            Dim savefilename As String = ResolveSignalListSaveFileName(fileExtension)
 
             If Len(savefilename) > 0 Then
 
-                If savefilename = INCAVariableFile Then
-                    HandleUserMessageLogging("GMRC", "WriteSignalListFile: Updating " & INCAVariableFile)
-                Else
-                    HandleUserMessageLogging("GMRC", "WriteSignalListFile: Creating New INCA Variable File (" & savefilename & ")")
-                    If ConfigureForNewSoftwareVersion = True Then
-                        MsgBox("A new signal list file will now be created called " & savefilename & " This signal list has been modified by removing the signals flagged in the InvalidSignalsLog.csv File...")
-                        MsgBox("Open this file, verify that it is correct, then rename the file based on the total number of signals removing '_NEW' from the filename...")
-                    End If
-                End If
-
-                WriteSignalListSaveArray(savefilename)
-
-                HandleUserMessageLogging("GMRC", "WriteSignalListFile: Signal List File Written successfully")
-
-                If savefilename <> INCAVariableFile Then
-
-                    If ConfigureForNewSoftwareVersion = False Then
-                        If MsgBox("Do you wish to update the configuration file to use this newly saved variable file?", vbYesNo) = vbYes Then
-                            INCAVariableFile = savefilename
-                        End If
-                    End If
-
-                End If
-
-                GridCellPropConfig._changesMade = False
-                NumSignalsAdded = 0
+                SaveSignalListToFile(savefilename)
 
             Else
                 MsgBox("No Valid Filename selected, changes will not be saved....")
             End If
 
-            'If there is an InvalidSignalsLog.csv file, we will rename it here...
-            'This file is used during signal registration to log all of the signals
-            'which cannot, for whatever reason, be registered.  The intent is to keep
-            'track of unregisterable signals after each initialization attempt and delete
-            'such signals from the signal list so subsequent signal registration attempts
-            'will not include these signals. Signals are marked for deletion in the
-            'ReadInSignalList routine...
-
-            If File.Exists(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv") Then
-                File.Move(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv", My.Application.Info.DirectoryPath & "\InvalidSignalsLog_" & Format(DateTime.Now, "MMddyyyy_hhmmss") & ".csv")
-            End If
+            ArchiveInvalidSignalsLog()
 
         Catch ex As Exception
 
             HandleUserMessageLogging("GMRC", "WriteSignalListFile: " & ex.Message, DisplayMsgBox)
 
         End Try
+
+    End Sub
+
+    Private Function ResolveSignalListSaveFileName(ByVal fileExtension As String) As String
+        'Called from WriteSignalListFile. Prompts for the save file name, or derives the "_NEW" file name when
+        'ConfigureForNewSoftwareVersion is set. Returns "" if the user cancelled the dialog.
+
+        Dim savefilename As String = ""
+
+        If ConfigureForNewSoftwareVersion = False Then
+
+            SaveFileDialog1.DefaultExt = fileExtension
+            SaveFileDialog1.FileName = INCAVariableFile
+            SaveFileDialog1.InitialDirectory = My.Application.Info.DirectoryPath
+            SaveFileDialog1.Filter = Mid(fileExtension, 2, Len(fileExtension)) & " |*" & fileExtension
+            SaveFileDialog1.ShowDialog()
+
+            savefilename = SaveFileDialog1.FileName
+
+        Else
+            savefilename = Mid(INCAVariableFile, 1, InStr(INCAVariableFile, fileExtension) - 1) & "_NEW" & fileExtension
+        End If
+
+        Return savefilename
+
+    End Function
+
+    Private Sub SaveSignalListToFile(ByVal savefilename As String)
+        'Called from WriteSignalListFile (inside its Try) once a save file name has been chosen. Writes the save array,
+        'optionally switches INCAVariableFile to the new file, and clears the pending-changes state.
+
+        If savefilename = INCAVariableFile Then
+            HandleUserMessageLogging("GMRC", "WriteSignalListFile: Updating " & INCAVariableFile)
+        Else
+            HandleUserMessageLogging("GMRC", "WriteSignalListFile: Creating New INCA Variable File (" & savefilename & ")")
+            If ConfigureForNewSoftwareVersion = True Then
+                MsgBox("A new signal list file will now be created called " & savefilename & " This signal list has been modified by removing the signals flagged in the InvalidSignalsLog.csv File...")
+                MsgBox("Open this file, verify that it is correct, then rename the file based on the total number of signals removing '_NEW' from the filename...")
+            End If
+        End If
+
+        WriteSignalListSaveArray(savefilename)
+
+        HandleUserMessageLogging("GMRC", "WriteSignalListFile: Signal List File Written successfully")
+
+        If savefilename <> INCAVariableFile Then
+
+            If ConfigureForNewSoftwareVersion = False Then
+                If MsgBox("Do you wish to update the configuration file to use this newly saved variable file?", vbYesNo) = vbYes Then
+                    INCAVariableFile = savefilename
+                End If
+            End If
+
+        End If
+
+        GridCellPropConfig._changesMade = False
+        NumSignalsAdded = 0
+
+    End Sub
+
+    Private Sub ArchiveInvalidSignalsLog()
+        'If there is an InvalidSignalsLog.csv file, we will rename it here...
+        'This file is used during signal registration to log all of the signals
+        'which cannot, for whatever reason, be registered.  The intent is to keep
+        'track of unregisterable signals after each initialization attempt and delete
+        'such signals from the signal list so subsequent signal registration attempts
+        'will not include these signals. Signals are marked for deletion in the
+        'ReadInSignalList routine...
+
+        If File.Exists(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv") Then
+            File.Move(My.Application.Info.DirectoryPath & "\InvalidSignalsLog.csv", My.Application.Info.DirectoryPath & "\InvalidSignalsLog_" & Format(DateTime.Now, "MMddyyyy_hhmmss") & ".csv")
+        End If
 
     End Sub
 
