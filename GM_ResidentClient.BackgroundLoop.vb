@@ -395,7 +395,7 @@ Partial Public Class GmResidentClient
                         'checks to see if there is an active INCA experiment, if not CLEVIR will terminate, also checks various other statuses and
                         'reacts accordingly...
                         MyElapseTime = DateTime.Now.Subtract(MySaveTime)
-                        If MyElapseTime.Seconds >= 5 Then
+                        If MyElapseTime.TotalSeconds >= 5 Then
                             MySaveTime = DateTime.Now
 
                             Await Handle_5_SecondChecks(lMeasurementStatus, lRecordingState)
@@ -560,7 +560,7 @@ Partial Public Class GmResidentClient
         End If
 
         Dim MyElapseTime3 As TimeSpan = DateTime.Now.Subtract(MySaveTime3)
-        Return MyElapseTime3.Seconds >= lostDeviceDelayTime
+        Return MyElapseTime3.TotalSeconds >= lostDeviceDelayTime
     End Function
 
     ''' <summary>True when INCA is measuring or a CLEVIR recording is being played back.</summary>
@@ -1544,7 +1544,7 @@ Partial Public Class GmResidentClient
         ' Stale-data state always tracks the label: RED while comms are lost, GREEN once re-established.
         ' The ignore flag only suppresses raising the operator alert.
         If MyColor = Color.Red Then
-            If Not IgnoreLostDeviceForThisDrive AndAlso Not OverrideCommFailureInDebugMode Then
+            If Not IgnoreLostDeviceForThisDrive Then
                 BackgroundLoopCounterNotUpdating = True
             End If
             _MyCpuStaleData = True
@@ -1564,7 +1564,7 @@ Partial Public Class GmResidentClient
 
             ' Only update video camera flags if alerts are not being ignored
             If Not IgnoreLostDeviceForThisDrive AndAlso Not IgnoreLostDeviceUntilNextRecordingSession Then
-                If MyColor = Color.Red AndAlso Not OverrideCommFailureInDebugMode Then
+                If MyColor = Color.Red Then
                     VideoCameraNotUpdating = True
                 Else
                     VideoCameraNotUpdating = False

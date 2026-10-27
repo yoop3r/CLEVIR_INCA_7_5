@@ -75,7 +75,7 @@ Partial Public Class GmResidentClient
                 MyDevicesStatus = _MyDeviceStatus
             Else
                 HandleInitializationStatus(MyDevices, isRed, numCameraDevicesInExperiment, MyDevicesStatus)
-                _MyDeviceStatus = MyDevicesStatus AndAlso (processorsFalse = 0 OrElse IgnoreLostDeviceForThisDrive OrElse OverrideCommFailureInDebugMode)
+                _MyDeviceStatus = MyDevicesStatus AndAlso (processorsFalse = 0 OrElse IgnoreLostDeviceForThisDrive)
             End If
             ' Return the updated device status
             Return MyDevicesStatus
@@ -125,7 +125,7 @@ Partial Public Class GmResidentClient
                 End If
             End If
         Next
-        _MyDeviceStatus = processorsFalse = 0 OrElse IgnoreLostDeviceForThisDrive OrElse OverrideCommFailureInDebugMode
+        _MyDeviceStatus = processorsFalse = 0 OrElse IgnoreLostDeviceForThisDrive
         saveStatus = isRed
     End Sub
     ' Helper method to handle initialization status

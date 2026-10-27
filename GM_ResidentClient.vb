@@ -227,7 +227,6 @@ Public Class GmResidentClient
     Private _healthCounter As Integer
     Private _healthMonitor As Integer
     Private _incaInitStarted As Boolean
-    Private _killInca As Boolean
     Private _killProcesses As Boolean
     Private _enableMyBackgroundTasks As Boolean
     Private _initializing As Boolean
