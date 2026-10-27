@@ -46,6 +46,28 @@ Public Class IncaConfigurationSignalListTests
     End Sub
 
     <TestMethod>
+    Public Sub SetVariableFile_ReplacesExistingValueOnly()
+        Dim doc As New XmlDocument()
+        doc.LoadXml("<Configuration><INCAWorkspace>WS</INCAWorkspace><INCAVariableFile>C:\S\old.csv</INCAVariableFile></Configuration>")
+
+        IncaConfiguration.SetVariableFile(doc, "C:\S\new_bak.csv")
+
+        Assert.AreEqual(1, doc.DocumentElement.SelectNodes("INCAVariableFile").Count)
+        Assert.AreEqual("C:\S\new_bak.csv", doc.DocumentElement.SelectSingleNode("INCAVariableFile").InnerText)
+        Assert.AreEqual("WS", doc.DocumentElement.SelectSingleNode("INCAWorkspace").InnerText)
+    End Sub
+
+    <TestMethod>
+    Public Sub SetVariableFile_CreatesMissingElement()
+        Dim doc As New XmlDocument()
+        doc.LoadXml("<Configuration><INCAWorkspace>WS</INCAWorkspace></Configuration>")
+
+        IncaConfiguration.SetVariableFile(doc, "C:\S\list.csv")
+
+        Assert.AreEqual("C:\S\list.csv", doc.DocumentElement.SelectSingleNode("INCAVariableFile").InnerText)
+    End Sub
+
+    <TestMethod>
     Public Sub LegacyXlsxAndMatchingCsvConfigs_HaveSameSessionSettings()
         Assert.IsTrue(Load("C:\S\list.xlsx").HasSameSessionSettings(Load("C:\S\list.csv")))
     End Sub

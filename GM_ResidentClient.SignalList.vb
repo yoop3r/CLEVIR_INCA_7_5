@@ -130,6 +130,7 @@ Partial Public Class GmResidentClient
             If ConfigureForNewSoftwareVersion = False Then
                 If MsgBox("Do you wish to update the configuration file to use this newly saved variable file?", vbYesNo) = vbYes Then
                     INCAVariableFile = savefilename
+                    SaveConfiguredVariableFile(savefilename)
                 End If
             End If
 
