@@ -71,12 +71,7 @@ Partial Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 6: HANDLE COMPRESSION (IF CONFIGURED)
             ' ════════════════════════════════════════════════════════════════
-            If AnyCompressionEnabled() Then
-                CompressOrphanedFiles()      ' Queue orphaned files
-                Handle7ZipProcess()          ' Wait for completion
-            Else
-                HandleUserMessageLogging("GMRC", "ExitApp: All compression types disabled - skipping orphaned file compression")
-            End If
+            CompressRemainingFilesOnExit()
 
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 7b: APPLY THE SELECTED EXIT OPTION (close INCA, copy DB, ...)
@@ -91,51 +86,17 @@ Partial Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 9: FILE OPERATIONS & HOUSEKEEPING
             ' ════════════════════════════════════════════════════════════════
-            Copy_GM_INCA_CommLog_File()
-            UserStatusInfo.Hide()
-
-            ' Quit external applications if they were started
-            If CanalyzerCaptureStarted Then QuitCanalyzer()
-            If VehicleSpyCaptureStarted Then QuitVehicleSpy()
+            PerformExitHousekeeping(selectedOption)
 
             ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX: Set _killProcesses based on user's selected exit option
+            ' ✅ FIX 10/11: AUDIO-TO-TEXT CONVERSION, FILE MANIPULATIONS FOR UPLOAD
             ' ════════════════════════════════════════════════════════════════
-            ' Stop killer thread
-            StopKillerThreadForExit(selectedOption)
-
-            ' Stop recording monitor task
-            StopRecordingMonitorTask()
-
-            ' Write configuration changes
-            SaveSignalListChanges()
+            ProcessSessionDataOnExit()
 
             ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX 10: AUDIO-TO-TEXT CONVERSION (IF ENABLED)
+            ' ✅ FIX 12/13: OXTS INTERFACE AND INCA RESOURCES CLEANUP
             ' ════════════════════════════════════════════════════════════════
-            If AudioToTextConversion Then
-                RunAudioToTextConversionOnExit()
-            End If
-
-            ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX 11: FILE MANIPULATIONS FOR UPLOAD
-            ' ════════════════════════════════════════════════════════════════
-            If HaveRecorded Then
-                HandleFileManipulationsForUpload()
-            End If
-
-            ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX 12: OXTS INTERFACE CLEANUP
-            ' ════════════════════════════════════════════════════════════════
-            If MyOxtsInterface IsNot Nothing Then
-                StopOxtsInterfaceOnExit()
-            End If
-
-            ' ════════════════════════════════════════════════════════════════
-            ' ✅ FIX 13: INCA RESOURCES CLEANUP
-            ' ════════════════════════════════════════════════════════════════
-            CleanUpINCAResources()
-            HandleUserMessageLogging("GMRC", "Cleaned up INCA resources.")
+            ReleaseDeviceResourcesOnExit()
 
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 14: WINDOWS SHUTDOWN/RESTART (IF REQUESTED)
@@ -145,10 +106,7 @@ Partial Public Class GmResidentClient
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 15: FINAL STATUS NOTIFICATION
             ' ════════════════════════════════════════════════════════════════
-            HandleUserMessageLogging("GMRC", "CLEVIR Exit in progress, performing housekeeping...",,, FlashMsgOn)
-            HandleUserMessageLogging("GMRC", "Exit Complete.",, )
-            StatusNotifier.Toast("Exit Complete", "CLEVIR", durationMs:=1000, ensureMainOnTop:=False)
-            Thread.Sleep(1000)
+            ShowExitCompleteNotification()
 
             ' ════════════════════════════════════════════════════════════════
             ' ✅ FIX 16: CLOSE FORM BEFORE FORCEFUL EXIT
@@ -172,25 +130,107 @@ Partial Public Class GmResidentClient
             ' Once teardown has started the exit is committed for every caller (dialog option, "Complete",
             ' "User Initiated"): forced exits leave selectedOption at CancelExit, so it cannot decide this.
             If Not teardownStarted Then
-                ' Only reset flag if user cancelled - allow exit to complete otherwise
-                exitInProgress = False
-                Cursor = Cursors.Arrow
-                HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress reset (user cancelled)")
-                ' OnVehicleScreen's EXIT button sets ExitPressed; left True, its window X would close the form without ExitApp.
-                Volatile.Write(ExitPressed, False)
-                ResumeBackgroundTasksAfterCancelledExit()
+                RollBackCancelledExit()
             Else
-                HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress remains True (exit committed)")
-                ' Force termination (point of no return)
-                Try
-                    Application.Exit()
-                Catch ex As Exception
-                    HandleUserMessageLogging("GMRC", $"ExitApp: Application.Exit failed ({ex.GetType().Name}): {ex.Message}")
-                End Try
-                Environment.Exit(0)
+                TerminateCommittedExit()
             End If
         End Try
     End Function
+
+    Private Sub CompressRemainingFilesOnExit()
+        'Called from ExitApp after the display forms are closed.
+
+        If AnyCompressionEnabled() Then
+            CompressOrphanedFiles()      ' Queue orphaned files
+            Handle7ZipProcess()          ' Wait for completion
+        Else
+            HandleUserMessageLogging("GMRC", "ExitApp: All compression types disabled - skipping orphaned file compression")
+        End If
+    End Sub
+
+    Private Sub PerformExitHousekeeping(ByVal selectedOption As ExitOption)
+        'Called from ExitApp after the exit paths are validated.
+
+        Copy_GM_INCA_CommLog_File()
+        UserStatusInfo.Hide()
+
+        ' Quit external applications if they were started
+        If CanalyzerCaptureStarted Then QuitCanalyzer()
+        If VehicleSpyCaptureStarted Then QuitVehicleSpy()
+
+        ' ════════════════════════════════════════════════════════════════
+        ' ✅ FIX: Set _killProcesses based on user's selected exit option
+        ' ════════════════════════════════════════════════════════════════
+        ' Stop killer thread
+        StopKillerThreadForExit(selectedOption)
+
+        ' Stop recording monitor task
+        StopRecordingMonitorTask()
+
+        ' Write configuration changes
+        SaveSignalListChanges()
+    End Sub
+
+    Private Sub ProcessSessionDataOnExit()
+        'Called from ExitApp after housekeeping.
+
+        ' ✅ FIX 10: AUDIO-TO-TEXT CONVERSION (IF ENABLED)
+        If AudioToTextConversion Then
+            RunAudioToTextConversionOnExit()
+        End If
+
+        ' ✅ FIX 11: FILE MANIPULATIONS FOR UPLOAD
+        If HaveRecorded Then
+            HandleFileManipulationsForUpload()
+        End If
+    End Sub
+
+    Private Sub ReleaseDeviceResourcesOnExit()
+        'Called from ExitApp before the optional Windows shutdown/restart.
+
+        ' ✅ FIX 12: OXTS INTERFACE CLEANUP
+        If MyOxtsInterface IsNot Nothing Then
+            StopOxtsInterfaceOnExit()
+        End If
+
+        ' ✅ FIX 13: INCA RESOURCES CLEANUP
+        CleanUpINCAResources()
+        HandleUserMessageLogging("GMRC", "Cleaned up INCA resources.")
+    End Sub
+
+    Private Sub ShowExitCompleteNotification()
+        'Called from ExitApp just before the main form is closed.
+
+        HandleUserMessageLogging("GMRC", "CLEVIR Exit in progress, performing housekeeping...",,, FlashMsgOn)
+        HandleUserMessageLogging("GMRC", "Exit Complete.",, )
+        StatusNotifier.Toast("Exit Complete", "CLEVIR", durationMs:=1000, ensureMainOnTop:=False)
+        Thread.Sleep(1000)
+    End Sub
+
+    Private Sub RollBackCancelledExit()
+        'Called from ExitApp's Finally when the exit was cancelled before any teardown started.
+
+        ' Only reset flag if user cancelled - allow exit to complete otherwise
+        exitInProgress = False
+        Cursor = Cursors.Arrow
+        HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress reset (user cancelled)")
+        ' OnVehicleScreen's EXIT button sets ExitPressed; left True, its window X would close the form without ExitApp.
+        Volatile.Write(ExitPressed, False)
+        ResumeBackgroundTasksAfterCancelledExit()
+    End Sub
+
+    Private Sub TerminateCommittedExit()
+        'Called from ExitApp's Finally once teardown has started: the exit is committed and the process ends here.
+
+        HandleUserMessageLogging("GMRC", "ExitApp: exitInProgress remains True (exit committed)")
+        ' Force termination (point of no return)
+        Try
+            Application.Exit()
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"ExitApp: Application.Exit failed ({ex.GetType().Name}): {ex.Message}")
+        End Try
+        Environment.Exit(0)
+    End Sub
 
     Private Sub CompressOrphanedFiles()
         ' Find orphaned files (those without corresponding .zip) in the current recording session only and compress
