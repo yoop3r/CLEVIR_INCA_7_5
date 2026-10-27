@@ -234,27 +234,29 @@ Partial Public Class GmResidentClient
             Await CheckForCameras(initialWaitTime:=CameraWaitTime, camerapingtime:=CameraPingTime, showToasts:=True)
 
             ' ══════════════════════════════════════════════════════════
-            ' STEP 4: INCA cleanup (COM calls must stay on UI thread)
+            ' STEP 4: Restart INCA (COM calls must stay on UI thread)
             ' ══════════════════════════════════════════════════════════
-            HandleUserMessageLogging("GMRC", "Reinitializing INCA...",,, FlashMsgOn)
+            ' A full restart is required: after a device is lost or reconnected INCA's hardware layer (TGTSVR) can be
+            ' left hung, and re-opening the experiment in the same INCA process then blocks in InitializeHardware.
+            HandleUserMessageLogging("GMRC", "Re-Initialize: Restarting INCA...",,, FlashMsgOn)
 
-            ' ✅ FIXED: Direct call (COM requires STA thread)
-            MyIncaInterface.RCI2_Cleanup()
+            CheckForExperiment = False
+            MyIncaInterface.CloseINCA() ' RCI2 cleanup, CloseTool, waits up to 60 s for INCA and TGTSVR to exit
+            KillLeftoverIncaProcesses()
+            Await Task.Delay(IncaRestartSettleMs)
 
-            ' UI thread, like Startup and ShutdownAndRestartInca: INCA COM objects live on this STA thread.
-            Dim returnStr As String = MyIncaInterface.HandleWorkspace("", False)
+            Dim errorMsg As String = ""
+            Dim initStatus As IGM_INCA_Comm.INIT_STATUS = MyIncaInterface.InitINCA(INCADatabase, INCAWorkspace, INCAExperiment, False, errorMsg, False)
 
             ' ══════════════════════════════════════════════════════════
             ' STEP 5: Signal registration
             ' ══════════════════════════════════════════════════════════
-            ' ✅ VALIDATION: Check workspace handling result before proceeding
-            If String.IsNullOrEmpty(returnStr) OrElse returnStr.Contains("ERROR:") Then
-                HandleUserMessageLogging("GMRC", $"Re-initialization failed - workspace handling returned: {returnStr}. CLEVIR will exit; please restart CLEVIR and INCA.", DisplayMsgBox)
+            If initStatus = IGM_INCA_Comm.INIT_STATUS.INIT_UNSUCCESSFUL Then
+                HandleUserMessageLogging("GMRC", $"Re-initialization failed - INCA initialization returned: {errorMsg}. CLEVIR will exit; please restart CLEVIR and INCA.", DisplayMsgBox)
                 ExitApp("Complete")
                 Return
             End If
 
-            ' ✅ SUCCESS PATH: Workspace handled successfully, proceed with signal registration
             HandleUserMessageLogging("GMRC", "Registering Signals, please wait...",,, FlashMsgOn)
 
             ' UI thread: RegisterSignals drives OnVehicleScreen (a per-thread default instance) and INCA COM.
@@ -276,12 +278,33 @@ Partial Public Class GmResidentClient
 
             _incaInitStarted = False
             _initializing = False
+            If Not PlaybackMode Then CheckForExperiment = True
 
             HandleButtonVisibility(True)
+            HandleUserMessageLogging("GMRC", "Re-Initialize: INCA restarted and signals registered")
 
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", $"PerformReinitialization: {ex.Message}")
+            HandleUserMessageLogging("GMRC", $"PerformReinitialization: {ex.Message}. If CLEVIR does not recover, exit using 'Exit CLEVIR And Close INCA', then restart CLEVIR.", DisplayMsgBox)
+            _incaInitStarted = False
+            _initializing = False
+            If Not PlaybackMode Then CheckForExperiment = True
+            HandleButtonVisibility(True)
         End Try
     End Function
+
+    ' Matches ShutdownAndRestartInca (Restart INCA menu): lets the ETAS hardware settle before INCA is relaunched.
+    Private Const IncaRestartSettleMs As Integer = 18000
+
+    ''' <summary>INCA or TGTSVR still running after the graceful close (e.g. Target Server hung on a lost device).</summary>
+    Private Sub KillLeftoverIncaProcesses()
+        For Each processName As String In {"INCA", "TGTSVR"}
+            For Each proc As Process In Process.GetProcessesByName(processName)
+                Using proc
+                    HandleUserMessageLogging("GMRC", $"Re-Initialize: {processName} still running after INCA close - terminating")
+                    KillProcessSafely(proc, processName)
+                End Using
+            Next
+        Next
+    End Sub
 
 End Class

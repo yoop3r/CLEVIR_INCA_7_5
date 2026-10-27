@@ -170,14 +170,14 @@ Partial Public Class GmResidentClient
         Dim buttons As String()
         Select Case kind
             Case DeviceAlertKind.InvalidData
-                message = "INVALID DATA ALERT! (" & SaveDataFrozenDeviceName & ") To ensure data quality, CLEVIR/INCA should be re-initialized. This will take approx 3 minutes"
+                message = "INVALID DATA ALERT! (" & NamedOrUnidentified(SaveDataFrozenDeviceName) & ") To ensure data quality, CLEVIR/INCA should be re-initialized (INCA will be restarted). This will take approx 3 minutes"
                 buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", "Ignore All Alerts for Recording Session"}
             Case DeviceAlertKind.InvalidVideo
-                message = "INVALID VIDEO ALERT! (" & SaveVideoFrozenDeviceName & ") CLEVIR/INCA should be re-initialized to insure video recording capability. This will take approx 3 minutes."
+                message = "INVALID VIDEO ALERT! (" & NamedOrUnidentified(SaveVideoFrozenDeviceName) & ") CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure video recording capability. This will take approx 3 minutes."
                 buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", "Ignore All Alerts for Recording Session"}
             Case Else
                 message = $"{LostDeviceAlertTitle()}! ({SaveLostDeviceName}) No communication since {_lostDeviceMonitor.EpisodeStartedAt:HH:mm:ss}. " &
-                          "CLEVIR/INCA should be re-initialized to insure data and video recording capability. This will take approx 3 minutes."
+                          "CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure data and video recording capability. This will take approx 3 minutes."
                 buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", ""}
         End Select
 
@@ -202,6 +202,11 @@ Partial Public Class GmResidentClient
 
     Private Function IsDeviceAlertOpen() As Boolean
         Return _deviceAlert IsNot Nothing AndAlso Not _deviceAlert.IsDisposed
+    End Function
+
+    ' A GO/NOGO can stay red across ResetDataFrozenTracking (recording start) before the cell re-freezes and records its device.
+    Private Shared Function NamedOrUnidentified(deviceNames As String) As String
+        Return If(String.IsNullOrWhiteSpace(deviceNames), "device not yet identified", deviceNames)
     End Function
 
     Private Sub DeviceAlert_FormClosed(sender As Object, e As FormClosedEventArgs)
