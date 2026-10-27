@@ -6,7 +6,7 @@ Public Class AnnotationCsvHeaderTests
     <TestMethod>
     Public Sub Build_MatchesLegacyHeaderLayout()
         Assert.AreEqual(AnnotationCsvHeader.BaseColumns, AnnotationCsvHeader.Build(0))
-        Assert.AreEqual(AnnotationCsvHeader.BaseColumns & ",LiDAR[1]Frame,LiDAR[2]Frame", AnnotationCsvHeader.Build(2))
+        Assert.AreEqual(AnnotationCsvHeader.BaseColumns & ",LiDAR[1]_Frame,LiDAR[2]_Frame", AnnotationCsvHeader.Build(2))
         StringAssert.StartsWith(AnnotationCsvHeader.BaseColumns, "0,Anno Type ID,Anno Type,")
         StringAssert.EndsWith(AnnotationCsvHeader.BaseColumns, ",LAT POS,LON POS,LaneClass_Crnt")
     End Sub
@@ -55,8 +55,22 @@ Public Class AnnotationCsvHeaderTests
 
     <TestMethod>
     Public Sub Build_WithOrientationLabels()
-        Assert.AreEqual(AnnotationCsvHeader.BaseColumns & ",LiDAR[FRONT]Frame,LiDAR[REAR]Frame",
+        Assert.AreEqual(AnnotationCsvHeader.BaseColumns & ",LiDAR[FRONT]_Frame,LiDAR[REAR]_Frame",
                         AnnotationCsvHeader.Build({"FRONT", "REAR"}))
+    End Sub
+
+    <TestMethod>
+    Public Sub LegacyFrameHeader_IsRewrittenWithUnderscore()
+        Dim legacy = AnnotationCsvHeader.BaseColumns & ",LiDAR[FRONT]Frame,LiDAR[REAR]Frame"
+        Assert.AreEqual(AnnotationCsvHeader.BaseColumns & ",LiDAR[FRONT]_Frame,LiDAR[REAR]_Frame",
+                        AnnotationCsvHeader.GetUpgradedHeader(legacy, {"FRONT", "REAR"}))
+    End Sub
+
+    <TestMethod>
+    Public Sub LegacyFrameHeader_WithMoreColumnsThanDevices_KeepsLabelsAndAddsUnderscore()
+        Dim legacy = AnnotationCsvHeader.BaseColumns & ",LiDAR[FRONT_1]Frame,LiDAR[FRONT_2]Frame,LiDAR[REAR]Frame"
+        Assert.AreEqual(AnnotationCsvHeader.BaseColumns & ",LiDAR[FRONT_1]_Frame,LiDAR[FRONT_2]_Frame,LiDAR[REAR]_Frame",
+                        AnnotationCsvHeader.GetUpgradedHeader(legacy, {"FRONT"}))
     End Sub
 
     <TestMethod>
