@@ -505,9 +505,6 @@ Public Class GridCellPropConfig
         'we must re-populate the available rasternames and variable names based on the newly selected
         'device name....
 
-        Dim y As Integer
-        Dim tempstrarray() As String
-
         If Me.Label14.Visible = False Then
 
             RasterName.Text = ""
@@ -530,25 +527,15 @@ Public Class GridCellPropConfig
                     Await MyIncaInterface.GetDeviceAcquisitionRatesAsync()
                 End If
 
-                ReDim tempstrarray(0)
-
-                For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters)
-                    ReDim Preserve tempstrarray(y)
-                    tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters(y).rastername
-
-                Next y
-
-                RasterName.Items.AddRange(tempstrarray)
-
-                ReDim tempstrarray(0)
-
-                For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo)
-                    ReDim Preserve tempstrarray(y)
-                    tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo(y).variablename
-
-                Next y
-
-                VariableName.Items.AddRange(tempstrarray)
+                ' Only the raster list is refreshed. Variables are not browsed here: a broad INCA
+                ' browse (e.g. "V*" on an ACP device) can keep INCA busy for many minutes.
+                Dim deviceIdx As Integer = DeviceName.SelectedIndex
+                If deviceIdx >= 0 AndAlso MyIncaInterface.deviceinfo IsNot Nothing AndAlso deviceIdx <= UBound(MyIncaInterface.deviceinfo) Then
+                    Dim rasters = MyIncaInterface.deviceinfo(deviceIdx).rasters
+                    If rasters IsNot Nothing Then
+                        RasterName.Items.AddRange(rasters.Select(Function(r) CObj(r.rastername)).ToArray())
+                    End If
+                End If
 
             Finally
                 ' Always clear the busy message so an error can't leave the form looking frozen.
@@ -591,6 +578,13 @@ Public Class GridCellPropConfig
             InStr(DeviceName.Text, "XCP:1") > 0 Or
             InStr(DeviceName.Text, "ETK") > 0 Then
 
+            Exit Sub
+        End If
+
+        ' No per-raster variable table is available; keep the browsed variable list as-is.
+        If DeviceName.SelectedIndex < 0 OrElse MyIncaInterface.deviceinfo Is Nothing OrElse
+            DeviceName.SelectedIndex > UBound(MyIncaInterface.deviceinfo) OrElse
+            MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo Is Nothing Then
             Exit Sub
         End If
 

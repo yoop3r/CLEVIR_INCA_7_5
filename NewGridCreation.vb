@@ -346,6 +346,13 @@
 
         'Listbox3 for further selection by the user.
 
+        ' No per-raster variable table is available; keep the current signal list as-is.
+        If ListBox1.SelectedIndex < 0 OrElse MyIncaInterface.deviceinfo Is Nothing OrElse
+            ListBox1.SelectedIndex > UBound(MyIncaInterface.deviceinfo) OrElse
+            MyIncaInterface.deviceinfo(ListBox1.SelectedIndex).variableinfo Is Nothing Then
+            Exit Sub
+        End If
+
         If Me.Label14.Visible = False Then
 
             GmResidentClient.Cursor = Cursors.WaitCursor
