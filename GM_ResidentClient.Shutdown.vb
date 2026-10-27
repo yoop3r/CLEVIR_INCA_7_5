@@ -296,6 +296,14 @@ Partial Public Class GmResidentClient
     End Function
 
     Private Sub Handle7ZipProcess()
+        ' CHECK 1: Legacy 7-Zip Process
+        WaitForLegacy7ZipOnExit()
+
+        ' CHECK 2: Background Compression Tasks (New Async System)
+        WaitForBackgroundCompressionOnExit()
+    End Sub
+
+    Private Sub WaitForLegacy7ZipOnExit()
         ' ════════════════════════════════════════════════════════════
         ' CHECK 1: Legacy 7-Zip Process
         ' ════════════════════════════════════════════════════════════
@@ -316,7 +324,9 @@ Partial Public Class GmResidentClient
                 Loop
             End If
         End If
+    End Sub
 
+    Private Sub WaitForBackgroundCompressionOnExit()
         ' ════════════════════════════════════════════════════════════
         ' CHECK 2: Background Compression Tasks (New Async System)
         ' ════════════════════════════════════════════════════════════
