@@ -144,6 +144,7 @@ Partial Public Class GmResidentClient
             If PlaybackMode = False Then
 
                 Await GetDeviceStatus()
+                EvaluateLostDevice()
 
                 lIsTargetOnWorkingPage = MyIncaInterface.IsTargetOnWorkingPage
 
@@ -193,8 +194,9 @@ Partial Public Class GmResidentClient
 
     End Function
     ''' <summary>
-    ''' Clears data-frozen / lost-device tracking so INCA COMM and frozen-data detection start fresh
-    ''' when measurement or recording begins, rather than carrying over state from before the start.
+    ''' Clears data-frozen tracking so INCA COMM and frozen-data detection start fresh
+    ''' when measurement or recording begins (including every MF4 rollover), rather than carrying over state
+    ''' from before the start. Lost-device state is not reset here: it follows INCA's device status directly.
     ''' </summary>
     Private Sub ResetDataFrozenTracking(ByVal reason As String)
         Try
@@ -213,15 +215,13 @@ Partial Public Class GmResidentClient
                 Next x
             Next i
 
-            _lostDevice = False
             VideoCameraNotUpdating = False
             BackgroundLoopCounterNotUpdating = False
             _MyCpuStaleData = False
             SaveDataFrozenDeviceName = ""
             SaveVideoFrozenDeviceName = ""
-            SaveLostDeviceName = ""
 
-            HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & reason & " - data-frozen/lost-device tracking reset")
+            HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & reason & " - data-frozen tracking reset")
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & ex.Message)
         End Try
@@ -405,11 +405,13 @@ Partial Public Class GmResidentClient
                     End If
 
                     If IsLostDeviceCheckDue(MySaveTime3, lRecordingState) Then
-                        'This routine handles the case where communication to processors has been lost or invalid data or invalid video.  Allows user to
-                        'reinitialilze CLEVIR and INCA...
-                        Await CheckForLostDevice()
+                        'Shows the (non-blocking) alert when communication to processors/cameras has been lost or data/video is invalid.
+                        CheckForLostDevice()
                         MySaveTime3 = DateTime.Now
                     End If
+
+                    'Acts on the driver's answer to that alert (e.g. Re-Initialize) between passes, never during ProcessGrids.
+                    Await HandleDeviceAlertResponseIfAny()
 
                     'If measurement started = true (or we are playing back CLEVIR recorded data), we make calls to get data, either live or recorded.
                     'We also update the display grids by updating the data values for all signals and also go through the logic associated with high threshold and

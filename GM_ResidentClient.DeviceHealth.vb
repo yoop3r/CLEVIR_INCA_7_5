@@ -27,6 +27,7 @@ Partial Public Class GmResidentClient
         ' Default return value
         Dim MyDevicesStatus As Boolean = True ' Initialize the device status
         Try
+            _deviceHealthKnown = False
             ' Check if devices are available
             If MyDevices Is Nothing Then
                 If _initializing Then
@@ -49,21 +50,27 @@ Partial Public Class GmResidentClient
             End If
             If ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then
                 ReportDeviceConfigProblemOnce("GetDeviceStatus: no configured processors. Select a valid vehicle in config.xml.")
+                RecordDeviceHealth(False, {"no processors configured"}, True)
                 _MyDeviceStatus = False
                 Return False
             End If
             Dim missingProcessors = ActiveProcessorNames.Where(Function(name) Not MyDevices.Any(Function(device) String.Equals(device.myName, name, StringComparison.OrdinalIgnoreCase))).ToArray()
             If missingProcessors.Length > 0 Then
                 ReportDeviceConfigProblemOnce("Configured processors not found in the INCA experiment: " & String.Join(", ", missingProcessors))
+                RecordDeviceHealth(False, missingProcessors, True)
                 _MyDeviceStatus = False
                 Return False
             End If
             _lastDeviceConfigProblem = ""
+            Dim lostNames As New List(Of String)
+            Dim anyProcessorLost As Boolean = False
             ' Initialize arrays
             ReDim isRed(UBound(MyDevices))
             ' Process each device
             For x As Integer = 0 To UBound(MyDevices)
                 Dim device = MyDevices(x)
+                ' Debug fault injection (no-op in release); not during (re)initialization so it can complete.
+                If Not _initializing AndAlso IsLostDeviceInjected(device.myName) Then device.myStatus = False
                 Dim isCalcDev = InStr(UCase(device.myName), "CALCDEV") > 0
                 ' Skip CALCDEV devices
                 If Not isCalcDev Then
@@ -72,16 +79,17 @@ Partial Public Class GmResidentClient
                     ' Check processor faults
                     If IsConfiguredProcessorDevice(device.myName) AndAlso Not device.myStatus Then
                         processorsFalse += 1
-                        AppendLostDeviceName(device.myName)
+                        lostNames.Add(device.myName)
+                        anyProcessorLost = True
                     End If
                     ' Check camera devices
                     If Not IsConfiguredProcessorDevice(device.myName) AndAlso CameraDevicePrefixes.Any(Function(prefix) InStr(device.myName, prefix) > 0) AndAlso Not device.myStatus Then
                         processorsFalse += 1
-                        AppendLostDeviceName(device.myName)
-                        'MyDevicesStatus = False ' Update status to False if a camera device fails
+                        lostNames.Add(device.myName)
                     End If
                 End If
             Next
+            RecordDeviceHealth(processorsFalse = 0, lostNames, anyProcessorLost)
             ' Handle device status based on initialization state
             If Not _initializing Then
                 HandlePostInitializationStatus(MyDevices, isRed, processorsFalse)
@@ -130,14 +138,6 @@ Partial Public Class GmResidentClient
         labelName.Text = device.myName
         labelStatus.Text = device.myStatus.ToString()
         labelStatus.BackColor = MyColor
-    End Sub
-    ' Helper method to append lost device names
-    Private Sub AppendLostDeviceName(deviceName As String)
-        If String.IsNullOrEmpty(SaveLostDeviceName) Then
-            SaveLostDeviceName = deviceName
-        ElseIf Not SaveLostDeviceName.Split(","c).Contains(deviceName, StringComparer.OrdinalIgnoreCase) Then
-            SaveLostDeviceName &= "," & deviceName
-        End If
     End Sub
     ' Helper method to handle post-initialization status
     Private Sub HandlePostInitializationStatus(MyDevices() As IGM_INCA_Comm.INCADeviceStatus, isRed() As Boolean, processorsFalse As Integer)
@@ -201,104 +201,9 @@ Partial Public Class GmResidentClient
         Next
     End Sub
 
-    Private Async Function CheckForLostDevice() As Task
-        ' This routine handles the case where communication to processors or video cameras has been lost.
-        ' Allows user to reinitialize CLEVIR and INCA.
-
-        Dim operatorMessage As String = ""
-        Dim button1Text As String = ""
-        Dim button2Text As String = ""
-        Dim button3Text As String = ""
-        Dim button4Text As String = ""
-
-        Try
-            If Not (_lostDevice OrElse VideoCameraNotUpdating OrElse BackgroundLoopCounterNotUpdating) Then
-                Return
-            End If
-
-            If IgnoreLostDeviceUntilNextRecordingSession OrElse IgnoreLostDeviceForThisDrive Then
-                Return
-            End If
-
-            HandleUserMessageLogging("GMRC", "CheckForLostDevice: RedisplayOnVehicleForm(Main) Called...")
-            RedisplayOnVehicleForm("Main")
-
-            ' Determine which alert to show based on what triggered the check
-            If BackgroundLoopCounterNotUpdating AndAlso Not _lostDevice AndAlso
-           (Not VideoCameraNotUpdating OrElse (VideoCameraNotUpdating AndAlso videoMessageLastDisplayed)) Then
-
-                operatorMessage = "INVALID DATA ALERT! (" & SaveDataFrozenDeviceName & ") To ensure data quality, CLEVIR/INCA should be re-initialized. This will take approx 3 minutes"
-                button1Text = "CANCEL"
-                button2Text = "Re-Initialize NOW"
-                button3Text = "Ignore All Alerts for This Drive"
-                button4Text = "Ignore All Alerts for Recording Session"
-                videoMessageLastDisplayed = False
-                dataMessageLastDisplayed = True
-
-            ElseIf VideoCameraNotUpdating AndAlso Not _lostDevice AndAlso
-               (Not BackgroundLoopCounterNotUpdating OrElse (BackgroundLoopCounterNotUpdating AndAlso dataMessageLastDisplayed)) Then
-
-                operatorMessage = "INVALID VIDEO ALERT! (" & SaveVideoFrozenDeviceName & ") CLEVIR/INCA should be re-initialized to insure video recording capability. This will take approx 3 minutes."
-                button1Text = "CANCEL"
-                button2Text = "Re-Initialize NOW"
-                button3Text = "Ignore All Alerts for This Drive"
-                button4Text = "Ignore All Alerts for Recording Session"
-                videoMessageLastDisplayed = True
-                dataMessageLastDisplayed = False
-
-            ElseIf _lostDevice Then
-                operatorMessage = "PROCESSOR COMMUNICATION ALERT! (" & SaveLostDeviceName & ") CLEVIR/INCA should be re-initialized to insure data and video recording capability. This will take approx 3 minutes."
-                button1Text = "CANCEL"
-                button2Text = "Re-Initialize NOW"
-                button3Text = "Ignore All Alerts for This Drive"
-                button4Text = ""
-            End If
-
-            HandleUserMessageLogging("GMRC", "CheckForLostDevice: " & operatorMessage)
-
-            ' Show dialog without blocking async flow
-            Dim result As Integer
-            Using msgBox As New Cusmsgbox()
-                result = msgBox.DisplayCusMsgBox(OnVehicleScreen, operatorMessage, "CLEVIR ALERT",
-                                           button1Text, button2Text, button3Text, button4Text)
-            End Using
-
-            Select Case result
-                Case 1 ' CANCEL
-                    HandleUserMessageLogging("GMRC", "CheckForLostDevice: User Answered " & button1Text)
-                    OnVehicleScreen.TopMost = False
-
-                Case 2 ' Re-Initialize NOW
-                    HandleUserMessageLogging("GMRC", "CheckForLostDevice: User Answered " & button2Text)
-
-                    ' Must run on the UI thread: it drives OnVehicleScreen/UserStatusInfo default instances
-                    ' (per-thread in VB) and INCA COM objects. Long steps inside are already awaited off-thread.
-                    Await PerformReinitialization()
-
-                Case 3 ' Ignore All Alerts for This Drive
-                    HandleUserMessageLogging("GMRC", "CheckForLostDevice: User Answered " & button3Text)
-                    IgnoreLostDeviceForThisDrive = True
-                    OnVehicleScreen.TopMost = False
-
-                Case 4 ' Ignore All Alerts for Recording Session
-                    HandleUserMessageLogging("GMRC", "CheckForLostDevice: User Answered " & button4Text)
-                    IgnoreLostDeviceUntilNextRecordingSession = True
-                    OnVehicleScreen.TopMost = False
-            End Select
-
-            ' Reset flags
-            _lostDevice = False
-            VideoCameraNotUpdating = False
-            BackgroundLoopCounterNotUpdating = False
-            SaveLostDeviceName = ""
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "CheckForLostDevice: " & ex.Message)
-        End Try
-    End Function
-
     Private Async Function PerformReinitialization() As Task
         Try
+            CloseDeviceAlert()
             BackgroundLoopCounterNotUpdating = False
             VideoCameraNotUpdating = False
 

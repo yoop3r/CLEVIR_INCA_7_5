@@ -245,7 +245,6 @@ Public Class GmResidentClient
     Private _loadedIncaConfiguration As IncaConfiguration
     Private _MyCpuStaleData As Boolean
     Private _MyDeviceStatus As Boolean
-    Private _lostDevice As Boolean
     Private _registerIntoNewBlankExp As Boolean
     Private _gonogocount As Integer
     Private _incaLaunched As Boolean

@@ -25,7 +25,6 @@ Partial Public Class GmResidentClient
 
         ' Track last alert time to avoid spam (30-second cooldown)
         Dim lastHealthAlertTime As DateTime = DateTime.MinValue
-        Dim lastDeviceAlertTime As DateTime = DateTime.MinValue
         Dim lastDataAlertTime As DateTime = DateTime.MinValue
         Dim lastInitAlertTime As DateTime = DateTime.MinValue
         Const AlertCooldownSeconds As Integer = 30
@@ -52,7 +51,7 @@ Partial Public Class GmResidentClient
                         ' ──────────────────────────────────────────────────────────────
                         ' Monitor API Health (background loop communication)
                         ' ──────────────────────────────────────────────────────────────
-                        MonitorApiHealth(saveHealthMonitor, lastHealthAlertTime, lastDeviceAlertTime, lastDataAlertTime, AlertCooldownSeconds)
+                        MonitorApiHealth(saveHealthMonitor, lastHealthAlertTime, lastDataAlertTime, AlertCooldownSeconds)
 
                         ' Adjust monitoring frequency based on state
                         updateInterval = GetKillerUpdateInterval()
@@ -118,9 +117,9 @@ Partial Public Class GmResidentClient
 
     End Sub
 
-    Private Sub MonitorApiHealth(ByRef saveHealthMonitor As Integer, ByRef lastHealthAlertTime As DateTime, ByRef lastDeviceAlertTime As DateTime, ByRef lastDataAlertTime As DateTime, ByVal AlertCooldownSeconds As Integer)
+    Private Sub MonitorApiHealth(ByRef saveHealthMonitor As Integer, ByRef lastHealthAlertTime As DateTime, ByRef lastDataAlertTime As DateTime, ByVal AlertCooldownSeconds As Integer)
         'Called from ProcessKiller (killer thread) at runtime. Counts loops without a background-loop heartbeat (_healthMonitor)
-        'and toasts slow/failed API; when the heartbeat moved, resets the counter and checks device/data status.
+        'and toasts slow/failed API; when the heartbeat moved, resets the counter and checks data freshness.
 
         If _healthMonitor = saveHealthMonitor Then
             _healthCounter += 1
@@ -158,8 +157,8 @@ Partial Public Class GmResidentClient
             saveHealthMonitor = _healthMonitor
             _healthCounter = 0
 
-            ' Check device and data status now that API is healthy
-            UpdateDeviceAndDataStatusToastBased(lastDeviceAlertTime, lastDataAlertTime, AlertCooldownSeconds)
+            ' Check data freshness now that API is healthy
+            UpdateDataStatusToastBased(lastDataAlertTime, AlertCooldownSeconds)
         End If
 
     End Sub
@@ -167,7 +166,7 @@ Partial Public Class GmResidentClient
     Private Function GetKillerUpdateInterval() As Integer
         'Called from ProcessKiller (killer thread). Polling interval in ms: faster when errors are present, slower when idle.
 
-        If _healthCounter >= 10 OrElse _lostDevice OrElse _MyCpuStaleData Then
+        If _healthCounter >= 10 OrElse LostDevice OrElse _MyCpuStaleData Then
             Return 500  ' Monitor more frequently when errors present
         ElseIf MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.Recording Then
             Return 1000 ' Normal frequency during recording
@@ -178,39 +177,10 @@ Partial Public Class GmResidentClient
     End Function
 
     ''' <summary>
-    ''' Toast-based device and data status monitoring (killer thread).
+    ''' Toast-based data freshness monitoring (killer thread). Lost-device detection runs on the UI thread
+    ''' (EvaluateLostDevice, from the 5 s device poll).
     ''' </summary>
-    Private Sub UpdateDeviceAndDataStatusToastBased(ByRef lastDeviceAlertTime As DateTime,
-                                                     ByRef lastDataAlertTime As DateTime,
-                                                     cooldownSeconds As Integer)
-        Static Mysavetime4 As DateTime = DateTime.Now
-
-        ' ──────────────────────────────────────────────────────────────
-        ' Monitor Device Status (lost device detection) - only once measuring/recording
-        ' ──────────────────────────────────────────────────────────────
-        If Not _MyDeviceStatus AndAlso IsMeasuringOrRecording() Then
-            If DateTime.Now.Subtract(Mysavetime4).TotalSeconds > 25 Then
-                Mysavetime4 = DateTime.Now
-
-                If Not Debugger.IsAttached AndAlso Not IgnoreLostDeviceForThisDrive Then
-                    _lostDevice = True
-                End If
-
-                ' Alert user of lost device
-                If _lostDevice AndAlso (DateTime.Now - lastDeviceAlertTime).TotalSeconds > cooldownSeconds Then
-                    StatusNotifier.ToastError(
-                        "Lost connection to INCA device - check hardware connections",
-                        "Device Status",
-                        durationMs:=10000,
-                        ensureMainOnTop:=False
-                    )
-                    lastDeviceAlertTime = DateTime.Now
-                End If
-            End If
-        Else
-            Mysavetime4 = DateTime.Now
-        End If
-
+    Private Sub UpdateDataStatusToastBased(ByRef lastDataAlertTime As DateTime, cooldownSeconds As Integer)
         ' ──────────────────────────────────────────────────────────────
         ' Monitor Data Freshness (stale CPU data detection)
         ' ──────────────────────────────────────────────────────────────
@@ -237,7 +207,7 @@ Partial Public Class GmResidentClient
     End Function
 
     Private Sub CheckForApiCommError()
-        If BackgroundLoopCounterNotUpdating OrElse VideoCameraNotUpdating OrElse _lostDevice OrElse INCACommIgnoreEvents Then
+        If BackgroundLoopCounterNotUpdating OrElse VideoCameraNotUpdating OrElse LostDevice OrElse INCACommIgnoreEvents Then
             INCACommCheckStopWatch?.Reset()
             Return
         End If
@@ -321,9 +291,10 @@ Partial Public Class GmResidentClient
                                              End If
                                          End Sub
 
-        If BackgroundLoopCounterNotUpdating AndAlso Not _lostDevice Then speak("In Valid Data Alert")
-        If VideoCameraNotUpdating AndAlso Not _lostDevice Then speak("In Valid Video Alert")
-        If _lostDevice Then speak("Processor Communication Alert")
+        Dim isLost As Boolean = LostDevice
+        If BackgroundLoopCounterNotUpdating AndAlso Not isLost Then speak("In Valid Data Alert")
+        If VideoCameraNotUpdating AndAlso Not isLost Then speak("In Valid Video Alert")
+        If isLost Then speak(LostDeviceVoice)
 
         If LidarCaptureStarted AndAlso LidarDevices IsNot Nothing Then
             For Each lidar In LidarDevices
