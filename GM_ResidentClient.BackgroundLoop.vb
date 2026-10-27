@@ -316,9 +316,6 @@ Partial Public Class GmResidentClient
         Dim k As Integer
         Dim MySaveTime As DateTime
         Dim MyElapseTime As TimeSpan
-        Dim MySaveTime2 As DateTime
-        Dim MyElapseTime2 As TimeSpan
-        Dim MyMeasureTime As TimeSpan
         Dim MySaveMeasureTime As DateTime
         Dim noOfRecords As Integer
         Dim lineNum As Integer
@@ -333,11 +330,8 @@ Partial Public Class GmResidentClient
         Dim logMsgWritten As Boolean
 
         Dim MySaveTime3 As DateTime
-        Dim MyElapseTime3 As TimeSpan
 
         Dim dataFrozenMaxCount As Integer = dataFrozenMaxCountRecordMode
-
-        Const lostDeviceDelayTime As Integer = 20 'seconds
 
         ' ✅ NEW: Disk space check timer
         Dim MyDiskSpaceCheckTime As DateTime = DateTime.Now
@@ -353,7 +347,6 @@ Partial Public Class GmResidentClient
             ReDim goNoGoFault(UBound(MyLabel))
 
             MySaveTime = DateTime.Now
-            MySaveTime2 = DateTime.Now
             noOfRecords = 1
             lineNum = -1
             lMeasurementStatus = ""
@@ -395,36 +388,10 @@ Partial Public Class GmResidentClient
                         'has hung - This circumstance would be handled in ProcessKiller in separate thread...
                         BumpHealthMonitor()
 
-                        'Every second (currently) we check INCA Measurement status and INCA Record Status
-                        'we use this info to direct logic throughout this background task...
-                        MyElapseTime2 = DateTime.Now.Subtract(MySaveTime2)
-                        ' Check if enough time has elapsed since last measurement/recording state check
-                        If (DateTime.Now - _lastMeasurementCheckTime).TotalSeconds >= MeasurementCheckIntervalSeconds Then
-                            _lastMeasurementCheckTime = DateTime.Now
+                        PollIncaMeasurementState(whereAmI, lMeasurementStatus, oneShot, dataFrozenMaxCount, MySaveMeasureTime,
+                                                 MySaveTime, MySaveTime3, lRecordingState, lSaveRecordingState)
 
-                            UpdateMeasurementStatus(whereAmI, lMeasurementStatus, oneShot, dataFrozenMaxCount, MySaveMeasureTime, MySaveTime, MySaveTime3)
-
-                            UpdateRecordingState(whereAmI, lRecordingState, lSaveRecordingState, dataFrozenMaxCount, MySaveTime3)
-
-                            'This routine handles the case where measurement or record button has been pressed on INCA display
-                            'rather than on CLEVIR display...
-                            CheckForIncaButtonPresses(lMeasurementStatus, lRecordingState)
-
-                        End If
-
-                        If _inMeasureMode = True And lRecordingState = False Then
-
-                            MyMeasureTime = DateTime.Now.Subtract(MySaveMeasureTime)
-
-                            'Handle case where user has been in meaure mode for 5 minutes without pressing record.  HandleAutomaticStartRecord will
-                            'automatically start recording unless user responds to prompt...
-                            HandleAutomaticStartRecord(MyMeasureTime, MySaveMeasureTime, oneShot)
-
-                        Else
-                            MySaveMeasureTime = DateTime.Now
-                        End If
-
-                        'This section below will make periodic calls (every 5 seconds right now) to the Handle_5_SecondChecks routine.  This routine
+                        'This section below
                         'checks to see if there is an active INCA experiment, if not CLEVIR will terminate, also checks various other statuses and
                         'reacts accordingly...
                         MyElapseTime = DateTime.Now.Subtract(MySaveTime)
@@ -437,13 +404,7 @@ Partial Public Class GmResidentClient
 
                     End If
 
-                    ' Communication/data alerts only apply once measurement or recording is active.
-                    If Not (_inMeasureMode OrElse lRecordingState) Then
-                        MySaveTime3 = DateTime.Now
-                    End If
-
-                    MyElapseTime3 = DateTime.Now.Subtract(MySaveTime3)
-                    If MyElapseTime3.Seconds >= lostDeviceDelayTime Then 'was 10 changed to 15 08/30/2020, now 20 sec...
+                    If IsLostDeviceCheckDue(MySaveTime3, lRecordingState) Then
                         'This routine handles the case where communication to processors has been lost or invalid data or invalid video.  Allows user to
                         'reinitialilze CLEVIR and INCA...
                         Await CheckForLostDevice()
@@ -459,11 +420,7 @@ Partial Public Class GmResidentClient
                     ThrowIfLoopFaultInjected()
 #End If
 
-                    If MyIncaInterface.MeasurementStarted = True Or
-                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackRun Or
-                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepBack Or
-                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackScrolling Or
-                       RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepFwd Then
+                    If IsMeasurementOrPlaybackActive() Then
 
                         RefreshRecordingProgressAndTopDownView(whereAmI)
 
@@ -557,6 +514,62 @@ Partial Public Class GmResidentClient
             Volatile.Write(_backgroundLoopActive, False)
         End Try
 
+    End Function
+
+    ''' <summary>
+    ''' Every <c>MeasurementCheckIntervalSeconds</c>: refreshes INCA measurement and recording state and
+    ''' reacts to Measure/Record buttons pressed on the INCA display rather than the CLEVIR display.
+    ''' Then runs (or resets) the auto-start-record timer.
+    ''' </summary>
+    Private Sub PollIncaMeasurementState(ByRef whereAmI As String, ByRef lMeasurementStatus As String, ByRef oneShot As Boolean,
+                                         ByRef dataFrozenMaxCount As Integer, ByRef MySaveMeasureTime As DateTime,
+                                         ByRef MySaveTime As DateTime, ByRef MySaveTime3 As DateTime,
+                                         ByRef lRecordingState As Boolean, ByRef lSaveRecordingState As Boolean)
+
+        If (DateTime.Now - _lastMeasurementCheckTime).TotalSeconds >= MeasurementCheckIntervalSeconds Then
+            _lastMeasurementCheckTime = DateTime.Now
+
+            UpdateMeasurementStatus(whereAmI, lMeasurementStatus, oneShot, dataFrozenMaxCount, MySaveMeasureTime, MySaveTime, MySaveTime3)
+
+            UpdateRecordingState(whereAmI, lRecordingState, lSaveRecordingState, dataFrozenMaxCount, MySaveTime3)
+
+            CheckForIncaButtonPresses(lMeasurementStatus, lRecordingState)
+        End If
+
+        If _inMeasureMode = True And lRecordingState = False Then
+            'Handle case where user has been in meaure mode for 5 minutes without pressing record.  HandleAutomaticStartRecord will
+            'automatically start recording unless user responds to prompt...
+            Dim MyMeasureTime As TimeSpan = DateTime.Now.Subtract(MySaveMeasureTime)
+            HandleAutomaticStartRecord(MyMeasureTime, MySaveMeasureTime, oneShot)
+        Else
+            MySaveMeasureTime = DateTime.Now
+        End If
+
+    End Sub
+
+    ''' <summary>
+    ''' True when the lost-device check is due (20 s of measurement/recording since the last check).
+    ''' The timer is held at zero while neither measuring nor recording.
+    ''' </summary>
+    Private Function IsLostDeviceCheckDue(ByRef MySaveTime3 As DateTime, ByVal lRecordingState As Boolean) As Boolean
+        Const lostDeviceDelayTime As Integer = 20 'seconds (was 10, then 15 on 08/30/2020)
+
+        ' Communication/data alerts only apply once measurement or recording is active.
+        If Not (_inMeasureMode OrElse lRecordingState) Then
+            MySaveTime3 = DateTime.Now
+        End If
+
+        Dim MyElapseTime3 As TimeSpan = DateTime.Now.Subtract(MySaveTime3)
+        Return MyElapseTime3.Seconds >= lostDeviceDelayTime
+    End Function
+
+    ''' <summary>True when INCA is measuring or a CLEVIR recording is being played back.</summary>
+    Private Shared Function IsMeasurementOrPlaybackActive() As Boolean
+        Return MyIncaInterface.MeasurementStarted = True Or
+               RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackRun Or
+               RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepBack Or
+               RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackScrolling Or
+               RecordPlayback.PlaybackMode = RecordPlayback.PlaybackStates.PlaybackStepFwd
     End Function
 
     Private Sub CheckDiskSpaceIfDue(ByRef MyDiskSpaceCheckTime As DateTime)
