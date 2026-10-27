@@ -818,7 +818,7 @@ Public Module Module1
     End Sub
 
     ''' <summary>
-    ''' LiDAR[...]Frame column labels for annotation CSV headers, in LidarDevices order (FRONT, REAR, ... from
+    ''' LiDAR[...]_Frame column labels for annotation CSV headers, in LidarDevices order (FRONT, REAR, ... from
     ''' each device's configured orientation). Empty when no LiDAR devices are configured.
     ''' </summary>
     Private Function AnnotationLidarColumnLabels() As String()

@@ -16,15 +16,21 @@ Friend NotInheritable Class AnnotationCsvHeader
     Private Sub New()
     End Sub
 
-    ''' <summary>Header with numbered LiDAR columns (LiDAR[1]Frame ...), used when no orientations are known.</summary>
+    ''' <summary>Header with numbered LiDAR columns (LiDAR[1]_Frame ...), used when no orientations are known.</summary>
     Friend Shared Function Build(ByVal lidarCount As Integer) As String
         Return Build(NumberedLabels(lidarCount))
     End Function
 
+    ' LiDAR column heading is LidarColumnPrefix & label & LidarColumnSuffix, e.g. LiDAR[FRONT]_Frame (the underscore is
+    ' required by the audio-to-text conversion). Headers written before that use LegacyLidarColumnSuffix (LiDAR[FRONT]Frame).
+    Private Const LidarColumnPrefix As String = "LiDAR["
+    Private Const LidarColumnSuffix As String = "]_Frame"
+    Private Const LegacyLidarColumnSuffix As String = "]Frame"
+
     Friend Shared Function Build(ByVal lidarLabels As IList(Of String)) As String
         Dim sb As New StringBuilder(BaseColumns)
         For Each label In lidarLabels
-            sb.Append(",LiDAR[").Append(label).Append("]Frame")
+            sb.Append(","c).Append(LidarColumnPrefix).Append(label).Append(LidarColumnSuffix)
         Next
         Return sb.ToString()
     End Function
@@ -56,8 +62,9 @@ Friend NotInheritable Class AnnotationCsvHeader
     ''' Returns the header that should replace <paramref name="existingHeader"/>, or Nothing when it is
     ''' already correct or is not an annotation header. LiDAR columns are never removed: if the file already
     ''' has more LiDAR columns than devices are configured, its LiDAR headings are kept as they are. Otherwise
-    ''' the LiDAR headings are rewritten from the current devices - widening, and renaming e.g. LiDAR[1]Frame
-    ''' to LiDAR[FRONT]Frame (the file is per vehicle, so column order matches device order). Stray trailing
+    ''' the LiDAR headings are rewritten from the current devices - widening, and renaming e.g. LiDAR[1]_Frame
+    ''' to LiDAR[FRONT]_Frame (the file is per vehicle, so column order matches device order). Legacy
+    ''' LiDAR[...]Frame headings are recognised and rewritten as LiDAR[...]_Frame. Stray trailing
     ''' commas are dropped.
     ''' </summary>
     Friend Shared Function GetUpgradedHeader(ByVal existingHeader As String, ByVal lidarLabels As IList(Of String)) As String
@@ -65,15 +72,24 @@ Friend NotInheritable Class AnnotationCsvHeader
             Return Nothing
         End If
 
-        Const prefix As String = "LiDAR["
-        Const suffix As String = "]Frame"
-        Dim existingLabels As List(Of String) = existingHeader.Split(","c).
-            Where(Function(f) f.StartsWith(prefix, StringComparison.Ordinal) AndAlso f.EndsWith(suffix, StringComparison.Ordinal)).
-            Select(Function(f) f.Substring(prefix.Length, f.Length - prefix.Length - suffix.Length)).
-            ToList()
+        Dim existingLabels As New List(Of String)
+        For Each field In existingHeader.Split(","c)
+            Dim label As String = ExtractLidarLabel(field)
+            If label IsNot Nothing Then existingLabels.Add(label)
+        Next
 
         Dim upgraded As String = Build(If(existingLabels.Count > lidarLabels.Count, existingLabels, lidarLabels))
         Return If(String.Equals(upgraded, existingHeader, StringComparison.Ordinal), Nothing, upgraded)
+    End Function
+
+    Private Shared Function ExtractLidarLabel(ByVal field As String) As String
+        If Not field.StartsWith(LidarColumnPrefix, StringComparison.Ordinal) Then Return Nothing
+        For Each suffix In {LidarColumnSuffix, LegacyLidarColumnSuffix}
+            If field.Length >= LidarColumnPrefix.Length + suffix.Length AndAlso field.EndsWith(suffix, StringComparison.Ordinal) Then
+                Return field.Substring(LidarColumnPrefix.Length, field.Length - LidarColumnPrefix.Length - suffix.Length)
+            End If
+        Next
+        Return Nothing
     End Function
 
     Private Shared Function NumberedLabels(ByVal count As Integer) As String()
