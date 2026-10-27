@@ -24,30 +24,43 @@ Partial Public Class GmResidentClient
         Dim isRed() As Boolean
         Dim processorsFalse As Integer = 0
         Dim numCameraDevicesInExperiment As Integer = 0
-        'Static saveStatus() As Boolean
-        'Static lMyDeviceStatus As Boolean = True
         ' Default return value
         Dim MyDevicesStatus As Boolean = True ' Initialize the device status
         Try
             ' Check if devices are available
             If MyDevices Is Nothing Then
-                HandleCriticalError("Communication failure, Exiting CLEVIR and Closing INCA...")
-                Return False ' Return False if no devices are available
+                If _initializing Then
+                    HandleCriticalError("Communication failure, Exiting CLEVIR and Closing INCA...")
+                    Return False
+                End If
+
+                ' At runtime one failed read must not end a drive: exit only if INCA stays unreachable.
+                _deviceReadFailures += 1
+                HandleUserMessageLogging("GMRC", $"GetDeviceStatus: INCA device list unavailable ({_deviceReadFailures}/{MaxConsecutiveDeviceReadFailures})")
+                If _deviceReadFailures >= MaxConsecutiveDeviceReadFailures Then
+                    HandleCriticalError("Communication failure, Exiting CLEVIR and Closing INCA...")
+                    Return False
+                End If
+                Return _MyDeviceStatus
+            End If
+            If _deviceReadFailures > 0 Then
+                HandleUserMessageLogging("GMRC", $"GetDeviceStatus: INCA device list available again after {_deviceReadFailures} failed read(s)")
+                _deviceReadFailures = 0
             End If
             If ActiveProcessorNames Is Nothing OrElse ActiveProcessorNames.Length = 0 Then
-                HandleUserMessageLogging("GMRC", "GetDeviceStatus: no configured processors. Select a valid vehicle in config.xml.", DisplayMsgBox)
+                ReportDeviceConfigProblemOnce("GetDeviceStatus: no configured processors. Select a valid vehicle in config.xml.")
                 _MyDeviceStatus = False
                 Return False
             End If
             Dim missingProcessors = ActiveProcessorNames.Where(Function(name) Not MyDevices.Any(Function(device) String.Equals(device.myName, name, StringComparison.OrdinalIgnoreCase))).ToArray()
             If missingProcessors.Length > 0 Then
-                HandleUserMessageLogging("GMRC", "Configured processors not found in the INCA experiment: " & String.Join(", ", missingProcessors), DisplayMsgBox)
+                ReportDeviceConfigProblemOnce("Configured processors not found in the INCA experiment: " & String.Join(", ", missingProcessors))
                 _MyDeviceStatus = False
                 Return False
             End If
+            _lastDeviceConfigProblem = ""
             ' Initialize arrays
             ReDim isRed(UBound(MyDevices))
-            If saveStatus Is Nothing OrElse saveStatus.Length <> MyDevices.Length Then ReDim saveStatus(UBound(MyDevices))
             ' Process each device
             For x As Integer = 0 To UBound(MyDevices)
                 Dim device = MyDevices(x)
@@ -71,7 +84,7 @@ Partial Public Class GmResidentClient
             Next
             ' Handle device status based on initialization state
             If Not _initializing Then
-                HandlePostInitializationStatus(MyDevices, isRed, saveStatus, processorsFalse)
+                HandlePostInitializationStatus(MyDevices, isRed, processorsFalse)
                 MyDevicesStatus = _MyDeviceStatus
             Else
                 HandleInitializationStatus(MyDevices, isRed, numCameraDevicesInExperiment, MyDevicesStatus)
@@ -93,13 +106,27 @@ Partial Public Class GmResidentClient
         HandleUserMessageLogging("GMRC", message, DisplayMsgBox,)
         ExitApp("Complete")
     End Sub
+    ' Polled every 5 s: show the message box once per distinct problem, not on every poll.
+    Private Sub ReportDeviceConfigProblemOnce(message As String)
+        If String.Equals(message, _lastDeviceConfigProblem, StringComparison.Ordinal) Then Return
+        _lastDeviceConfigProblem = message
+        HandleUserMessageLogging("GMRC", message, DisplayMsgBox)
+    End Sub
     ' Helper method to update device status UI
     Private Sub UpdateDeviceStatusUI(index As Integer, device As IGM_INCA_Comm.INCADeviceStatus, ByRef isRed() As Boolean)
         Dim MyColor As Color = If(device.myStatus, Color.Green, Color.Red)
         isRed(index) = Not device.myStatus
-        ' Update UI labels dynamically
-        Dim labelName As Label = CType(DeviceStatus.Controls($"Label{index + 1}"), Label)
-        Dim labelStatus As Label = CType(DeviceStatus.Controls($"Label{24 - index}"), Label)
+        ' DeviceStatus has 12 name/status label pairs: Label1..12 = names, Label24..13 = statuses.
+        If index >= DeviceStatusLabelPairs Then
+            If Not _deviceStatusOverflowLogged Then
+                _deviceStatusOverflowLogged = True
+                HandleUserMessageLogging("GMRC", $"UpdateDeviceStatusUI: more than {DeviceStatusLabelPairs} devices; '{device.myName}' and later are monitored but not shown on the Device Status form")
+            End If
+            Return
+        End If
+        Dim labelName As Label = TryCast(DeviceStatus.Controls($"Label{index + 1}"), Label)
+        Dim labelStatus As Label = TryCast(DeviceStatus.Controls($"Label{2 * DeviceStatusLabelPairs - index}"), Label)
+        If labelName Is Nothing OrElse labelStatus Is Nothing Then Return
         labelName.Text = device.myName
         labelStatus.Text = device.myStatus.ToString()
         labelStatus.BackColor = MyColor
@@ -113,20 +140,24 @@ Partial Public Class GmResidentClient
         End If
     End Sub
     ' Helper method to handle post-initialization status
-    Private Sub HandlePostInitializationStatus(MyDevices() As IGM_INCA_Comm.INCADeviceStatus, isRed() As Boolean, ByRef saveStatus() As Boolean, processorsFalse As Integer)
+    Private Sub HandlePostInitializationStatus(MyDevices() As IGM_INCA_Comm.INCADeviceStatus, isRed() As Boolean, processorsFalse As Integer)
+        ' Keyed by device name so a reordered or resized device list can't log the wrong device.
         For x As Integer = 0 To UBound(MyDevices)
             Dim device = MyDevices(x)
             Dim isCalcDev = InStr(UCase(device.myName), "CALCDEV") > 0
-            If Not isCalcDev AndAlso saveStatus(x) <> isRed(x) Then
+            If isCalcDev OrElse String.IsNullOrEmpty(device.myName) Then Continue For
+            Dim wasRed As Boolean = False
+            _lastDeviceFault.TryGetValue(device.myName, wasRed)
+            If wasRed <> isRed(x) Then
                 If isRed(x) Then
                     HandleUserMessageLogging("GMRC", $"Cannot Communicate with {device.myName}")
                 Else
                     HandleUserMessageLogging("GMRC", $"Communication with {device.myName} established")
                 End If
             End If
+            _lastDeviceFault(device.myName) = isRed(x)
         Next
         _MyDeviceStatus = processorsFalse = 0 OrElse IgnoreLostDeviceForThisDrive
-        saveStatus = isRed
     End Sub
     ' Helper method to handle initialization status
     Private Sub HandleInitializationStatus(MyDevices() As IGM_INCA_Comm.INCADeviceStatus, isRed() As Boolean, ByRef numCameraDevicesInExperiment As Integer, ByRef MyDevicesStatus As Boolean)
