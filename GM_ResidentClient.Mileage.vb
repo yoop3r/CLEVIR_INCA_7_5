@@ -89,12 +89,6 @@ Partial Public Class GmResidentClient
         ' On recording stop, the session mileage is logged (and can be saved to annotation file if needed).
         ' Note: Only called when MyDg.CS_ODOMETER > 0, so no need to check again
 
-        Static saveLccActive As Integer
-        Static saveRecordingState As Boolean = False
-        Static recordingStateChangeCount As Integer = 0
-        Static recordingStateStable As Boolean = True
-        Const StableThreshold As Integer = 3  ' Require 3 consecutive consistent readings
-
         ' All mileage (session, LCC, ANNO header and annotation rows) is in km - the odometer's native unit.
 
         ' The caller's saveOdoReading does not persist between loop iterations, so seed it
@@ -104,25 +98,71 @@ Partial Public Class GmResidentClient
         ' ====================================================================================
         ' 1. Read Odometer Value (before session transitions so they see the current reading)
         ' ====================================================================================
-        Dim haveOdoReading As Boolean = False
-        If MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData > 0 Then
-            saveOdoReading = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData
-            CurrentMileage = saveOdoReading
-            _lastOdoReadingKm = saveOdoReading
-            haveOdoReading = True
-
-            ' Initialize starting mileage if not set
-            If StartingMileage = 0 Then
-                HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: Resetting Mileage - Starting Mileage = " & saveOdoReading)
-                StartingMileage = saveOdoReading
-            End If
-        End If
+        Dim haveOdoReading As Boolean = ReadOdometer(MyDg, saveOdoReading)
 
         ' ====================================================================================
         ' ISSUE 1 FIX: Implement state debouncing to prevent rapid "Now Recording/Not Recording" cycling
         ' Session boundaries are normally set by StartRecordingAsync / FinalizeSessionFiles; this
         ' observer only opens/closes the session when recording changed outside those paths.
         ' ====================================================================================
+        TrackRecordingStateForMileage(lRecordingState)
+
+        ' Accumulate mileage during an open recording session
+        If haveOdoReading AndAlso _mileageSessionActive Then
+            AccumulateSessionMileage(saveOdoReading)
+        End If
+
+        ' ====================================================================================
+        ' 2. Update LCC (Lane Centering Control) Active Mileage if applicable
+        ' ====================================================================================
+        If MyDg.CS_LCC_CONTROL_ACTIVE > 0 Then
+            UpdateLccActiveMileage(MyDg, saveOdoReading)
+        End If
+
+        ' ====================================================================================
+        ' 3. Update GPS Coordinates (if available)
+        ' ====================================================================================
+        If MyDg.CS_GPS_LAT > 0 And MyDg.CS_GPS_LON > 0 Then
+            UpdateGpsPosition(MyDg)
+        End If
+
+        ' ====================================================================================
+        ' 4. Update Lane Class (if applicable)
+        ' ====================================================================================
+        If MyDg.CS_LaneClass_Crnt > 0 Then
+            LaneClassCurrent = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_LaneClass_Crnt, 1)).SignalData
+        End If
+
+    End Sub
+
+    Private Function ReadOdometer(ByVal MyDg As GridDataClass, ByRef saveOdoReading As Double) As Boolean
+        'Called from HandleOdometerRelatedStatus. True when the odometer signal holds a valid (> 0) reading.
+
+        If MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData > 0 Then
+            saveOdoReading = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_ODOMETER, 1)).SignalData
+            CurrentMileage = saveOdoReading
+            _lastOdoReadingKm = saveOdoReading
+
+            ' Initialize starting mileage if not set
+            If StartingMileage = 0 Then
+                HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: Resetting Mileage - Starting Mileage = " & saveOdoReading)
+                StartingMileage = saveOdoReading
+            End If
+            Return True
+        End If
+
+        Return False
+    End Function
+
+    Private Sub TrackRecordingStateForMileage(ByVal lRecordingState As Boolean)
+        'Called from HandleOdometerRelatedStatus. Debounces the recording state and opens/closes the mileage session
+        'when recording changed outside StartRecordingAsync / FinalizeSessionFiles.
+
+        Static saveRecordingState As Boolean = False
+        Static recordingStateChangeCount As Integer = 0
+        Static recordingStateStable As Boolean = True
+        Const StableThreshold As Integer = 3  ' Require 3 consecutive consistent readings
+
         If lRecordingState <> saveRecordingState Then
             ' State differs from saved state - increment debounce counter
             recordingStateChangeCount += 1
@@ -155,64 +195,52 @@ Partial Public Class GmResidentClient
                 recordingStateStable = True
             End If
         End If
+    End Sub
 
-        ' Accumulate mileage during an open recording session
-        If haveOdoReading AndAlso _mileageSessionActive Then
-            AccumulateSessionMileage(saveOdoReading)
-        End If
+    Private Sub UpdateLccActiveMileage(ByVal MyDg As GridDataClass, ByVal saveOdoReading As Double)
+        'Called from HandleOdometerRelatedStatus when the grid has CS_LCC_CONTROL_ACTIVE. Accumulates LCC-active
+        'segment mileage on each active -> inactive transition.
 
-        ' ====================================================================================
-        ' 2. Update LCC (Lane Centering Control) Active Mileage if applicable
-        ' ====================================================================================
-        If MyDg.CS_LCC_CONTROL_ACTIVE > 0 Then
-            _lccActive = CInt(MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_LCC_CONTROL_ACTIVE, 1)).SignalData)
+        Static saveLccActive As Integer
 
-            If _lccActive <> saveLccActive Then
-                If _lccActive = 1 Then
-                    _lccActiveStartingMileage = saveOdoReading
-                    HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: LCC Active - Starting Mileage = " & saveOdoReading)
-                ElseIf _lccActiveStartingMileage > 0 Then
-                    ' Start of 0 = no open segment (never had a valid odometer, or already counted)
-                    Dim segmentMileage As Double = (saveOdoReading - _lccActiveStartingMileage)
-                    If segmentMileage >= 0 Then  ' Sanity check
-                        _lccActiveMileage += segmentMileage
-                        HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: LCC InActive - Mileage Travelled since Active Transition = " & segmentMileage)
-                        HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: LCC InActive - Total Accumulated Mileage this session = " & _lccActiveMileage)
-                    Else
-                        HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: WARNING - Negative LCC mileage detected. Skipping accumulation.")
-                    End If
-                    _lccActiveStartingMileage = 0
+        _lccActive = CInt(MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_LCC_CONTROL_ACTIVE, 1)).SignalData)
+
+        If _lccActive <> saveLccActive Then
+            If _lccActive = 1 Then
+                _lccActiveStartingMileage = saveOdoReading
+                HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: LCC Active - Starting Mileage = " & saveOdoReading)
+            ElseIf _lccActiveStartingMileage > 0 Then
+                ' Start of 0 = no open segment (never had a valid odometer, or already counted)
+                Dim segmentMileage As Double = (saveOdoReading - _lccActiveStartingMileage)
+                If segmentMileage >= 0 Then  ' Sanity check
+                    _lccActiveMileage += segmentMileage
+                    HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: LCC InActive - Mileage Travelled since Active Transition = " & segmentMileage)
+                    HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: LCC InActive - Total Accumulated Mileage this session = " & _lccActiveMileage)
+                Else
+                    HandleUserMessageLogging("GMRC", "HandleOdometerRelatedStatus: WARNING - Negative LCC mileage detected. Skipping accumulation.")
                 End If
-                saveLccActive = _lccActive
+                _lccActiveStartingMileage = 0
             End If
+            saveLccActive = _lccActive
+        End If
+    End Sub
+
+    Private Sub UpdateGpsPosition(ByVal MyDg As GridDataClass)
+        'Called from HandleOdometerRelatedStatus when the grid has CS_GPS_LAT and CS_GPS_LON.
+
+        CurrentLatitude = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LAT, 1)).SignalData
+        If CurrentLatitude <> 0 Then
+            CurrentLatitude /= ConvertToLatLon
         End If
 
-        ' ====================================================================================
-        ' 3. Update GPS Coordinates (if available)
-        ' ====================================================================================
-        If MyDg.CS_GPS_LAT > 0 And MyDg.CS_GPS_LON > 0 Then
-            CurrentLatitude = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LAT, 1)).SignalData
-            If CurrentLatitude <> 0 Then
-                CurrentLatitude /= ConvertToLatLon
-            End If
-
-            CurrentLongitude = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LON, 1)).SignalData
-            If CurrentLongitude <> 0 Then
-                CurrentLongitude /= ConvertToLatLon
-            End If
-
-            ' Optional: Still determine location for UI display (but don't use it for mileage tracking)
-            _whereAmIAt = WhereTheHeckAmIAt(MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LAT, 1)).SignalData,
-                                     MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LON, 1)).SignalData)
+        CurrentLongitude = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LON, 1)).SignalData
+        If CurrentLongitude <> 0 Then
+            CurrentLongitude /= ConvertToLatLon
         End If
 
-        ' ====================================================================================
-        ' 4. Update Lane Class (if applicable)
-        ' ====================================================================================
-        If MyDg.CS_LaneClass_Crnt > 0 Then
-            LaneClassCurrent = MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_LaneClass_Crnt, 1)).SignalData
-        End If
-
+        ' Optional: Still determine location for UI display (but don't use it for mileage tracking)
+        _whereAmIAt = WhereTheHeckAmIAt(MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LAT, 1)).SignalData,
+                                 MySignalDataWithTime(MyDg.SignalIndex(MyDg.CS_GPS_LON, 1)).SignalData)
     End Sub
 
     ''' <summary>
