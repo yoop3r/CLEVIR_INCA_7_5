@@ -3489,6 +3489,10 @@ Public Class GridDataClass
 
                 GridCellPropConfig.Refresh()
 
+                Dim browseDevice As String = DeviceName(row, col)
+                HandleUserMessageLogging("GMRC", $"GridCellBrowse: Browsing variables for device '{browseDevice}' (index {myDeviceIdx})...")
+                Dim browseTimer As Stopwatch = Stopwatch.StartNew()
+
                 ' Wrap potentially long-running synchronous calls in Task.Run
                 measureelementnames = Await Task.Run(Function()
                                                          If InStr(DeviceName(row, col), "ACP") > 0 Or InStr(DeviceName(row, col), "XCP:1") > 0 Then
@@ -3498,6 +3502,8 @@ Public Class GridDataClass
                                                          End If
                                                          Return Nothing
                                                      End Function)
+
+                HandleUserMessageLogging("GMRC", $"GridCellBrowse: '{browseDevice}' returned {If(measureelementnames Is Nothing, 0, measureelementnames.Length)} names in {browseTimer.ElapsedMilliseconds} ms")
 
                 If measureelementnames IsNot Nothing Then
                     GridCellPropConfig.VariableName.Items.Clear()

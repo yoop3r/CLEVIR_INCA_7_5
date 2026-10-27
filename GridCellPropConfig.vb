@@ -520,35 +520,41 @@ Public Class GridCellPropConfig
 
             Me.Refresh()
 
-            Me.RasterName.Items.Clear()
-            Me.VariableName.Items.Clear()
+            Try
+                HandleUserMessageLogging("GMRC", $"GridCellPropConfig: Device changed to '{DeviceName.Text}' (index {DeviceName.SelectedIndex})")
 
-            If MyIncaInterface.DeviceDataRetrieved = False Then
-                Await MyIncaInterface.GetDeviceAcquisitionRatesAsync()
-            End If
+                Me.RasterName.Items.Clear()
+                Me.VariableName.Items.Clear()
 
-            ReDim tempstrarray(0)
+                If MyIncaInterface.DeviceDataRetrieved = False Then
+                    Await MyIncaInterface.GetDeviceAcquisitionRatesAsync()
+                End If
 
-            For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters)
-                ReDim Preserve tempstrarray(y)
-                tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters(y).rastername
+                ReDim tempstrarray(0)
 
-            Next y
+                For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters)
+                    ReDim Preserve tempstrarray(y)
+                    tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters(y).rastername
 
-            RasterName.Items.AddRange(tempstrarray)
+                Next y
 
-            ReDim tempstrarray(0)
+                RasterName.Items.AddRange(tempstrarray)
 
-            For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo)
-                ReDim Preserve tempstrarray(y)
-                tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo(y).variablename
+                ReDim tempstrarray(0)
 
-            Next y
+                For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo)
+                    ReDim Preserve tempstrarray(y)
+                    tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo(y).variablename
 
-            VariableName.Items.AddRange(tempstrarray)
+                Next y
 
-            Me.Label14.Visible = False
-            GmResidentClient.Cursor = Cursors.Arrow
+                VariableName.Items.AddRange(tempstrarray)
+
+            Finally
+                ' Always clear the busy message so an error can't leave the form looking frozen.
+                Me.Label14.Visible = False
+                GmResidentClient.Cursor = Cursors.Arrow
+            End Try
 
         End If
 

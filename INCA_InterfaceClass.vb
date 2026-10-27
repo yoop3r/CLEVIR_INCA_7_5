@@ -682,6 +682,7 @@ Public Class INCA_InterfaceClass
                     rasterIndex = 0
                     Dim deviceNameInFile = line.Substring(7)
                     If deviceIndex > UBound(_Devices) OrElse deviceNameInFile <> _Devices(deviceIndex).myName Then
+                        HandleUserMessageLogging("GMRC", $"LoadDeviceDataFromFile: Device list mismatch at entry {deviceIndex} ('{deviceNameInFile}') - showing warning")
                         MsgBox("WARNING: INCA Device List does not match devices in DeviceRasterSignalList.txt. This must be resolved.")
                         GmResidentClient.Cursor = Cursors.Arrow
                         Return
