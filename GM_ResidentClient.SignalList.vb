@@ -200,29 +200,36 @@ Partial Public Class GmResidentClient
         Dim y As Integer
         Dim z As Integer
         Dim i As Integer
-        Dim n As Integer
 
         i = 1
 
+        ' Grid cells are written positionally from row 1, so skipping any grid would shift every later grid onto the
+        ' wrong rows. If any grid has lost its display form, keep the loaded display rows unchanged instead.
+        For x = 0 To myDGs.Count - 1
+            Dim gridForm As FormDataClass = TryCast(myDGs(x).Parent, FormDataClass)
+            If myDGs(x).IsDisposed OrElse gridForm Is Nothing OrElse gridForm.IsDisposed Then
+                HandleUserMessageLogging("GMRC", $"WriteSignalListFile: WARNING - grid '{myDGs(x).Name}' ({myDGs(x).ParentFormName}) has no display form; grid layout/cell changes were NOT saved.")
+                Return
+            End If
+        Next x
+
         For x = 0 To myDGs.Count - 1
 
-            For n = 0 To MyDFs.Count - 1
-                If MyDFs(n).Name = myDGs(x).Parent.Name Then
-                    Exit For
-                End If
-            Next n
+            ' Use the grid's own (hidden, not disposed) display form: on EXIT, CloseDisplayForms has already
+            ' cleared MyDFs, so a MyDFs lookup would skip every grid and the save would drop all layout changes.
+            Dim displayForm As FormDataClass = TryCast(myDGs(x).Parent, FormDataClass)
 
-            If n < MyDFs.Count Then
+            If displayForm IsNot Nothing Then
 
-                exceldataforsave(i, EXCEL_DATA.DisplayWindowSize - 1) = MyDFs(n).DisplayWindowSize
-                exceldataforsave(i, EXCEL_DATA.AlsoAssociatedWith - 1) = MyDFs(n).AlsoAssociatedWith
+                exceldataforsave(i, EXCEL_DATA.DisplayWindowSize - 1) = displayForm.DisplayWindowSize
+                exceldataforsave(i, EXCEL_DATA.AlsoAssociatedWith - 1) = displayForm.AlsoAssociatedWith
                 exceldataforsave(i, EXCEL_DATA.LocationOnForm - 1) = myDGs(x).LocationOnForm
                 exceldataforsave(i, EXCEL_DATA.GridSize - 1) = myDGs(x).GridSize
 
                 For y = 1 To myDGs(x).RowCount
                     For z = 1 To myDGs(x).ColumnCount - 1
 
-                        exceldataforsave(i, EXCEL_DATA.DisplayWindowName - 1) = MyDFs(n).Name
+                        exceldataforsave(i, EXCEL_DATA.DisplayWindowName - 1) = displayForm.Name
                         exceldataforsave(i, EXCEL_DATA.AssociatedControlName - 1) = myDGs(x).Name
 
                         exceldataforsave(i, EXCEL_DATA.DisplayName - 1) = myDGs(x).DisplayName(y, 1)
