@@ -2436,6 +2436,30 @@ Public Module Module1
         End Try
     End Function
 
+    ''' <summary>
+    ''' Persists <paramref name="variableFile"/> to &lt;INCAVariableFile&gt; in config.xml so the next start
+    ''' loads that signal list. The document is validated before it is saved.
+    ''' </summary>
+    Public Function SaveConfiguredVariableFile(variableFile As String) As Boolean
+        Try
+            Dim configPath As String = Path.Combine(My.Application.Info.DirectoryPath, "config.xml")
+            If Not File.Exists(configPath) Then
+                HandleUserMessageLogging("GMRC", "SaveConfiguredVariableFile: config.xml not found — cannot persist signal list file.", DisplayMsgBox)
+                Return False
+            End If
+            Dim xmlDoc As New XmlDocument With {.PreserveWhitespace = True}
+            xmlDoc.Load(configPath)
+            IncaConfiguration.SetVariableFile(xmlDoc, variableFile)
+            Dim configuration As New IncaConfiguration(xmlDoc, My.Application.Info.DirectoryPath)
+            xmlDoc.Save(configPath)
+            HandleUserMessageLogging("GMRC", $"SaveConfiguredVariableFile: Saved '{configuration.VariableFile}' to config.xml.")
+            Return True
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", $"SaveConfiguredVariableFile: {ex.Message}", DisplayMsgBox)
+            Return False
+        End Try
+    End Function
+
     '-----------------------------------------------------------
     '   XML VEHICLE CONFIG: READ AND APPLY
     '-----------------------------------------------------------

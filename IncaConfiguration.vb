@@ -140,6 +140,20 @@ Public NotInheritable Class IncaConfiguration
         Return True
     End Function
 
+    ''' <summary>
+    ''' Sets the root &lt;INCAVariableFile&gt; element, creating it when missing. Other content is untouched.
+    ''' </summary>
+    Public Shared Sub SetVariableFile(document As XmlDocument, variableFile As String)
+        Dim root As XmlNode = document?.DocumentElement
+        If root Is Nothing Then Throw New FormatException("Missing config.xml <Configuration> root.")
+        Dim node As XmlNode = root.SelectSingleNode("INCAVariableFile")
+        If node Is Nothing Then
+            node = document.CreateElement("INCAVariableFile")
+            root.AppendChild(node)
+        End If
+        node.InnerText = variableFile
+    End Sub
+
     Public Function HasSameSessionSettings(other As IncaConfiguration) As Boolean
         If other Is Nothing Then Return False
         Dim values As String() = {Database, Workspace, Experiment, ExperimentTemplate, VariableFile, EtasUserPath, VehicleNumber, DataDictionary, VehicleSpySetup, AlternateRecordConfig}
