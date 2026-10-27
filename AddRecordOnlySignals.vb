@@ -402,7 +402,7 @@ Public Class AddRecordOnlySignals
 
                 Else
 
-                    Label6.Text = "No Variables found for " & MyIncaInterface.deviceinfo(ListBox1.SelectedIndex).rasters(y).rastername
+                    Label6.Text = "No Variables found for " & ListBox1.SelectedItem.ToString
 
                     Refresh()
 
@@ -474,6 +474,13 @@ Public Class AddRecordOnlySignals
         InStr(ListBox1.SelectedItem.ToString, "XCP:1") > 0 Or
         InStr(ListBox1.SelectedItem.ToString, "ETK") > 0 Then
 
+            Exit Sub
+        End If
+
+        ' No per-raster variable table is available; keep the current signal list as-is.
+        If ListBox1.SelectedIndex < 0 OrElse MyIncaInterface.deviceinfo Is Nothing OrElse
+            ListBox1.SelectedIndex > UBound(MyIncaInterface.deviceinfo) OrElse
+            MyIncaInterface.deviceinfo(ListBox1.SelectedIndex).variableinfo Is Nothing Then
             Exit Sub
         End If
 

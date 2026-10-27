@@ -505,9 +505,6 @@ Public Class GridCellPropConfig
         'we must re-populate the available rasternames and variable names based on the newly selected
         'device name....
 
-        Dim y As Integer
-        Dim tempstrarray() As String
-
         If Me.Label14.Visible = False Then
 
             RasterName.Text = ""
@@ -530,25 +527,32 @@ Public Class GridCellPropConfig
                     Await MyIncaInterface.GetDeviceAcquisitionRatesAsync()
                 End If
 
-                ReDim tempstrarray(0)
+                Dim deviceIdx As Integer = DeviceName.SelectedIndex
+                Dim selectedDevice As String = DeviceName.Text
+                Dim browseFilter As String = TextBox1.Text
 
-                For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters)
-                    ReDim Preserve tempstrarray(y)
-                    tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).rasters(y).rastername
+                If deviceIdx >= 0 AndAlso MyIncaInterface.deviceinfo IsNot Nothing AndAlso deviceIdx <= UBound(MyIncaInterface.deviceinfo) Then
 
-                Next y
+                    Dim rasters = MyIncaInterface.deviceinfo(deviceIdx).rasters
+                    If rasters IsNot Nothing Then
+                        RasterName.Items.AddRange(rasters.Select(Function(r) CObj(r.rastername)).ToArray())
+                    End If
 
-                RasterName.Items.AddRange(tempstrarray)
+                    ' Browse the device's variables live from INCA, the same way GridCellBrowse does.
+                    Dim names As String() = Await Task.Run(Function()
+                                                               If InStr(selectedDevice, "ACP") > 0 Or InStr(selectedDevice, "XCP:1") > 0 Then
+                                                                   Return MyIncaInterface.BrowseMeasureElementsInDeviceIdxAsync(browseFilter, deviceIdx)
+                                                               End If
+                                                               Return MyIncaInterface.GetAllMeasureElementNamesInDeviceIdxAsync(deviceIdx)
+                                                           End Function)
 
-                ReDim tempstrarray(0)
+                    HandleUserMessageLogging("GMRC", $"GridCellPropConfig: '{selectedDevice}' returned {If(names Is Nothing, 0, names.Length)} names")
 
-                For y = 0 To UBound(MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo)
-                    ReDim Preserve tempstrarray(y)
-                    tempstrarray(y) = MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo(y).variablename
+                    If names IsNot Nothing Then
+                        VariableName.Items.AddRange(names.Where(Function(n) n IsNot Nothing).Cast(Of Object)().ToArray())
+                    End If
 
-                Next y
-
-                VariableName.Items.AddRange(tempstrarray)
+                End If
 
             Finally
                 ' Always clear the busy message so an error can't leave the form looking frozen.
@@ -591,6 +595,13 @@ Public Class GridCellPropConfig
             InStr(DeviceName.Text, "XCP:1") > 0 Or
             InStr(DeviceName.Text, "ETK") > 0 Then
 
+            Exit Sub
+        End If
+
+        ' No per-raster variable table is available; keep the browsed variable list as-is.
+        If DeviceName.SelectedIndex < 0 OrElse MyIncaInterface.deviceinfo Is Nothing OrElse
+            DeviceName.SelectedIndex > UBound(MyIncaInterface.deviceinfo) OrElse
+            MyIncaInterface.deviceinfo(DeviceName.SelectedIndex).variableinfo Is Nothing Then
             Exit Sub
         End If
 

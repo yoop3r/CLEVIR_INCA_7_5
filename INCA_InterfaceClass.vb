@@ -48,9 +48,7 @@ Public Class INCA_InterfaceClass
     'Private OxtsNcomIpAddress As String ' Set via configuration
     'Private OxtsNcomPort As Integer ' Set via configuration
 
-    Private RasterInfoRetrieved() As Boolean
     Private ReadOnly MaxRetries As Integer = 100
-    Private DeviceDataAvailable As Boolean
     Public MyGmIncaComm As GM_INCA_CommClass
 
     ' Cached compiled regexes — recompiled on every sequence rotation otherwise
@@ -71,7 +69,6 @@ Public Class INCA_InterfaceClass
     ' Written/read from both the UI thread and background loop, hence Volatile.
     Private _SequenceRotationInProgress As Boolean
     Private _Devices() As IGM_INCA_Comm.INCADeviceStatus
-    Private _DeviceAcquisitionRates(,) As String
     Private _MeasureElementNamesInDevice(,) As String
     Private _InitialMeasurementStatus As String
 
@@ -628,125 +625,54 @@ Public Class INCA_InterfaceClass
     End Function
 
     Public Async Function GetDeviceAcquisitionRatesAsync() As Task
-        ' This routine is only used during runtime configuration.
-        ' It gets device names and acquisition rates, behaving differently based on whether
-        ' the DeviceRasterSignalList.txt file exists.
+        ' Fills deviceinfo(x).rasters with each device's acquisition rates, read directly from INCA.
+        ' Called on demand by the signal configuration forms; results are kept for the session.
+        ' Devices that fail are retried on the next call.
 
-        ' Exit if data has already been retrieved.
         If DeviceDataRetrieved Then Return
 
         Try
-            HandleUserMessageLogging("GMRC", "GetDeviceAcquisitionRates: Acquiring Device, Raster, Signal Information...")
+            HandleUserMessageLogging("GMRC", "GetDeviceAcquisitionRates: Reading device acquisition rates from INCA...")
 
-            ' Initialize device-related arrays if this is the first run.
-            If _DeviceAcquisitionRates Is Nothing Then
-                ' ✅ FIXED: Direct async call - GetAvailableDevicesAsync already uses Task.Run internally
-                Await GetAvailableDevicesAsync(False)
-
-                _DeviceAcquisitionRates = New String(UBound(_Devices), -1) {}
-                If deviceinfo Is Nothing Then
-                    ReDim deviceinfo(UBound(_Devices))
-                    ReDim RasterInfoRetrieved(UBound(_Devices))
-                End If
+            Dim devices = Await GetAvailableDevicesAsync(False)
+            If devices Is Nothing OrElse devices.Length = 0 Then
+                HandleUserMessageLogging("GMRC", "GetDeviceAcquisitionRates: No INCA devices available.")
+                Return
             End If
 
-            Dim listFilePath = Path.Combine(My.Application.Info.DirectoryPath, "DeviceRasterSignalList.txt")
-
-            If File.Exists(listFilePath) Then
-                ' If the file exists, parse it to populate data structures.
-                Await LoadDeviceDataFromFileAsync(listFilePath)
-            Else
-                ' If the file does not exist, get data from INCA and build the file.
-                Await BuildDeviceDataFromIncaAsync(listFilePath)
+            If deviceinfo Is Nothing OrElse deviceinfo.Length <> devices.Length Then
+                ReDim deviceinfo(UBound(devices))
             End If
 
-            DeviceDataRetrieved = True
+            Dim allSucceeded As Boolean = True
+
+            For i As Integer = 0 To UBound(devices)
+                Dim deviceIndex As Integer = i
+                Dim deviceName As String = devices(i).myName
+                deviceinfo(deviceIndex).devicename = deviceName
+
+                If deviceinfo(deviceIndex).rasters IsNot Nothing Then Continue For
+
+                Try
+                    Dim rates As String() = Await Task.Run(Function() MyGmIncaComm.GetDeviceAcquisitionRates(deviceName))
+                    If rates IsNot Nothing AndAlso rates.Length > 0 Then
+                        deviceinfo(deviceIndex).rasters = rates.Select(Function(r) New INCA_Rasters With {
+                            .devicename = deviceName,
+                            .deviceindex = deviceIndex,
+                            .rastername = r}).ToArray()
+                    End If
+                    HandleUserMessageLogging("GMRC", $"GetDeviceAcquisitionRates: '{deviceName}' has {If(rates Is Nothing, 0, rates.Length)} acquisition rates")
+                Catch ex As Exception
+                    allSucceeded = False
+                    HandleUserMessageLogging("GMRC", $"GetDeviceAcquisitionRates: '{deviceName}' failed ({ex.GetType().Name}): {ex.Message}")
+                End Try
+            Next
+
+            DeviceDataRetrieved = allSucceeded
 
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "GetDeviceAcquisitonRates: " & ex.GetType().Name & ": " & ex.Message, DisplayMsgBox)
         End Try
-    End Function
-
-    ''' <summary>
-    ''' Populates device and raster data by parsing the DeviceRasterSignalList.txt file.
-    ''' </summary>
-    Private Async Function LoadDeviceDataFromFileAsync(ByVal filePath As String) As Task
-        Dim deviceIndex As Integer = -1
-        Dim rasterIndex As Integer = 0
-
-        Using reader As New StreamReader(filePath)
-            Dim line As String = Await reader.ReadLineAsync()
-            While line IsNot Nothing
-                If line.StartsWith("Device=") Then
-                    deviceIndex += 1
-                    rasterIndex = 0
-                    Dim deviceNameInFile = line.Substring(7)
-                    If deviceIndex > UBound(_Devices) OrElse deviceNameInFile <> _Devices(deviceIndex).myName Then
-                        HandleUserMessageLogging("GMRC", $"LoadDeviceDataFromFile: Device list mismatch at entry {deviceIndex} ('{deviceNameInFile}') - showing warning")
-                        MsgBox("WARNING: INCA Device List does not match devices in DeviceRasterSignalList.txt. This must be resolved.")
-                        GmResidentClient.Cursor = Cursors.Arrow
-                        Return
-                    End If
-                ElseIf line.StartsWith("Raster=") Then
-                    If rasterIndex > UBound(_DeviceAcquisitionRates, 2) Then
-                        ReDim Preserve _DeviceAcquisitionRates(UBound(_Devices), rasterIndex)
-                    End If
-                    Dim rasterName = line.Substring(7)
-                    ReDim Preserve deviceinfo(deviceIndex).rasters(rasterIndex)
-                    deviceinfo(deviceIndex).rasters(rasterIndex).rastername = rasterName
-                    _DeviceAcquisitionRates(deviceIndex, rasterIndex) = rasterName
-                    rasterIndex += 1
-                End If
-
-                line = Await reader.ReadLineAsync()
-            End While
-        End Using
-    End Function
-
-    ''' <summary>
-    ''' Populates device data from INCA and creates the DeviceRasterSignalList.txt file.
-    ''' </summary>
-    Private Async Function BuildDeviceDataFromIncaAsync(ByVal filePath As String) As Task
-        Dim tempFilePath = Path.Combine(My.Application.Info.DirectoryPath, "tmpDeviceRasterSignalList.txt")
-
-        ' First, retrieve all acquisition rates from INCA. This can be slow.
-        For i = 0 To UBound(_Devices)
-            Dim currentIndex = i
-            Dim rates = Await Task.Run(Function() MyGmIncaComm.GetDeviceAcquisitionRates(_Devices(currentIndex).myName))
-            If rates.Length > UBound(_DeviceAcquisitionRates, 2) + 1 Then
-                ReDim Preserve _DeviceAcquisitionRates(UBound(_Devices), rates.Length - 1)
-            End If
-            For j = 0 To UBound(rates)
-                _DeviceAcquisitionRates(i, j) = rates(j)
-            Next
-        Next
-
-        ' Now, build the content for the new file.
-        Using writer As New StreamWriter(tempFilePath)
-            For i = 0 To UBound(_Devices)
-                Await writer.WriteLineAsync("Device=" & _Devices(i).myName)
-
-                ' Write all associated rasters for the current device.
-                For j = 0 To UBound(_DeviceAcquisitionRates, 2)
-                    If Not String.IsNullOrEmpty(_DeviceAcquisitionRates(i, j)) Then
-                        Await writer.WriteLineAsync("Raster=" & _DeviceAcquisitionRates(i, j))
-                    Else
-                        Exit For
-                    End If
-                Next
-
-                ' Retrieve and write signals for the device.
-                ' This part is complex and involves another method call.
-                ' The original logic is preserved but wrapped in Task.Run for asynchrony.
-                Dim currentIndex = i
-                ' PerformDeviceSignalRetrieval is Async Sub, so just call it directly
-                PerformDeviceSignalRetrieval(_Devices(currentIndex).myName)
-            Next
-        End Using
-
-        ' Replace the old file with the newly created one.
-        If File.Exists(filePath) Then File.Delete(filePath)
-        File.Move(tempFilePath, filePath)
     End Function
 
     Private Function InlineAssignHelper(Of T)(ByRef target As T, value As T) As T
@@ -834,11 +760,6 @@ Public Class INCA_InterfaceClass
             If checkForStatus OrElse _Devices Is Nothing Then
                 ' Run the synchronous INCA call on a background thread to avoid blocking the UI.
                 _Devices = Await Task.Run(Function() MyGmIncaComm.GetAvailableDevices())
-
-                ' If this is the first time fetching devices, handle the device list file.
-                If _Devices IsNot Nothing Then
-                    Await HandleDeviceListFileAsync(_Devices)
-                End If
             End If
 
             Return _Devices
@@ -847,32 +768,6 @@ Public Class INCA_InterfaceClass
             HandleUserMessageLogging("GMRC", "GetAvailableDevicesAsync Exception: " & ex.GetType().Name & ": " & ex.Message)
             Return Nothing
         End Try
-    End Function
-
-    ''' <summary>
-    ''' Checks for the existence of the device list file. If it doesn't exist, creates and populates it.
-    ''' </summary>
-    ''' <param name="devices">The list of devices fetched from INCA.</param>
-    Private Async Function HandleDeviceListFileAsync(ByVal devices As IGM_INCA_Comm.INCADeviceStatus()) As Task
-        Dim listFilePath = Path.Combine(My.Application.Info.DirectoryPath, "DeviceRasterSignalList.txt")
-
-        If File.Exists(listFilePath) Then
-            DeviceDataAvailable = True
-            ' The original function read the file here but didn't use the data.
-            ' That logic appears to be fully handled in GetDeviceAcquisitionRates, so we just set the flag.
-        Else
-            ' File does not exist, so create it and write the device names.
-            DeviceDataAvailable = False
-            Try
-                Using writer As New StreamWriter(listFilePath)
-                    For Each device In devices
-                        Await writer.WriteLineAsync("Device=" & device.myName)
-                    Next
-                End Using
-            Catch ex As Exception
-                HandleUserMessageLogging("GMRC", "HandleDeviceListFileAsync: Failed to create device list file. " & ex.GetType().Name & ": " & ex.Message)
-            End Try
-        End If
     End Function
 
     Public Function GetDataForSignalList(ByVal signallist() As String) As IGM_INCA_Comm.INCAMeasureValue()
@@ -928,171 +823,6 @@ Public Class INCA_InterfaceClass
         Return myMeasureElementNamesInDevice
 
     End Function
-
-    Private Async Sub PerformDeviceSignalRetrieval(ByVal DeviceName As String, Optional ByVal tmpPath As String = Nothing, Optional ByVal RasterName As String = "") 'As String()
-
-        'Called from GetDeviceAcquisitionRates.  Gets device, raster, and signal information from INCA for the device and (optional) raster
-        'name passed in.
-        'This routine only does anything if DeviceDataAvailable is false indicating that we do not yet have the DeviceRasterSignalList.txt file
-        'available.
-        'Refactored to avoid assignments to expression results and to minimize ReDim/Preserve usage.
-
-        Dim measureelementnames() As String = Nothing
-        Dim DeviceIndex As Integer = -1
-        Dim normalizedDeviceName As String = If(DeviceName, String.Empty).Trim()
-
-        Try
-            ' validate devices
-            If _Devices Is Nothing OrElse _Devices.Length = 0 Then
-                MsgBox("PerformDeviceSignalRetrieval: Invalid Device List")
-                Exit Sub
-            End If
-
-            ' locate device index
-            For i As Integer = 0 To UBound(_Devices)
-                If String.Equals(_Devices(i).myName, DeviceName, StringComparison.Ordinal) Then
-                    DeviceIndex = i
-                    Exit For
-                End If
-            Next
-
-            If DeviceIndex < 0 Then
-                MsgBox("PerformDeviceSignalRetrieval: Invalid Device List")
-                Exit Sub
-            End If
-
-            If Not DeviceDataAvailable Then
-                ' Ensure deviceinfo structure for this device exists
-                If deviceinfo Is Nothing Then
-                    ReDim deviceinfo(UBound(_Devices))
-                End If
-                If deviceinfo(DeviceIndex).rasters Is Nothing Then
-                    ReDim deviceinfo(DeviceIndex).rasters(0)
-                End If
-
-                ' Detect processor-like devices (Va*/Ve* variables)
-                If InStr(normalizedDeviceName, "ETK") > 0 Or InStr(normalizedDeviceName, "ACP") > 0 Or InStr(normalizedDeviceName, "XCP:1") > 0 Then
-
-                    ' Browse Va* elements
-                    measureelementnames = Await BrowseMeasureElementsInDeviceIdxAsync("Va*", DeviceIndex)
-                    Dim varList As New List(Of INCA_Variables)
-                    If deviceinfo(DeviceIndex).variableinfo IsNot Nothing Then
-                        varList.AddRange(deviceinfo(DeviceIndex).variableinfo)
-                    End If
-                    If measureelementnames IsNot Nothing Then
-                        For x = 0 To UBound(measureelementnames)
-                            Dim entry As INCA_Variables = Nothing
-                            entry.variablename = measureelementnames(x)
-                            If InStr(entry.variablename, "[x]") > 0 Then entry.variablename &= "_[0]"
-                            varList.Add(entry)
-                        Next
-                    End If
-
-                    ' Browse Ve* elements and append
-                    measureelementnames = Await BrowseMeasureElementsInDeviceIdxAsync("Ve*", DeviceIndex)
-                    If measureelementnames IsNot Nothing Then
-                        For x = 0 To UBound(measureelementnames)
-                            Dim entry As INCA_Variables = Nothing
-                            entry.variablename = measureelementnames(x)
-                            If InStr(entry.variablename, "[x]") > 0 Then entry.variablename &= "_[0]"
-                            varList.Add(entry)
-                        Next
-                    End If
-
-                    deviceinfo(DeviceIndex).variableinfo = If(varList.Count > 0, varList.ToArray(), Nothing)
-
-                    ' Optionally write processor variables to tmpPath
-                    If Not String.IsNullOrEmpty(tmpPath) Then
-                        Using sw As New System.IO.StreamWriter(tmpPath, True, System.Text.Encoding.UTF8)
-                            Dim vars = deviceinfo(DeviceIndex).variableinfo
-                            If vars IsNot Nothing Then
-                                For y = 0 To UBound(vars)
-                                    sw.WriteLine(vars(y).variablename)
-                                Next
-                            End If
-                        End Using
-                    End If
-
-                Else
-                    ' Non-processor device: build variable and raster lists
-                    If Not RasterInfoRetrieved(DeviceIndex) Then
-                        measureelementnames = Await GetAllMeasureElementNamesInDeviceIdxAsync(DeviceIndex)
-                        If measureelementnames Is Nothing Then measureelementnames = New String() {}
-
-                        Dim varList As New List(Of INCA_Variables)
-                        If deviceinfo(DeviceIndex).variableinfo IsNot Nothing Then
-                            varList.AddRange(deviceinfo(DeviceIndex).variableinfo)
-                        End If
-
-                        Dim rasterList As New List(Of INCA_Rasters)
-                        If deviceinfo(DeviceIndex).rasters IsNot Nothing Then
-                            rasterList.AddRange(deviceinfo(DeviceIndex).rasters)
-                        End If
-
-                        For x = 0 To UBound(measureelementnames)
-                            Dim v As INCA_Variables = Nothing
-                            v.variablename = measureelementnames(x)
-                            v.defaultrastername = GetDefaultRasterForMeasureElementInDevice(DeviceName, v.variablename)
-                            varList.Add(v)
-
-                            ' find raster in current rasterList
-                            Dim foundIndex = rasterList.FindIndex(Function(r) String.Equals(r.rastername, v.defaultrastername, StringComparison.Ordinal))
-                            If foundIndex >= 0 Then
-                                Dim currentVars As New List(Of String)
-                                ' copy the struct out, modify it, then store it back
-                                Dim tempRaster As INCA_Rasters = rasterList(foundIndex)
-                                If tempRaster.variables IsNot Nothing Then currentVars.AddRange(tempRaster.variables)
-                                ' maintain previous "empty slot" semantics
-                                If currentVars.Count = 0 OrElse Not String.IsNullOrEmpty(currentVars(0)) Then
-                                    currentVars.Add(v.variablename)
-                                Else
-                                    currentVars(0) = v.variablename
-                                End If
-                                tempRaster.variables = currentVars.ToArray()
-                                rasterList(foundIndex) = tempRaster
-                            Else
-                                Dim newRaster As INCA_Rasters = Nothing
-                                newRaster.rastername = v.defaultrastername
-                                newRaster.variables = New String() {v.variablename}
-                                rasterList.Add(newRaster)
-                            End If
-                        Next
-
-                        If varList.Count > 0 Then deviceinfo(DeviceIndex).variableinfo = varList.ToArray()
-                        If rasterList.Count > 0 Then deviceinfo(DeviceIndex).rasters = rasterList.ToArray()
-
-                        RasterInfoRetrieved(DeviceIndex) = True
-                    End If
-
-                    ' If RasterName specified and tmpPath provided, write that raster's vars to tmpPath
-                    If Not String.IsNullOrEmpty(tmpPath) AndAlso Not String.IsNullOrEmpty(RasterName) Then
-                        Using sw As New System.IO.StreamWriter(tmpPath, True, System.Text.Encoding.UTF8)
-                            Dim rasters = deviceinfo(DeviceIndex).rasters
-                            If rasters IsNot Nothing Then
-                                For y = 0 To UBound(rasters)
-                                    If String.Equals(rasters(y).rastername, RasterName, StringComparison.Ordinal) Then
-                                        Dim vars = rasters(y).variables
-                                        If vars IsNot Nothing Then
-                                            For x = 0 To UBound(vars)
-                                                sw.WriteLine(vars(x))
-                                            Next
-                                        End If
-                                        Exit For
-                                    End If
-                                Next
-                            End If
-                        End Using
-                    End If
-                End If
-            End If
-
-            DeviceDataRetrieved = True
-            Exit Sub
-
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "PerformDeviceSignalRetrieval: " & ex.GetType().Name & ": " & ex.Message, DisplayMsgBox)
-        End Try
-    End Sub
 
     Public Async Function BrowseMeasureElementsInDeviceIdxAsync(ByVal searchstr As String, ByVal index As Integer) As Task(Of String())
 
