@@ -143,6 +143,7 @@ Partial Public Class GmResidentClient
 
             If PlaybackMode = False Then
 
+                CheckForTargetServerMessage()
                 Await GetDeviceStatus()
                 EvaluateLostDevice()
 
