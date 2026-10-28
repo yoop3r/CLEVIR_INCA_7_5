@@ -204,9 +204,8 @@ Partial Public Class GmResidentClient
             For i = 0 To myDGs.Count - 1
                 If myDGs(i) Is Nothing Then Continue For
 
-                ' Only iterate data rows (x >= 1) because UpdateGridColor uses Rows(x-1)
-                Dim lastRow As Integer = Math.Max(1, myDGs(i).RowCount - 1)
-                For x = 1 To lastRow
+                ' Data rows are x = 1..RowCount (row 0 is the header; UpdateGridColor uses Rows(x-1)).
+                For x = 1 To myDGs(i).RowCount
                     For y = 0 To myDGs(i).ColumnCount - 1
                         Dim wasFrozen As Boolean = myDGs(i).DataFrozen(x, y)
                         myDGs(i).DataFrozenCounter(x, y) = 0
@@ -262,9 +261,8 @@ Partial Public Class GmResidentClient
                     If myDGs(i) Is Nothing Then Continue For
                     If myDGs(i).ParentFormIndex <> z Then Continue For
 
-                    ' Only iterate data rows (x >= 1) because UpdateGridColor uses Rows(x-1)
-                    Dim lastRow As Integer = Math.Max(1, myDGs(i).RowCount - 1)
-                    For x = 1 To lastRow
+                    ' Data rows are x = 1..RowCount (row 0 is the header; UpdateGridColor uses Rows(x-1)).
+                    For x = 1 To myDGs(i).RowCount
                         For y = 0 To myDGs(i).ColumnCount - 1
                             myDGs(i).DataFrozenCounter(x, y) = 0
                             myDGs(i).DataFrozen(x, y) = False
@@ -1169,6 +1167,8 @@ Partial Public Class GmResidentClient
         Dim i As Integer
 
         myDGs(z).DataFrozenCounter(x, y) = 0
+
+        If lRecordingState AndAlso myDGs(z).Name = "INCA Video Status Items" Then OnVideoUpdating(myDGs(z).DeviceName(x, y))
 
         If myDGs(z).DataFrozen(x, y) = True Then
             myDGs(z).DataFrozen(x, y) = False

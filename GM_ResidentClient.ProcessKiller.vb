@@ -284,7 +284,7 @@ Partial Public Class GmResidentClient
 
         Dim isLost As Boolean = LostDevice
         If BackgroundLoopCounterNotUpdating AndAlso Not isLost Then speak("In Valid Data Alert")
-        If VideoCameraNotUpdating AndAlso Not isLost Then speak("In Valid Video Alert")
+        If IsVideoAlertPending() AndAlso Not isLost Then speak("In Valid Video Alert")
         If isLost Then speak(LostDeviceVoice)
 
     End Sub

@@ -127,11 +127,12 @@ Partial Public Class GmResidentClient
                                  StatusNotifier.ToastKind.Success, "Communication Restored", durationMs:=10000, ensureMainOnTop:=False)
             restoredText = $"Data recorded between {since:HH:mm:ss} and {now:HH:mm:ss} may be incomplete. Re-initialize only if problems persist."
         Else
-            SpeakDriverAlert("Camera Communication Restored. Re-Initialize to restore video.")
-            StatusNotifier.Toast($"Communication with {names} restored, but video since {since:HH:mm:ss} is lost for this recording. Re-Initialize to restore video recording.",
-                                 StatusNotifier.ToastKind.Warning, "Communication Restored", durationMs:=10000, ensureMainOnTop:=False)
+            SpeakDriverAlert("Camera Communication Restored. Stop and restart recording to restore video.")
+            StatusNotifier.Toast($"Communication with {names} restored, but video since {since:HH:mm:ss} is lost for this recording. " &
+                                 "To restore it: Stop Record, then Start Record (Re-Initialize if video does not return).",
+                                 StatusNotifier.ToastKind.Warning, "Communication Restored", durationMs:=12000, ensureMainOnTop:=False)
             restoredText = $"Video from {names} since {since:HH:mm:ss} is lost for the rest of this recording and will not re-synchronize with the data. " &
-                           "Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording."
+                           "To restore it: Stop Record, then Start Record. If video does not return, choose Re-Initialize NOW (INCA will be restarted, approx 3 minutes)."
         End If
 
         ' Leave the alert up, marked resolved, so a driver who missed the voice still sees what happened.
@@ -158,8 +159,7 @@ Partial Public Class GmResidentClient
 
             ' Video the driver chose to continue without, or held back behind an open Target Server message, must not
             ' take the video turn and starve the data alert.
-            Dim videoPending As Boolean = VideoCameraNotUpdating AndAlso Not IsTargetServerMessageShowing() AndAlso
-                                          Not _videoLoss.AllAccepted(VideoLossDeviceNames())
+            Dim videoPending As Boolean = IsVideoAlertPending()
 
             If LostDevice Then
                 ShowDeviceAlert(DeviceAlertKind.LostDevice)
@@ -281,13 +281,30 @@ Partial Public Class GmResidentClient
 
     ''' <summary>
     ''' The driver chose to keep collecting vehicle data without these cameras' video. Their GO/NOGO stays red; only
-    ''' their video alerts stop, for the rest of the drive, until Re-Initialize.
+    ''' their video alerts stop, until their video is seen updating in a later recording, or Re-Initialize.
     ''' </summary>
     Private Sub ContinueWithoutVideo(devices As String)
         _videoLoss.Accept(devices)
-        HandleUserMessageLogging("GMRC", $"Continuing without {devices} video - video alerts for {devices} off until Re-Initialize; all other alerts stay on")
-        StatusNotifier.Toast($"Continuing without {devices} video. Its Video GO/NOGO stays red; all other alerts stay on. Re-Initialize to restore it.",
-                             StatusNotifier.ToastKind.Warning, "Video", durationMs:=10000, ensureMainOnTop:=False)
+        HandleUserMessageLogging("GMRC", $"Continuing without {devices} video - video alerts for {devices} off until its video returns in a new recording or Re-Initialize; all other alerts stay on")
+        StatusNotifier.Toast(VideoAlertText.ContinuingWithoutToast(devices),
+                             StatusNotifier.ToastKind.Warning, "Video", durationMs:=12000, ensureMainOnTop:=False)
+    End Sub
+
+    ''' <summary>
+    ''' Invalid-video alert (and its voice) is due: a video GO/NOGO went red, the driver has not chosen to continue
+    ''' without those cameras, and no Target Server message is showing (it is answered first). Thread-safe.
+    ''' </summary>
+    Private Function IsVideoAlertPending() As Boolean
+        Return VideoCameraNotUpdating AndAlso Not IsTargetServerMessageShowing() AndAlso
+               Not _videoLoss.AllAccepted(VideoLossDeviceNames())
+    End Function
+
+    ''' <summary>Called from MarkCellDataResumed when a camera's video timecode updates while recording.</summary>
+    Private Sub OnVideoUpdating(deviceName As String)
+        If Not _videoLoss.Restored(deviceName) Then Return
+        HandleUserMessageLogging("GMRC", $"{deviceName} video is back in this recording - video alerts for {deviceName} on again")
+        StatusNotifier.Toast($"{deviceName} video is back. Video alerts for {deviceName} are on again.",
+                             StatusNotifier.ToastKind.Success, "Video", durationMs:=8000, ensureMainOnTop:=False)
     End Sub
 
     Private Sub DeviceAlert_FormClosed(sender As Object, e As FormClosedEventArgs)

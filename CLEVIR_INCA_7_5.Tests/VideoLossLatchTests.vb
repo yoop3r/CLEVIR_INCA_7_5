@@ -89,4 +89,28 @@ Public Class VideoLossLatchTests
         Assert.AreEqual("", latch.AcceptedList)
     End Sub
 
+    <TestMethod>
+    Public Sub Restored_WhileStillLatched_KeepsContinueWithout()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+        latch.Accept("REAR")
+
+        ' Same recording: a timecode that ticks again is not a recovery (bench: ticked ~24 s while unplugged).
+        Assert.IsFalse(latch.Restored("REAR"))
+        Assert.IsTrue(latch.AllAccepted("REAR"))
+    End Sub
+
+    <TestMethod>
+    Public Sub Restored_InNewRecording_ReenablesAlertsOnce()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+        latch.Accept("REAR,FRONT")
+        latch.OnTrackingReset(sequenceRotation:=False)
+
+        Assert.IsTrue(latch.Restored("rear"))
+        Assert.IsFalse(latch.Restored("REAR"))
+        Assert.AreEqual("FRONT", latch.AcceptedList)
+        Assert.IsFalse(latch.Restored(""))
+    End Sub
+
 End Class

@@ -2,11 +2,11 @@ Option Strict On
 Option Explicit On
 
 ''' <summary>
-''' Wording for the invalid-video alert. Lost video cannot be recovered within a recording: ETAS localizes the camera
-''' frames before writing them to the session folder, and frames after a loss would not line up with the MF4 data.
-''' So even if the camera comes back the driver is told to Re-Initialize. When the INCA Target Server recently
-''' reported a camera problem (e.g. "REAR: VideoCamera Add-On - Camera Connection"), the driver is first told to
-''' reconnect the camera, since Re-Initialize cannot restore video from a camera that is still unplugged.
+''' Wording for the invalid-video alert and video toasts. Lost video cannot be recovered within a recording: ETAS
+''' localizes the camera frames before writing them to the session folder, and frames after a loss would not line up
+''' with the MF4 data. A new recording restores it: Stop Record, reconnect the camera, Start Record. Re-Initialize is
+''' the fallback when the video does not return. When the INCA Target Server recently reported a camera problem (e.g.
+''' "REAR: VideoCamera Add-On - Camera Connection"), the alert quotes it.
 ''' </summary>
 Friend Module VideoAlertText
 
@@ -15,12 +15,43 @@ Friend Module VideoAlertText
     Private Const VideoLostText As String =
         "Video from this camera is lost for the rest of this recording and will not re-synchronize with the data, even if the camera comes back. "
 
-    Private Const ReinitializeText As String =
-        "Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording."
+    Private Const ReinitializeFallbackText As String =
+        "If video does not return, choose Re-Initialize NOW (INCA will be restarted, approx 3 minutes)."
 
     ''' <summary>Fourth button of the invalid-video alert, e.g. "Continue Without REAR Video".</summary>
     Friend Function ContinueWithoutButton(deviceList As String) As String
         Return $"Continue Without {deviceList.Replace(",", " + ")} Video"
+    End Function
+
+    ''' <summary>"REAR,FRONT" -> "REAR and FRONT" for prose.</summary>
+    Friend Function SpokenList(deviceList As String) As String
+        Dim names As String() = deviceList.Split(","c).Select(Function(d) d.Trim()).Where(Function(d) d <> "").ToArray()
+        If names.Length <= 1 Then Return String.Join("", names)
+        Return String.Join(", ", names.Take(names.Length - 1)) & " and " & names.Last()
+    End Function
+
+    ''' <summary>The quick fix first (a new recording), Re-Initialize as the fallback.</summary>
+    Friend Function RestoreSteps(deviceList As String) As String
+        If String.IsNullOrWhiteSpace(deviceList) Then
+            Return "To restore video: Stop Record, reconnect the camera, then Start Record. " & ReinitializeFallbackText
+        End If
+        Dim names As String = SpokenList(deviceList)
+        Dim cameras As String = If(deviceList.Contains(","c), "cameras", "camera")
+        Return $"To restore {names} video: Stop Record, reconnect the {names} {cameras}, then Start Record. " & ReinitializeFallbackText
+    End Function
+
+    Friend Function ContinuingWithoutToast(deviceList As String) As String
+        Dim names As String = SpokenList(deviceList)
+        Return $"Continuing without {names} video. Video GO/NOGO stays red; all other alerts stay on. " &
+               $"To restore it later: Stop Record, reconnect the {names} {If(deviceList.Contains(","c), "cameras", "camera")}, then Start Record."
+    End Function
+
+    Friend Function TargetServerClosedToast(targetServerTitle As String) As String
+        Dim device As String = DeviceFromTargetServerTitle(targetServerTitle)
+        Dim what As String = If(device = "", "Video from that camera", device & " video")
+        Return $"Target Server message closed. {what} is lost for this recording. " &
+               "To restore it: Stop Record, reconnect the camera, then Start Record (Re-Initialize if video does not return). " &
+               "Or continue without it from the video alert."
     End Function
 
     ''' <summary>"REAR: VideoCamera Add-On - Camera Connection" -> "REAR"; "" when the title has no device prefix.</summary>
@@ -49,19 +80,16 @@ Friend Module VideoAlertText
 
         Dim body As String
         If Not recentTargetServer Then
-            body = $"INVALID VIDEO ALERT! ({device}) " & VideoLostText & ReinitializeText
+            body = $"INVALID VIDEO ALERT! ({device}) " & VideoLostText
         Else
             Dim reported As String = If(String.IsNullOrWhiteSpace(targetServerText), targetServerTitle, targetServerText).Trim()
-            Dim action As String = If(IsCameraMessage(targetServerTitle, targetServerText),
-                                      "Reconnect the camera, then ",
-                                      "")
-            body = $"INVALID VIDEO ALERT! ({device}) INCA Target Server reported: ""{reported}"" " &
-                   VideoLostText & action & ReinitializeText
+            body = $"INVALID VIDEO ALERT! ({device}) INCA Target Server reported: ""{reported}"" " & VideoLostText
         End If
+        body &= RestoreSteps(If(device = UnidentifiedDevice, "", device))
 
         ' The continue-without button is only offered for cameras identified by their frozen video cells.
         If String.IsNullOrWhiteSpace(frozenDeviceNames) Then Return body
-        Return body & $" If the camera cannot be restored, choose ""{ContinueWithoutButton(frozenDeviceNames)}"" to keep recording vehicle data without it."
+        Return body & $" Or, if the camera cannot be restored, choose ""{ContinueWithoutButton(frozenDeviceNames)}"" to keep recording vehicle data without it."
     End Function
 
 End Module

@@ -35,8 +35,8 @@ Partial Public Class GmResidentClient
                     DismissTargetServerAlert()
                     HandleUserMessageLogging("GMRC", "INCA Target Server message closed")
                     If MyIncaInterface.Recording AndAlso VideoAlertText.IsCameraMessage(_targetServerLastTitle, _targetServerLastText) Then
-                        StatusNotifier.Toast("Target Server message closed. Video from that camera is lost for this recording - reconnect the camera and Re-Initialize.",
-                                             StatusNotifier.ToastKind.Warning, TargetServerAlertTitle, durationMs:=10000, ensureMainOnTop:=False)
+                        StatusNotifier.Toast(VideoAlertText.TargetServerClosedToast(_targetServerLastTitle),
+                                             StatusNotifier.ToastKind.Warning, TargetServerAlertTitle, durationMs:=12000, ensureMainOnTop:=False)
                     Else
                         StatusNotifier.Toast("Target Server message closed. INCA can continue.",
                                              StatusNotifier.ToastKind.Success, TargetServerAlertTitle, durationMs:=8000, ensureMainOnTop:=False)
