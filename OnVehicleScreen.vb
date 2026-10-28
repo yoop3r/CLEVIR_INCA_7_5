@@ -662,8 +662,8 @@ Public Class OnVehicleScreen
         Button2.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' CONFIG button
         Button4.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' LOGIN button
 
-        ' Status labels - stretch across the top
-        Label5.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
+        ' Status label stays fixed: Button9, the page switch, Label3 and Label1 share its row and do not move
+        Label5.Anchor = AnchorStyles.Top Or AnchorStyles.Left
 
         ' Control labels and combo - anchor appropriately
         Label7.Anchor = AnchorStyles.Top Or AnchorStyles.Left
