@@ -43,6 +43,11 @@ Partial Public Class GmResidentClient
     Private _deviceAlertResponse As Integer
     Private _deviceAlertResponseText As String = ""
 
+    ' Cameras named on the open invalid-video alert, and on the alert the driver last answered.
+    Private _deviceAlertVideoDevices As String = ""
+    Private _deviceAlertResponseKind As DeviceAlertKind
+    Private _deviceAlertResponseVideoDevices As String = ""
+
     Private Property LostDevice As Boolean
         Get
             Return Volatile.Read(_lostDevice)
@@ -151,16 +156,21 @@ Partial Public Class GmResidentClient
         Try
             If IgnoreLostDeviceUntilNextRecordingSession OrElse IgnoreLostDeviceForThisDrive Then Return
 
+            ' Video the driver chose to continue without, or held back behind an open Target Server message, must not
+            ' take the video turn and starve the data alert.
+            Dim videoPending As Boolean = VideoCameraNotUpdating AndAlso Not IsTargetServerMessageShowing() AndAlso
+                                          Not _videoLoss.AllAccepted(VideoLossDeviceNames())
+
             If LostDevice Then
                 ShowDeviceAlert(DeviceAlertKind.LostDevice)
 
-            ElseIf BackgroundLoopCounterNotUpdating AndAlso (Not VideoCameraNotUpdating OrElse videoMessageLastDisplayed) Then
+            ElseIf BackgroundLoopCounterNotUpdating AndAlso (Not videoPending OrElse videoMessageLastDisplayed) Then
                 If ShowDeviceAlert(DeviceAlertKind.InvalidData) Then
                     videoMessageLastDisplayed = False
                     dataMessageLastDisplayed = True
                 End If
 
-            ElseIf VideoCameraNotUpdating AndAlso (Not BackgroundLoopCounterNotUpdating OrElse dataMessageLastDisplayed) Then
+            ElseIf videoPending AndAlso (Not BackgroundLoopCounterNotUpdating OrElse dataMessageLastDisplayed) Then
                 If ShowDeviceAlert(DeviceAlertKind.InvalidVideo) Then
                     videoMessageLastDisplayed = True
                     dataMessageLastDisplayed = False
@@ -190,11 +200,18 @@ Partial Public Class GmResidentClient
                 ' The Target Server alert (toast, voice, window raised) is answered first - INCA is blocked until then.
                 ' Re-checked every 20 s, so this alert follows once the message is closed.
                 If IsTargetServerMessageShowing() Then Return False
+                Dim lostVideo As String = VideoLossDeviceNames()
+                If _videoLoss.AllAccepted(lostVideo) Then Return False
+                Dim alertVideo As String = _videoLoss.Unaccepted(lostVideo)
                 Dim tsTitle As String = Nothing
                 Dim tsText As String = Nothing
                 TryGetRecentTargetServerMessage(tsTitle, tsText)
-                message = VideoAlertText.InvalidVideoMessage(VideoLossDeviceNames(), tsTitle, tsText)
-                buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", "Ignore All Alerts for Recording Session"}
+                message = VideoAlertText.InvalidVideoMessage(alertVideo, tsTitle, tsText)
+                ' A dead camera is worth less than the vehicle data: let the driver drop just that camera's video
+                ' alerts and keep processor/data/other-camera alerts. Needs a named camera.
+                buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive",
+                           If(alertVideo = "", "Ignore All Alerts for Recording Session", VideoAlertText.ContinueWithoutButton(alertVideo))}
+                _deviceAlertVideoDevices = alertVideo
             Case Else
                 message = $"{LostDeviceAlertTitle()}! ({SaveLostDeviceName}) No communication since {_lostDeviceMonitor.EpisodeStartedAt:HH:mm:ss}. " &
                           "CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure data and video recording capability. This will take approx 3 minutes."
@@ -233,6 +250,11 @@ Partial Public Class GmResidentClient
     Private Sub RecordVideoLoss(deviceName As String)
         If _videoLoss.Record(deviceName) Then
             HandleUserMessageLogging("GMRC", $"Video lost: {deviceName} - video GO/NOGO held RED until Re-Initialize or a new recording")
+            ' The video GO/NOGO may already be red (another camera), which would not re-arm the alert by itself.
+            If Not _videoLoss.AllAccepted(deviceName) AndAlso
+               Not IgnoreLostDeviceForThisDrive AndAlso Not IgnoreLostDeviceUntilNextRecordingSession Then
+                VideoCameraNotUpdating = True
+            End If
         End If
     End Sub
 
@@ -257,6 +279,17 @@ Partial Public Class GmResidentClient
         Return If(_videoLoss.IsLatched, _videoLoss.DeviceList, SaveVideoFrozenDeviceName)
     End Function
 
+    ''' <summary>
+    ''' The driver chose to keep collecting vehicle data without these cameras' video. Their GO/NOGO stays red; only
+    ''' their video alerts stop, for the rest of the drive, until Re-Initialize.
+    ''' </summary>
+    Private Sub ContinueWithoutVideo(devices As String)
+        _videoLoss.Accept(devices)
+        HandleUserMessageLogging("GMRC", $"Continuing without {devices} video - video alerts for {devices} off until Re-Initialize; all other alerts stay on")
+        StatusNotifier.Toast($"Continuing without {devices} video. Its Video GO/NOGO stays red; all other alerts stay on. Re-Initialize to restore it.",
+                             StatusNotifier.ToastKind.Warning, "Video", durationMs:=10000, ensureMainOnTop:=False)
+    End Sub
+
     Private Sub DeviceAlert_FormClosed(sender As Object, e As FormClosedEventArgs)
         Dim alert As Cusmsgbox = TryCast(sender, Cusmsgbox)
         If alert Is Nothing Then Return
@@ -264,6 +297,8 @@ Partial Public Class GmResidentClient
         If alert IsNot _deviceAlert Then Return ' closed by CloseDeviceAlert - no answer to act on
 
         _deviceAlert = Nothing
+        _deviceAlertResponseKind = _deviceAlertKind
+        _deviceAlertResponseVideoDevices = _deviceAlertVideoDevices
         _deviceAlertKind = DeviceAlertKind.None
         Dim choice As Integer = alert.SelectedOption
         If choice = 0 Then choice = 1 ' closed without a button (e.g. Alt+F4) = CANCEL / OK
@@ -299,8 +334,12 @@ Partial Public Class GmResidentClient
                 Case 3 ' Ignore All Alerts for This Drive
                     IgnoreLostDeviceForThisDrive = True
                     OnVehicleScreen.TopMost = False
-                Case 4 ' Ignore All Alerts for Recording Session
-                    IgnoreLostDeviceUntilNextRecordingSession = True
+                Case 4
+                    If _deviceAlertResponseKind = DeviceAlertKind.InvalidVideo AndAlso _deviceAlertResponseVideoDevices <> "" Then
+                        ContinueWithoutVideo(_deviceAlertResponseVideoDevices)
+                    Else ' Ignore All Alerts for Recording Session
+                        IgnoreLostDeviceUntilNextRecordingSession = True
+                    End If
                     OnVehicleScreen.TopMost = False
                 Case Else ' CANCEL / OK
                     OnVehicleScreen.TopMost = False

@@ -18,6 +18,11 @@ Friend Module VideoAlertText
     Private Const ReinitializeText As String =
         "Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording."
 
+    ''' <summary>Fourth button of the invalid-video alert, e.g. "Continue Without REAR Video".</summary>
+    Friend Function ContinueWithoutButton(deviceList As String) As String
+        Return $"Continue Without {deviceList.Replace(",", " + ")} Video"
+    End Function
+
     ''' <summary>"REAR: VideoCamera Add-On - Camera Connection" -> "REAR"; "" when the title has no device prefix.</summary>
     Friend Function DeviceFromTargetServerTitle(title As String) As String
         If String.IsNullOrWhiteSpace(title) Then Return ""
@@ -42,16 +47,21 @@ Friend Module VideoAlertText
         If String.IsNullOrWhiteSpace(device) AndAlso recentTargetServer Then device = DeviceFromTargetServerTitle(targetServerTitle)
         If String.IsNullOrWhiteSpace(device) Then device = UnidentifiedDevice
 
+        Dim body As String
         If Not recentTargetServer Then
-            Return $"INVALID VIDEO ALERT! ({device}) " & VideoLostText & ReinitializeText
+            body = $"INVALID VIDEO ALERT! ({device}) " & VideoLostText & ReinitializeText
+        Else
+            Dim reported As String = If(String.IsNullOrWhiteSpace(targetServerText), targetServerTitle, targetServerText).Trim()
+            Dim action As String = If(IsCameraMessage(targetServerTitle, targetServerText),
+                                      "Reconnect the camera, then ",
+                                      "")
+            body = $"INVALID VIDEO ALERT! ({device}) INCA Target Server reported: ""{reported}"" " &
+                   VideoLostText & action & ReinitializeText
         End If
 
-        Dim reported As String = If(String.IsNullOrWhiteSpace(targetServerText), targetServerTitle, targetServerText).Trim()
-        Dim action As String = If(IsCameraMessage(targetServerTitle, targetServerText),
-                                  "Reconnect the camera, then ",
-                                  "")
-        Return $"INVALID VIDEO ALERT! ({device}) INCA Target Server reported: ""{reported}"" " &
-               VideoLostText & action & ReinitializeText
+        ' The continue-without button is only offered for cameras identified by their frozen video cells.
+        If String.IsNullOrWhiteSpace(frozenDeviceNames) Then Return body
+        Return body & $" If the camera cannot be restored, choose ""{ContinueWithoutButton(frozenDeviceNames)}"" to keep recording vehicle data without it."
     End Function
 
 End Module

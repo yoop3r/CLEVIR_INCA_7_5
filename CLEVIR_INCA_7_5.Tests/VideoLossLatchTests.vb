@@ -52,4 +52,41 @@ Public Class VideoLossLatchTests
         Assert.IsFalse(latch.IsLatched)
     End Sub
 
+    <TestMethod>
+    Public Sub Accept_SilencesOnlyThatCamera()
+        Dim latch As New VideoLossLatch()
+        latch.Accept("REAR")
+
+        Assert.AreEqual("FRONT", latch.Unaccepted("REAR,FRONT"))
+        Assert.AreEqual("", latch.Unaccepted("rear"))
+        Assert.IsTrue(latch.AllAccepted("Rear"))
+        Assert.IsFalse(latch.AllAccepted("REAR,FRONT"))
+    End Sub
+
+    <TestMethod>
+    Public Sub UnidentifiedCamera_IsNeverAccepted()
+        Dim latch As New VideoLossLatch()
+        latch.Accept("REAR")
+
+        Assert.IsFalse(latch.AllAccepted(""))
+        Assert.AreEqual("", latch.Unaccepted(""))
+        latch.Accept("")
+        Assert.AreEqual("REAR", latch.AcceptedList)
+    End Sub
+
+    <TestMethod>
+    Public Sub Accepted_SurvivesNewRecording_ClearedByReinitialize()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+        latch.Accept("REAR")
+
+        latch.OnTrackingReset(sequenceRotation:=False)
+        Assert.IsFalse(latch.IsLatched)
+        Assert.IsTrue(latch.AllAccepted("REAR"))
+
+        Assert.IsTrue(latch.Clear())
+        Assert.IsFalse(latch.AllAccepted("REAR"))
+        Assert.AreEqual("", latch.AcceptedList)
+    End Sub
+
 End Class

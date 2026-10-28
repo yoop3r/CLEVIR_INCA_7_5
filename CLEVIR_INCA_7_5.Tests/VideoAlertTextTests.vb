@@ -27,8 +27,15 @@ Public Class VideoAlertTextTests
 
         Assert.StartsWith("INVALID VIDEO ALERT! (REAR) ", msg)
         Assert.Contains("lost for the rest of this recording", msg)
-        Assert.EndsWith("Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
+        Assert.Contains("Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
+        Assert.EndsWith("choose ""Continue Without REAR Video"" to keep recording vehicle data without it.", msg)
         Assert.DoesNotContain("Reconnect the camera", msg)
+    End Sub
+
+    <TestMethod>
+    Public Sub ContinueWithoutButton_NamesEveryCamera()
+        Assert.AreEqual("Continue Without REAR Video", VideoAlertText.ContinueWithoutButton("REAR"))
+        Assert.AreEqual("Continue Without REAR + FRONT Video", VideoAlertText.ContinueWithoutButton("REAR,FRONT"))
     End Sub
 
     <TestMethod>
@@ -36,6 +43,7 @@ Public Class VideoAlertTextTests
         Dim msg As String = VideoAlertText.InvalidVideoMessage("", Nothing, Nothing)
 
         Assert.Contains("(" & VideoAlertText.UnidentifiedDevice & ")", msg)
+        Assert.DoesNotContain("Continue Without", msg)
     End Sub
 
     <TestMethod>
@@ -45,7 +53,7 @@ Public Class VideoAlertTextTests
         Assert.StartsWith("INVALID VIDEO ALERT! (REAR) ", msg)
         Assert.Contains("""" & BenchText & """", msg)
         Assert.Contains("will not re-synchronize", msg)
-        Assert.EndsWith("Reconnect the camera, then Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
+        Assert.Contains("Reconnect the camera, then Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
         Assert.DoesNotContain("resumes on its own", msg)
         Assert.DoesNotContain("RESOLVED", msg)
     End Sub
@@ -55,6 +63,7 @@ Public Class VideoAlertTextTests
         Dim msg As String = VideoAlertText.InvalidVideoMessage("", BenchTitle, BenchText)
 
         Assert.StartsWith("INVALID VIDEO ALERT! (REAR) ", msg)
+        Assert.DoesNotContain("Continue Without", msg)
     End Sub
 
     <TestMethod>
@@ -63,7 +72,7 @@ Public Class VideoAlertTextTests
 
         Assert.Contains("""ES820: Hardware Connection""", msg)
         Assert.DoesNotContain("Reconnect the camera", msg)
-        Assert.EndsWith("Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
+        Assert.Contains("Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
     End Sub
 
 End Class
