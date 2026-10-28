@@ -25,7 +25,6 @@ Partial Public Class GmResidentClient
 
         ' Track last alert time to avoid spam (30-second cooldown)
         Dim lastHealthAlertTime As DateTime = DateTime.MinValue
-        Dim lastDeviceAlertTime As DateTime = DateTime.MinValue
         Dim lastDataAlertTime As DateTime = DateTime.MinValue
         Dim lastInitAlertTime As DateTime = DateTime.MinValue
         Const AlertCooldownSeconds As Integer = 30
@@ -52,7 +51,7 @@ Partial Public Class GmResidentClient
                         ' ──────────────────────────────────────────────────────────────
                         ' Monitor API Health (background loop communication)
                         ' ──────────────────────────────────────────────────────────────
-                        MonitorApiHealth(saveHealthMonitor, lastHealthAlertTime, lastDeviceAlertTime, lastDataAlertTime, AlertCooldownSeconds)
+                        MonitorApiHealth(saveHealthMonitor, lastHealthAlertTime, lastDataAlertTime, AlertCooldownSeconds)
 
                         ' Adjust monitoring frequency based on state
                         updateInterval = GetKillerUpdateInterval()
@@ -118,9 +117,9 @@ Partial Public Class GmResidentClient
 
     End Sub
 
-    Private Sub MonitorApiHealth(ByRef saveHealthMonitor As Integer, ByRef lastHealthAlertTime As DateTime, ByRef lastDeviceAlertTime As DateTime, ByRef lastDataAlertTime As DateTime, ByVal AlertCooldownSeconds As Integer)
+    Private Sub MonitorApiHealth(ByRef saveHealthMonitor As Integer, ByRef lastHealthAlertTime As DateTime, ByRef lastDataAlertTime As DateTime, ByVal AlertCooldownSeconds As Integer)
         'Called from ProcessKiller (killer thread) at runtime. Counts loops without a background-loop heartbeat (_healthMonitor)
-        'and toasts slow/failed API; when the heartbeat moved, resets the counter and checks device/data status.
+        'and toasts slow/failed API; when the heartbeat moved, resets the counter and checks data freshness.
 
         If _healthMonitor = saveHealthMonitor Then
             _healthCounter += 1
@@ -158,8 +157,8 @@ Partial Public Class GmResidentClient
             saveHealthMonitor = _healthMonitor
             _healthCounter = 0
 
-            ' Check device and data status now that API is healthy
-            UpdateDeviceAndDataStatusToastBased(lastDeviceAlertTime, lastDataAlertTime, AlertCooldownSeconds)
+            ' Check data freshness now that API is healthy
+            UpdateDataStatusToastBased(lastDataAlertTime, AlertCooldownSeconds)
         End If
 
     End Sub
@@ -167,7 +166,7 @@ Partial Public Class GmResidentClient
     Private Function GetKillerUpdateInterval() As Integer
         'Called from ProcessKiller (killer thread). Polling interval in ms: faster when errors are present, slower when idle.
 
-        If _healthCounter >= 10 OrElse _lostDevice OrElse _MyCpuStaleData Then
+        If _healthCounter >= 10 OrElse LostDevice OrElse _MyCpuStaleData Then
             Return 500  ' Monitor more frequently when errors present
         ElseIf MyIncaInterface IsNot Nothing AndAlso MyIncaInterface.Recording Then
             Return 1000 ' Normal frequency during recording
@@ -178,43 +177,10 @@ Partial Public Class GmResidentClient
     End Function
 
     ''' <summary>
-    ''' ✅ NEW: Toast-based device and data status monitoring (replaces UpdateDeviceAndDataStatus)
+    ''' Toast-based data freshness monitoring (killer thread). Lost-device detection runs on the UI thread
+    ''' (EvaluateLostDevice, from the 5 s device poll).
     ''' </summary>
-    Private Sub UpdateDeviceAndDataStatusToastBased(ByRef lastDeviceAlertTime As DateTime,
-                                                     ByRef lastDataAlertTime As DateTime,
-                                                     cooldownSeconds As Integer)
-        Static Mysavetime4 As DateTime = DateTime.Now
-
-        ' ──────────────────────────────────────────────────────────────
-        ' Monitor Device Status (lost device detection) - only once measuring/recording
-        ' ──────────────────────────────────────────────────────────────
-        If Not _MyDeviceStatus AndAlso IsMeasuringOrRecording() Then
-            If DateTime.Now.Subtract(Mysavetime4).Seconds > 25 Then
-                Mysavetime4 = DateTime.Now
-
-                If Not Debugger.IsAttached AndAlso Not IgnoreLostDeviceForThisDrive Then
-                    _lostDevice = True
-                ElseIf TriggerCommFailureInDebugMode Then
-                    IgnoreLostDeviceForThisDrive = False
-                    IgnoreLostDeviceUntilNextRecordingSession = False
-                    _lostDevice = True
-                End If
-
-                ' Alert user of lost device
-                If _lostDevice AndAlso (DateTime.Now - lastDeviceAlertTime).TotalSeconds > cooldownSeconds Then
-                    StatusNotifier.ToastError(
-                        "Lost connection to INCA device - check hardware connections",
-                        "Device Status",
-                        durationMs:=10000,
-                        ensureMainOnTop:=False
-                    )
-                    lastDeviceAlertTime = DateTime.Now
-                End If
-            End If
-        Else
-            Mysavetime4 = DateTime.Now
-        End If
-
+    Private Sub UpdateDataStatusToastBased(ByRef lastDataAlertTime As DateTime, cooldownSeconds As Integer)
         ' ──────────────────────────────────────────────────────────────
         ' Monitor Data Freshness (stale CPU data detection)
         ' ──────────────────────────────────────────────────────────────
@@ -231,135 +197,6 @@ Partial Public Class GmResidentClient
         End If
     End Sub
 
-    Private Sub SetupKillerForm(ByRef MyForm As Form, ByRef MyLabel As Label, ByRef MyLabel1 As Label, ByRef MyLabel2 As Label, ByRef MyLabel3 As Label)
-        MyForm = New Form With {
-            .FormBorderStyle = FormBorderStyle.FixedSingle,
-            .ControlBox = False,
-            .MaximizeBox = False,
-            .MinimizeBox = True,
-            .Text = "INCA Status",
-            .ShowInTaskbar = True,
-            .StartPosition = FormStartPosition.Manual,
-            .Height = 67,
-            .Width = 84,
-            .Top = 85,
-            .Left = 5,
-            .BackColor = Color.MediumSpringGreen,
-            .TopMost = True,
-            .Visible = True,
-            .Opacity = 0.75,
-            .Owner = OnVehicleScreen
-        }
-        MyForm.BringToFront()
-
-        MyLabel = New Label With {.Parent = MyForm, .Top = 0, .Left = 0, .Height = MyForm.Height - 33, .Width = MyForm.Width, .BackColor = MyForm.BackColor, .TextAlign = ContentAlignment.MiddleCenter, .Font = New Font(SystemFonts.DefaultFont.FontFamily, 8, FontStyle.Bold), .ForeColor = Color.Black, .Visible = True}
-        MyLabel1 = New Label With {.Parent = MyForm, .Top = 0, .Left = 0, .Height = MyForm.Height - 33, .Width = 42, .BackColor = MyForm.BackColor, .TextAlign = ContentAlignment.MiddleCenter, .Font = New Font(SystemFonts.DefaultFont.FontFamily, 8, FontStyle.Bold), .ForeColor = Color.Black, .Visible = False}
-        MyLabel2 = New Label With {.Parent = MyForm, .Top = 0, .Left = 42, .Height = MyForm.Height - 33, .Width = 42, .BackColor = MyForm.BackColor, .TextAlign = ContentAlignment.MiddleCenter, .Font = New Font(SystemFonts.DefaultFont.FontFamily, 8, FontStyle.Bold), .ForeColor = Color.Black, .Visible = False}
-        MyLabel3 = New Label With {.Parent = MyForm, .Top = 0, .Left = 84, .Height = MyForm.Height - 33, .Width = 42, .BackColor = MyForm.BackColor, .TextAlign = ContentAlignment.MiddleCenter, .Font = New Font(SystemFonts.DefaultFont.FontFamily, 8, FontStyle.Bold), .ForeColor = Color.Black, .Visible = False}
-
-        AddHandler MyLabel.Click, AddressOf MyKillerLabel_Click
-        AddHandler MyLabel1.Click, AddressOf MyKillerLabel_Click
-        AddHandler MyLabel2.Click, AddressOf MyKillerLabel_Click
-        AddHandler MyLabel3.Click, AddressOf MyKillerLabel_Click
-        AddHandler MyForm.FormClosing, AddressOf MyKillerForm_FormClosing
-    End Sub
-
-    Private Sub UpdateKillerInitStatus(ByVal MyLabel As Label, ByVal startTime As DateTime)
-        Const incaInitDurationMinutes As Single = 2.75
-        Const incaInitDurationMinutesRed As Single = 3.5
-
-        MyLabel.BackColor = Color.MediumSpringGreen
-        MyLabel.Visible = True
-
-        Dim elapsedTime As TimeSpan = DateTime.Now.Subtract(startTime)
-        MyLabel.Text = "Init - " & CStr(elapsedTime.Minutes) & ":" & Format(Math.Round(elapsedTime.Seconds, 2), "00")
-
-        If elapsedTime.TotalMilliseconds >= incaInitDurationMinutes * 60000 Then
-            MyLabel.BackColor = Color.Yellow
-        End If
-
-        If elapsedTime.TotalMilliseconds >= incaInitDurationMinutesRed * 60000 Then
-            _healthCounter = 10
-            MyLabel.BackColor = Color.Red
-        End If
-    End Sub
-
-    Private Sub UpdateKillerMonitorStatus(ByVal MyLabel1 As Label, ByVal MyLabel2 As Label, ByVal MyLabel3 As Label, ByVal saveHealthMonitor As Integer)
-        ' This method is called from ProcessKiller (background thread), so marshal all UI updates
-
-        If MyLabel1.InvokeRequired Then
-            ' We're on the wrong thread - marshal to UI thread
-            MyLabel1.Invoke(Sub() UpdateKillerMonitorStatus(MyLabel1, MyLabel2, MyLabel3, saveHealthMonitor))
-            Return
-        End If
-
-        ' Now safely on the UI thread
-        If _healthMonitor = saveHealthMonitor Then
-            _healthCounter += 1
-            MyLabel1.BackColor = Color.Yellow
-            MyLabel1.Visible = True
-            MyLabel1.Text = "B"
-
-            If _healthCounter >= 10 Then
-                MyLabel1.BackColor = Color.Red
-                MyLabel2.BackColor = Color.Gray
-                MyLabel3.BackColor = Color.Gray
-                MyLabel2.Visible = True
-                MyLabel3.Visible = True
-                CheckForApiCommError()
-            End If
-        Else
-            If INCACommCheckStopWatch IsNot Nothing Then INCACommCheckStopWatch = Nothing
-            saveHealthMonitor = _healthMonitor
-            _healthCounter = 0
-            MyLabel1.BackColor = Color.MediumSpringGreen
-            MyLabel1.Visible = False
-            UpdateDeviceAndDataStatus(MyLabel2, MyLabel3)
-        End If
-    End Sub
-
-    Private Sub UpdateDeviceAndDataStatus(ByVal MyLabel2 As Label, ByVal MyLabel3 As Label)
-        ' Marshal to UI thread if needed
-        If MyLabel2.InvokeRequired Then
-            MyLabel2.Invoke(Sub() UpdateDeviceAndDataStatus(MyLabel2, MyLabel3))
-            Return
-        End If
-
-        Static Mysavetime4 As DateTime = DateTime.Now
-
-        If Not _MyDeviceStatus Then
-            MyLabel2.Text = "D"
-            MyLabel2.BackColor = Color.Red
-            MyLabel2.Visible = True
-            If Not IsMeasuringOrRecording() Then
-                ' Lost-device alerts only apply once measurement or recording is active
-                Mysavetime4 = DateTime.Now
-            ElseIf DateTime.Now.Subtract(Mysavetime4).Seconds > 25 Then
-                Mysavetime4 = DateTime.Now
-                If Not Debugger.IsAttached AndAlso Not IgnoreLostDeviceForThisDrive Then
-                    _lostDevice = True
-                ElseIf TriggerCommFailureInDebugMode Then
-                    IgnoreLostDeviceForThisDrive = False
-                    IgnoreLostDeviceUntilNextRecordingSession = False
-                    _lostDevice = True
-                End If
-            End If
-        Else
-            MyLabel2.Visible = False
-            MyLabel2.BackColor = Color.MediumSpringGreen
-            Mysavetime4 = DateTime.Now
-        End If
-
-        If _MyCpuStaleData AndAlso _inMeasureMode Then
-            MyLabel3.Text = "S"
-            MyLabel3.BackColor = Color.Red
-            MyLabel3.Visible = True
-        Else
-            MyLabel3.Visible = False
-            MyLabel3.BackColor = If(_inMeasureMode, Color.MediumSpringGreen, Color.Gray)
-        End If
-    End Sub
-
     ''' <summary>
     ''' True when INCA measurement or recording is active. Safe to call from the ProcessKiller thread.
     ''' </summary>
@@ -370,7 +207,7 @@ Partial Public Class GmResidentClient
     End Function
 
     Private Sub CheckForApiCommError()
-        If BackgroundLoopCounterNotUpdating OrElse VideoCameraNotUpdating OrElse _lostDevice OrElse INCACommIgnoreEvents Then
+        If BackgroundLoopCounterNotUpdating OrElse VideoCameraNotUpdating OrElse LostDevice OrElse INCACommIgnoreEvents Then
             INCACommCheckStopWatch?.Reset()
             Return
         End If
@@ -422,7 +259,7 @@ Partial Public Class GmResidentClient
                     INCACommCheckStopWatch = Nothing
                     HandleUserMessageLogging("GMRC", "User Chose to disable INCA Comm checking.")
                 Else
-                    HandleUserMessageLogging("GMRC", "Click the B in the RED BOX (INCA Status window, Top Left) to Kill CLEVIR and INCA Processes, then RESTART CLEVIR.", DisplayMsgBox)
+                    HandleUserMessageLogging("GMRC", "To recover, exit using 'Exit CLEVIR And Close INCA', then RESTART CLEVIR.", DisplayMsgBox)
                 End If
             End If
 
@@ -454,9 +291,10 @@ Partial Public Class GmResidentClient
                                              End If
                                          End Sub
 
-        If BackgroundLoopCounterNotUpdating AndAlso Not _lostDevice Then speak("In Valid Data Alert")
-        If VideoCameraNotUpdating AndAlso Not _lostDevice Then speak("In Valid Video Alert")
-        If _lostDevice Then speak("Processor Communication Alert")
+        Dim isLost As Boolean = LostDevice
+        If BackgroundLoopCounterNotUpdating AndAlso Not isLost Then speak("In Valid Data Alert")
+        If VideoCameraNotUpdating AndAlso Not isLost Then speak("In Valid Video Alert")
+        If isLost Then speak(LostDeviceVoice)
 
         If LidarCaptureStarted AndAlso LidarDevices IsNot Nothing Then
             For Each lidar In LidarDevices
@@ -471,7 +309,7 @@ Partial Public Class GmResidentClient
 
     ''' <summary>
     ''' ✅ REFACTORED: Safely terminates INCA and related processes
-    ''' Called from ProcessKiller when _killInca flag is set
+    ''' Called when the ProcessKiller loop ends (_killProcesses set)
     ''' </summary>
     Private Sub TerminateIncaProcesses()
         Try
@@ -609,77 +447,5 @@ Partial Public Class GmResidentClient
             End Try
         End Try
     End Function
-
-    Private Sub MyKillerForm_FormClosing(ByVal sender As Object, ByVal e As FormClosingEventArgs)
-
-        e.Cancel = True
-
-    End Sub
-
-    Private Sub MyKillerLabel_Click(sender As Object, e As EventArgs)
-
-        'This event is fired if the user clicks on any of the status labels in the upper left corner of the screen.
-        'If none of the labels are red, indicating a potential problem, clicking brings the main on vehicle
-        'screen back to the top, otherwise, it does that as well as allows the user to kill the processes if they
-        'choose to do so...
-
-        _switchToMain = True
-
-        If (_healthCounter >= 10 Or _MyDeviceStatus = False Or (_MyCpuStaleData = True And _inMeasureMode = True)) Then
-            Dim killResult As DialogResult
-            Using topmostOwner As New Form() With {
-                .TopMost = True,
-                .Size = New System.Drawing.Size(1, 1),
-                .StartPosition = FormStartPosition.CenterScreen,
-                .ShowInTaskbar = False,
-                .FormBorderStyle = FormBorderStyle.None,
-                .Opacity = 0
-            }
-                topmostOwner.Show()
-                killResult = MessageBox.Show(
-                    topmostOwner,
-                    "Kill INCA Processes?",
-                    "Kill INCA",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Warning)
-            End Using
-
-            If killResult = DialogResult.Yes Then
-                _killInca = True
-                _killProcesses = True
-            Else
-                'If running in debug mode in the design environment, we are typically not connected to hardware
-                'so we would always get a processor comm fault, so processor comm fault is only triggered if
-                'we are not in debug mode.  Here, is a way to trigger a processor comm fault in the design env.
-                'For testing purposes...
-                If Debugger.IsAttached Then
-                    Dim commResult As DialogResult
-                    Using topmostOwner As New Form() With {
-                        .TopMost = True,
-                        .Size = New System.Drawing.Size(1, 1),
-                        .StartPosition = FormStartPosition.CenterScreen,
-                        .ShowInTaskbar = False,
-                        .FormBorderStyle = FormBorderStyle.None,
-                        .Opacity = 0
-                    }
-                        topmostOwner.Show()
-                        commResult = MessageBox.Show(
-                            topmostOwner,
-                            "Trigger Comm Failure in Debug Mode?",
-                            "Debug Mode",
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Question)
-                    End Using
-                    If commResult = DialogResult.Yes Then
-                        TriggerCommFailureInDebugMode = True
-                        OverrideCommFailureInDebugMode = False
-                    Else
-                        OverrideCommFailureInDebugMode = True
-                    End If
-                End If
-            End If
-        End If
-
-    End Sub
 
 End Class

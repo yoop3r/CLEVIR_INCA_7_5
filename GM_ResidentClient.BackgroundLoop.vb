@@ -144,6 +144,7 @@ Partial Public Class GmResidentClient
             If PlaybackMode = False Then
 
                 Await GetDeviceStatus()
+                EvaluateLostDevice()
 
                 lIsTargetOnWorkingPage = MyIncaInterface.IsTargetOnWorkingPage
 
@@ -193,8 +194,9 @@ Partial Public Class GmResidentClient
 
     End Function
     ''' <summary>
-    ''' Clears data-frozen / lost-device tracking so INCA COMM and frozen-data detection start fresh
-    ''' when measurement or recording begins, rather than carrying over state from before the start.
+    ''' Clears data-frozen tracking so INCA COMM and frozen-data detection start fresh
+    ''' when measurement or recording begins (including every MF4 rollover), rather than carrying over state
+    ''' from before the start. Lost-device state is not reset here: it follows INCA's device status directly.
     ''' </summary>
     Private Sub ResetDataFrozenTracking(ByVal reason As String)
         Try
@@ -213,15 +215,13 @@ Partial Public Class GmResidentClient
                 Next x
             Next i
 
-            _lostDevice = False
             VideoCameraNotUpdating = False
             BackgroundLoopCounterNotUpdating = False
             _MyCpuStaleData = False
             SaveDataFrozenDeviceName = ""
             SaveVideoFrozenDeviceName = ""
-            SaveLostDeviceName = ""
 
-            HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & reason & " - data-frozen/lost-device tracking reset")
+            HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & reason & " - data-frozen tracking reset")
         Catch ex As Exception
             HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & ex.Message)
         End Try
@@ -395,7 +395,7 @@ Partial Public Class GmResidentClient
                         'checks to see if there is an active INCA experiment, if not CLEVIR will terminate, also checks various other statuses and
                         'reacts accordingly...
                         MyElapseTime = DateTime.Now.Subtract(MySaveTime)
-                        If MyElapseTime.Seconds >= 5 Then
+                        If MyElapseTime.TotalSeconds >= 5 Then
                             MySaveTime = DateTime.Now
 
                             Await Handle_5_SecondChecks(lMeasurementStatus, lRecordingState)
@@ -405,11 +405,13 @@ Partial Public Class GmResidentClient
                     End If
 
                     If IsLostDeviceCheckDue(MySaveTime3, lRecordingState) Then
-                        'This routine handles the case where communication to processors has been lost or invalid data or invalid video.  Allows user to
-                        'reinitialilze CLEVIR and INCA...
-                        Await CheckForLostDevice()
+                        'Shows the (non-blocking) alert when communication to processors/cameras has been lost or data/video is invalid.
+                        CheckForLostDevice()
                         MySaveTime3 = DateTime.Now
                     End If
+
+                    'Acts on the driver's answer to that alert (e.g. Re-Initialize) between passes, never during ProcessGrids.
+                    Await HandleDeviceAlertResponseIfAny()
 
                     'If measurement started = true (or we are playing back CLEVIR recorded data), we make calls to get data, either live or recorded.
                     'We also update the display grids by updating the data values for all signals and also go through the logic associated with high threshold and
@@ -560,7 +562,7 @@ Partial Public Class GmResidentClient
         End If
 
         Dim MyElapseTime3 As TimeSpan = DateTime.Now.Subtract(MySaveTime3)
-        Return MyElapseTime3.Seconds >= lostDeviceDelayTime
+        Return MyElapseTime3.TotalSeconds >= lostDeviceDelayTime
     End Function
 
     ''' <summary>True when INCA is measuring or a CLEVIR recording is being played back.</summary>
@@ -1544,7 +1546,7 @@ Partial Public Class GmResidentClient
         ' Stale-data state always tracks the label: RED while comms are lost, GREEN once re-established.
         ' The ignore flag only suppresses raising the operator alert.
         If MyColor = Color.Red Then
-            If Not IgnoreLostDeviceForThisDrive AndAlso Not OverrideCommFailureInDebugMode Then
+            If Not IgnoreLostDeviceForThisDrive Then
                 BackgroundLoopCounterNotUpdating = True
             End If
             _MyCpuStaleData = True
@@ -1564,7 +1566,7 @@ Partial Public Class GmResidentClient
 
             ' Only update video camera flags if alerts are not being ignored
             If Not IgnoreLostDeviceForThisDrive AndAlso Not IgnoreLostDeviceUntilNextRecordingSession Then
-                If MyColor = Color.Red AndAlso Not OverrideCommFailureInDebugMode Then
+                If MyColor = Color.Red Then
                     VideoCameraNotUpdating = True
                 Else
                     VideoCameraNotUpdating = False

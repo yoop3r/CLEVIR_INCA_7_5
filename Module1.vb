@@ -286,9 +286,6 @@ Public Module Module1
     ''' </summary>
     Public ActiveProcessorNames() As String
 
-    Public TriggerCommFailureInDebugMode As Boolean
-    Public OverrideCommFailureInDebugMode As Boolean
-
     Public myVoiceCommands() As String
 
     Public UserStatusInfoText As String

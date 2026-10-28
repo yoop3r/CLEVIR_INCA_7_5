@@ -22,7 +22,7 @@ Partial Public Class GmResidentClient
     Private ReadOnly _loopFaults As New LoopFaultTracker(TimeSpan.FromSeconds(LoopFaultEscalateSeconds),
                                                          TimeSpan.FromSeconds(LoopFaultVoiceRepeatSeconds),
                                                          TimeSpan.FromSeconds(LoopFaultLogRepeatSeconds))
-    Private _loopFaultSynth As SpeechSynthesizer
+    Private _driverAlertSynth As SpeechSynthesizer
 
     ''' <summary>Called from MyBackgroundTasks after a pass threw. Returns the back-off delay before the next pass.</summary>
     Private Function HandleBackgroundPassFault(ex As Exception, whereAmI As String) As Integer
@@ -40,12 +40,12 @@ Partial Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", $"MyBackgroundTasks: failing for {decision.FailingFor.TotalSeconds:F1}s " &
                                              $"({decision.ConsecutiveFailures} passes) - GO/NOGO grayed, driver alerted")
             GrayGoNoGoLabelsForLoopFault()
-            SpeakLoopFaultMessage(LoopFaultVoiceAlert)
+            SpeakDriverAlert(LoopFaultVoiceAlert)
             StatusNotifier.ToastError($"Background monitoring is failing - GO/NOGO indicators are not current.{vbCrLf}{whereAmI}: {exType}",
                                       "Monitoring Fault", durationMs:=12000, ensureMainOnTop:=False)
         ElseIf decision.Has(LoopFaultActions.RepeatAlert) Then
             HandleUserMessageLogging("GMRC", $"MyBackgroundTasks: still failing after {decision.FailingFor.TotalSeconds:F0}s ({decision.ConsecutiveFailures} passes)")
-            SpeakLoopFaultMessage(LoopFaultVoiceAlert)
+            SpeakDriverAlert(LoopFaultVoiceAlert)
         End If
 
         Return If(_loopFaults.IsEscalated, LoopFaultEscalatedBackoffMs, LoopFaultBackoffMs)
@@ -62,7 +62,7 @@ Partial Public Class GmResidentClient
 
         If recovery.WasEscalated Then
             ' The grayed GO/NOGO labels no longer match their requested color, so the next pass repaints them.
-            SpeakLoopFaultMessage(LoopFaultVoiceRestored)
+            SpeakDriverAlert(LoopFaultVoiceRestored)
             StatusNotifier.Toast("Background monitoring has recovered.", StatusNotifier.ToastKind.Success,
                                  "Monitoring Restored", durationMs:=6000, ensureMainOnTop:=False)
         End If
@@ -81,20 +81,20 @@ Partial Public Class GmResidentClient
         End Try
     End Sub
 
-    Private Sub SpeakLoopFaultMessage(message As String)
+    Private Sub SpeakDriverAlert(message As String)
         Try
-            If _loopFaultSynth Is Nothing Then
-                _loopFaultSynth = New SpeechSynthesizer()
+            If _driverAlertSynth Is Nothing Then
+                _driverAlertSynth = New SpeechSynthesizer()
                 Try
-                    _loopFaultSynth.SelectVoice("Microsoft Zira Desktop")
+                    _driverAlertSynth.SelectVoice("Microsoft Zira Desktop")
                 Catch
                     ' Voice not installed - keep the default voice.
                 End Try
-                _loopFaultSynth.Rate = 0
+                _driverAlertSynth.Rate = 0
             End If
-            _loopFaultSynth.SpeakAsync(message)
+            _driverAlertSynth.SpeakAsync(message)
         Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "SpeakLoopFaultMessage: " & ex.Message)
+            HandleUserMessageLogging("GMRC", "SpeakDriverAlert: " & ex.Message)
         End Try
     End Sub
 

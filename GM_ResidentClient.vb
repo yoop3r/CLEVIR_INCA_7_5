@@ -227,7 +227,6 @@ Public Class GmResidentClient
     Private _healthCounter As Integer
     Private _healthMonitor As Integer
     Private _incaInitStarted As Boolean
-    Private _killInca As Boolean
     Private _killProcesses As Boolean
     Private _enableMyBackgroundTasks As Boolean
     Private _initializing As Boolean
@@ -246,7 +245,6 @@ Public Class GmResidentClient
     Private _loadedIncaConfiguration As IncaConfiguration
     Private _MyCpuStaleData As Boolean
     Private _MyDeviceStatus As Boolean
-    Private _lostDevice As Boolean
     Private _registerIntoNewBlankExp As Boolean
     Private _gonogocount As Integer
     Private _incaLaunched As Boolean
@@ -281,7 +279,12 @@ Public Class GmResidentClient
     Private _recordingMonitorCts As CancellationTokenSource
     Private _backgroundTasksCts As CancellationTokenSource  ' Cancellation token for MyBackgroundTasks loop
     Private _backgroundLoopActive As Boolean  ' True while MyBackgroundTasks is running (Volatile access)
-    Private Shared saveStatus() As Boolean
+    Private ReadOnly _lastDeviceFault As New Dictionary(Of String, Boolean)(StringComparer.OrdinalIgnoreCase)
+    Private Const MaxConsecutiveDeviceReadFailures As Integer = 3
+    Private Const DeviceStatusLabelPairs As Integer = 12
+    Private _deviceReadFailures As Integer
+    Private _lastDeviceConfigProblem As String = ""
+    Private _deviceStatusOverflowLogged As Boolean
     Private Shared videoMessageLastDisplayed As Boolean = True
     Private Shared dataMessageLastDisplayed As Boolean = True
 

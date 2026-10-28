@@ -2518,6 +2518,10 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
                             HandleUserMessageLogging("COMM", $"RegisterSignals: Built {myDeviceRasterSignals.Length} valid signals from cache")
 
                             ' ✅ Setup device-raster pairs EXACTLY like normal registration
+                            ' Rebuild from scratch (as STEP 4 of the full path does); otherwise a second registration in the same
+                            ' session (Re-Initialize, Restart INCA) adds onto the old counts and every signal maps to the wrong slot.
+                            ResetDataCollectionProcessVars = True
+                            myDeviceRasterPair = Nothing
                             ResetRecords()
                             ReDim mySignalData(myDeviceRasterSignals.Length - 1)
                             ReDim mySignalDataWithTime(myDeviceRasterSignals.Length - 1)
@@ -2899,7 +2903,12 @@ Public Class GM_INCA_CommClass : Inherits MarshalByRefObject
         If myinca Is Nothing Then
             HandleUserMessageLogging("GMRC", "ConnectToInca: Launching INCA...")
         Else
-            myinca.CloseTool()
+            Try
+                myinca.CloseTool()
+            Catch ex As Exception
+                ' INCA already gone (closed or terminated) - drop the stale reference and launch a new one
+                HandleUserMessageLogging("GMRC", "ConnectToInca: Ignoring CloseTool failure on stale INCA reference: " & ex.Message)
+            End Try
             myinca = Nothing
             MyHWC = Nothing
             Initialized = False

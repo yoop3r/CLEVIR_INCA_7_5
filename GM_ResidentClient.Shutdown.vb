@@ -535,6 +535,7 @@ Partial Public Class GmResidentClient
         End If
 
         ' Close other forms
+        CloseDeviceAlert()
         ' Call the method with the name of the form you want to check and close
         CloseFormIfLoaded("DeviceStatus")
         CloseFormIfLoaded("FusionStatusDisplay")
