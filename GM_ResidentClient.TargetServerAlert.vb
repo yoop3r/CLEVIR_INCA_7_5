@@ -12,9 +12,16 @@ Partial Public Class GmResidentClient
     Private Const TargetServerReminderSeconds As Integer = 30
     Private Const TargetServerAlertTitle As String = "INCA Target Server"
 
+    Private Const TargetServerRecentSeconds As Integer = 120
+
     Private ReadOnly _targetServerMessages As New HashSet(Of IntPtr)
     Private _targetServerToastId As Guid = Guid.Empty
     Private _targetServerLastReminder As DateTime = DateTime.MinValue
+
+    ' Last message seen (kept after it closes) - lets the invalid-video alert explain a camera disconnect.
+    Private _targetServerLastTitle As String
+    Private _targetServerLastText As String
+    Private _targetServerLastSeenAt As DateTime = DateTime.MinValue
 
     ''' <summary>Called from Handle_5_SecondChecks (UI thread).</summary>
     Private Sub CheckForTargetServerMessage()
@@ -42,6 +49,10 @@ Partial Public Class GmResidentClient
             _targetServerMessages.IntersectWith(windows.Select(Function(w) w.Handle))
 
             Dim now As DateTime = DateTime.Now
+            Dim latest As ProbedWindow = If(newMessage, windows(0))
+            _targetServerLastTitle = If(latest.Title, "")
+            _targetServerLastText = If(latest.Text, "")
+            _targetServerLastSeenAt = now
             If newMessage IsNot Nothing Then
                 DismissTargetServerAlert()
                 Dim body As String = If(newMessage.Text <> "", newMessage.Text, newMessage.Title)
@@ -57,6 +68,19 @@ Partial Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", "CheckForTargetServerMessage: " & ex.Message)
         End Try
     End Sub
+
+    Private Function IsTargetServerMessageShowing() As Boolean
+        Return _targetServerMessages.Count > 0
+    End Function
+
+    ''' <summary>True (with the message) when a Target Server message is showing or closed within the last 2 minutes.</summary>
+    Private Function TryGetRecentTargetServerMessage(ByRef title As String, ByRef text As String) As Boolean
+        If _targetServerLastSeenAt = DateTime.MinValue OrElse
+           (DateTime.Now - _targetServerLastSeenAt).TotalSeconds > TargetServerRecentSeconds Then Return False
+        title = _targetServerLastTitle
+        text = _targetServerLastText
+        Return True
+    End Function
 
     Private Sub RemindTargetServerMessage(handle As IntPtr, now As DateTime)
         _targetServerLastReminder = now

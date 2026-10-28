@@ -146,6 +146,7 @@ Partial Public Class GmResidentClient
                 CheckForTargetServerMessage()
                 Await GetDeviceStatus()
                 EvaluateLostDevice()
+                EvaluateInvalidVideoResolved()
 
                 lIsTargetOnWorkingPage = MyIncaInterface.IsTargetOnWorkingPage
 

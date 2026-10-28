@@ -173,7 +173,13 @@ Partial Public Class GmResidentClient
                 message = "INVALID DATA ALERT! (" & NamedOrUnidentified(SaveDataFrozenDeviceName) & ") To ensure data quality, CLEVIR/INCA should be re-initialized (INCA will be restarted). This will take approx 3 minutes"
                 buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", "Ignore All Alerts for Recording Session"}
             Case DeviceAlertKind.InvalidVideo
-                message = "INVALID VIDEO ALERT! (" & NamedOrUnidentified(SaveVideoFrozenDeviceName) & ") CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure video recording capability. This will take approx 3 minutes."
+                ' The Target Server alert (toast, voice, window raised) is the one to answer first; a frozen camera
+                ' usually recovers once it is. Re-checked every 20 s, so this alert follows if video stays frozen.
+                If IsTargetServerMessageShowing() Then Return False
+                Dim tsTitle As String = Nothing
+                Dim tsText As String = Nothing
+                TryGetRecentTargetServerMessage(tsTitle, tsText)
+                message = VideoAlertText.InvalidVideoMessage(SaveVideoFrozenDeviceName, tsTitle, tsText)
                 buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", "Ignore All Alerts for Recording Session"}
             Case Else
                 message = $"{LostDeviceAlertTitle()}! ({SaveLostDeviceName}) No communication since {_lostDeviceMonitor.EpisodeStartedAt:HH:mm:ss}. " &
@@ -206,8 +212,29 @@ Partial Public Class GmResidentClient
 
     ' A GO/NOGO can stay red across ResetDataFrozenTracking (recording start) before the cell re-freezes and records its device.
     Private Shared Function NamedOrUnidentified(deviceNames As String) As String
-        Return If(String.IsNullOrWhiteSpace(deviceNames), "device not yet identified", deviceNames)
+        Return If(String.IsNullOrWhiteSpace(deviceNames), VideoAlertText.UnidentifiedDevice, deviceNames)
     End Function
+
+    ''' <summary>
+    ''' Called from Handle_5_SecondChecks (UI thread). Marks an open invalid-video alert RESOLVED once every frozen
+    ''' video cell has resumed, so a driver is not left looking at a Re-Initialize prompt for a camera that recovered.
+    ''' </summary>
+    Private Sub EvaluateInvalidVideoResolved()
+        Try
+            If Not IsDeviceAlertOpen() OrElse _deviceAlertKind <> DeviceAlertKind.InvalidVideo OrElse _deviceAlertResolved Then Return
+            If Not MyIncaInterface.Recording OrElse VideoCameraNotUpdating OrElse Not String.IsNullOrEmpty(SaveVideoFrozenDeviceName) Then Return
+
+            Dim now As DateTime = DateTime.Now
+            _deviceAlertResolved = True
+            HandleUserMessageLogging("GMRC", $"Invalid video alert resolved: video resumed at {now:HH:mm:ss}")
+            SpeakDriverAlert("Video Restored")
+            _deviceAlert.SetContent($"RESOLVED {now:HH:mm:ss}: video resumed. Video recorded before {now:HH:mm:ss} may have a gap. " &
+                                    "Re-initialize only if problems persist.",
+                                    $"CLEVIR ALERT - RESOLVED {now:HH:mm:ss}", "OK", "Re-Initialize NOW")
+        Catch ex As Exception
+            HandleUserMessageLogging("GMRC", "EvaluateInvalidVideoResolved: " & ex.Message)
+        End Try
+    End Sub
 
     Private Sub DeviceAlert_FormClosed(sender As Object, e As FormClosedEventArgs)
         Dim alert As Cusmsgbox = TryCast(sender, Cusmsgbox)
