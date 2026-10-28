@@ -55,7 +55,7 @@ Driver alerts (eyes stay on the road)
   * Fixed a stale RED/voice alert at Start Record: frozen-data tracking
     was never reset for the last row of each grid (e.g. the REAR camera,
     LRR), so a previous freeze carried into the next recording.
-- Background monitoring loop survives
+- Background monitoring loop survives a failed pass instead of stopping
   for the rest of the drive. Persistent failures gray the GO/NOGO
   indicators and are announced ("Monitoring Fault Alert" / "Monitoring
   Restored").
@@ -87,6 +87,9 @@ Signal lists and displays
 - DeviceRasterSignalList.txt removed; acquisition rates are read from
   INCA. Changing the device in Grid Cell Properties no longer starts a
   full INCA variable browse (which could hang INCA for 10+ minutes).
+- Grid Cell Properties no longer stays stuck on "Performing Variable
+  Browsing Operation..." (or the wait cursor) when a device change
+  fails; grid-cell browses are logged with timing for diagnostics.
 - XLSX signal lists removed; CSV is the only signal list format.
 - GO/NOGO labels repaint when their displayed color differs from the
   requested one (Video Status could stay gray at record start).
@@ -111,7 +114,13 @@ Internal
 - GmResidentClient split from one file into 15 partial classes; long
   methods decomposed (none over 300 lines); configuration, signal list,
   file maintenance and alert logic moved into unit-tested classes.
-  225 unit tests (previously none).
+  249 unit tests (previously none).
+
+Known issues
+- A saved grid size is applied only as a minimum on reload, and column
+  widths are recalculated from content (they are not saved in the signal
+  list). Shrinking a grid or dragging a column width is therefore lost
+  after restart; enlarging a grid is kept. Planned for a later release.
 
 Version 7.5.4.0
 ----------------
