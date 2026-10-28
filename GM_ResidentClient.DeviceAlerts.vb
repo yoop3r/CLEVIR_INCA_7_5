@@ -237,9 +237,9 @@ Partial Public Class GmResidentClient
 
             _deviceAlertResolved = True
             _videoResumeWatch.Reset()
-            HandleUserMessageLogging("GMRC", $"Invalid video alert resolved: video resumed at {now:HH:mm:ss}")
+            HandleUserMessageLogging("GMRC", $"Invalid video alert resolved: video updating continuously for {VideoResumeConfirmSeconds} s (confirmed {now:HH:mm:ss})")
             SpeakDriverAlert("Video Restored")
-            _deviceAlert.SetContent($"RESOLVED {now:HH:mm:ss}: video resumed. Video recorded before {now:HH:mm:ss} may have a gap. " &
+            _deviceAlert.SetContent($"RESOLVED {now:HH:mm:ss}: video has resumed and has been updating for {VideoResumeConfirmSeconds} seconds. Recorded video may have a gap before then. " &
                                     "Re-initialize only if problems persist.",
                                     $"CLEVIR ALERT - RESOLVED {now:HH:mm:ss}", "OK", "Re-Initialize NOW")
         Catch ex As Exception
