@@ -80,7 +80,7 @@ Partial Class InitForm
         Me.Controls.Add(Me.Button1)
         Me.Name = "InitForm"
         Me.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen
-        Me.Text = "(Version 7.5.4)"
+        Me.Text = "(Version 7.5.5)"
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
