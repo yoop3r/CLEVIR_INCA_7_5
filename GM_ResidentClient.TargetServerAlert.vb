@@ -4,17 +4,25 @@ Option Explicit On
 Imports System.IO
 
 ' INCA Target Server (TGTSVR) message alert.
-' When TGTSVR loses a device (e.g. a camera) it shows a message box and INCA stays blocked until someone presses OK;
-' it then recovers on its own. CLEVIR's top-most screens can hide that box, so the 5 s check raises it to the front,
-' shows a sticky toast and speaks until it is answered.
+' When TGTSVR loses a device (e.g. a camera) it shows a message box and INCA stays blocked until someone presses OK.
+' CLEVIR's top-most screens can hide that box, so the 5 s check raises it to the front, shows a sticky toast and
+' speaks until it is answered. A lost camera's video cannot be recovered in the running recording (see
+' VideoLossLatch); the invalid-video alert that follows asks for a reconnect and Re-Initialize.
 Partial Public Class GmResidentClient
 
     Private Const TargetServerReminderSeconds As Integer = 30
     Private Const TargetServerAlertTitle As String = "INCA Target Server"
 
+    Private Const TargetServerRecentSeconds As Integer = 120
+
     Private ReadOnly _targetServerMessages As New HashSet(Of IntPtr)
     Private _targetServerToastId As Guid = Guid.Empty
     Private _targetServerLastReminder As DateTime = DateTime.MinValue
+
+    ' Last message seen (kept after it closes) - lets the invalid-video alert explain a camera disconnect.
+    Private _targetServerLastTitle As String
+    Private _targetServerLastText As String
+    Private _targetServerLastSeenAt As DateTime = DateTime.MinValue
 
     ''' <summary>Called from Handle_5_SecondChecks (UI thread).</summary>
     Private Sub CheckForTargetServerMessage()
@@ -26,8 +34,13 @@ Partial Public Class GmResidentClient
                     _targetServerMessages.Clear()
                     DismissTargetServerAlert()
                     HandleUserMessageLogging("GMRC", "INCA Target Server message closed")
-                    StatusNotifier.Toast("Target Server message closed. INCA should now reconnect the device.",
-                                         StatusNotifier.ToastKind.Success, TargetServerAlertTitle, durationMs:=8000, ensureMainOnTop:=False)
+                    If MyIncaInterface.Recording AndAlso VideoAlertText.IsCameraMessage(_targetServerLastTitle, _targetServerLastText) Then
+                        StatusNotifier.Toast(VideoAlertText.TargetServerClosedToast(_targetServerLastTitle),
+                                             StatusNotifier.ToastKind.Warning, TargetServerAlertTitle, durationMs:=12000, ensureMainOnTop:=False)
+                    Else
+                        StatusNotifier.Toast("Target Server message closed. INCA can continue.",
+                                             StatusNotifier.ToastKind.Success, TargetServerAlertTitle, durationMs:=8000, ensureMainOnTop:=False)
+                    End If
                 End If
                 Return
             End If
@@ -42,12 +55,16 @@ Partial Public Class GmResidentClient
             _targetServerMessages.IntersectWith(windows.Select(Function(w) w.Handle))
 
             Dim now As DateTime = DateTime.Now
+            Dim latest As ProbedWindow = If(newMessage, windows(0))
+            _targetServerLastTitle = If(latest.Title, "")
+            _targetServerLastText = If(latest.Text, "")
+            _targetServerLastSeenAt = now
             If newMessage IsNot Nothing Then
                 DismissTargetServerAlert()
                 Dim body As String = If(newMessage.Text <> "", newMessage.Text, newMessage.Title)
                 _targetServerToastId = StatusNotifier.ToastSticky(
                     $"INCA is waiting for an answer to a Target Server message:{vbCrLf}""{body}""{vbCrLf}{vbCrLf}" &
-                    "Press OK in the Target Server window. INCA recovers on its own after that.",
+                    "Press OK in the Target Server window - INCA is blocked until it is answered.",
                     TargetServerAlertTitle, StatusNotifier.ToastKind.Error, ensureMainOnTop:=False)
                 RemindTargetServerMessage(newMessage.Handle, now)
             ElseIf (now - _targetServerLastReminder).TotalSeconds >= TargetServerReminderSeconds Then
@@ -57,6 +74,19 @@ Partial Public Class GmResidentClient
             HandleUserMessageLogging("GMRC", "CheckForTargetServerMessage: " & ex.Message)
         End Try
     End Sub
+
+    Private Function IsTargetServerMessageShowing() As Boolean
+        Return _targetServerMessages.Count > 0
+    End Function
+
+    ''' <summary>True (with the message) when a Target Server message is showing or closed within the last 2 minutes.</summary>
+    Private Function TryGetRecentTargetServerMessage(ByRef title As String, ByRef text As String) As Boolean
+        If _targetServerLastSeenAt = DateTime.MinValue OrElse
+           (DateTime.Now - _targetServerLastSeenAt).TotalSeconds > TargetServerRecentSeconds Then Return False
+        title = _targetServerLastTitle
+        text = _targetServerLastText
+        Return True
+    End Function
 
     Private Sub RemindTargetServerMessage(handle As IntPtr, now As DateTime)
         _targetServerLastReminder = now

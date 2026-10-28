@@ -1,0 +1,116 @@
+Imports Microsoft.VisualStudio.TestTools.UnitTesting
+
+<TestClass>
+Public Class VideoLossLatchTests
+
+    <TestMethod>
+    Public Sub NewLatch_IsNotLatched()
+        Dim latch As New VideoLossLatch()
+
+        Assert.IsFalse(latch.IsLatched)
+        Assert.AreEqual("", latch.DeviceList)
+    End Sub
+
+    <TestMethod>
+    Public Sub Record_LatchesEachCameraOnce()
+        Dim latch As New VideoLossLatch()
+
+        Assert.IsTrue(latch.Record("REAR"))
+        Assert.IsFalse(latch.Record("rear"))
+        Assert.IsTrue(latch.Record("FRONT"))
+        Assert.IsFalse(latch.Record(""))
+
+        Assert.AreEqual("REAR,FRONT", latch.DeviceList)
+    End Sub
+
+    <TestMethod>
+    Public Sub SequenceRollover_KeepsTheLoss()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+
+        Assert.IsFalse(latch.OnTrackingReset(sequenceRotation:=True))
+        Assert.IsTrue(latch.IsLatched)
+    End Sub
+
+    <TestMethod>
+    Public Sub NewRecording_ClearsTheLoss()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+
+        Assert.IsTrue(latch.OnTrackingReset(sequenceRotation:=False))
+        Assert.IsFalse(latch.IsLatched)
+        Assert.IsFalse(latch.OnTrackingReset(sequenceRotation:=False))
+    End Sub
+
+    <TestMethod>
+    Public Sub Clear_ReportsWhetherAnythingWasLatched()
+        Dim latch As New VideoLossLatch()
+        Assert.IsFalse(latch.Clear())
+
+        latch.Record("REAR")
+        Assert.IsTrue(latch.Clear())
+        Assert.IsFalse(latch.IsLatched)
+    End Sub
+
+    <TestMethod>
+    Public Sub Accept_SilencesOnlyThatCamera()
+        Dim latch As New VideoLossLatch()
+        latch.Accept("REAR")
+
+        Assert.AreEqual("FRONT", latch.Unaccepted("REAR,FRONT"))
+        Assert.AreEqual("", latch.Unaccepted("rear"))
+        Assert.IsTrue(latch.AllAccepted("Rear"))
+        Assert.IsFalse(latch.AllAccepted("REAR,FRONT"))
+    End Sub
+
+    <TestMethod>
+    Public Sub UnidentifiedCamera_IsNeverAccepted()
+        Dim latch As New VideoLossLatch()
+        latch.Accept("REAR")
+
+        Assert.IsFalse(latch.AllAccepted(""))
+        Assert.AreEqual("", latch.Unaccepted(""))
+        latch.Accept("")
+        Assert.AreEqual("REAR", latch.AcceptedList)
+    End Sub
+
+    <TestMethod>
+    Public Sub Accepted_SurvivesNewRecording_ClearedByReinitialize()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+        latch.Accept("REAR")
+
+        latch.OnTrackingReset(sequenceRotation:=False)
+        Assert.IsFalse(latch.IsLatched)
+        Assert.IsTrue(latch.AllAccepted("REAR"))
+
+        Assert.IsTrue(latch.Clear())
+        Assert.IsFalse(latch.AllAccepted("REAR"))
+        Assert.AreEqual("", latch.AcceptedList)
+    End Sub
+
+    <TestMethod>
+    Public Sub Restored_WhileStillLatched_KeepsContinueWithout()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+        latch.Accept("REAR")
+
+        ' Same recording: a timecode that ticks again is not a recovery (bench: ticked ~24 s while unplugged).
+        Assert.IsFalse(latch.Restored("REAR"))
+        Assert.IsTrue(latch.AllAccepted("REAR"))
+    End Sub
+
+    <TestMethod>
+    Public Sub Restored_InNewRecording_ReenablesAlertsOnce()
+        Dim latch As New VideoLossLatch()
+        latch.Record("REAR")
+        latch.Accept("REAR,FRONT")
+        latch.OnTrackingReset(sequenceRotation:=False)
+
+        Assert.IsTrue(latch.Restored("rear"))
+        Assert.IsFalse(latch.Restored("REAR"))
+        Assert.AreEqual("FRONT", latch.AcceptedList)
+        Assert.IsFalse(latch.Restored(""))
+    End Sub
+
+End Class

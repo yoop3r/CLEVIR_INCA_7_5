@@ -206,6 +206,7 @@ Partial Public Class GmResidentClient
             CloseDeviceAlert()
             BackgroundLoopCounterNotUpdating = False
             VideoCameraNotUpdating = False
+            ClearVideoLoss("Re-Initialize")
 
             ' ══════════════════════════════════════════════════════════
             ' STEP 1: Stop Recording (UI thread safe)

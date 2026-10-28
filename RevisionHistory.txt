@@ -37,7 +37,25 @@ Driver alerts (eyes stay on the road)
   pressed. CLEVIR now brings that message to the front, shows a toast
   that stays up and speaks "INCA Target Server message. Press OK." every
   30 s until it is answered, then confirms when it closes.
-- Background monitoring loop survives a failed pass instead of stopping
+- Invalid video (lost camera) reworked. INCA localizes camera frames and
+  aligns them with the MF4 data, so video lost during a recording cannot
+  come back in that recording:
+  * The video GO/NOGO stays RED for the lost camera until a new
+    recording or Re-Initialize, instead of flickering back to green.
+  * The alert and toasts name the camera and give the quick fix first:
+    "Stop Record, reconnect the REAR camera, then Start Record", with
+    Re-Initialize NOW as the fallback. A Target Server camera disconnect
+    is quoted in the alert.
+  * New "Continue Without {camera} Video" option: keeps recording vehicle
+    data without that camera and silences its video alerts until its
+    video is seen again in a later recording ("REAR video is back").
+  * "In Valid Video Alert" voice follows the same rules as the alert
+    window (silent while a Target Server message is up or after Continue
+    Without).
+  * Fixed a stale RED/voice alert at Start Record: frozen-data tracking
+    was never reset for the last row of each grid (e.g. the REAR camera,
+    LRR), so a previous freeze carried into the next recording.
+- Background monitoring loop survives
   for the rest of the drive. Persistent failures gray the GO/NOGO
   indicators and are announced ("Monitoring Fault Alert" / "Monitoring
   Restored").

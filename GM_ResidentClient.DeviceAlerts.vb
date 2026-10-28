@@ -14,6 +14,9 @@ Partial Public Class GmResidentClient
 
     Private Const LostDeviceDebounceSeconds As Integer = 25
 
+    ' Cameras whose video froze while recording - held until a new recording or Re-Initialize (see VideoLossLatch).
+    Private ReadOnly _videoLoss As New VideoLossLatch()
+
     Private Enum DeviceAlertKind
         None
         InvalidData
@@ -39,6 +42,11 @@ Partial Public Class GmResidentClient
     Private _deviceAlertResolved As Boolean
     Private _deviceAlertResponse As Integer
     Private _deviceAlertResponseText As String = ""
+
+    ' Cameras named on the open invalid-video alert, and on the alert the driver last answered.
+    Private _deviceAlertVideoDevices As String = ""
+    Private _deviceAlertResponseKind As DeviceAlertKind
+    Private _deviceAlertResponseVideoDevices As String = ""
 
     Private Property LostDevice As Boolean
         Get
@@ -110,15 +118,27 @@ Partial Public Class GmResidentClient
         Dim outageText As String = $"{Math.Floor(outage.TotalMinutes):0}:{outage.Seconds:00}"
 
         HandleUserMessageLogging("GMRC", $"Lost device restored: communication with {names} re-established at {now:HH:mm:ss} after {outageText} (min:sec)")
-        SpeakDriverAlert(If(_alertedDeviceIsProcessor, "Processor Communication Restored", "Camera Communication Restored"))
-        StatusNotifier.Toast($"Communication with {names} restored. Data between {since:HH:mm:ss} and {now:HH:mm:ss} may be incomplete.",
-                             StatusNotifier.ToastKind.Success, "Communication Restored", durationMs:=10000, ensureMainOnTop:=False)
+
+        ' Video lost during the outage cannot be re-synchronized with the MF4 data, so a camera always needs a Re-Initialize.
+        Dim restoredText As String
+        If _alertedDeviceIsProcessor Then
+            SpeakDriverAlert("Processor Communication Restored")
+            StatusNotifier.Toast($"Communication with {names} restored. Data between {since:HH:mm:ss} and {now:HH:mm:ss} may be incomplete.",
+                                 StatusNotifier.ToastKind.Success, "Communication Restored", durationMs:=10000, ensureMainOnTop:=False)
+            restoredText = $"Data recorded between {since:HH:mm:ss} and {now:HH:mm:ss} may be incomplete. Re-initialize only if problems persist."
+        Else
+            SpeakDriverAlert("Camera Communication Restored. Stop and restart recording to restore video.")
+            StatusNotifier.Toast($"Communication with {names} restored, but video since {since:HH:mm:ss} is lost for this recording. " &
+                                 "To restore it: Stop Record, then Start Record (Re-Initialize if video does not return).",
+                                 StatusNotifier.ToastKind.Warning, "Communication Restored", durationMs:=12000, ensureMainOnTop:=False)
+            restoredText = $"Video from {names} since {since:HH:mm:ss} is lost for the rest of this recording and will not re-synchronize with the data. " &
+                           "To restore it: Stop Record, then Start Record. If video does not return, choose Re-Initialize NOW (INCA will be restarted, approx 3 minutes)."
+        End If
 
         ' Leave the alert up, marked resolved, so a driver who missed the voice still sees what happened.
         If IsDeviceAlertOpen() AndAlso _deviceAlertKind = DeviceAlertKind.LostDevice AndAlso Not _deviceAlertResolved Then
             _deviceAlertResolved = True
-            _deviceAlert.SetContent($"RESOLVED {now:HH:mm:ss}: communication with {names} restored after {outageText} (min:sec). " &
-                                    $"Data recorded between {since:HH:mm:ss} and {now:HH:mm:ss} may be incomplete. Re-initialize only if problems persist.",
+            _deviceAlert.SetContent($"RESOLVED {now:HH:mm:ss}: communication with {names} restored after {outageText} (min:sec). " & restoredText,
                                     $"CLEVIR ALERT - RESOLVED {now:HH:mm:ss}", "OK", "Re-Initialize NOW")
         End If
 
@@ -137,16 +157,20 @@ Partial Public Class GmResidentClient
         Try
             If IgnoreLostDeviceUntilNextRecordingSession OrElse IgnoreLostDeviceForThisDrive Then Return
 
+            ' Video the driver chose to continue without, or held back behind an open Target Server message, must not
+            ' take the video turn and starve the data alert.
+            Dim videoPending As Boolean = IsVideoAlertPending()
+
             If LostDevice Then
                 ShowDeviceAlert(DeviceAlertKind.LostDevice)
 
-            ElseIf BackgroundLoopCounterNotUpdating AndAlso (Not VideoCameraNotUpdating OrElse videoMessageLastDisplayed) Then
+            ElseIf BackgroundLoopCounterNotUpdating AndAlso (Not videoPending OrElse videoMessageLastDisplayed) Then
                 If ShowDeviceAlert(DeviceAlertKind.InvalidData) Then
                     videoMessageLastDisplayed = False
                     dataMessageLastDisplayed = True
                 End If
 
-            ElseIf VideoCameraNotUpdating AndAlso (Not BackgroundLoopCounterNotUpdating OrElse dataMessageLastDisplayed) Then
+            ElseIf videoPending AndAlso (Not BackgroundLoopCounterNotUpdating OrElse dataMessageLastDisplayed) Then
                 If ShowDeviceAlert(DeviceAlertKind.InvalidVideo) Then
                     videoMessageLastDisplayed = True
                     dataMessageLastDisplayed = False
@@ -173,8 +197,21 @@ Partial Public Class GmResidentClient
                 message = "INVALID DATA ALERT! (" & NamedOrUnidentified(SaveDataFrozenDeviceName) & ") To ensure data quality, CLEVIR/INCA should be re-initialized (INCA will be restarted). This will take approx 3 minutes"
                 buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", "Ignore All Alerts for Recording Session"}
             Case DeviceAlertKind.InvalidVideo
-                message = "INVALID VIDEO ALERT! (" & NamedOrUnidentified(SaveVideoFrozenDeviceName) & ") CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure video recording capability. This will take approx 3 minutes."
-                buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive", "Ignore All Alerts for Recording Session"}
+                ' The Target Server alert (toast, voice, window raised) is answered first - INCA is blocked until then.
+                ' Re-checked every 20 s, so this alert follows once the message is closed.
+                If IsTargetServerMessageShowing() Then Return False
+                Dim lostVideo As String = VideoLossDeviceNames()
+                If _videoLoss.AllAccepted(lostVideo) Then Return False
+                Dim alertVideo As String = _videoLoss.Unaccepted(lostVideo)
+                Dim tsTitle As String = Nothing
+                Dim tsText As String = Nothing
+                TryGetRecentTargetServerMessage(tsTitle, tsText)
+                message = VideoAlertText.InvalidVideoMessage(alertVideo, tsTitle, tsText)
+                ' A dead camera is worth less than the vehicle data: let the driver drop just that camera's video
+                ' alerts and keep processor/data/other-camera alerts. Needs a named camera.
+                buttons = {"CANCEL", "Re-Initialize NOW", "Ignore All Alerts for This Drive",
+                           If(alertVideo = "", "Ignore All Alerts for Recording Session", VideoAlertText.ContinueWithoutButton(alertVideo))}
+                _deviceAlertVideoDevices = alertVideo
             Case Else
                 message = $"{LostDeviceAlertTitle()}! ({SaveLostDeviceName}) No communication since {_lostDeviceMonitor.EpisodeStartedAt:HH:mm:ss}. " &
                           "CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure data and video recording capability. This will take approx 3 minutes."
@@ -206,8 +243,69 @@ Partial Public Class GmResidentClient
 
     ' A GO/NOGO can stay red across ResetDataFrozenTracking (recording start) before the cell re-freezes and records its device.
     Private Shared Function NamedOrUnidentified(deviceNames As String) As String
-        Return If(String.IsNullOrWhiteSpace(deviceNames), "device not yet identified", deviceNames)
+        Return If(String.IsNullOrWhiteSpace(deviceNames), VideoAlertText.UnidentifiedDevice, deviceNames)
     End Function
+
+    ''' <summary>Called from MarkCellDataFrozen when a video GO/NOGO cell freezes while recording.</summary>
+    Private Sub RecordVideoLoss(deviceName As String)
+        If _videoLoss.Record(deviceName) Then
+            HandleUserMessageLogging("GMRC", $"Video lost: {deviceName} - video GO/NOGO held RED until Re-Initialize or a new recording")
+            ' The video GO/NOGO may already be red (another camera), which would not re-arm the alert by itself.
+            If Not _videoLoss.AllAccepted(deviceName) AndAlso
+               Not IgnoreLostDeviceForThisDrive AndAlso Not IgnoreLostDeviceUntilNextRecordingSession Then
+                VideoCameraNotUpdating = True
+            End If
+        End If
+    End Sub
+
+    ''' <summary>Called from ResetDataFrozenTracking. An MF4 sequence rollover continues the recording and keeps the loss.</summary>
+    Private Sub ResetVideoLoss(reason As String, sequenceRotation As Boolean)
+        If _videoLoss.OnTrackingReset(sequenceRotation) Then
+            HandleUserMessageLogging("GMRC", $"Video loss cleared: {reason}")
+        ElseIf sequenceRotation AndAlso _videoLoss.IsLatched Then
+            HandleUserMessageLogging("GMRC", $"Video loss kept across sequence rollover: {_videoLoss.DeviceList}")
+        End If
+    End Sub
+
+    Private Sub ClearVideoLoss(reason As String)
+        If _videoLoss.Clear() Then HandleUserMessageLogging("GMRC", $"Video loss cleared: {reason}")
+    End Sub
+
+    Private Function IsVideoLost() As Boolean
+        Return _videoLoss.IsLatched
+    End Function
+
+    Private Function VideoLossDeviceNames() As String
+        Return If(_videoLoss.IsLatched, _videoLoss.DeviceList, SaveVideoFrozenDeviceName)
+    End Function
+
+    ''' <summary>
+    ''' The driver chose to keep collecting vehicle data without these cameras' video. Their GO/NOGO stays red; only
+    ''' their video alerts stop, until their video is seen updating in a later recording, or Re-Initialize.
+    ''' </summary>
+    Private Sub ContinueWithoutVideo(devices As String)
+        _videoLoss.Accept(devices)
+        HandleUserMessageLogging("GMRC", $"Continuing without {devices} video - video alerts for {devices} off until its video returns in a new recording or Re-Initialize; all other alerts stay on")
+        StatusNotifier.Toast(VideoAlertText.ContinuingWithoutToast(devices),
+                             StatusNotifier.ToastKind.Warning, "Video", durationMs:=12000, ensureMainOnTop:=False)
+    End Sub
+
+    ''' <summary>
+    ''' Invalid-video alert (and its voice) is due: a video GO/NOGO went red, the driver has not chosen to continue
+    ''' without those cameras, and no Target Server message is showing (it is answered first). Thread-safe.
+    ''' </summary>
+    Private Function IsVideoAlertPending() As Boolean
+        Return VideoCameraNotUpdating AndAlso Not IsTargetServerMessageShowing() AndAlso
+               Not _videoLoss.AllAccepted(VideoLossDeviceNames())
+    End Function
+
+    ''' <summary>Called from MarkCellDataResumed when a camera's video timecode updates while recording.</summary>
+    Private Sub OnVideoUpdating(deviceName As String)
+        If Not _videoLoss.Restored(deviceName) Then Return
+        HandleUserMessageLogging("GMRC", $"{deviceName} video is back in this recording - video alerts for {deviceName} on again")
+        StatusNotifier.Toast($"{deviceName} video is back. Video alerts for {deviceName} are on again.",
+                             StatusNotifier.ToastKind.Success, "Video", durationMs:=8000, ensureMainOnTop:=False)
+    End Sub
 
     Private Sub DeviceAlert_FormClosed(sender As Object, e As FormClosedEventArgs)
         Dim alert As Cusmsgbox = TryCast(sender, Cusmsgbox)
@@ -216,6 +314,8 @@ Partial Public Class GmResidentClient
         If alert IsNot _deviceAlert Then Return ' closed by CloseDeviceAlert - no answer to act on
 
         _deviceAlert = Nothing
+        _deviceAlertResponseKind = _deviceAlertKind
+        _deviceAlertResponseVideoDevices = _deviceAlertVideoDevices
         _deviceAlertKind = DeviceAlertKind.None
         Dim choice As Integer = alert.SelectedOption
         If choice = 0 Then choice = 1 ' closed without a button (e.g. Alt+F4) = CANCEL / OK
@@ -251,8 +351,12 @@ Partial Public Class GmResidentClient
                 Case 3 ' Ignore All Alerts for This Drive
                     IgnoreLostDeviceForThisDrive = True
                     OnVehicleScreen.TopMost = False
-                Case 4 ' Ignore All Alerts for Recording Session
-                    IgnoreLostDeviceUntilNextRecordingSession = True
+                Case 4
+                    If _deviceAlertResponseKind = DeviceAlertKind.InvalidVideo AndAlso _deviceAlertResponseVideoDevices <> "" Then
+                        ContinueWithoutVideo(_deviceAlertResponseVideoDevices)
+                    Else ' Ignore All Alerts for Recording Session
+                        IgnoreLostDeviceUntilNextRecordingSession = True
+                    End If
                     OnVehicleScreen.TopMost = False
                 Case Else ' CANCEL / OK
                     OnVehicleScreen.TopMost = False
