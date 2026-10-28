@@ -14,6 +14,10 @@ Partial Public Class GmResidentClient
 
     Private Const LostDeviceDebounceSeconds As Integer = 25
 
+    ' A disconnected camera's timecode can tick for ~20 s before freezing again.
+    Private Const VideoResumeConfirmSeconds As Integer = 45
+    Private ReadOnly _videoResumeWatch As New VideoResumeWatch(TimeSpan.FromSeconds(VideoResumeConfirmSeconds))
+
     Private Enum DeviceAlertKind
         None
         InvalidData
@@ -217,15 +221,22 @@ Partial Public Class GmResidentClient
 
     ''' <summary>
     ''' Called from Handle_5_SecondChecks (UI thread). Marks an open invalid-video alert RESOLVED once every frozen
-    ''' video cell has resumed, so a driver is not left looking at a Re-Initialize prompt for a camera that recovered.
+    ''' video cell has resumed and stayed updating for VideoResumeConfirmSeconds, so a driver is not left looking at a
+    ''' Re-Initialize prompt for a camera that recovered.
     ''' </summary>
     Private Sub EvaluateInvalidVideoResolved()
         Try
-            If Not IsDeviceAlertOpen() OrElse _deviceAlertKind <> DeviceAlertKind.InvalidVideo OrElse _deviceAlertResolved Then Return
-            If Not MyIncaInterface.Recording OrElse VideoCameraNotUpdating OrElse Not String.IsNullOrEmpty(SaveVideoFrozenDeviceName) Then Return
+            If Not IsDeviceAlertOpen() OrElse _deviceAlertKind <> DeviceAlertKind.InvalidVideo OrElse _deviceAlertResolved Then
+                _videoResumeWatch.Reset()
+                Return
+            End If
 
             Dim now As DateTime = DateTime.Now
+            Dim videoHealthy As Boolean = MyIncaInterface.Recording AndAlso Not VideoCameraNotUpdating AndAlso String.IsNullOrEmpty(SaveVideoFrozenDeviceName)
+            If Not _videoResumeWatch.Update(videoHealthy, now) Then Return
+
             _deviceAlertResolved = True
+            _videoResumeWatch.Reset()
             HandleUserMessageLogging("GMRC", $"Invalid video alert resolved: video resumed at {now:HH:mm:ss}")
             SpeakDriverAlert("Video Restored")
             _deviceAlert.SetContent($"RESOLVED {now:HH:mm:ss}: video resumed. Video recorded before {now:HH:mm:ss} may have a gap. " &
