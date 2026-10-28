@@ -218,18 +218,15 @@ Partial Public Class GmResidentClient
         End If
 
         If INCACommCheckStopWatch.Elapsed.TotalSeconds >= INCACommCheckWarningTime Then
-            Dim synth As New SpeechSynthesizer()
-            synth.SelectVoice("Microsoft Zira Desktop")
-            synth.Rate = 0
             Dim userMessage As String
             If INCACommCheckWarningTime = Val(APICommErrorMsgDelayTime) Then
                 userMessage = "WARNING: Possible INCA API COMM ERROR detected. If issue persists, A RESTART of CLEVIR and INCA may be required."
-                synth.Speak("WARNING: Possible INCA API communication ERROR detected")
+                DriverVoice.Speak("WARNING: Possible INCA API communication ERROR detected")
             Else
                 userMessage = If(MyIncaInterface.Recording,
                                  "INCA API COMM ERROR has been detected. A RESTART of CLEVIR and INCA may be required. If not, the current recording may continue indefinitely.",
                                  "INCA API COMM ERROR has been detected. A RESTART of CLEVIR and INCA may be required.")
-                synth.Speak(If(MyIncaInterface.Recording, "INCA API communication ERROR detected during recording", "INCA API communication ERROR has been detected"))
+                DriverVoice.Speak(If(MyIncaInterface.Recording, "INCA API communication ERROR detected during recording", "INCA API communication ERROR has been detected"))
             End If
 
             Dim lastAction = If(String.IsNullOrEmpty(ActiveIncaApiCall), "Unknown", ActiveIncaApiCall)
@@ -271,22 +268,16 @@ Partial Public Class GmResidentClient
     End Sub
 
     Private Sub HandleKillerAudioAlerts()
-        Static synth As New SpeechSynthesizer()
-        Static voiceSelected As Boolean = False
-        If Not voiceSelected Then
-            synth.SelectVoice("Microsoft Zira Desktop")
-            synth.Rate = 0
-            voiceSelected = True
-        End If
-
         Static lastSpoken As Dictionary(Of String, DateTime) = New Dictionary(Of String, DateTime)
         Const audioMessageFrequency As Integer = 10 'seconds
 
-        If IgnoreLostDeviceForThisDrive OrElse IgnoreLostDeviceUntilNextRecordingSession Then Return
+        Dim audioAllowed As Boolean = Not (IgnoreLostDeviceForThisDrive OrElse IgnoreLostDeviceUntilNextRecordingSession)
+        CheckLidarLinks(audioAllowed)
+        If Not audioAllowed Then Return
 
         Dim speak As Action(Of String) = Sub(key)
                                              If Not lastSpoken.ContainsKey(key) OrElse DateTime.Now.Subtract(lastSpoken(key)).TotalSeconds >= audioMessageFrequency Then
-                                                 synth.SpeakAsync(key)
+                                                 DriverVoice.Speak(key)
                                                  lastSpoken(key) = DateTime.Now
                                              End If
                                          End Sub
@@ -295,14 +286,6 @@ Partial Public Class GmResidentClient
         If BackgroundLoopCounterNotUpdating AndAlso Not isLost Then speak("In Valid Data Alert")
         If VideoCameraNotUpdating AndAlso Not isLost Then speak("In Valid Video Alert")
         If isLost Then speak(LostDeviceVoice)
-
-        If LidarCaptureStarted AndAlso LidarDevices IsNot Nothing Then
-            For Each lidar In LidarDevices
-                If lidar.ShouldTriggerAudioAlert() Then
-                    lidar.SpeakAlert()
-                End If
-            Next
-        End If
 
     End Sub
 

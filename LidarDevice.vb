@@ -1,6 +1,5 @@
 ﻿Option Strict On
 Imports System.IO
-Imports System.Speech.Synthesis
 Imports System.Threading
 Imports System.Threading.Tasks
 Imports SharpPcap
@@ -111,10 +110,10 @@ Public NotInheritable Class LidarDevice
         End Get
     End Property
 
-    ''' <summary>Name used in spoken alerts: "FRONT LiDAR", or "LiDAR 1" when no orientation is configured.</summary>
+    ''' <summary>Name used in spoken alerts and toasts: "LiDAR FRONT", or the device id (e.g. "LiDAR1") when no orientation is configured.</summary>
     Public ReadOnly Property SpokenName As String
         Get
-            Return If(String.IsNullOrWhiteSpace(Orientation), $"LiDAR {DeviceId}", $"{Orientation.Trim()} LiDAR")
+            Return If(String.IsNullOrWhiteSpace(Orientation), DeviceId, $"LiDAR {Orientation.Trim()}")
         End Get
     End Property
     Public Property Enabled As Boolean = True  ' Default to True for backward compatibility
@@ -173,14 +172,6 @@ Public NotInheritable Class LidarDevice
     Private Shared ReadOnly MarkerDstMac As PhysicalAddress = PhysicalAddress.Parse("02-00-00-00-00-02")
     Private Shared ReadOnly MarkerSrcIp As Net.IPAddress = Net.IPAddress.Parse("192.168.40.200")
     Private Shared ReadOnly MarkerDstIp As Net.IPAddress = Net.IPAddress.Parse("192.168.40.255")
-
-    ' Shared speech synthesizer — creating one per alert leaked native COM resources
-    Private Shared ReadOnly _speechSyncLock As New Object()
-    Private Shared _sharedSynth As SpeechSynthesizer
-
-    ' Track when we last spoke to avoid spam
-    Private _lastAudioAlert As DateTime = DateTime.MinValue
-    Private Const AudioAlertCooldownSeconds As Integer = 30
 
     Private _frameCounter As Long = 0  ' Tracks PCAP frame number
     Private _eventLogger As LidarEventLogger
@@ -414,92 +405,15 @@ Public NotInheritable Class LidarDevice
         HandleUserMessageLogging("GMRC", $"Injected test marker: {message}")
     End Sub
 
-    ''' <summary>
-    ''' Checks if audio alert should be triggered based on health status
-    ''' </summary>
-    Public Function ShouldTriggerAudioAlert() As Boolean
-        ' Don't spam - enforce cooldown period
-        If DateTime.Now.Subtract(_lastAudioAlert).TotalSeconds < AudioAlertCooldownSeconds Then
-            Return False
-        End If
-
-        ' Never alert for a device that has never received a packet (not started / disabled)
-        If Not LastPacketTimestamp.HasValue Then
-            Return False
-        End If
-
-        ' Check for critical conditions
-        Dim timeSinceLastPacket = DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds
-
-        If timeSinceLastPacket > 15 Then ' Device stopped
-            HandleUserMessageLogging("GMRC",
-                $"[{DisplayName}] DIAG: 🔴 ALERT TRIGGER — stopped responding, " &
-                $"last_pkt={timeSinceLastPacket:F1}s ago, " &
-                $"pkts={PacketCount:N0}, dropped={DroppedPackets:N0}, " &
-                $"isCapturing={Volatile.Read(_isCapturing)}, " &
-                $"dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
-                $"gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
-                $"handlerErrors={Interlocked.Read(_handlerErrorCount)}, " &
-                $"ts={DateTime.Now:HH:mm:ss.fff}")
-            Return True
-        End If
-
-        Dim totalPackets As Long = PacketCount + DroppedPackets
-        If totalPackets > 100 Then
-            Dim lossPercent As Double = (CDbl(DroppedPackets) / CDbl(totalPackets)) * 100.0
-            If lossPercent >= 20.0 Then ' Critical loss threshold
-                Return True
-            End If
-        End If
-
-        Return False
-    End Function
-
-    ''' <summary>
-    ''' Speaks audio alert and updates last alert timestamp
-    ''' </summary>
-    Public Sub SpeakAlert()
-        Try
-            SyncLock _speechSyncLock
-                If _sharedSynth Is Nothing Then
-                    _sharedSynth = New SpeechSynthesizer()
-                    _sharedSynth.SelectVoice("Microsoft Zira Desktop")
-                    _sharedSynth.Rate = 0
-                End If
-            End SyncLock
-
-            Dim message As String = GetAlertMessage()
-            _sharedSynth.SpeakAsync(message) ' Use Async to avoid blocking
-
-            _lastAudioAlert = DateTime.Now
-
-        Catch ex As Exception
-            ' Log but don't crash if speech fails
-            HandleUserMessageLogging("GMRC", $"LiDAR audio alert failed: {ex.Message}")
-        End Try
-    End Sub
-
-    ''' <summary>
-    ''' Generates appropriate alert message based on health status
-    ''' </summary>
-    Private Function GetAlertMessage() As String
-        Dim timeSinceLastPacket = If(LastPacketTimestamp.HasValue,
-                                      DateTime.Now.Subtract(LastPacketTimestamp.Value).TotalSeconds,
-                                      -1.0)
-
-        If timeSinceLastPacket > 15 Then
-            Return $"{SpokenName} has stopped responding"
-        End If
-
-        Dim totalPackets As Long = PacketCount + DroppedPackets
-        If totalPackets > 100 Then
-            Dim lossPercent As Double = (CDbl(DroppedPackets) / CDbl(totalPackets)) * 100.0
-            If lossPercent >= 20.0 Then
-                Return $"{SpokenName} critical packet loss detected"
-            End If
-        End If
-
-        Return $"{SpokenName} performance degraded"
+    ''' <summary>Capture-state snapshot logged when the driver is told this LiDAR has lost communication.</summary>
+    Public Function GetLinkDiagnostics() As String
+        Dim lastPacket As DateTime? = LastPacketTimestamp
+        Return $"DIAG: last_pkt={(If(lastPacket.HasValue, $"{DateTime.Now.Subtract(lastPacket.Value).TotalSeconds:F1}s ago", "never"))}, " &
+               $"pkts={PacketCount:N0}, dropped={DroppedPackets:N0}, " &
+               $"isCapturing={Volatile.Read(_isCapturing)}, " &
+               $"dumpFile={(If(_dumpFile Is Nothing, "NULL", "open"))}, " &
+               $"gateDenied={Interlocked.Read(_gateDeniedCount)}, " &
+               $"handlerErrors={Interlocked.Read(_handlerErrorCount)}"
     End Function
 
     ''' <summary>

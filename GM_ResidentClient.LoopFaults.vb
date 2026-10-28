@@ -2,10 +2,9 @@ Option Strict Off
 Option Explicit On
 
 Imports System.IO
-Imports System.Speech.Synthesis
 
 ' Fault handling for a single failed pass of MyBackgroundTasks (plan §11 #22).
-' A failed pass is logged and the loop keeps running; if failures persist the driver is alerted by voice
+' A failed pass is logged
 ' (eyes stay on the road), a toast is shown for later review, and the GO/NOGO indicators are grayed
 ' so a stale GREEN is never displayed.
 Partial Public Class GmResidentClient
@@ -22,7 +21,6 @@ Partial Public Class GmResidentClient
     Private ReadOnly _loopFaults As New LoopFaultTracker(TimeSpan.FromSeconds(LoopFaultEscalateSeconds),
                                                          TimeSpan.FromSeconds(LoopFaultVoiceRepeatSeconds),
                                                          TimeSpan.FromSeconds(LoopFaultLogRepeatSeconds))
-    Private _driverAlertSynth As SpeechSynthesizer
 
     ''' <summary>Called from MyBackgroundTasks after a pass threw. Returns the back-off delay before the next pass.</summary>
     Private Function HandleBackgroundPassFault(ex As Exception, whereAmI As String) As Integer
@@ -82,20 +80,7 @@ Partial Public Class GmResidentClient
     End Sub
 
     Private Sub SpeakDriverAlert(message As String)
-        Try
-            If _driverAlertSynth Is Nothing Then
-                _driverAlertSynth = New SpeechSynthesizer()
-                Try
-                    _driverAlertSynth.SelectVoice("Microsoft Zira Desktop")
-                Catch
-                    ' Voice not installed - keep the default voice.
-                End Try
-                _driverAlertSynth.Rate = 0
-            End If
-            _driverAlertSynth.SpeakAsync(message)
-        Catch ex As Exception
-            HandleUserMessageLogging("GMRC", "SpeakDriverAlert: " & ex.Message)
-        End Try
+        DriverVoice.Speak(message)
     End Sub
 
     Private Shared Function FirstStackFrame(ex As Exception) As String

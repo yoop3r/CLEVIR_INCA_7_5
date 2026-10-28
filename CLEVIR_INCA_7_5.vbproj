@@ -246,6 +246,10 @@
       <DependentUpon>GM_ResidentClient.vb</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="GM_ResidentClient.LidarAlerts.vb">
+      <DependentUpon>GM_ResidentClient.vb</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="GridCellPropConfig.designer.vb">
       <DependentUpon>GridCellPropConfig.vb</DependentUpon>
     </Compile>

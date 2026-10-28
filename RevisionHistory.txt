@@ -1,6 +1,100 @@
 CLEVIR_INCA_7_5 - Revision History
 ===================================
 
+Version 7.5.5.0
+----------------
+Driver alerts (eyes stay on the road)
+- LiDAR loss-of-communication alerts restored. While LiDAR capture runs,
+  a LiDAR that sends no packets for 15 s is announced by voice ("Lost
+  communication with LiDAR FRONT"), shown as an error toast that stays
+  up until the device recovers, and logged with capture diagnostics.
+  The voice repeats every 30 s; recovery is announced ("LiDAR FRONT
+  communication restored"). Devices silent from the start of capture or
+  across an MF4 rollover are now caught - the previous alert could never
+  fire because the packet timestamp was cleared at every rollover.
+  Critical packet loss (20% or more) is still announced. "Ignore All
+  Alerts" silences the LiDAR voice only; toasts and log entries continue.
+- All spoken driver alerts now use one shared voice. Messages queue with
+  a 3 s pause after each, so alerts never talk over each other (e.g. with
+  both LiDARs down, FRONT is announced, then REAR), and a repeating alert
+  cannot build up a backlog.
+- Lost device (PROCESSOR / CAMERA COMMUNICATION ALERT) reworked:
+  * Detection runs on the UI thread from INCA's raw device status with a
+    25 s debounce; a fault stays raised across MF4 rollovers until the
+    device recovers or the driver answers the alert.
+  * One non-blocking alert window, with a voice and toast when
+    communication is restored.
+  * A single failed INCA device-list read no longer ends the drive
+    (3 consecutive failures required); configuration problems are shown
+    once instead of every 5 s.
+  * Re-Initialize NOW runs on the UI thread and performs a full INCA
+    restart (closes INCA and the Target Server, hardware settle, restart,
+    signal registration). Fixed doubled device-raster counts after
+    re-registration from cache.
+  * Timers that used TimeSpan.Seconds (wraps at 60) now use TotalSeconds.
+- INCA Target Server message alert: when the Target Server shows a message
+  (e.g. lost communication with a camera) INCA is blocked until OK is
+  pressed. CLEVIR now brings that message to the front, shows a toast
+  that stays up and speaks "INCA Target Server message. Press OK." every
+  30 s until it is answered, then confirms when it closes.
+- Background monitoring loop survives a failed pass instead of stopping
+  for the rest of the drive. Persistent failures gray the GO/NOGO
+  indicators and are announced ("Monitoring Fault Alert" / "Monitoring
+  Restored").
+
+Recording, annotations and LiDAR
+- Session mileage now starts from the real odometer reading (ANNO
+  RecordedMileage previously included the whole odometer).
+- ANNO header rows are matched by field name instead of fixed line
+  numbers, so Email/Group rows no longer overwrite Start Date/Time,
+  Vehicle and Thumbnail.
+- LiDAR annotation columns are named by mounting position
+  (LiDAR[FRONT]_Frame, LiDAR[REAR]_Frame) for audio-to-text; logs, toasts
+  and markers identify LiDARs as e.g. "LiDAR1:FRONT".
+- LiDAR event markers carry the frame and UTC time of the button press,
+  so ANNO frames match the pcap markers.
+- Fixed corrupted pcap files: capture and marker writes to the same file
+  are now serialized.
+- Hesai HTTP metadata queries retry objects that time out, so capture
+  manifests are complete when a LiDAR web server stalls.
+- Fixed the CLEVIR record buffer being one column short, which stopped
+  the background loop when CLEVIR Record mode was enabled.
+
+Signal lists and displays
+- Grid moves/resizes and cell edits are saved again on EXIT (the save ran
+  after the display forms were cleared and skipped every grid).
+- Accepting "use this newly saved variable file" now updates config.xml.
+- Signal list CSV fields are quoted correctly (RFC 4180), so saved lists
+  with quotes or commas reload; resizing a grid now prompts to save.
+- DeviceRasterSignalList.txt removed; acquisition rates are read from
+  INCA. Changing the device in Grid Cell Properties no longer starts a
+  full INCA variable browse (which could hang INCA for 10+ minutes).
+- XLSX signal lists removed; CSV is the only signal list format.
+- GO/NOGO labels repaint when their displayed color differs from the
+  requested one (Video Status could stay gray at record start).
+- OnVehicleScreen is fixed at its designed size (controls overlapped when
+  resized); distance-to-object text stays inside its label at 125%+
+  display scaling; EXIT returns after Start/Stop Measurement.
+- Top Down View opened from OnVehicleScreen > Displays appears on screen.
+- Deprecated CoPilot, Pedestrian, LMFR Global A, LMFR HC and Target
+  status screens and the Oscilloscope display.
+
+Exit and housekeeping
+- Exit dialog Cancel leaves CLEVIR fully running (teardown now happens
+  after the choice); forced exits terminate instead of restarting
+  initialization.
+- Compression is limited to the current session's folder (Stop Record
+  could rescan every past session on the UI thread).
+- GM_ResidentClient.log is capped at 5 MB with one backup; concurrent log
+  writes no longer truncate lines; HesaiWrapper messages go to the GMRC
+  log.
+
+Internal
+- GmResidentClient split from one file into 15 partial classes; long
+  methods decomposed (none over 300 lines); configuration, signal list,
+  file maintenance and alert logic moved into unit-tested classes.
+  225 unit tests (previously none).
+
 Version 7.5.4.0
 ----------------
 - INCA COMM / lost-device checks now apply only after measurement or
