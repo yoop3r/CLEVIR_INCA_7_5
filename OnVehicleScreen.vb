@@ -10,8 +10,6 @@ Imports System.Windows.Forms
 
 Public Class OnVehicleScreen
     ' Add constants at the top of the class
-    Private Const MIN_FORM_WIDTH As Integer = 800
-    Private Const MIN_FORM_HEIGHT As Integer = 605
     Private Const MAX_LISTBOX_HEIGHT As Integer = 350
     Private Const MAX_LISTBOX_WIDTH As Integer = 300
 
@@ -471,7 +469,7 @@ Public Class OnVehicleScreen
         Label2.Visible = False
         GmResidentClient?.InitializeAndSetupMainTabControl()  ' Creates event annotation buttons
         SetupCustomListBox()                                   ' Enables custom drawing for subcategory dropdown
-        SetupControlAnchoring()                                ' Makes form responsive to screen size changes
+        LockFormSize()                                         ' Fixed layout; resizing only overlapped controls
 
         ' ================================================================
         ' 2. Disable features not supported in DATALOGGING mode
@@ -643,50 +641,10 @@ Public Class OnVehicleScreen
         End Try
     End Sub
 
-    Private Sub SetupControlAnchoring()
-        ' Allow the form to be resizable
-        Me.FormBorderStyle = FormBorderStyle.Sizable
-        Me.MinimumSize = New Size(MIN_FORM_WIDTH, MIN_FORM_HEIGHT)
-
-        ' Main control buttons - keep them anchored to top-left
-        Button6.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-        Button14.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-        Button7.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-        Button3.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-        Button10.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-
-        ' Right-side buttons - anchor to top-right
-        Button23.Anchor = AnchorStyles.Top Or AnchorStyles.Right
-        Button1.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' EXIT button
-        Label17.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' Distance-to-object; replaces EXIT while measuring
-        Button2.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' CONFIG button
-        Button4.Anchor = AnchorStyles.Top Or AnchorStyles.Right ' LOGIN button
-
-        ' Status label stays fixed: Button9, the page switch, Label3 and Label1 share its row and do not move
-        Label5.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-
-        ' Control labels and combo - anchor appropriately
-        Label7.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-        ComboBox1.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-        Label9.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
-        Label8.Anchor = AnchorStyles.Top Or AnchorStyles.Right
-
-        ' GroupBox4 - stretch across the width
-        GroupBox4.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
-
-        ' Main content area and its contents expand with the form
-        GroupBox1.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
-        Label2.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
-        ListBox1.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
-
-        ' LiDAR status stays at the top-left while its status text uses available width
-        GroupBox_LidarStatus.Anchor = AnchorStyles.Top Or AnchorStyles.Left
-        Label_LidarStatus.Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right
-
-        ' Popup groupboxes maintain their current behavior
-        GroupBox3.Anchor = AnchorStyles.None ' Cameras dropdown
-        GroupBox5.Anchor = AnchorStyles.None ' SubCategory dropdown  
-        GroupBox6.Anchor = AnchorStyles.None ' Voice Commands dropdown
+    Private Sub LockFormSize()
+        ' The control layout is fixed-position; resizing only stretched some controls over others
+        Me.FormBorderStyle = FormBorderStyle.FixedSingle
+        Me.MaximizeBox = False
     End Sub
 
     Private Sub Button5_Click(ByVal sender As Object, ByVal e As EventArgs) Handles Button5.Click
