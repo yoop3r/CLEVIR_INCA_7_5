@@ -2,14 +2,21 @@ Option Strict On
 Option Explicit On
 
 ''' <summary>
-''' Wording for the invalid-video alert. When the INCA Target Server recently reported a device problem (typically
-''' "REAR: VideoCamera Add-On - Camera Connection" / "The camera appears to be disconnected"), the frozen video is
-''' that disconnect, and INCA normally recovers on its own once the camera is back - so the driver is pointed at the
-''' camera first and Re-Initialize becomes the fallback.
+''' Wording for the invalid-video alert. Lost video cannot be recovered within a recording: ETAS localizes the camera
+''' frames before writing them to the session folder, and frames after a loss would not line up with the MF4 data.
+''' So even if the camera comes back the driver is told to Re-Initialize. When the INCA Target Server recently
+''' reported a camera problem (e.g. "REAR: VideoCamera Add-On - Camera Connection"), the driver is first told to
+''' reconnect the camera, since Re-Initialize cannot restore video from a camera that is still unplugged.
 ''' </summary>
 Friend Module VideoAlertText
 
     Friend Const UnidentifiedDevice As String = "device not yet identified"
+
+    Private Const VideoLostText As String =
+        "Video from this camera is lost for the rest of this recording and will not re-synchronize with the data, even if the camera comes back. "
+
+    Private Const ReinitializeText As String =
+        "Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording."
 
     ''' <summary>"REAR: VideoCamera Add-On - Camera Connection" -> "REAR"; "" when the title has no device prefix.</summary>
     Friend Function DeviceFromTargetServerTitle(title As String) As String
@@ -36,17 +43,15 @@ Friend Module VideoAlertText
         If String.IsNullOrWhiteSpace(device) Then device = UnidentifiedDevice
 
         If Not recentTargetServer Then
-            Return $"INVALID VIDEO ALERT! ({device}) CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure video recording capability. This will take approx 3 minutes."
+            Return $"INVALID VIDEO ALERT! ({device}) " & VideoLostText & ReinitializeText
         End If
 
         Dim reported As String = If(String.IsNullOrWhiteSpace(targetServerText), targetServerTitle, targetServerText).Trim()
         Dim action As String = If(IsCameraMessage(targetServerTitle, targetServerText),
-                                  "Check that the camera is connected (reconnect it if needed). ",
+                                  "Reconnect the camera, then ",
                                   "")
-        Return $"INVALID VIDEO ALERT! ({device}) INCA Target Server recently reported: ""{reported}"" " &
-               action &
-               "Video normally resumes on its own within a minute - this alert will show RESOLVED when it does. " &
-               "Re-Initialize (INCA will be restarted, approx 3 minutes) only if video does not resume."
+        Return $"INVALID VIDEO ALERT! ({device}) INCA Target Server reported: ""{reported}"" " &
+               VideoLostText & action & ReinitializeText
     End Function
 
 End Module

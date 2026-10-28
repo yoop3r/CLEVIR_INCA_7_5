@@ -22,10 +22,13 @@ Public Class VideoAlertTextTests
     End Sub
 
     <TestMethod>
-    Public Sub NoTargetServerMessage_KeepsReinitializeWording()
+    Public Sub NoTargetServerMessage_SaysVideoLostAndReinitialize()
         Dim msg As String = VideoAlertText.InvalidVideoMessage("REAR", Nothing, Nothing)
 
-        Assert.AreEqual("INVALID VIDEO ALERT! (REAR) CLEVIR/INCA should be re-initialized (INCA will be restarted) to insure video recording capability. This will take approx 3 minutes.", msg)
+        Assert.StartsWith("INVALID VIDEO ALERT! (REAR) ", msg)
+        Assert.Contains("lost for the rest of this recording", msg)
+        Assert.EndsWith("Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
+        Assert.DoesNotContain("Reconnect the camera", msg)
     End Sub
 
     <TestMethod>
@@ -36,14 +39,15 @@ Public Class VideoAlertTextTests
     End Sub
 
     <TestMethod>
-    Public Sub RecentCameraMessage_PointsAtCameraAndMakesReinitializeTheFallback()
+    Public Sub RecentCameraMessage_ReconnectThenReinitialize_NoRecoveryPromise()
         Dim msg As String = VideoAlertText.InvalidVideoMessage("REAR", BenchTitle, BenchText)
 
         Assert.StartsWith("INVALID VIDEO ALERT! (REAR) ", msg)
         Assert.Contains("""" & BenchText & """", msg)
-        Assert.Contains("Check that the camera is connected", msg)
-        Assert.Contains("only if video does not resume", msg)
-        Assert.DoesNotContain("should be re-initialized", msg)
+        Assert.Contains("will not re-synchronize", msg)
+        Assert.EndsWith("Reconnect the camera, then Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
+        Assert.DoesNotContain("resumes on its own", msg)
+        Assert.DoesNotContain("RESOLVED", msg)
     End Sub
 
     <TestMethod>
@@ -58,8 +62,8 @@ Public Class VideoAlertTextTests
         Dim msg As String = VideoAlertText.InvalidVideoMessage("FRONT", "ES820: Hardware Connection", "")
 
         Assert.Contains("""ES820: Hardware Connection""", msg)
-        Assert.DoesNotContain("camera is connected", msg)
-        Assert.Contains("only if video does not resume", msg)
+        Assert.DoesNotContain("Reconnect the camera", msg)
+        Assert.EndsWith("Re-Initialize NOW (INCA will be restarted, approx 3 minutes) to restore video recording.", msg)
     End Sub
 
 End Class

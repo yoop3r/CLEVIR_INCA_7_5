@@ -4,9 +4,10 @@ Option Explicit On
 Imports System.IO
 
 ' INCA Target Server (TGTSVR) message alert.
-' When TGTSVR loses a device (e.g. a camera) it shows a message box and INCA stays blocked until someone presses OK;
-' it then recovers on its own. CLEVIR's top-most screens can hide that box, so the 5 s check raises it to the front,
-' shows a sticky toast and speaks until it is answered.
+' When TGTSVR loses a device (e.g. a camera) it shows a message box and INCA stays blocked until someone presses OK.
+' CLEVIR's top-most screens can hide that box, so the 5 s check raises it to the front, shows a sticky toast and
+' speaks until it is answered. A lost camera's video cannot be recovered in the running recording (see
+' VideoLossLatch); the invalid-video alert that follows asks for a reconnect and Re-Initialize.
 Partial Public Class GmResidentClient
 
     Private Const TargetServerReminderSeconds As Integer = 30
@@ -33,8 +34,13 @@ Partial Public Class GmResidentClient
                     _targetServerMessages.Clear()
                     DismissTargetServerAlert()
                     HandleUserMessageLogging("GMRC", "INCA Target Server message closed")
-                    StatusNotifier.Toast("Target Server message closed. INCA should now reconnect the device.",
-                                         StatusNotifier.ToastKind.Success, TargetServerAlertTitle, durationMs:=8000, ensureMainOnTop:=False)
+                    If MyIncaInterface.Recording AndAlso VideoAlertText.IsCameraMessage(_targetServerLastTitle, _targetServerLastText) Then
+                        StatusNotifier.Toast("Target Server message closed. Video from that camera is lost for this recording - reconnect the camera and Re-Initialize.",
+                                             StatusNotifier.ToastKind.Warning, TargetServerAlertTitle, durationMs:=10000, ensureMainOnTop:=False)
+                    Else
+                        StatusNotifier.Toast("Target Server message closed. INCA can continue.",
+                                             StatusNotifier.ToastKind.Success, TargetServerAlertTitle, durationMs:=8000, ensureMainOnTop:=False)
+                    End If
                 End If
                 Return
             End If
@@ -58,7 +64,7 @@ Partial Public Class GmResidentClient
                 Dim body As String = If(newMessage.Text <> "", newMessage.Text, newMessage.Title)
                 _targetServerToastId = StatusNotifier.ToastSticky(
                     $"INCA is waiting for an answer to a Target Server message:{vbCrLf}""{body}""{vbCrLf}{vbCrLf}" &
-                    "Press OK in the Target Server window. INCA recovers on its own after that.",
+                    "Press OK in the Target Server window - INCA is blocked until it is answered.",
                     TargetServerAlertTitle, StatusNotifier.ToastKind.Error, ensureMainOnTop:=False)
                 RemindTargetServerMessage(newMessage.Handle, now)
             ElseIf (now - _targetServerLastReminder).TotalSeconds >= TargetServerReminderSeconds Then

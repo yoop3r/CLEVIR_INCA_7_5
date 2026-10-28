@@ -146,7 +146,6 @@ Partial Public Class GmResidentClient
                 CheckForTargetServerMessage()
                 Await GetDeviceStatus()
                 EvaluateLostDevice()
-                EvaluateInvalidVideoResolved()
 
                 lIsTargetOnWorkingPage = MyIncaInterface.IsTargetOnWorkingPage
 
@@ -222,6 +221,7 @@ Partial Public Class GmResidentClient
             _MyCpuStaleData = False
             SaveDataFrozenDeviceName = ""
             SaveVideoFrozenDeviceName = ""
+            ResetVideoLoss(reason, _rotationInProgress OrElse MyIncaInterface.SequenceRotationInProgress)
 
             HandleUserMessageLogging("GMRC", "ResetDataFrozenTracking: " & reason & " - data-frozen tracking reset")
         Catch ex As Exception
@@ -1158,6 +1158,8 @@ Partial Public Class GmResidentClient
                     SaveVideoFrozenDeviceName = SaveVideoFrozenDeviceName & "," & myDGs(z).DeviceName(x, y)
                 End If
 
+                If lRecordingState Then RecordVideoLoss(myDGs(z).DeviceName(x, y))
+
             End If
 
         End If
@@ -1452,7 +1454,20 @@ Partial Public Class GmResidentClient
             Next
         Next
 
+        ' Lost video stays lost for the recording even if the timecode starts updating again (VideoLossLatch).
+        If IsVideoLost() AndAlso IsVideoStatusForm(formIndex) Then
+            hasFrozenGoNoGo = True
+            If reasons IsNot Nothing Then reasons.Add($"VIDEO LOST {VideoLossDeviceNames()}")
+        End If
+
         Return existingFault OrElse hasFrozenGoNoGo
+    End Function
+
+    Private Function IsVideoStatusForm(formIndex As Integer) As Boolean
+        For i As Integer = 0 To myDGs.Count - 1
+            If myDGs(i) IsNot Nothing AndAlso myDGs(i).ParentFormIndex = formIndex AndAlso myDGs(i).Name = "INCA Video Status Items" Then Return True
+        Next
+        Return False
     End Function
 
     Private Function GetEnumDescription(
